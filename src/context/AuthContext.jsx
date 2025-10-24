@@ -1,11 +1,10 @@
 // src/context/AuthContext.jsx
-import { createContext, useContext, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
-// 1. Create the context
-const AuthContext = createContext();
+import AuthContext from "./AuthContextBase";
 
 // 2. Create the Provider component
 export function AuthProvider({ children }) {
@@ -41,9 +40,4 @@ export function AuthProvider({ children }) {
       {!loading && children}
     </AuthContext.Provider>
   );
-}
-
-// 3. Create the custom hook to use the context
-export function useAuthContext() {
-  return useContext(AuthContext);
 }

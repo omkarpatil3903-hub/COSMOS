@@ -7,7 +7,7 @@ function SkeletonRow({ columns }) {
     <tr className="animate-pulse">
       {Array.from({ length: columns }).map((_, index) => (
         <td key={index} className="py-4 px-4 whitespace-nowrap">
-          <div className="h-4 bg-gray-200 rounded-md"></div>
+          <div className="h-4 rounded-md bg-surface-strong"></div>
         </td>
       ))}
     </tr>

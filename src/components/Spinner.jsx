@@ -3,8 +3,8 @@ import React from "react";
 
 function Spinner() {
   return (
-    <div className="flex justify-center items-center p-10">
-      <div className="w-8 h-8 border-4 border-dashed rounded-full animate-spin border-indigo-600"></div>
+    <div className="flex items-center justify-center p-10">
+      <div className="h-9 w-9 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
     </div>
   );
 }

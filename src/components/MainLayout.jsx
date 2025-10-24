@@ -1,6 +1,6 @@
 // src/components/MainLayout.jsx
-import React, { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebase";
 import { Toaster } from "react-hot-toast";
@@ -14,32 +14,80 @@ import {
   FaChevronLeft,
   FaShieldAlt,
   FaCogs, // A generic icon for the logo
+  FaBars,
+  FaTimes,
 } from "react-icons/fa";
 
 // NEW: A reusable link component to keep our code clean
-const SidebarLink = ({ to, icon, text, isSidebarOpen }) => {
-  const baseClasses = "flex items-center p-2 rounded gap-4 transition-colors";
-  const activeClasses = "bg-indigo-600 text-white";
-  const inactiveClasses = "hover:bg-gray-700";
+const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
+  const baseClasses =
+    "group flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-sm font-medium transition-colors";
+  const activeClasses =
+    "border-indigo-200 bg-indigo-50 text-indigo-700 shadow-soft";
+  const inactiveClasses =
+    "text-content-secondary hover:bg-surface-subtle hover:text-content-primary";
 
   return (
     <NavLink
       to={to}
+      end={to === "/"}
       // The 'title' attribute provides a native browser tooltip
-      title={!isSidebarOpen ? text : ""}
+      title={isCollapsed ? text : ""}
       className={({ isActive }) =>
         `${baseClasses} ${isActive ? activeClasses : inactiveClasses}`
       }
+      onClick={onNavigate}
     >
-      {icon}
-      {isSidebarOpen && <span className="font-semibold">{text}</span>}
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600 transition-colors duration-200 group-hover:bg-indigo-200">
+        {icon}
+      </span>
+      {!isCollapsed && <span className="truncate">{text}</span>}
     </NavLink>
   );
 };
 
 function MainLayout() {
   const navigate = useNavigate();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const location = useLocation();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  const navigationItems = [
+    {
+      to: "/",
+      text: "Dashboard",
+      icon: <FaTachometerAlt className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/find-voters",
+      text: "Find Voters",
+      icon: <FaSearch className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/reports",
+      text: "Reports",
+      icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/activate-users",
+      text: "Activate Users",
+      icon: <FaUserCheck className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/voter-list",
+      text: "Voter List",
+      icon: <FaListAlt className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/master",
+      text: "Masters",
+      icon: <FaCogs className="h-4 w-4" aria-hidden="true" />,
+    },
+  ];
+
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     try {
@@ -50,95 +98,128 @@ function MainLayout() {
     }
   };
 
+  const handleToggleSidebar = () => {
+    setIsCollapsed((prev) => !prev);
+  };
+
+  const handleToggleMobileNav = () => {
+    setIsMobileNavOpen((prev) => !prev);
+  };
+
+  const sidebarWidth = isCollapsed ? "lg:w-24" : "lg:w-72";
+  const contentPadding = isCollapsed ? "lg:pl-24" : "lg:pl-72";
+
   return (
-    <div className="relative min-h-screen">
+    <div className="flex min-h-screen bg-canvas text-content-primary">
+      <a className="sr-only-focusable" href="#main-content">
+        Skip to main content
+      </a>
       <Toaster position="top-right" />
       <aside
-        className={`fixed top-0 left-0 h-full bg-gray-800 text-white p-4 flex flex-col transition-all duration-300 z-10 ${
-          isSidebarOpen ? "w-64" : "w-20"
-        }`}
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface p-6 shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${
+          isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
+        } ${sidebarWidth}`}
+        aria-label="Primary"
       >
-        {/* Toggle Button */}
-        <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="absolute -right-3 top-9 p-1.5 bg-gray-700 rounded-full text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-white"
-        >
-          <FaChevronLeft
-            className={`transition-transform duration-300 ${
-              !isSidebarOpen && "rotate-180"
-            }`}
-          />
-        </button>
-
-        {/* UPDATED: Logo/Header Section */}
-        <div className="flex items-center gap-4 mb-8">
-          <div className="bg-indigo-600 p-2 rounded-lg">
-            <FaShieldAlt size={20} />
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft">
+              <FaShieldAlt className="h-5 w-5" aria-hidden="true" />
+            </span>
+            {!isCollapsed && (
+              <div>
+                <p className="text-sm font-medium text-content-tertiary">
+                  Voter Administration
+                </p>
+                <h2 className="text-lg font-semibold text-content-primary">
+                  Admin Panel
+                </h2>
+              </div>
+            )}
           </div>
-          {isSidebarOpen && <h2 className="text-xl font-bold">Admin Panel</h2>}
+
+          <button
+            type="button"
+            onClick={handleToggleSidebar}
+            className="hidden items-center justify-center rounded-full border border-subtle p-2 text-content-secondary transition hover:text-content-primary lg:flex"
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <FaChevronLeft
+              className={`h-4 w-4 transition-transform duration-300 ${
+                isCollapsed ? "rotate-180" : ""
+              }`}
+              aria-hidden="true"
+            />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleToggleMobileNav}
+            className="flex items-center justify-center rounded-full border border-subtle p-2 text-content-secondary transition hover:text-content-primary lg:hidden"
+            aria-label="Close navigation"
+          >
+            <FaTimes className="h-4 w-4" aria-hidden="true" />
+          </button>
         </div>
 
-        {/* UPDATED: Cleaner Navigation */}
-        <nav className="flex-grow space-y-2">
-          <SidebarLink
-            to="/"
-            icon={<FaTachometerAlt size={20} />}
-            text="Dashboard"
-            isSidebarOpen={isSidebarOpen}
-          />
-          <SidebarLink
-            to="/find-voters"
-            icon={<FaSearch size={20} />}
-            text="Find Voters"
-            isSidebarOpen={isSidebarOpen}
-          />
-          <SidebarLink
-            to="/reports"
-            icon={<FaChartBar size={20} />}
-            text="Reports"
-            isSidebarOpen={isSidebarOpen}
-          />
-          <SidebarLink
-            to="/activate-users"
-            icon={<FaUserCheck size={20} />}
-            text="Activate Users"
-            isSidebarOpen={isSidebarOpen}
-          />
-          <SidebarLink
-            to="/voter-list"
-            icon={<FaListAlt size={20} />}
-            text="Voter List"
-            isSidebarOpen={isSidebarOpen}
-          />
-          <SidebarLink
-            to="/master"
-            icon={<FaCogs size={20} />}
-            text="Masters"
-            isSidebarOpen={isSidebarOpen}
-          />
+        <nav className="mt-8 flex flex-1 flex-col gap-1">
+          {navigationItems.map((item) => (
+            <SidebarLink
+              key={item.to}
+              to={item.to}
+              text={item.text}
+              icon={item.icon}
+              isCollapsed={isCollapsed}
+              onNavigate={() => setIsMobileNavOpen(false)}
+            />
+          ))}
         </nav>
 
-        {/* Logout Button */}
-        <div className="mt-auto">
+        <div className="mt-auto pt-8">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center p-2 hover:bg-gray-700 rounded gap-4"
-            title={!isSidebarOpen ? "Logout" : ""}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+            title={isCollapsed ? "Logout" : ""}
           >
-            <FaSignOutAlt size={20} />
-            {isSidebarOpen && <span className="font-semibold">Logout</span>}
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
+              <FaSignOutAlt className="h-4 w-4" aria-hidden="true" />
+            </span>
+            {!isCollapsed && <span>Logout</span>}
           </button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main
-        className={`p-10 bg-gray-50 min-h-screen transition-all duration-300 ${
-          isSidebarOpen ? "ml-64" : "ml-20"
-        }`}
+      {isMobileNavOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden"
+          onClick={handleToggleMobileNav}
+          aria-label="Close menu overlay"
+        />
+      )}
+
+      <div
+        className={`flex min-h-screen flex-1 flex-col transition-all duration-300 ${contentPadding}`}
       >
-        <Outlet />
-      </main>
+        <main
+          id="main-content"
+          className="flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8"
+        >
+          <div className="mb-6 flex items-center justify-between lg:hidden">
+            <button
+              type="button"
+              onClick={handleToggleMobileNav}
+              className="flex items-center gap-2 rounded-full border border-subtle px-3 py-2 text-sm font-medium text-content-secondary transition hover:text-content-primary"
+              aria-label="Open navigation"
+            >
+              <FaBars className="h-4 w-4" aria-hidden="true" />
+              <span>Menu</span>
+            </button>
+          </div>
+
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

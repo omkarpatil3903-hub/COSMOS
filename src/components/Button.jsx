@@ -13,19 +13,22 @@ function Button({
 }) {
   // Base styles for all buttons
   const baseStyle =
-    "px-4 py-2 font-semibold rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2";
+    "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 
   // Variant-specific styles
   const styles = {
     primary:
-      "bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500",
+      "bg-indigo-600 text-white shadow-soft hover:bg-indigo-700 focus-visible:ring-indigo-500",
     secondary:
-      "bg-gray-200 text-gray-800 hover:bg-gray-300 focus:ring-gray-400",
-    danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
+      "border border-subtle bg-surface text-content-primary hover:border-indigo-200 hover:text-indigo-700 focus-visible:ring-indigo-500",
+    ghost:
+      "text-content-secondary hover:bg-surface-subtle hover:text-content-primary focus-visible:ring-indigo-500",
+    danger:
+      "bg-red-600 text-white shadow-soft hover:bg-red-700 focus-visible:ring-red-500",
   };
 
   // Disabled styles
-  const disabledStyle = "disabled:opacity-50 disabled:cursor-not-allowed";
+  const disabledStyle = "";
 
   return (
     <button
@@ -33,7 +36,9 @@ function Button({
       onClick={onClick}
       disabled={disabled}
       // This line is now updated to include the external className
-      className={`${baseStyle} ${styles[variant]} ${disabledStyle} ${className}`}
+      className={`${baseStyle} ${
+        styles[variant] || styles.primary
+      } ${disabledStyle} ${className}`}
       {...props}
     >
       {children}
