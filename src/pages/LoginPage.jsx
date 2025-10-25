@@ -37,7 +37,7 @@ function LoginPage() {
         navigate("/");
       }, 1000);
     } catch (err) {
-      toast.error("Failed to log in. Please check your credentials.");
+      toast.error("Failed to log in. Please check your credentials");
       console.error(err);
       setLoading(false); // Make sure to re-enable the button on error
     }
