@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import PageHeader from "../components/PageHeader";
 import Card from "../components/Card";
 import Button from "../components/Button";
@@ -11,410 +11,348 @@ import {
   FaCheck,
   FaTimes,
   FaClock,
-  FaUsers,
-  FaFlag,
   FaChevronLeft,
   FaChevronRight,
-  FaFilter,
 } from "react-icons/fa";
+import { db } from "../firebase";
+import {
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+} from "firebase/firestore";
+
+const tsToDate = (value) => {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate();
+  if (typeof value.seconds === "number") return new Date(value.seconds * 1000);
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const dateToInputValue = (date) => {
+  if (!date) return "";
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const buildDefaultEventForm = (baseDate = new Date()) => ({
+  title: "",
+  type: "meeting",
+  status: "pending",
+  date: dateToInputValue(baseDate),
+  time: "09:00",
+  duration: 60,
+  clientId: "",
+  description: "",
+  priority: "medium",
+  location: "",
+  attendeesText: "",
+});
 
 // Add meeting requests data
-const sampleMeetingRequests = [
-  {
-    id: "req1",
-    clientId: "c1",
-    clientName: "Tech Corp",
-    companyName: "Tech Corp Solutions Ltd.",
-    requestedDate: "2025-10-03",
-    requestedTime: "10:00",
-    duration: 120,
-    purpose: "Discuss Q4 project requirements and budget allocation",
-    priority: "high",
-    status: "pending", // pending, approved, rejected
-    requestedAt: "2025-09-28T14:30:00Z",
-    email: "contact@techcorp.com",
-    phone: "+1-555-0123",
-  },
-  {
-    id: "req2",
-    clientId: "c2",
-    clientName: "StartupXYZ",
-    companyName: "StartupXYZ Inc.",
-    requestedDate: "2025-10-03",
-    requestedTime: "14:00",
-    duration: 90,
-    purpose: "Product demo and feature discussion",
-    priority: "medium",
-    status: "pending",
-    requestedAt: "2025-09-29T09:15:00Z",
-    email: "hello@startupxyz.com",
-    phone: "+1-555-0456",
-  },
-  {
-    id: "req3",
-    clientId: "c3",
-    clientName: "Retail Solutions",
-    companyName: "Retail Solutions Group",
-    requestedDate: "2025-10-03",
-    requestedTime: "16:00",
-    duration: 60,
-    purpose: "Review project timeline and deliverables",
-    priority: "low",
-    status: "pending",
-    requestedAt: "2025-09-30T11:45:00Z",
-    email: "info@retail.com",
-    phone: "+1-555-0789",
-  },
-  // October 24, 27, 30 - Meeting Requests
-  {
-    id: "req24",
-    clientId: "c11",
-    clientName: "Metro Corp",
-    companyName: "Metro Corporation Limited",
-    requestedDate: "2025-10-24",
-    requestedTime: "09:00",
-    duration: 90,
-    purpose: "Infrastructure upgrade consultation",
-    priority: "high",
-    status: "pending",
-    requestedAt: "2025-10-20T08:30:00Z",
-    email: "info@metrocorp.com",
-    phone: "+1-555-2410",
-  },
-  {
-    id: "req25",
-    clientId: "c12",
-    clientName: "Bright Solutions",
-    companyName: "Bright Solutions Inc.",
-    requestedDate: "2025-10-24",
-    requestedTime: "14:30",
-    duration: 120,
-    purpose: "Solar energy project proposal",
-    priority: "medium",
-    status: "pending",
-    requestedAt: "2025-10-21T10:15:00Z",
-    email: "contact@brightsolutions.com",
-    phone: "+1-555-2411",
-  },
-  {
-    id: "req26",
-    clientId: "c13",
-    clientName: "DataFlow Systems",
-    companyName: "DataFlow Systems Ltd.",
-    requestedDate: "2025-10-27",
-    requestedTime: "11:00",
-    duration: 150,
-    purpose: "Database optimization and performance review",
-    priority: "high",
-    status: "pending",
-    requestedAt: "2025-10-23T13:45:00Z",
-    email: "tech@dataflow.com",
-    phone: "+1-555-2710",
-  },
-  {
-    id: "req27",
-    clientId: "c14",
-    clientName: "CloudTech",
-    companyName: "CloudTech Solutions",
-    requestedDate: "2025-10-27",
-    requestedTime: "15:30",
-    duration: 75,
-    purpose: "Cloud migration strategy discussion",
-    priority: "medium",
-    status: "pending",
-    requestedAt: "2025-10-24T09:20:00Z",
-    email: "hello@cloudtech.com",
-    phone: "+1-555-2711",
-  },
-  {
-    id: "req28",
-    clientId: "c15",
-    clientName: "SecureNet",
-    companyName: "SecureNet Technologies",
-    requestedDate: "2025-10-30",
-    requestedTime: "10:30",
-    duration: 100,
-    purpose: "Cybersecurity assessment and recommendations",
-    priority: "high",
-    status: "pending",
-    requestedAt: "2025-10-26T14:10:00Z",
-    email: "security@securenet.com",
-    phone: "+1-555-3010",
-  },
-  {
-    id: "req29",
-    clientId: "c16",
-    clientName: "WebCraft",
-    companyName: "WebCraft Digital Agency",
-    requestedDate: "2025-10-30",
-    requestedTime: "16:00",
-    duration: 60,
-    purpose: "Website redesign project kickoff",
-    priority: "low",
-    status: "pending",
-    requestedAt: "2025-10-27T11:30:00Z",
-    email: "projects@webcraft.com",
-    phone: "+1-555-3011",
-  },
-  {
-    id: "req4",
-    clientId: "c4",
-    clientName: "Enterprise Solutions",
-    companyName: "Enterprise Solutions Corp",
-    requestedDate: "2025-10-15",
-    requestedTime: "11:00",
-    duration: 180,
-    purpose: "Strategic planning and roadmap discussion",
-    priority: "high",
-    status: "pending",
-    requestedAt: "2025-10-01T16:20:00Z",
-    email: "contact@enterprise.com",
-    phone: "+1-555-0321",
-  },
-];
+// Removed sample data
 
 // Sample data for events
-const sampleEvents = [
-  // October 3, 5, 10, 18, 23 - Approved Meetings
-  {
-    id: "e_oct3",
-    title: "Client Meeting - Project Strategy Review",
-    type: "meeting",
-    status: "approved",
-    date: "2025-10-03",
-    time: "09:30",
-    duration: 120,
-    clientId: "c20",
-    clientName: "Strategic Partners",
-    description: "Quarterly strategy review and planning session",
-    priority: "high",
-    location: "Conference Room B",
-    attendees: ["Strategic Partners Team", "Project Managers"],
-    createdBy: "admin",
-    objectives: [
-      { id: "o20", text: "Review Q3 performance", completed: true },
-      { id: "o21", text: "Set Q4 objectives", completed: false },
-    ],
-  },
-  {
-    id: "e_oct5",
-    title: "Client Meeting - Technical Architecture Discussion",
-    type: "meeting",
-    status: "approved",
-    date: "2025-10-05",
-    time: "14:00",
-    duration: 90,
-    clientId: "c21",
-    clientName: "TechFlow Industries",
-    description: "Technical architecture review and system design",
-    priority: "medium",
-    location: "Meeting Room A",
-    attendees: ["TechFlow Team", "Lead Architects"],
-    createdBy: "admin",
-    objectives: [
-      { id: "o22", text: "Review system architecture", completed: true },
-      { id: "o23", text: "Discuss scalability options", completed: true },
-    ],
-  },
-  {
-    id: "e_oct10",
-    title: "Client Meeting - Product Demo and Feedback",
-    type: "meeting",
-    status: "approved",
-    date: "2025-10-10",
-    time: "11:15",
-    duration: 150,
-    clientId: "c22",
-    clientName: "Innovation Labs",
-    description: "Product demonstration and client feedback session",
-    priority: "high",
-    location: "Demo Room",
-    attendees: ["Innovation Labs Team", "Product Team"],
-    createdBy: "admin",
-    objectives: [
-      { id: "o24", text: "Demonstrate new features", completed: true },
-      { id: "o25", text: "Collect client feedback", completed: true },
-      { id: "o26", text: "Plan next iterations", completed: false },
-    ],
-  },
-  {
-    id: "e_oct18",
-    title: "Client Meeting - Security Audit Results",
-    type: "meeting",
-    status: "approved",
-    date: "2025-10-18",
-    time: "10:00",
-    duration: 105,
-    clientId: "c23",
-    clientName: "SecureBase",
-    description: "Security audit findings and remediation plan",
-    priority: "high",
-    location: "Secure Conference Room",
-    attendees: ["SecureBase Team", "Security Team"],
-    createdBy: "admin",
-    objectives: [
-      { id: "o27", text: "Present audit findings", completed: true },
-      { id: "o28", text: "Discuss remediation steps", completed: true },
-      { id: "o29", text: "Set implementation timeline", completed: false },
-    ],
-  },
-  {
-    id: "e_oct23",
-    title: "Client Meeting - Mobile App Wireframe Review",
-    type: "meeting",
-    status: "approved",
-    date: "2025-10-23",
-    time: "15:30",
-    duration: 75,
-    clientId: "c24",
-    clientName: "MobileFirst",
-    description: "Mobile application wireframe and UX review",
-    priority: "medium",
-    location: "Design Studio",
-    attendees: ["MobileFirst Team", "UX Designers"],
-    createdBy: "admin",
-    objectives: [
-      { id: "o30", text: "Review wireframes", completed: true },
-      { id: "o31", text: "Validate user flows", completed: true },
-      { id: "o32", text: "Approve design direction", completed: true },
-    ],
-  },
-  {
-    id: "e1",
-    title: "Client Meeting - Project Alpha Review",
-    type: "meeting",
-    status: "approved",
-    date: "2025-11-15",
-    time: "10:00",
-    duration: 120,
-    clientId: "c1",
-    clientName: "Tech Corp",
-    description: "Review project milestones and discuss next phase",
-    priority: "high",
-    location: "Conference Room A",
-    attendees: ["John Doe", "Jane Smith"],
-    createdBy: "admin",
-    objectives: [
-      { id: "o1", text: "Review Q4 deliverables", completed: true },
-      { id: "o2", text: "Discuss budget allocation", completed: false },
-      { id: "o3", text: "Plan next sprint", completed: false },
-    ],
-  },
-  {
-    id: "e2",
-    title: "Task Deadline - Database Migration",
-    type: "task",
-    status: "pending",
-    date: "2025-11-18",
-    time: "23:59",
-    duration: 0,
-    clientId: "c2",
-    clientName: "StartupXYZ",
-    description: "Complete database migration to new server",
-    priority: "high",
-    assignee: "Dev Team",
-    progress: 75,
-    objectives: [
-      { id: "o4", text: "Backup current database", completed: true },
-      { id: "o5", text: "Setup new server environment", completed: true },
-      { id: "o6", text: "Migrate data", completed: false },
-      { id: "o7", text: "Test connectivity", completed: false },
-    ],
-  },
-  {
-    id: "e3",
-    title: "Client Presentation - Mobile App Demo",
-    type: "meeting",
-    status: "cancelled",
-    date: "2025-11-20",
-    time: "14:00",
-    duration: 90,
-    clientId: "c3",
-    clientName: "Retail Solutions",
-    description: "Demo of new mobile application features",
-    priority: "medium",
-    location: "Client Office",
-    cancelReason: "Client requested postponement due to internal conflicts",
-    cancelledBy: "client",
-    cancelledAt: "2025-11-18T09:30:00Z",
-  },
-  {
-    id: "e4",
-    title: "Project Milestone - Beta Release",
-    type: "milestone",
-    status: "completed",
-    date: "2025-11-12",
-    time: "17:00",
-    duration: 0,
-    clientId: "c1",
-    clientName: "Tech Corp",
-    description: "Beta version release and client notification",
-    priority: "high",
-    completedAt: "2025-11-12T16:45:00Z",
-    objectives: [
-      { id: "o8", text: "Deploy to staging environment", completed: true },
-      { id: "o9", text: "Conduct internal testing", completed: true },
-      { id: "o10", text: "Send release notes to client", completed: true },
-    ],
-  },
-  {
-    id: "e5",
-    title: "Follow-up Call - Project Requirements",
-    type: "call",
-    status: "approved",
-    date: "2025-11-25",
-    time: "11:00",
-    duration: 60,
-    clientId: "c4",
-    clientName: "Enterprise Solutions",
-    description: "Clarify project requirements and scope",
-    priority: "medium",
-    objectives: [
-      { id: "o11", text: "Review technical specifications", completed: false },
-      { id: "o12", text: "Confirm timeline expectations", completed: false },
-    ],
-  },
-];
+// Removed sample data
 
-const sampleClients = [
-  {
-    id: "c1",
-    name: "Tech Corp",
-    email: "contact@techcorp.com",
-    status: "active",
-  },
-  {
-    id: "c2",
-    name: "StartupXYZ",
-    email: "hello@startupxyz.com",
-    status: "active",
-  },
-  {
-    id: "c3",
-    name: "Retail Solutions",
-    email: "info@retail.com",
-    status: "active",
-  },
-  {
-    id: "c4",
-    name: "Enterprise Solutions",
-    email: "contact@enterprise.com",
-    status: "active",
-  },
-];
+// Removed sample data
 
 function Calendar() {
-  const [events, setEvents] = useState(sampleEvents);
-  const [meetingRequests, setMeetingRequests] = useState(sampleMeetingRequests);
+  const [events, setEvents] = useState([]);
+  const [meetingRequests, setMeetingRequests] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [tasks, setTasks] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
-  const [viewMode, setViewMode] = useState("month"); // month, week, day
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [showRequestModal, setShowRequestModal] = useState(false);
-  const [selectedRequests, setSelectedRequests] = useState([]);
+  const [activeRequestDate, setActiveRequestDate] = useState(null);
+  const [eventForm, setEventForm] = useState(() => buildDefaultEventForm());
+
+  const clientsById = useMemo(() => {
+    const map = new Map();
+    clients.forEach((client) => {
+      map.set(client.id, client);
+    });
+    return map;
+  }, [clients]);
+
+  // Firestore subscriptions
+  useEffect(() => {
+    const unsubEvents = onSnapshot(
+      query(collection(db, "events"), orderBy("date", "asc")),
+      (snap) => {
+        setEvents(
+          snap.docs.map((d) => {
+            const data = d.data() || {};
+            const cancelledAt = tsToDate(data.cancelledAt);
+            const completedAt = tsToDate(data.completedAt);
+            const createdAt = tsToDate(data.createdAt);
+            const status = String(data.status || "pending").toLowerCase();
+            const type = String(data.type || "meeting").toLowerCase();
+            const priority = String(data.priority || "medium").toLowerCase();
+            return {
+              id: d.id,
+              title: data.title || "",
+              type,
+              status,
+              date: data.date || "",
+              time: data.time || "",
+              duration: data.duration || 60,
+              clientId: data.clientId || "",
+              clientName: data.clientName || "",
+              description: data.description || "",
+              priority,
+              location: data.location || "",
+              attendees: data.attendees || [],
+              createdBy: data.createdBy || "",
+              objectives: data.objectives || [],
+              cancelReason: data.cancelReason || "",
+              cancelledBy: data.cancelledBy || "",
+              cancelledAt,
+              completedAt,
+              createdAt,
+              assignee: data.assignee || "",
+              progress: data.progress || 0,
+            };
+          })
+        );
+      }
+    );
+
+    const unsubMeetingRequests = onSnapshot(
+      collection(db, "meetingRequests"),
+      (snap) => {
+        setMeetingRequests(
+          snap.docs.map((d) => {
+            const data = d.data() || {};
+            const requestedAt = tsToDate(data.requestedAt);
+            return {
+              id: d.id,
+              clientId: data.clientId || "",
+              clientName: data.clientName || "",
+              companyName: data.companyName || "",
+              requestedDate: data.requestedDate || "",
+              requestedTime: data.requestedTime || "",
+              duration: data.duration || 60,
+              purpose: data.purpose || "",
+              priority: data.priority || "medium",
+              status: data.status || "pending",
+              requestedAt,
+              email: data.email || "",
+              phone: data.phone || "",
+            };
+          })
+        );
+      }
+    );
+
+    const unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
+      setClients(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
+    });
+
+    const unsubTasks = onSnapshot(
+      query(collection(db, "tasks"), orderBy("dueDate", "asc")),
+      (snap) => {
+        setTasks(
+          snap.docs.map((d) => {
+            const data = d.data() || {};
+            const dueDate = tsToDate(data.dueDate);
+            const createdAt = tsToDate(data.createdAt);
+            const completedAt = tsToDate(data.completedAt);
+            return {
+              id: d.id,
+              title: data.title || "",
+              projectId: data.projectId || "",
+              assigneeId: data.assigneeId || "",
+              assigneeType: data.assigneeType || "user",
+              status: data.status || "To-Do",
+              priority: data.priority || "Medium",
+              dueDate,
+              createdAt,
+              completedAt,
+              archived: data.archived || false,
+            };
+          })
+        );
+      }
+    );
+
+    return () => {
+      unsubEvents();
+      unsubMeetingRequests();
+      unsubClients();
+      unsubTasks();
+    };
+  }, []);
+
+  // Combine events and tasks with dueDate
+  const allEvents = useMemo(() => {
+    const eventList = [...events];
+
+    // Add tasks with dueDate as events
+    tasks.forEach((task) => {
+      if (task.dueDate && !task.archived) {
+        const dueDate =
+          task.dueDate instanceof Date ? task.dueDate : tsToDate(task.dueDate);
+        const dateStr = dueDate.toISOString().slice(0, 10);
+        const timeStr = "23:59"; // Default to end of day for tasks
+
+        eventList.push({
+          id: `task_${task.id}`,
+          title: `Task Deadline - ${task.title}`,
+          type: "task",
+          status: task.status === "Done" ? "completed" : "pending",
+          date: dateStr,
+          time: timeStr,
+          duration: 0,
+          clientId: "", // Tasks may not have client directly
+          clientName: "",
+          description: task.title,
+          priority: task.priority.toLowerCase(),
+          location: "",
+          attendees: [],
+          createdBy: "",
+          objectives: [],
+          assignee: task.assigneeId,
+          progress: task.status === "Done" ? 100 : 0,
+          isTask: true, // Mark as task event
+          taskId: task.id,
+        });
+      }
+    });
+
+    return eventList;
+  }, [events, tasks]);
+
+  const upcomingEvents = useMemo(() => {
+    const now = new Date();
+    return [...allEvents]
+      .filter((event) => {
+        if (!event.date) return false;
+        const eventDateTime = new Date(
+          `${event.date}T${event.time || "00:00"}`
+        );
+        return eventDateTime >= now;
+      })
+      .sort((a, b) => {
+        const aTime = new Date(`${a.date}T${a.time || "00:00"}`).getTime();
+        const bTime = new Date(`${b.date}T${b.time || "00:00"}`).getTime();
+        return aTime - bTime;
+      })
+      .slice(0, 5);
+  }, [allEvents]);
+
+  const requestsForModal = useMemo(() => {
+    if (!activeRequestDate) return [];
+    return meetingRequests.filter(
+      (req) => req.requestedDate === activeRequestDate
+    );
+  }, [meetingRequests, activeRequestDate]);
+
+  const openEventModal = (event) => {
+    if (event?.isTask) return; // tasks are managed separately
+
+    if (event) {
+      setEditingEvent(event);
+      setEventForm({
+        title: event.title || "",
+        type: event.type || "meeting",
+        status: event.status || "pending",
+        date: event.date || dateToInputValue(new Date()),
+        time: event.time || "09:00",
+        duration: event.duration || 60,
+        clientId: event.clientId || "",
+        description: event.description || "",
+        priority: event.priority || "medium",
+        location: event.location || "",
+        attendeesText: (event.attendees || []).join(", "),
+      });
+    } else {
+      const base = selectedDate || new Date();
+      setEditingEvent(null);
+      setEventForm(buildDefaultEventForm(base));
+    }
+    setShowEventModal(true);
+  };
+
+  const closeEventModal = () => {
+    const base = selectedDate || new Date();
+    setShowEventModal(false);
+    setEditingEvent(null);
+    setEventForm(buildDefaultEventForm(base));
+  };
+
+  const handleEventFormChange = (field, value) => {
+    setEventForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveEvent = async (e) => {
+    e.preventDefault();
+    if (!eventForm.title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+    if (!eventForm.date) {
+      toast.error("Date is required");
+      return;
+    }
+
+    const attendees = eventForm.attendeesText
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const duration = Number(eventForm.duration) || 0;
+    const clientRecord = eventForm.clientId
+      ? clientsById.get(eventForm.clientId)
+      : null;
+    const clientName =
+      clientRecord?.companyName || clientRecord?.clientName || "";
+
+    const payload = {
+      title: eventForm.title.trim(),
+      type: eventForm.type,
+      status: eventForm.status,
+      date: eventForm.date,
+      time: eventForm.time,
+      duration,
+      clientId: eventForm.clientId,
+      clientName,
+      description: eventForm.description,
+      priority: eventForm.priority,
+      location: eventForm.location,
+      attendees,
+      updatedAt: serverTimestamp(),
+    };
+
+    try {
+      if (editingEvent) {
+        await updateDoc(doc(db, "events", editingEvent.id), payload);
+        toast.success("Event updated successfully!");
+      } else {
+        await addDoc(collection(db, "events"), {
+          ...payload,
+          createdAt: serverTimestamp(),
+          createdBy: "admin",
+        });
+        toast.success("Event created successfully!");
+      }
+      closeEventModal();
+    } catch {
+      toast.error("Failed to save event");
+    }
+  };
 
   // Calendar navigation
   const navigateMonth = (direction) => {
@@ -428,20 +366,11 @@ function Calendar() {
   // Get events for a specific date
   const getEventsForDate = (date) => {
     const dateStr = date.toISOString().slice(0, 10);
-    return events.filter((event) => {
+    return allEvents.filter((event) => {
       const eventDate = event.date;
       let typeMatch = filterType === "all" || event.type === filterType;
       let statusMatch = filterStatus === "all" || event.status === filterStatus;
       return eventDate === dateStr && typeMatch && statusMatch;
-    });
-  };
-
-  // Get all filtered events
-  const getFilteredEvents = () => {
-    return events.filter((event) => {
-      let typeMatch = filterType === "all" || event.type === filterType;
-      let statusMatch = filterStatus === "all" || event.status === filterStatus;
-      return typeMatch && statusMatch;
     });
   };
 
@@ -452,142 +381,125 @@ function Calendar() {
   };
 
   // Handle event actions
-  const handleApproveEvent = (eventId) => {
-    setEvents((prev) =>
-      prev.map((event) =>
-        event.id === eventId ? { ...event, status: "approved" } : event
-      )
-    );
-    toast.success("Event approved successfully!");
+  const handleApproveEvent = async (eventId) => {
+    try {
+      await updateDoc(doc(db, "events", eventId), {
+        status: "approved",
+      });
+      toast.success("Event approved successfully!");
+    } catch {
+      toast.error("Failed to approve event");
+    }
   };
 
-  const handleCancelEvent = (eventId, reason) => {
-    setEvents((prev) =>
-      prev.map((event) =>
-        event.id === eventId
-          ? {
-              ...event,
-              status: "cancelled",
-              cancelReason: reason,
-              cancelledBy: "admin",
-              cancelledAt: new Date().toISOString(),
-            }
-          : event
-      )
-    );
-    toast.success("Event cancelled successfully!");
+  const handleCancelEvent = async (eventId, reason) => {
+    try {
+      await updateDoc(doc(db, "events", eventId), {
+        status: "cancelled",
+        cancelReason: reason,
+        cancelledBy: "admin",
+        cancelledAt: serverTimestamp(),
+      });
+      toast.success("Event cancelled successfully!");
+    } catch {
+      toast.error("Failed to cancel event");
+    }
   };
 
-  const handleCompleteTask = (eventId) => {
-    setEvents((prev) =>
-      prev.map((event) =>
-        event.id === eventId
-          ? {
-              ...event,
-              status: "completed",
-              completedAt: new Date().toISOString(),
-            }
-          : event
-      )
-    );
-    toast.success("Task marked as completed!");
+  const handleCompleteTask = async (eventId) => {
+    // Check if it's a task event
+    if (eventId.startsWith("task_")) {
+      const taskId = eventId.replace("task_", "");
+      try {
+        await updateDoc(doc(db, "tasks", taskId), {
+          status: "Done",
+          completedAt: serverTimestamp(),
+        });
+        toast.success("Task marked as completed!");
+      } catch {
+        toast.error("Failed to complete task");
+      }
+    } else {
+      // Regular event
+      try {
+        await updateDoc(doc(db, "events", eventId), {
+          status: "completed",
+          completedAt: serverTimestamp(),
+        });
+        toast.success("Event marked as completed!");
+      } catch {
+        toast.error("Failed to complete event");
+      }
+    }
   };
 
-  const toggleObjective = (eventId, objectiveId) => {
-    setEvents((prev) =>
-      prev.map((event) => {
-        if (event.id === eventId) {
-          const updatedObjectives = event.objectives?.map((obj) =>
-            obj.id === objectiveId ? { ...obj, completed: !obj.completed } : obj
-          );
-          return { ...event, objectives: updatedObjectives };
-        }
-        return event;
-      })
-    );
-  };
-
-  const deleteEvent = (eventId) => {
+  const deleteEvent = async (eventId) => {
     if (window.confirm("Are you sure you want to delete this event?")) {
-      setEvents((prev) => prev.filter((event) => event.id !== eventId));
-      toast.success("Event deleted successfully!");
+      try {
+        await deleteDoc(doc(db, "events", eventId));
+        toast.success("Event deleted successfully!");
+      } catch {
+        toast.error("Failed to delete event");
+      }
     }
   };
 
   // Handle meeting request approval
-  const handleApproveRequest = (requestId) => {
+  const handleApproveRequest = async (requestId) => {
     const request = meetingRequests.find((req) => req.id === requestId);
     if (!request) return;
 
-    // Remove only the approved request (not all requests for the same date)
-    setMeetingRequests((prev) => prev.filter((req) => req.id !== requestId));
+    try {
+      // Remove the request
+      await deleteDoc(doc(db, "meetingRequests", requestId));
 
-    // Update selectedRequests to remove only the approved request
-    setSelectedRequests((prev) => prev.filter((req) => req.id !== requestId));
+      // Create new event
+      await addDoc(collection(db, "events"), {
+        title: `Client Meeting - ${request.purpose}`,
+        type: "meeting",
+        status: "approved",
+        date: request.requestedDate,
+        time: request.requestedTime,
+        duration: request.duration,
+        clientId: request.clientId,
+        clientName: request.clientName,
+        description: request.purpose,
+        priority: request.priority,
+        location: "Conference Room",
+        attendees: [request.clientName],
+        createdBy: "admin",
+        objectives: [
+          {
+            id: `o_${Date.now()}`,
+            text: "Discuss project requirements",
+            completed: false,
+          },
+          {
+            id: `o_${Date.now() + 1}`,
+            text: "Review timeline",
+            completed: false,
+          },
+        ],
+      });
 
-    // Create new event from approved request
-    const newEvent = {
-      id: `e_${Date.now()}`,
-      title: `Client Meeting - ${request.purpose}`,
-      type: "meeting",
-      status: "approved",
-      date: request.requestedDate,
-      time: request.requestedTime,
-      duration: request.duration,
-      clientId: request.clientId,
-      clientName: request.clientName,
-      description: request.purpose,
-      priority: request.priority,
-      location: "Conference Room",
-      attendees: [request.clientName],
-      createdBy: "admin",
-      objectives: [
-        {
-          id: `o_${Date.now()}`,
-          text: "Discuss project requirements",
-          completed: false,
-        },
-        {
-          id: `o_${Date.now() + 1}`,
-          text: "Review timeline",
-          completed: false,
-        },
-      ],
-    };
-
-    setEvents((prev) => [...prev, newEvent]);
-    toast.success(`Meeting with ${request.clientName} approved and scheduled!`);
-
-    // Close modal only if no more requests for this date
-    const remainingRequestsForDate = meetingRequests.filter(
-      (req) =>
-        req.requestedDate === request.requestedDate && req.id !== requestId
-    );
-    if (remainingRequestsForDate.length === 0) {
-      setShowRequestModal(false);
+      toast.success(
+        `Meeting with ${request.clientName} approved and scheduled!`
+      );
+    } catch {
+      toast.error("Failed to approve meeting request");
     }
   };
 
   // Handle meeting request rejection
-  const handleRejectRequest = (requestId) => {
+  const handleRejectRequest = async (requestId) => {
     const request = meetingRequests.find((req) => req.id === requestId);
     if (!request) return;
 
-    // Remove only the rejected request
-    setMeetingRequests((prev) => prev.filter((req) => req.id !== requestId));
-
-    // Update selectedRequests to remove this specific request
-    setSelectedRequests((prev) => prev.filter((req) => req.id !== requestId));
-
-    toast.success(`Meeting request from ${request.clientName} rejected.`);
-
-    // Close modal if no more requests for this date
-    const remainingRequestsForDate = meetingRequests.filter(
-      (req) =>
-        req.requestedDate === request.requestedDate && req.id !== requestId
-    );
-    if (remainingRequestsForDate.length === 0) {
-      setShowRequestModal(false);
+    try {
+      await deleteDoc(doc(db, "meetingRequests", requestId));
+      toast.success(`Meeting request from ${request.clientName} rejected.`);
+    } catch {
+      toast.error("Failed to reject meeting request");
     }
   };
 
@@ -595,21 +507,29 @@ function Calendar() {
   const showRequestsForDate = (date) => {
     const requests = getMeetingRequestsForDate(date);
     if (requests.length > 0) {
-      setSelectedRequests(requests);
+      setActiveRequestDate(date.toISOString().slice(0, 10));
       setShowRequestModal(true);
     }
   };
 
+  useEffect(() => {
+    if (!showRequestModal || !activeRequestDate) return;
+    if (requestsForModal.length === 0) {
+      setShowRequestModal(false);
+      setActiveRequestDate(null);
+    }
+  }, [requestsForModal, showRequestModal, activeRequestDate]);
+
   // Calculate stats including meeting requests
   const calendarStats = {
-    totalEvents: events.length,
-    pendingApprovals: events.filter((e) => e.status === "pending").length,
-    approvedMeetings: events.filter(
+    totalEvents: allEvents.length,
+    pendingApprovals: allEvents.filter((e) => e.status === "pending").length,
+    approvedMeetings: allEvents.filter(
       (e) => e.type === "meeting" && e.status === "approved"
     ).length,
-    cancelledEvents: events.filter((e) => e.status === "cancelled").length,
-    completedTasks: events.filter((e) => e.status === "completed").length,
-    upcomingDeadlines: events.filter((e) => {
+    cancelledEvents: allEvents.filter((e) => e.status === "cancelled").length,
+    completedTasks: allEvents.filter((e) => e.status === "completed").length,
+    upcomingDeadlines: allEvents.filter((e) => {
       const eventDate = new Date(e.date);
       const today = new Date();
       const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -809,12 +729,69 @@ function Calendar() {
                 <option value="completed">Completed</option>
               </select>
 
-              <Button onClick={() => setShowEventModal(true)}>
+              <Button onClick={() => openEventModal(null)}>
                 <FaPlus /> Add Event
               </Button>
             </div>
           </div>
         </Card>
+
+        {/* Calendar Stats */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="border-l-4" style={{ borderLeftColor: "#4f46e5" }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-content-tertiary">Total Scheduled</p>
+                <p className="text-3xl font-bold mt-1">
+                  {calendarStats.totalEvents}
+                </p>
+              </div>
+              <FaCalendarAlt className="h-8 w-8 text-indigo-600 opacity-60" />
+            </div>
+          </Card>
+
+          <Card className="border-l-4" style={{ borderLeftColor: "#10b981" }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-content-tertiary">
+                  Approved Meetings
+                </p>
+                <p className="text-3xl font-bold mt-1">
+                  {calendarStats.approvedMeetings}
+                </p>
+              </div>
+              <FaCheck className="h-8 w-8 text-emerald-500 opacity-60" />
+            </div>
+          </Card>
+
+          <Card className="border-l-4" style={{ borderLeftColor: "#f97316" }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-content-tertiary">
+                  Upcoming Deadlines
+                </p>
+                <p className="text-3xl font-bold mt-1">
+                  {calendarStats.upcomingDeadlines}
+                </p>
+              </div>
+              <FaClock className="h-8 w-8 text-orange-500 opacity-60" />
+            </div>
+          </Card>
+
+          <Card className="border-l-4" style={{ borderLeftColor: "#ef4444" }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-content-tertiary">
+                  Pending Requests
+                </p>
+                <p className="text-3xl font-bold mt-1">
+                  {calendarStats.pendingRequests}
+                </p>
+              </div>
+              <FaTimes className="h-8 w-8 text-red-500 opacity-60" />
+            </div>
+          </Card>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Calendar Grid */}
@@ -847,70 +824,125 @@ function Calendar() {
                     No events on this date
                   </p>
                 ) : (
-                  getEventsForDate(selectedDate).map((event) => (
-                    <div
-                      key={event.id}
-                      className="border rounded-lg p-3 space-y-2"
-                    >
-                      <div className="flex items-start justify-between">
-                        <h4 className="font-medium text-sm">{event.title}</h4>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => setEditingEvent(event)}
-                            className="text-blue-600 hover:text-blue-800"
-                          >
-                            <FaEdit size={12} />
-                          </button>
-                          <button
-                            onClick={() => deleteEvent(event.id)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <FaTrash size={12} />
-                          </button>
-                        </div>
-                      </div>
+                  getEventsForDate(selectedDate).map((event) => {
+                    const clientRecord = event.clientId
+                      ? clientsById.get(event.clientId)
+                      : null;
+                    const contactName =
+                      event.clientName ||
+                      clientRecord?.companyName ||
+                      clientRecord?.clientName ||
+                      "—";
+                    const contactEmail =
+                      clientRecord?.email || event.email || "—";
+                    const isTaskEvent = Boolean(event.isTask);
+                    const statusStyles = {
+                      approved: "bg-green-100 text-green-700",
+                      pending: "bg-yellow-100 text-yellow-700",
+                      cancelled: "bg-red-100 text-red-700",
+                      completed: "bg-blue-100 text-blue-700",
+                    };
+                    const statusClass =
+                      statusStyles[event.status] || "bg-gray-100 text-gray-600";
+                    const statusLabel = event.status
+                      ? event.status.replace(/\b\w/g, (ch) => ch.toUpperCase())
+                      : "Pending";
 
-                      <div className="text-xs text-gray-600 space-y-1">
-                        <div>Time: {event.time}</div>
-                        <div>Client: {event.clientName}</div>
-                        <div>
-                          Duration:{" "}
-                          {event.duration ? `${event.duration} minutes` : "—"}
+                    return (
+                      <div
+                        key={event.id}
+                        className="border rounded-lg p-3 space-y-2"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h4 className="font-medium text-sm">
+                              {event.title}
+                            </h4>
+                            <span
+                              className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${statusClass}`}
+                            >
+                              {statusLabel}
+                            </span>
+                          </div>
+                          {!isTaskEvent && (
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => openEventModal(event)}
+                                className="text-blue-600 hover:text-blue-800"
+                                title="Edit event"
+                              >
+                                <FaEdit size={12} />
+                              </button>
+                              <button
+                                onClick={() => deleteEvent(event.id)}
+                                className="text-red-600 hover:text-red-800"
+                                title="Delete event"
+                              >
+                                <FaTrash size={12} />
+                              </button>
+                            </div>
+                          )}
                         </div>
-                        <div>
-                          Email:{" "}
-                          {event.email ||
-                            event.clientName
-                              ?.toLowerCase()
-                              .replace(/\s+/g, "") + "@company.com" ||
-                            "—"}
-                        </div>
-                      </div>
 
-                      <div className="flex gap-2 mt-2">
-                        {event.status === "pending" && (
-                          <>
-                            <button
-                              onClick={() => handleApproveEvent(event.id)}
-                              className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200"
-                            >
-                              <FaCheck size={10} /> Approve
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleCancelEvent(
-                                  event.id,
-                                  "Cancelled by admin"
-                                )
-                              }
-                              className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
-                            >
-                              <FaTimes size={10} /> Cancel
-                            </button>
-                          </>
+                        <div className="text-xs text-gray-600 space-y-1">
+                          <div>Time: {event.time || "—"}</div>
+                          <div>Client: {contactName}</div>
+                          <div>
+                            Duration:{" "}
+                            {event.duration ? `${event.duration} minutes` : "—"}
+                          </div>
+                          <div>Email: {contactEmail}</div>
+                          {event.location && (
+                            <div>Location: {event.location}</div>
+                          )}
+                          {event.description && (
+                            <div className="text-[11px] text-content-secondary">
+                              Notes: {event.description}
+                            </div>
+                          )}
+                        </div>
+
+                        {event.objectives && event.objectives.length > 0 && (
+                          <div className="border-t pt-2">
+                            <p className="text-[11px] font-semibold text-content-secondary mb-1">
+                              Objectives
+                            </p>
+                            <ul className="space-y-1">
+                              {event.objectives.map((objective) => (
+                                <li
+                                  key={objective.id}
+                                  className="text-[11px] text-content-secondary"
+                                >
+                                  • {objective.text}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         )}
-                        {event.type === "task" &&
-                          event.status !== "completed" && (
+
+                        <div className="flex gap-2 mt-2">
+                          {event.status === "pending" && !isTaskEvent && (
+                            <>
+                              <button
+                                onClick={() => handleApproveEvent(event.id)}
+                                className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200"
+                              >
+                                <FaCheck size={10} /> Approve
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleCancelEvent(
+                                    event.id,
+                                    "Cancelled by admin"
+                                  )
+                                }
+                                className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
+                              >
+                                <FaTimes size={10} /> Cancel
+                              </button>
+                            </>
+                          )}
+                          {isTaskEvent && event.status !== "completed" && (
                             <button
                               onClick={() => handleCompleteTask(event.id)}
                               className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
@@ -918,9 +950,10 @@ function Calendar() {
                               <FaCheck size={10} /> Complete
                             </button>
                           )}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             ) : (
@@ -932,24 +965,294 @@ function Calendar() {
           </Card>
         </div>
 
+        {upcomingEvents.length > 0 && (
+          <Card title="Upcoming Schedule" icon={<FaClock />}>
+            <ul className="space-y-3">
+              {upcomingEvents.map((event) => {
+                const clientRecord = event.clientId
+                  ? clientsById.get(event.clientId)
+                  : null;
+                const contactName =
+                  event.clientName ||
+                  clientRecord?.companyName ||
+                  clientRecord?.clientName ||
+                  "—";
+                const eventDateTime = new Date(
+                  `${event.date}T${event.time || "00:00"}`
+                );
+                const dateLabel = Number.isNaN(eventDateTime.getTime())
+                  ? "TBD"
+                  : eventDateTime.toLocaleDateString();
+                const timeLabel = Number.isNaN(eventDateTime.getTime())
+                  ? "—"
+                  : event.time || "—";
+                return (
+                  <li
+                    key={event.id}
+                    className="flex items-center justify-between gap-4 border-b border-subtle pb-2 last:border-0 last:pb-0"
+                  >
+                    <div>
+                      <p className="font-medium text-sm text-content-primary">
+                        {event.title}
+                      </p>
+                      <p className="text-xs text-content-secondary">
+                        {contactName}
+                      </p>
+                    </div>
+                    <div className="text-right text-xs text-content-secondary">
+                      <div>{dateLabel}</div>
+                      <div>{timeLabel}</div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+        )}
+
+        {/* Event Create/Edit Modal */}
+        {showEventModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={closeEventModal}
+            />
+            <Card className="z-10 w-full max-w-3xl max-h-[90vh] overflow-auto">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold">
+                  {editingEvent ? "Edit Event" : "Create Event"}
+                </h2>
+                <button
+                  onClick={closeEventModal}
+                  className="rounded-lg p-2 text-content-secondary hover:bg-surface-subtle"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form className="space-y-4" onSubmit={handleSaveEvent}>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="space-y-1 text-sm">
+                    <span className="font-medium text-content-secondary">
+                      Title
+                    </span>
+                    <input
+                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                      value={eventForm.title}
+                      onChange={(e) =>
+                        handleEventFormChange("title", e.target.value)
+                      }
+                      placeholder="Project sync with client"
+                      required
+                    />
+                  </label>
+
+                  <label className="space-y-1 text-sm">
+                    <span className="font-medium text-content-secondary">
+                      Type
+                    </span>
+                    <select
+                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                      value={eventForm.type}
+                      onChange={(e) =>
+                        handleEventFormChange("type", e.target.value)
+                      }
+                    >
+                      <option value="meeting">Meeting</option>
+                      <option value="task">Task</option>
+                      <option value="milestone">Milestone</option>
+                      <option value="call">Call</option>
+                    </select>
+                  </label>
+
+                  <label className="space-y-1 text-sm">
+                    <span className="font-medium text-content-secondary">
+                      Status
+                    </span>
+                    <select
+                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                      value={eventForm.status}
+                      onChange={(e) =>
+                        handleEventFormChange("status", e.target.value)
+                      }
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="approved">Approved</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </label>
+
+                  <label className="space-y-1 text-sm">
+                    <span className="font-medium text-content-secondary">
+                      Client
+                    </span>
+                    <select
+                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                      value={eventForm.clientId}
+                      onChange={(e) =>
+                        handleEventFormChange("clientId", e.target.value)
+                      }
+                    >
+                      <option value="">Unassigned</option>
+                      {clients.map((client) => (
+                        <option key={client.id} value={client.id}>
+                          {client.companyName ||
+                            client.clientName ||
+                            client.email}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="space-y-1 text-sm">
+                    <span className="font-medium text-content-secondary">
+                      Date
+                    </span>
+                    <input
+                      type="date"
+                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                      value={eventForm.date}
+                      onChange={(e) =>
+                        handleEventFormChange("date", e.target.value)
+                      }
+                      required
+                    />
+                  </label>
+
+                  <label className="space-y-1 text-sm">
+                    <span className="font-medium text-content-secondary">
+                      Time
+                    </span>
+                    <input
+                      type="time"
+                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                      value={eventForm.time}
+                      onChange={(e) =>
+                        handleEventFormChange("time", e.target.value)
+                      }
+                    />
+                  </label>
+
+                  <label className="space-y-1 text-sm">
+                    <span className="font-medium text-content-secondary">
+                      Duration (minutes)
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                      value={eventForm.duration}
+                      onChange={(e) =>
+                        handleEventFormChange("duration", e.target.value)
+                      }
+                    />
+                  </label>
+
+                  <label className="space-y-1 text-sm">
+                    <span className="font-medium text-content-secondary">
+                      Priority
+                    </span>
+                    <select
+                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                      value={eventForm.priority}
+                      onChange={(e) =>
+                        handleEventFormChange("priority", e.target.value)
+                      }
+                    >
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
+                    </select>
+                  </label>
+
+                  <label className="space-y-1 text-sm md:col-span-2">
+                    <span className="font-medium text-content-secondary">
+                      Location
+                    </span>
+                    <input
+                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                      value={eventForm.location}
+                      onChange={(e) =>
+                        handleEventFormChange("location", e.target.value)
+                      }
+                      placeholder="Conference Room B"
+                    />
+                  </label>
+
+                  <label className="space-y-1 text-sm md:col-span-2">
+                    <span className="font-medium text-content-secondary">
+                      Description
+                    </span>
+                    <textarea
+                      rows={3}
+                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                      value={eventForm.description}
+                      onChange={(e) =>
+                        handleEventFormChange("description", e.target.value)
+                      }
+                      placeholder="Agenda or key talking points"
+                    />
+                  </label>
+
+                  <label className="space-y-1 text-sm md:col-span-2">
+                    <span className="font-medium text-content-secondary">
+                      Attendees (comma separated)
+                    </span>
+                    <textarea
+                      rows={2}
+                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                      value={eventForm.attendeesText}
+                      onChange={(e) =>
+                        handleEventFormChange("attendeesText", e.target.value)
+                      }
+                      placeholder="John Doe, Jane Smith"
+                    />
+                  </label>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={closeEventModal}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit">
+                    {editingEvent ? "Save Changes" : "Create Event"}
+                  </Button>
+                </div>
+              </form>
+            </Card>
+          </div>
+        )}
+
         {/* Meeting Requests Modal */}
         {showRequestModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div
               className="absolute inset-0 bg-black/50"
-              onClick={() => setShowRequestModal(false)}
+              onClick={() => {
+                setShowRequestModal(false);
+                setActiveRequestDate(null);
+              }}
             />
             <Card className="z-10 w-full max-w-4xl max-h-[90vh] overflow-auto">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-semibold">
                   Meeting Requests -{" "}
-                  {selectedRequests[0]?.requestedDate &&
-                    new Date(
-                      selectedRequests[0].requestedDate
-                    ).toLocaleDateString()}
+                  {activeRequestDate
+                    ? new Date(
+                        activeRequestDate + "T00:00"
+                      ).toLocaleDateString()
+                    : ""}
                 </h2>
                 <button
-                  onClick={() => setShowRequestModal(false)}
+                  onClick={() => {
+                    setShowRequestModal(false);
+                    setActiveRequestDate(null);
+                  }}
                   className="rounded-lg p-2 text-content-secondary hover:bg-surface-subtle"
                 >
                   ✕
@@ -957,7 +1260,7 @@ function Calendar() {
               </div>
 
               <div className="space-y-4">
-                {selectedRequests.map((request) => (
+                {requestsForModal.map((request) => (
                   <div
                     key={request.id}
                     className="border rounded-lg p-4 space-y-3"
@@ -1014,7 +1317,9 @@ function Calendar() {
 
                     <div className="text-xs text-content-tertiary">
                       Requested on:{" "}
-                      {new Date(request.requestedAt).toLocaleString()}
+                      {request.requestedAt
+                        ? request.requestedAt.toLocaleString()
+                        : "—"}
                     </div>
 
                     {/* Remove conditional status check and always show buttons */}
@@ -1040,7 +1345,10 @@ function Calendar() {
               <div className="mt-6 flex justify-end">
                 <Button
                   variant="secondary"
-                  onClick={() => setShowRequestModal(false)}
+                  onClick={() => {
+                    setShowRequestModal(false);
+                    setActiveRequestDate(null);
+                  }}
                 >
                   Close
                 </Button>
@@ -1054,5 +1362,5 @@ function Calendar() {
 }
 
 // Export events for use in dashboard
-export { sampleEvents };
+// Removed sample export
 export default Calendar;

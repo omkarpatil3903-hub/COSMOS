@@ -31,13 +31,21 @@ const tsToDate = (v) => {
 // date formatting helper removed if unused
 
 const normalizeStatus = (s) => {
-  const x = String(s || "").trim().toLowerCase();
+  const x = String(s || "")
+    .trim()
+    .toLowerCase();
   if (x === "done" || x === "completed" || x === "complete") return "Done";
   if (x === "in progress" || x === "in-progress" || x === "inprogress")
     return "In Progress";
   if (x === "in review" || x === "in-review" || x === "inreview")
     return "In Review";
-  if (x === "to-do" || x === "to do" || x === "todo" || x === "" || x === "open")
+  if (
+    x === "to-do" ||
+    x === "to do" ||
+    x === "todo" ||
+    x === "" ||
+    x === "open"
+  )
     return "To-Do";
   return s || "To-Do";
 };
@@ -198,7 +206,8 @@ export default function ReportsPage() {
 
     users.forEach((resource) => {
       const resourceTasks = tasks.filter(
-        (t) => t.assigneeId === resource.id && (t.assigneeType || "user") === "user"
+        (t) =>
+          t.assigneeId === resource.id && (t.assigneeType || "user") === "user"
       );
       const completed = resourceTasks.filter((t) => t.status === "Done").length;
       const inProgress = resourceTasks.filter(
@@ -254,7 +263,8 @@ export default function ReportsPage() {
         const project = projects.find((p) => p.id === task.projectId);
         const assigneeUser = users.find((r) => r.id === task.assigneeId);
         const assigneeClient = clients.find((c) => c.id === task.assigneeId);
-        const assigneeName = assigneeUser?.name || assigneeClient?.clientName || "Unassigned";
+        const assigneeName =
+          assigneeUser?.name || assigneeClient?.clientName || "Unassigned";
         csvContent +=
           [
             escapeCSV(task.title),
@@ -610,7 +620,9 @@ export default function ReportsPage() {
                 {Object.entries(stats.projectBreakdown)
                   .sort((a, b) => b[1] - a[1])
                   .map(([projectName, count]) => {
-                    const project = projects.find((p) => p.name === projectName);
+                    const project = projects.find(
+                      (p) => p.name === projectName
+                    );
                     return (
                       <div
                         key={projectName}
@@ -618,7 +630,9 @@ export default function ReportsPage() {
                       >
                         <div
                           className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: project?.color || "#9ca3af" }}
+                          style={{
+                            backgroundColor: project?.color || "#9ca3af",
+                          }}
                         ></div>
                         <span className="text-sm flex-1">{projectName}</span>
                         <span className="text-sm font-semibold">{count}</span>
@@ -752,11 +766,21 @@ export default function ReportsPage() {
                 </thead>
                 <tbody>
                   {filteredData.tasks.slice(0, 10).map((task) => {
-                    const project = projects.find((p) => p.id === task.projectId);
-                    const assigneeUser = users.find((r) => r.id === task.assigneeId);
-                    const assigneeClient = clients.find((c) => c.id === task.assigneeId);
-                    const assigneeName = assigneeUser?.name || assigneeClient?.clientName || "Unassigned";
-                    const assigneeRole = assigneeUser?.role || (assigneeClient ? "Client" : "");
+                    const project = projects.find(
+                      (p) => p.id === task.projectId
+                    );
+                    const assigneeUser = users.find(
+                      (r) => r.id === task.assigneeId
+                    );
+                    const assigneeClient = clients.find(
+                      (c) => c.id === task.assigneeId
+                    );
+                    const assigneeName =
+                      assigneeUser?.name ||
+                      assigneeClient?.clientName ||
+                      "Unassigned";
+                    const assigneeRole =
+                      assigneeUser?.role || (assigneeClient ? "Client" : "");
                     const statusColors = {
                       Done: "bg-green-100 text-green-700",
                       "In Progress": "bg-cyan-100 text-cyan-700",
@@ -774,9 +798,7 @@ export default function ReportsPage() {
                         <td className="py-2 px-3">{task.title}</td>
                         <td className="py-2 px-3">
                           <div className="text-xs">
-                            <div className="font-medium">
-                              {assigneeName}
-                            </div>
+                            <div className="font-medium">{assigneeName}</div>
                             <div className="text-content-tertiary">
                               {assigneeRole}
                             </div>
