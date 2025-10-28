@@ -9,6 +9,8 @@ import {
   FaSearch,
   FaChartBar,
   FaUserCheck,
+  FaProjectDiagram,
+  FaTasks,
   FaListAlt,
   FaSignOutAlt,
   FaChevronLeft,
@@ -59,28 +61,40 @@ function MainLayout() {
       icon: <FaTachometerAlt className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/find-voters",
-      text: "Find Voters",
+      to: "/manage-resources",
+      text: "Manage Resources",
       icon: <FaSearch className="h-4 w-4" aria-hidden="true" />,
     },
+    {
+      to: "/manage-clients",
+      text: "Manage Clients",
+      icon: <FaUserCheck className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/manage-projects",
+      text: "Manage Projects",
+      icon: <FaProjectDiagram className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/task-management",
+      text: "Task Management",
+      icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
+    },
+
     {
       to: "/reports",
       text: "Reports",
       icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
     },
+
     {
-      to: "/activate-users",
-      text: "Activate Users",
-      icon: <FaUserCheck className="h-4 w-4" aria-hidden="true" />,
-    },
-    {
-      to: "/voter-list",
-      text: "Voter List",
+      to: "/mom",
+      text: "Minutes of Meeting",
       icon: <FaListAlt className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/master",
-      text: "Masters",
+      to: "/calender",
+      text: "Calender",
       icon: <FaCogs className="h-4 w-4" aria-hidden="true" />,
     },
   ];
@@ -129,7 +143,7 @@ function MainLayout() {
             {!isCollapsed && (
               <div>
                 <p className="text-sm font-medium text-content-tertiary">
-                  Voter Administration
+                  Buisness Cunsaltancy
                 </p>
                 <h2 className="text-lg font-semibold text-content-primary">
                   Admin Panel

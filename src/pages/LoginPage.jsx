@@ -19,27 +19,51 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const navigate = useNavigate();
 
+  const friendlyAuthError = (code) => {
+    switch (code) {
+      case "auth/invalid-email":
+        return "Invalid email address. Please check and try again.";
+      case "auth/user-disabled":
+        return "This account has been disabled. Contact your administrator.";
+      case "auth/user-not-found":
+        return "No account found with this email.";
+      case "auth/wrong-password":
+        return "Incorrect password. Please try again.";
+      case "auth/too-many-requests":
+        return "Too many attempts. Please wait a bit and try again.";
+      case "auth/network-request-failed":
+        return "Network error. Check your internet connection and try again.";
+      default:
+        return "Failed to log in. Please check your credentials.";
+    }
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
+    setErrorMsg("");
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const emailTrimmed = email.trim();
+      const passwordTrimmed = password;
+      await signInWithEmailAndPassword(auth, emailTrimmed, passwordTrimmed);
 
-      // --- ADDED: Success Toast ---
-      toast.success("Login Successful!");
+      toast.success("Logged in successfully");
 
       // Navigate after a short delay to allow the user to see the toast
       setTimeout(() => {
         navigate("/");
       }, 1000);
     } catch (err) {
-      toast.error("Failed to log in. Please check your credentials");
-      console.error(err);
-      setLoading(false); // Make sure to re-enable the button on error
+      const message = friendlyAuthError(err?.code);
+      setErrorMsg(message);
+      toast.error(message);
+      console.error("Login failed:", err);
+      setLoading(false);
     }
     // We don't set loading to false in the success case because the page will navigate away
   };
@@ -61,7 +85,7 @@ function LoginPage() {
             </h2>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-6" noValidate>
             {/* Email Input */}
             <div>
               <label
@@ -124,9 +148,26 @@ function LoginPage() {
               </div>
             </div>
 
+            {errorMsg && (
+              <div
+                className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 border border-red-200"
+                role="alert"
+                aria-live="assertive"
+              >
+                {errorMsg}
+              </div>
+            )}
+
             <div>
               <Button type="submit" disabled={loading} className="w-full">
-                {loading ? "Signing In..." : "Sign In"}
+                {loading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+                    Signing in...
+                  </span>
+                ) : (
+                  "Sign In"
+                )}
               </Button>
             </div>
           </form>

@@ -14,8 +14,27 @@ import {
   HiMiniArrowPath,
   HiXMark,
 } from "react-icons/hi2";
-import ExcelJS from "exceljs";
+// Excel export not used on this page currently
 import toast from "react-hot-toast";
+import { db } from "../firebase";
+import { app as primaryApp } from "../firebase";
+import { getApps, getApp, initializeApp as initApp } from "firebase/app";
+import {
+  getAuth as getAuthMod,
+  createUserWithEmailAndPassword,
+  signOut as signOutMod,
+} from "firebase/auth";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  setDoc,
+} from "firebase/firestore";
 
 // Reusable UI Components
 import PageHeader from "../components/PageHeader";
@@ -24,20 +43,7 @@ import Button from "../components/Button";
 import SkeletonRow from "../components/SkeletonRow";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 
-// --- Placeholder Data ---
-const allResourcesData = Array.from({ length: 45 }, (_, i) => ({
-  id: i + 1,
-  fullName: `Resource Name ${i + 1}`,
-  email: `resource${i + 1}@company.com`,
-  mobile: `98765432${String(i).padStart(2, "0")}`,
-  resourceType: i % 2 === 0 ? "In-house" : "Outsourced",
-  joinDate: new Date(
-    2023,
-    Math.floor(Math.random() * 12),
-    Math.floor(Math.random() * 28) + 1
-  ).toLocaleDateString(),
-  status: i % 4 === 0 ? "Inactive" : "Active",
-}));
+// Removed placeholder data; now loading users/resources from Firestore
 
 const tableHeaders = [
   { key: "srNo", label: "Sr. No.", sortable: false },
@@ -50,7 +56,7 @@ const tableHeaders = [
 ];
 // --- End Placeholder Data ---
 
-function FindVotersPage() {
+function ManageResources() {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -77,14 +83,27 @@ function FindVotersPage() {
     resourceType: "In-house",
   });
 
-  // Simulate fetching data
+  // Subscribe to Firestore users collection
   useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setResources(allResourcesData);
+    const q = query(collection(db, "users"), orderBy("name", "asc"));
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      // Map to resource shape expected by UI
+      const mapped = list.map((u) => ({
+        id: u.id,
+        fullName: u.name || u.fullName || "",
+        email: u.email || "",
+        mobile: u.mobile || u.phone || "",
+        resourceType: u.resourceType || "In-house",
+        joinDate: u.joinDate || "",
+        status: u.status || "Active",
+        department: u.department || "",
+        skills: u.skills || "",
+      }));
+      setResources(mapped);
       setLoading(false);
-    }, 1500);
-
-    return () => window.clearTimeout(timeoutId);
+    });
+    return () => unsub();
   }, []);
 
   const filteredResources = useMemo(() => {
@@ -153,14 +172,14 @@ function FindVotersPage() {
     });
   };
 
-  const handleReset = () => {
-    setSearchTerm("");
-    setSortConfig({ key: "fullName", direction: "asc" });
-    setRowsPerPage(10);
-    setCurrentPage(1);
-  };
+  // const handleReset = () => {
+  //   setSearchTerm("");
+  //   setSortConfig({ key: "fullName", direction: "asc" });
+  //   setRowsPerPage(10);
+  //   setCurrentPage(1);
+  // };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
 
     if (
@@ -173,23 +192,47 @@ function FindVotersPage() {
       return;
     }
 
-    const newResource = {
-      id: resources.length + 1,
-      ...formData,
-      joinDate: new Date().toLocaleDateString(),
-      status: "Active",
-    };
+    try {
+      // Create Firebase Auth user on a secondary app to avoid switching admin session
+      const secondaryName = "Secondary";
+      const secondaryApp = getApps().some((a) => a.name === secondaryName)
+        ? getApp(secondaryName)
+        : initApp(primaryApp.options, secondaryName);
+      const secondaryAuth = getAuthMod(secondaryApp);
+      const cred = await createUserWithEmailAndPassword(
+        secondaryAuth,
+        formData.email,
+        formData.password
+      );
+      const uid = cred.user.uid;
 
-    setResources([newResource, ...resources]);
-    setFormData({
-      fullName: "",
-      email: "",
-      mobile: "",
-      password: "",
-      resourceType: "In-house",
-    });
-    setShowAddForm(false);
-    toast.success("Resource added successfully!");
+      // Create Firestore user profile with uid
+      await setDoc(doc(db, "users", uid), {
+        name: formData.fullName,
+        email: formData.email,
+        mobile: formData.mobile,
+        resourceType: formData.resourceType,
+        status: "Active",
+        joinDate: new Date().toISOString().slice(0, 10),
+        createdAt: serverTimestamp(),
+      });
+
+      // Sign out secondary session
+      await signOutMod(secondaryAuth);
+
+      setFormData({
+        fullName: "",
+        email: "",
+        mobile: "",
+        password: "",
+        resourceType: "In-house",
+      });
+      setShowAddForm(false);
+      toast.success("Resource added successfully!");
+    } catch (err) {
+      console.error("Add user failed", err);
+      toast.error("Failed to add resource");
+    }
   };
 
   const handleEdit = (id) => {
@@ -205,7 +248,7 @@ function FindVotersPage() {
     setShowEditForm(true);
   };
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
 
     if (!formData.fullName || !formData.email || !formData.mobile) {
@@ -213,23 +256,27 @@ function FindVotersPage() {
       return;
     }
 
-    const updatedResources = resources.map((resource) =>
-      resource.id === selectedResource.id
-        ? { ...resource, ...formData }
-        : resource
-    );
-
-    setResources(updatedResources);
-    setFormData({
-      fullName: "",
-      email: "",
-      mobile: "",
-      password: "",
-      resourceType: "In-house",
-    });
-    setShowEditForm(false);
-    setSelectedResource(null);
-    toast.success("Resource updated successfully!");
+    try {
+      await updateDoc(doc(db, "users", selectedResource.id), {
+        name: formData.fullName,
+        email: formData.email,
+        mobile: formData.mobile,
+        resourceType: formData.resourceType,
+      });
+      setFormData({
+        fullName: "",
+        email: "",
+        mobile: "",
+        password: "",
+        resourceType: "In-house",
+      });
+      setShowEditForm(false);
+      setSelectedResource(null);
+      toast.success("Resource updated successfully!");
+    } catch (err) {
+      console.error("Update user failed", err);
+      toast.error("Failed to update resource");
+    }
   };
 
   const handleDelete = (id) => {
@@ -238,13 +285,16 @@ function FindVotersPage() {
     setShowDeleteModal(true);
   };
 
-  const confirmDelete = () => {
-    setResources(
-      resources.filter((resource) => resource.id !== selectedResource.id)
-    );
-    setShowDeleteModal(false);
-    setSelectedResource(null);
-    toast.success("Resource deleted successfully!");
+  const confirmDelete = async () => {
+    try {
+      await deleteDoc(doc(db, "users", selectedResource.id));
+      setShowDeleteModal(false);
+      setSelectedResource(null);
+      toast.success("Resource deleted successfully!");
+    } catch (err) {
+      console.error("Delete user failed", err);
+      toast.error("Failed to delete resource");
+    }
   };
 
   const handleView = (id) => {
@@ -253,53 +303,7 @@ function FindVotersPage() {
     setShowViewModal(true);
   };
 
-  const handleExport = async () => {
-    if (!filteredResources.length) {
-      toast.error("No resource records available to export.");
-      return;
-    }
-
-    try {
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet("Resources");
-
-      worksheet.columns = [
-        { header: "Sr. No.", key: "srNo", width: 10 },
-        { header: "Full Name", key: "fullName", width: 26 },
-        { header: "Email", key: "email", width: 30 },
-        { header: "Mobile", key: "mobile", width: 18 },
-        { header: "Resource Type", key: "resourceType", width: 18 },
-        { header: "Join Date", key: "joinDate", width: 15 },
-        { header: "Status", key: "status", width: 12 },
-      ];
-
-      worksheet.addRows(
-        filteredResources.map((resource, index) => ({
-          srNo: index + 1,
-          ...resource,
-        }))
-      );
-
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `resources-export-${new Date()
-        .toISOString()
-        .slice(0, 10)}.xlsx`;
-      link.click();
-      URL.revokeObjectURL(url);
-
-      toast.success("Export started. Check your downloads.");
-    } catch (error) {
-      console.error("Failed to export resources", error);
-      toast.error("Something went wrong while exporting.");
-    }
-  };
+  // Export function intentionally omitted; add back if needed with ExcelJS
 
   const sortIndicator = (columnKey) => {
     if (!sortConfig || sortConfig.key !== columnKey) {
@@ -324,7 +328,7 @@ function FindVotersPage() {
     return (
       <div>
         <PageHeader title="Manage Resources">
-          Search and manage all company resources and team members.
+          Search and manage all company resources/Emploeyees.
         </PageHeader>
         <div className="space-y-6">
           <Card title="Search & Actions">
@@ -362,224 +366,249 @@ function FindVotersPage() {
   }
 
   return (
-    <div>
-      <PageHeader title="Manage Resources">
-        Search and manage all company resources and team members.
-      </PageHeader>
-      <div
-        className={`space-y-6 ${
-          showAddForm || showEditForm || showViewModal || showDeleteModal
-            ? "blur-[2px]"
-            : ""
-        }`}
-      >
-        <Card
-          title="Search & Actions"
-          actions={
-            <div className="flex items-center gap-3">
-              <span
-                className="text-sm font-medium text-content-secondary"
-                aria-live="polite"
-              >
-                Showing {filteredResources.length} records
-              </span>
-              <Button onClick={() => setShowAddForm(true)}>
+    <>
+      <div>
+        <PageHeader title="Manage Resources">
+          Search and manage all company resources and team members.
+        </PageHeader>
+        {/* Remove blur effect from main content */}
+        <div className="space-y-6">
+          <Card
+            title="Search & Actions"
+            actions={
+              <div className="flex items-center gap-3">
+                <span
+                  className="text-sm font-medium text-content-secondary"
+                  aria-live="polite"
+                >
+                  Showing {filteredResources.length} records
+                </span>
+                <Button onClick={() => setShowAddForm(true)}>
+                  <FaPlus className="h-4 w-4" aria-hidden="true" />
+                  Add Resource
+                </Button>
+              </div>
+            }
+          >
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-1">
+              <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                Search by name or email
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-content-tertiary">
+                    <FaSearch className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="e.g. John Doe or john@company.com"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full rounded-lg border border-subtle bg-surface py-2 pl-9 pr-3 text-sm text-content-primary placeholder:text-content-tertiary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                  />
+                </div>
+              </label>
+            </div>
+            <div className="mt-4 flex gap-3 sm:hidden">
+              <Button onClick={() => setShowAddForm(true)} className="flex-1">
                 <FaPlus className="h-4 w-4" aria-hidden="true" />
-                Add Resource
+                Add
               </Button>
             </div>
-          }
-        >
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-1">
-            <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-              Search by name or email
-              <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-content-tertiary">
-                  <FaSearch className="h-4 w-4" aria-hidden="true" />
-                </span>
-                <input
-                  type="text"
-                  placeholder="e.g. John Doe or john@company.com"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full rounded-lg border border-subtle bg-surface py-2 pl-9 pr-3 text-sm text-content-primary placeholder:text-content-tertiary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                />
+          </Card>
+
+          <Card title="Resource List">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-2">
+              <div className="text-sm text-content-secondary">
+                Page {Math.min(currentPage, totalPages)} of {totalPages}
               </div>
-            </label>
-          </div>
-          <div className="mt-4 flex gap-3 sm:hidden">
-            <Button onClick={() => setShowAddForm(true)} className="flex-1">
-              <FaPlus className="h-4 w-4" aria-hidden="true" />
-              Add
-            </Button>
-          </div>
-        </Card>
-
-        <Card title="Resource List">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="text-sm text-content-secondary">
-              Page {Math.min(currentPage, totalPages)} of {totalPages}
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-content-secondary">
-                Rows per page
-              </label>
-              <select
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={handlePrevPage}
-                  variant="secondary"
-                  className="px-3 py-1"
-                  disabled={currentPage === 1}
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-content-secondary">
+                  Rows per page
+                </label>
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
                 >
-                  Previous
-                </Button>
-                <Button
-                  onClick={handleNextPage}
-                  variant="secondary"
-                  className="px-3 py-1"
-                  disabled={
-                    currentPage === totalPages || !filteredResources.length
-                  }
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-subtle">
-              <caption className="sr-only">
-                Filtered resource records with search and pagination controls
-              </caption>
-              <thead className="bg-surface-subtle">
-                <tr>
-                  {tableHeaders.map((header) => {
-                    const isActive = sortConfig.key === header.key;
-                    const ariaSort = !header.sortable
-                      ? "none"
-                      : isActive
-                      ? sortConfig.direction === "asc"
-                        ? "ascending"
-                        : "descending"
-                      : "none";
-
-                    return (
-                      <th
-                        key={header.key}
-                        scope="col"
-                        aria-sort={ariaSort}
-                        className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-content-tertiary"
-                      >
-                        {header.sortable ? (
-                          <button
-                            type="button"
-                            onClick={() => handleSort(header.key)}
-                            className="flex items-center gap-2 text-left"
-                          >
-                            <span>{header.label}</span>
-                            {sortIndicator(header.key)}
-                          </button>
-                        ) : (
-                          header.label
-                        )}
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-subtle">
-                {currentRows.map((resource, index) => (
-                  <tr
-                    key={resource.id}
-                    className="bg-surface hover:bg-surface-subtle"
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handlePrevPage}
+                    variant="secondary"
+                    className="px-3 py-1"
+                    disabled={currentPage === 1}
                   >
-                    <td className="whitespace-nowrap px-4 py-4 text-sm text-content-secondary">
-                      {indexOfFirstRow + index + 1}
-                    </td>
-                    <td className="px-4 py-4 text-sm font-medium text-content-primary">
-                      {resource.fullName}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-content-secondary">
-                      {resource.email}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-sm">
-                      {resource.mobile}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-sm">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          resource.resourceType === "In-house"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-orange-100 text-orange-800"
-                        }`}
-                      >
-                        {resource.resourceType}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-sm">
-                      {resource.joinDate}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleView(resource.id)}
-                          className="text-indigo-600 hover:text-indigo-800"
-                          title="View Details"
-                        >
-                          <FaEye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(resource.id)}
-                          className="text-yellow-600 hover:text-yellow-800"
-                          title="Edit Resource"
-                        >
-                          <FaEdit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(resource.id)}
-                          className="text-red-600 hover:text-red-800"
-                          title="Delete Resource"
-                        >
-                          <FaTrash className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {!currentRows.length && (
+                    Previous
+                  </Button>
+                  <Button
+                    onClick={handleNextPage}
+                    variant="secondary"
+                    className="px-3 py-1"
+                    disabled={
+                      currentPage === totalPages || !filteredResources.length
+                    }
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
+              <table className="min-w-full divide-y divide-gray-200 bg-white">
+                <caption className="sr-only">
+                  Filtered resource records with search and pagination controls
+                </caption>
+                <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                   <tr>
-                    <td
-                      colSpan={tableHeaders.length}
-                      className="px-4 py-10 text-center text-sm text-content-secondary"
-                    >
-                      No resources match the selected filters. Adjust your
-                      search or try resetting filters.
-                    </td>
+                    {tableHeaders.map((header) => {
+                      const isActive = sortConfig.key === header.key;
+                      const ariaSort = !header.sortable
+                        ? "none"
+                        : isActive
+                        ? sortConfig.direction === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none";
+
+                      return (
+                        <th
+                          key={header.key}
+                          scope="col"
+                          aria-sort={ariaSort}
+                          className="group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200"
+                        >
+                          {header.sortable ? (
+                            <button
+                              type="button"
+                              onClick={() => handleSort(header.key)}
+                              className="flex items-center gap-2 text-left hover:text-indigo-600 transition-colors duration-200 transform hover:scale-105"
+                            >
+                              <span>{header.label}</span>
+                              <span className="transition-transform duration-200">
+                                {sortIndicator(header.key)}
+                              </span>
+                            </button>
+                          ) : (
+                            <span>{header.label}</span>
+                          )}
+                        </th>
+                      );
+                    })}
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+                </thead>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {currentRows.map((resource, index) => (
+                    <tr key={resource.id} className="bg-white">
+                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-500">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
+                          {indexOfFirstRow + index + 1}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                        <span>{resource.fullName}</span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        <div className="flex items-center">
+                          <div className="w-2 h-2 rounded-full bg-green-400 mr-2 animate-pulse"></div>
+                          {resource.email}
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+                        <div className="flex items-center bg-gray-50 rounded-lg px-3 py-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mr-2"></div>
+                          {resource.mobile}
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
+                            resource.resourceType === "In-house"
+                              ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300"
+                              : "bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 border border-orange-300"
+                          }`}
+                        >
+                          <div
+                            className={`w-2 h-2 rounded-full mr-2 ${
+                              resource.resourceType === "In-house"
+                                ? "bg-blue-500"
+                                : "bg-orange-500"
+                            }`}
+                          ></div>
+                          {resource.resourceType}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+                        <div className="flex items-center">
+                          <div className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-2"></div>
+                          {resource.joinDate}
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm">
+                        <div className="flex items-center space-x-3">
+                          <button
+                            onClick={() => handleView(resource.id)}
+                            className="p-2 rounded-full text-indigo-600 hover:bg-indigo-100 shadow-md"
+                            title="View Details"
+                          >
+                            <FaEye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEdit(resource.id)}
+                            className="p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md"
+                            title="Edit Resource"
+                          >
+                            <FaEdit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(resource.id)}
+                            className="p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md"
+                            title="Delete Resource"
+                          >
+                            <FaTrash className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {!currentRows.length && (
+                    <tr>
+                      <td
+                        colSpan={tableHeaders.length}
+                        className="px-6 py-16 text-center"
+                      >
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gray-100 to-gray-200 flex items-center justify-center mb-4 animate-pulse">
+                            <FaSearch className="h-6 w-6 text-gray-400" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                            No Resources Found
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            No resources match the selected filters. Adjust your
+                            search or try resetting filters.
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
       </div>
 
-      {/* Add Resource Modal */}
+      {/* All modals with fixed positioning using z-[9999] and bg-black/10 */}
       {showAddForm && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative z-[10000]">
+            {/* Add Resource Modal Content */}
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-content-primary">
@@ -675,10 +704,11 @@ function FindVotersPage() {
         </div>
       )}
 
-      {/* Edit Resource Modal */}
+      {/* Similar structure for edit, view, and delete modals */}
       {showEditForm && selectedResource && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative z-[10000]">
+            {/* Edit Resource Modal Content */}
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-content-primary">
@@ -793,10 +823,10 @@ function FindVotersPage() {
         </div>
       )}
 
-      {/* View Resource Modal */}
       {showViewModal && selectedResource && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg">
+            {/* View Resource Modal Content */}
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-content-primary">
@@ -879,9 +909,9 @@ function FindVotersPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal - Outside blurred container */}
       {showDeleteModal && selectedResource && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50">
           <DeleteConfirmationModal
             onClose={() => {
               setShowDeleteModal(false);
@@ -891,8 +921,8 @@ function FindVotersPage() {
           />
         </div>
       )}
-    </div>
+    </>
   );
 }
 
-export default FindVotersPage;
+export default ManageResources;

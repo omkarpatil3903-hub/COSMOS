@@ -10,11 +10,14 @@ import LoginPage from "./pages/LoginPage";
 import MainLayout from "./components/MainLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DashboardPage from "./pages/DashboardPage";
-import FindVotersPage from "./pages/FindVotersPage";
 import ReportsPage from "./pages/ReportsPage";
-import ActivateUserPage from "./pages/ActivateUserPage";
-import VoterListPage from "./pages/VoterListPage";
-import MasterPage from "./pages/MasterPage";
+
+import ManageResources from "./pages/ManageResources.jsx";
+import ManageClients from "./pages/ManageClients.jsx";
+import ManageProjects from "./pages/ManageProjects.jsx";
+import Mom from "./pages/Mom.jsx";
+import TaskManagment from "./pages/TaskManagment.jsx";
+import Calendar from "./pages/Calendar.jsx";
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   {
@@ -27,11 +30,13 @@ const router = createBrowserRouter([
     // These are the only pages an admin needs
     children: [
       { path: "/", element: <DashboardPage /> },
-      { path: "/find-voters", element: <FindVotersPage /> },
+      { path: "/manage-resources", element: <ManageResources /> },
+      { path: "/manage-clients", element: <ManageClients /> },
+      { path: "/manage-projects", element: <ManageProjects /> },
+      { path: "/mom", element: <Mom /> },
+      { path: "/task-management", element: <TaskManagment /> },
       { path: "/reports", element: <ReportsPage /> },
-      { path: "/activate-users", element: <ActivateUserPage /> },
-      { path: "/voter-list", element: <VoterListPage /> },
-      { path: "/master", element: <MasterPage /> },
+      { path: "/calender", element: <Calendar /> },
     ],
   },
 ]);

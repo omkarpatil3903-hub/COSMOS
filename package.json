@@ -1,5 +1,5 @@
 {
-  "name": "voter-admin-panel",
+  "name": "Project-Management-System-Admin-Panel",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
+    "dotenv": "^17.2.3",
     "exceljs": "^4.4.0",
     "firebase": "^12.4.0",
     "react": "^19.1.1",
