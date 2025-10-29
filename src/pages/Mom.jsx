@@ -24,6 +24,7 @@ import {
   updateDoc,
   doc,
   Timestamp,
+  onSnapshot,
 } from "firebase/firestore";
 import { db } from "../firebase";
 
@@ -31,20 +32,10 @@ import PageHeader from "../components/PageHeader";
 import Card from "../components/Card";
 import Button from "../components/Button";
 
-// Sample projects (same as TasksPage)
-const sampleProjects = [
-  {
-    id: "p1",
-    name: "Voter Outreach Campaign",
-    color: "#4f46e5",
-    status: "Active",
-  },
-  { id: "p2", name: "Registration Drive", color: "#0891b2", status: "Active" },
-  { id: "p3", name: "Booth Management", color: "#7c3aed", status: "Planning" },
-  { id: "p4", name: "Data Verification", color: "#059669", status: "Active" },
-];
-
 export default function Mom() {
+  // Load projects from Firestore
+  const [projects, setProjects] = useState([]);
+
   // Basic fields
   const [title, setTitle] = useState("");
   const [attendees, setAttendees] = useState("");
@@ -73,6 +64,27 @@ export default function Mom() {
   // Task conversion
   const [showTaskConversion, setShowTaskConversion] = useState(false);
   const [selectedActionItems, setSelectedActionItems] = useState(new Set());
+
+  // Load projects from Firestore
+  useEffect(() => {
+    const projectsRef = collection(db, "projects");
+    const q = query(projectsRef, orderBy("projectName", "asc"));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const projectsList = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data.projectName || "Unnamed Project",
+          color: "#4f46e5", // Default color
+          status: data.status || "Active",
+        };
+      });
+      setProjects(projectsList);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Load past MoMs on mount
   useEffect(() => {
@@ -147,7 +159,7 @@ export default function Mom() {
 
     try {
       // Prepare the prompt for Gemini
-      const selectedProject = sampleProjects.find((p) => p.id === projectId);
+      const selectedProject = projects.find((p) => p.id === projectId);
       const projectName = selectedProject ? selectedProject.name : "N/A";
 
       const prompt = `Generate professional Minutes of Meeting (MoM) based on the following information:
@@ -170,9 +182,9 @@ Please generate a well-formatted MoM document in markdown format with the follow
 
 Format it professionally and concisely.`;
 
-      // Call Gemini API
+      // Call Gemini API (using latest gemini-2.5-flash model for balanced performance)
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -428,7 +440,7 @@ Format it professionally and concisely.`;
     setCurrentMomId(null);
   };
 
-  const selectedProject = sampleProjects.find((p) => p.id === projectId);
+  const selectedProject = projects.find((p) => p.id === projectId);
 
   return (
     <div>
@@ -480,9 +492,7 @@ Format it professionally and concisely.`;
             ) : (
               <div className="space-y-3">
                 {pastMoms.map((mom) => {
-                  const project = sampleProjects.find(
-                    (p) => p.id === mom.projectId
-                  );
+                  const project = projects.find((p) => p.id === mom.projectId);
                   return (
                     <div
                       key={mom.id}
@@ -546,7 +556,7 @@ Format it professionally and concisely.`;
                   className="mt-1 block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm"
                 >
                   <option value="">Select Project</option>
-                  {sampleProjects.map((p) => (
+                  {projects.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name} ({p.status})
                     </option>

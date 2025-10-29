@@ -70,6 +70,7 @@ function Calendar() {
   const [meetingRequests, setMeetingRequests] = useState([]);
   const [clients, setClients] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -90,110 +91,117 @@ function Calendar() {
 
   // Firestore subscriptions
   useEffect(() => {
-    const unsubEvents = onSnapshot(
-      query(collection(db, "events"), orderBy("date", "asc")),
-      (snap) => {
-        setEvents(
-          snap.docs.map((d) => {
-            const data = d.data() || {};
-            const cancelledAt = tsToDate(data.cancelledAt);
-            const completedAt = tsToDate(data.completedAt);
-            const createdAt = tsToDate(data.createdAt);
-            const status = String(data.status || "pending").toLowerCase();
-            const type = String(data.type || "meeting").toLowerCase();
-            const priority = String(data.priority || "medium").toLowerCase();
-            return {
-              id: d.id,
-              title: data.title || "",
-              type,
-              status,
-              date: data.date || "",
-              time: data.time || "",
-              duration: data.duration || 60,
-              clientId: data.clientId || "",
-              clientName: data.clientName || "",
-              description: data.description || "",
-              priority,
-              location: data.location || "",
-              attendees: data.attendees || [],
-              createdBy: data.createdBy || "",
-              objectives: data.objectives || [],
-              cancelReason: data.cancelReason || "",
-              cancelledBy: data.cancelledBy || "",
-              cancelledAt,
-              completedAt,
-              createdAt,
-              assignee: data.assignee || "",
-              progress: data.progress || 0,
-            };
-          })
-        );
-      }
-    );
+    let unsubEvents, unsubMeetingRequests, unsubClients, unsubTasks;
 
-    const unsubMeetingRequests = onSnapshot(
-      collection(db, "meetingRequests"),
-      (snap) => {
-        setMeetingRequests(
-          snap.docs.map((d) => {
-            const data = d.data() || {};
-            const requestedAt = tsToDate(data.requestedAt);
-            return {
-              id: d.id,
-              clientId: data.clientId || "",
-              clientName: data.clientName || "",
-              companyName: data.companyName || "",
-              requestedDate: data.requestedDate || "",
-              requestedTime: data.requestedTime || "",
-              duration: data.duration || 60,
-              purpose: data.purpose || "",
-              priority: data.priority || "medium",
-              status: data.status || "pending",
-              requestedAt,
-              email: data.email || "",
-              phone: data.phone || "",
-            };
-          })
-        );
-      }
-    );
+    const initSubscriptions = async () => {
+      unsubEvents = onSnapshot(
+        query(collection(db, "events"), orderBy("date", "asc")),
+        (snap) => {
+          setEvents(
+            snap.docs.map((d) => {
+              const data = d.data() || {};
+              const cancelledAt = tsToDate(data.cancelledAt);
+              const completedAt = tsToDate(data.completedAt);
+              const createdAt = tsToDate(data.createdAt);
+              const status = String(data.status || "pending").toLowerCase();
+              const type = String(data.type || "meeting").toLowerCase();
+              const priority = String(data.priority || "medium").toLowerCase();
+              return {
+                id: d.id,
+                title: data.title || "",
+                type,
+                status,
+                date: data.date || "",
+                time: data.time || "",
+                duration: data.duration || 60,
+                clientId: data.clientId || "",
+                clientName: data.clientName || "",
+                description: data.description || "",
+                priority,
+                location: data.location || "",
+                attendees: data.attendees || [],
+                createdBy: data.createdBy || "",
+                objectives: data.objectives || [],
+                cancelReason: data.cancelReason || "",
+                cancelledBy: data.cancelledBy || "",
+                cancelledAt,
+                completedAt,
+                createdAt,
+                assignee: data.assignee || "",
+                progress: data.progress || 0,
+              };
+            })
+          );
+        }
+      );
 
-    const unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
-      setClients(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
-    });
+      unsubMeetingRequests = onSnapshot(
+        collection(db, "meetingRequests"),
+        (snap) => {
+          setMeetingRequests(
+            snap.docs.map((d) => {
+              const data = d.data() || {};
+              const requestedAt = tsToDate(data.requestedAt);
+              return {
+                id: d.id,
+                clientId: data.clientId || "",
+                clientName: data.clientName || "",
+                companyName: data.companyName || "",
+                requestedDate: data.requestedDate || "",
+                requestedTime: data.requestedTime || "",
+                duration: data.duration || 60,
+                purpose: data.purpose || "",
+                priority: data.priority || "medium",
+                status: data.status || "pending",
+                requestedAt,
+                email: data.email || "",
+                phone: data.phone || "",
+              };
+            })
+          );
+        }
+      );
 
-    const unsubTasks = onSnapshot(
-      query(collection(db, "tasks"), orderBy("dueDate", "asc")),
-      (snap) => {
-        setTasks(
-          snap.docs.map((d) => {
-            const data = d.data() || {};
-            const dueDate = tsToDate(data.dueDate);
-            const createdAt = tsToDate(data.createdAt);
-            const completedAt = tsToDate(data.completedAt);
-            return {
-              id: d.id,
-              title: data.title || "",
-              projectId: data.projectId || "",
-              assigneeId: data.assigneeId || "",
-              assigneeType: data.assigneeType || "user",
-              status: data.status || "To-Do",
-              priority: data.priority || "Medium",
-              dueDate,
-              createdAt,
-              completedAt,
-              archived: data.archived || false,
-            };
-          })
-        );
-      }
-    );
+      unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
+        setClients(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
+      });
+
+      unsubTasks = onSnapshot(
+        query(collection(db, "tasks"), orderBy("dueDate", "asc")),
+        (snap) => {
+          setTasks(
+            snap.docs.map((d) => {
+              const data = d.data() || {};
+              const dueDate = tsToDate(data.dueDate);
+              const createdAt = tsToDate(data.createdAt);
+              const completedAt = tsToDate(data.completedAt);
+              return {
+                id: d.id,
+                title: data.title || "",
+                projectId: data.projectId || "",
+                assigneeId: data.assigneeId || "",
+                assigneeType: data.assigneeType || "user",
+                status: data.status || "To-Do",
+                priority: data.priority || "Medium",
+                dueDate,
+                createdAt,
+                completedAt,
+                archived: data.archived || false,
+              };
+            })
+          );
+          setLoading(false);
+        }
+      );
+    };
+
+    initSubscriptions();
 
     return () => {
-      unsubEvents();
-      unsubMeetingRequests();
-      unsubClients();
-      unsubTasks();
+      if (unsubEvents) unsubEvents();
+      if (unsubMeetingRequests) unsubMeetingRequests();
+      if (unsubClients) unsubClients();
+      if (unsubTasks) unsubTasks();
     };
   }, []);
 
@@ -672,691 +680,751 @@ function Calendar() {
         description="Manage meetings, tasks, milestones, and client interactions in one place."
       />
 
-      <div className="space-y-6">
-        {/* Calendar Controls */}
-        <Card className="p-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => navigateMonth(-1)}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <FaChevronLeft />
-                </button>
-                <h2 className="text-lg font-semibold min-w-[200px] text-center">
-                  {monthNames[currentDate.getMonth()]}{" "}
-                  {currentDate.getFullYear()}
-                </h2>
-                <button
-                  onClick={() => navigateMonth(1)}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <FaChevronRight />
-                </button>
-              </div>
-
-              <Button
-                variant="secondary"
-                onClick={() => setCurrentDate(new Date())}
-              >
-                Today
-              </Button>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="all">All Types</option>
-                <option value="meeting">Meetings</option>
-                <option value="task">Tasks</option>
-                <option value="milestone">Milestones</option>
-                <option value="call">Calls</option>
-              </select>
-
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="all">All Status</option>
-                <option value="approved">Approved</option>
-                <option value="pending">Pending</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="completed">Completed</option>
-              </select>
-
-              <Button onClick={() => openEventModal(null)}>
-                <FaPlus /> Add Event
-              </Button>
-            </div>
-          </div>
-        </Card>
-
-        {/* Calendar Stats */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="border-l-4" style={{ borderLeftColor: "#4f46e5" }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-content-tertiary">Total Scheduled</p>
-                <p className="text-3xl font-bold mt-1">
-                  {calendarStats.totalEvents}
-                </p>
-              </div>
-              <FaCalendarAlt className="h-8 w-8 text-indigo-600 opacity-60" />
-            </div>
-          </Card>
-
-          <Card className="border-l-4" style={{ borderLeftColor: "#10b981" }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-content-tertiary">
-                  Approved Meetings
-                </p>
-                <p className="text-3xl font-bold mt-1">
-                  {calendarStats.approvedMeetings}
-                </p>
-              </div>
-              <FaCheck className="h-8 w-8 text-emerald-500 opacity-60" />
-            </div>
-          </Card>
-
-          <Card className="border-l-4" style={{ borderLeftColor: "#f97316" }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-content-tertiary">
-                  Upcoming Deadlines
-                </p>
-                <p className="text-3xl font-bold mt-1">
-                  {calendarStats.upcomingDeadlines}
-                </p>
-              </div>
-              <FaClock className="h-8 w-8 text-orange-500 opacity-60" />
-            </div>
-          </Card>
-
-          <Card className="border-l-4" style={{ borderLeftColor: "#ef4444" }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-content-tertiary">
-                  Pending Requests
-                </p>
-                <p className="text-3xl font-bold mt-1">
-                  {calendarStats.pendingRequests}
-                </p>
-              </div>
-              <FaTimes className="h-8 w-8 text-red-500 opacity-60" />
-            </div>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Calendar Grid */}
-          <Card className="lg:col-span-3 p-4">
-            <div className="grid grid-cols-7 gap-0 mb-4">
-              {dayNames.map((day) => (
-                <div
-                  key={day}
-                  className="p-2 text-center font-medium text-gray-600 border-b"
-                >
-                  {day.slice(0, 3)}
-                </div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-0">{renderCalendarDays()}</div>
-          </Card>
-
-          {/* Event Details Sidebar */}
+      {loading ? (
+        <div className="space-y-6">
+          {/* Skeleton for Calendar Controls */}
           <Card className="p-4">
-            <h3 className="font-semibold text-lg mb-4">
-              {selectedDate
-                ? `Events for ${selectedDate.toLocaleDateString()}`
-                : "Select a date"}
-            </h3>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-64 bg-gray-200 animate-pulse rounded" />
+                <div className="h-10 w-20 bg-gray-200 animate-pulse rounded" />
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-32 bg-gray-200 animate-pulse rounded" />
+                <div className="h-10 w-32 bg-gray-200 animate-pulse rounded" />
+                <div className="h-10 w-32 bg-gray-200 animate-pulse rounded" />
+              </div>
+            </div>
+          </Card>
 
-            {selectedDate ? (
+          {/* Skeleton for Stats */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="border-l-4">
+                <div className="h-20 bg-gray-200 animate-pulse rounded" />
+              </Card>
+            ))}
+          </div>
+
+          {/* Skeleton for Calendar Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <Card className="lg:col-span-3 p-4">
+              <div className="grid grid-cols-7 gap-2">
+                {Array.from({ length: 35 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-24 bg-gray-200 animate-pulse rounded"
+                  />
+                ))}
+              </div>
+            </Card>
+            <Card className="p-4">
               <div className="space-y-3">
-                {getEventsForDate(selectedDate).length === 0 ? (
-                  <p className="text-gray-500 text-sm">
-                    No events on this date
-                  </p>
-                ) : (
-                  getEventsForDate(selectedDate).map((event) => {
-                    const clientRecord = event.clientId
-                      ? clientsById.get(event.clientId)
-                      : null;
-                    const contactName =
-                      event.clientName ||
-                      clientRecord?.companyName ||
-                      clientRecord?.clientName ||
-                      "—";
-                    const contactEmail =
-                      clientRecord?.email || event.email || "—";
-                    const isTaskEvent = Boolean(event.isTask);
-                    const statusStyles = {
-                      approved: "bg-green-100 text-green-700",
-                      pending: "bg-yellow-100 text-yellow-700",
-                      cancelled: "bg-red-100 text-red-700",
-                      completed: "bg-blue-100 text-blue-700",
-                    };
-                    const statusClass =
-                      statusStyles[event.status] || "bg-gray-100 text-gray-600";
-                    const statusLabel = event.status
-                      ? event.status.replace(/\b\w/g, (ch) => ch.toUpperCase())
-                      : "Pending";
-
-                    return (
-                      <div
-                        key={event.id}
-                        className="border rounded-lg p-3 space-y-2"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <h4 className="font-medium text-sm">
-                              {event.title}
-                            </h4>
-                            <span
-                              className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${statusClass}`}
-                            >
-                              {statusLabel}
-                            </span>
-                          </div>
-                          {!isTaskEvent && (
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => openEventModal(event)}
-                                className="text-blue-600 hover:text-blue-800"
-                                title="Edit event"
-                              >
-                                <FaEdit size={12} />
-                              </button>
-                              <button
-                                onClick={() => deleteEvent(event.id)}
-                                className="text-red-600 hover:text-red-800"
-                                title="Delete event"
-                              >
-                                <FaTrash size={12} />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="text-xs text-gray-600 space-y-1">
-                          <div>Time: {event.time || "—"}</div>
-                          <div>Client: {contactName}</div>
-                          <div>
-                            Duration:{" "}
-                            {event.duration ? `${event.duration} minutes` : "—"}
-                          </div>
-                          <div>Email: {contactEmail}</div>
-                          {event.location && (
-                            <div>Location: {event.location}</div>
-                          )}
-                          {event.description && (
-                            <div className="text-[11px] text-content-secondary">
-                              Notes: {event.description}
-                            </div>
-                          )}
-                        </div>
-
-                        {event.objectives && event.objectives.length > 0 && (
-                          <div className="border-t pt-2">
-                            <p className="text-[11px] font-semibold text-content-secondary mb-1">
-                              Objectives
-                            </p>
-                            <ul className="space-y-1">
-                              {event.objectives.map((objective) => (
-                                <li
-                                  key={objective.id}
-                                  className="text-[11px] text-content-secondary"
-                                >
-                                  • {objective.text}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        <div className="flex gap-2 mt-2">
-                          {event.status === "pending" && !isTaskEvent && (
-                            <>
-                              <button
-                                onClick={() => handleApproveEvent(event.id)}
-                                className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200"
-                              >
-                                <FaCheck size={10} /> Approve
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleCancelEvent(
-                                    event.id,
-                                    "Cancelled by admin"
-                                  )
-                                }
-                                className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
-                              >
-                                <FaTimes size={10} /> Cancel
-                              </button>
-                            </>
-                          )}
-                          {isTaskEvent && event.status !== "completed" && (
-                            <button
-                              onClick={() => handleCompleteTask(event.id)}
-                              className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
-                            >
-                              <FaCheck size={10} /> Complete
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
+                <div className="h-6 bg-gray-200 animate-pulse rounded" />
+                <div className="h-32 bg-gray-200 animate-pulse rounded" />
               </div>
-            ) : (
-              <div className="text-center text-gray-500 mt-8">
-                <FaCalendarAlt size={48} className="mx-auto mb-4 opacity-50" />
-                <p className="text-sm">Click on a date to view events</p>
-              </div>
-            )}
-          </Card>
-        </div>
-
-        {upcomingEvents.length > 0 && (
-          <Card title="Upcoming Schedule" icon={<FaClock />}>
-            <ul className="space-y-3">
-              {upcomingEvents.map((event) => {
-                const clientRecord = event.clientId
-                  ? clientsById.get(event.clientId)
-                  : null;
-                const contactName =
-                  event.clientName ||
-                  clientRecord?.companyName ||
-                  clientRecord?.clientName ||
-                  "—";
-                const eventDateTime = new Date(
-                  `${event.date}T${event.time || "00:00"}`
-                );
-                const dateLabel = Number.isNaN(eventDateTime.getTime())
-                  ? "TBD"
-                  : eventDateTime.toLocaleDateString();
-                const timeLabel = Number.isNaN(eventDateTime.getTime())
-                  ? "—"
-                  : event.time || "—";
-                return (
-                  <li
-                    key={event.id}
-                    className="flex items-center justify-between gap-4 border-b border-subtle pb-2 last:border-0 last:pb-0"
-                  >
-                    <div>
-                      <p className="font-medium text-sm text-content-primary">
-                        {event.title}
-                      </p>
-                      <p className="text-xs text-content-secondary">
-                        {contactName}
-                      </p>
-                    </div>
-                    <div className="text-right text-xs text-content-secondary">
-                      <div>{dateLabel}</div>
-                      <div>{timeLabel}</div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </Card>
-        )}
-
-        {/* Event Create/Edit Modal */}
-        {showEventModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div
-              className="absolute inset-0 bg-black/50"
-              onClick={closeEventModal}
-            />
-            <Card className="z-10 w-full max-w-3xl max-h-[90vh] overflow-auto">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-semibold">
-                  {editingEvent ? "Edit Event" : "Create Event"}
-                </h2>
-                <button
-                  onClick={closeEventModal}
-                  className="rounded-lg p-2 text-content-secondary hover:bg-surface-subtle"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <form className="space-y-4" onSubmit={handleSaveEvent}>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <label className="space-y-1 text-sm">
-                    <span className="font-medium text-content-secondary">
-                      Title
-                    </span>
-                    <input
-                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                      value={eventForm.title}
-                      onChange={(e) =>
-                        handleEventFormChange("title", e.target.value)
-                      }
-                      placeholder="Project sync with client"
-                      required
-                    />
-                  </label>
-
-                  <label className="space-y-1 text-sm">
-                    <span className="font-medium text-content-secondary">
-                      Type
-                    </span>
-                    <select
-                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                      value={eventForm.type}
-                      onChange={(e) =>
-                        handleEventFormChange("type", e.target.value)
-                      }
-                    >
-                      <option value="meeting">Meeting</option>
-                      <option value="task">Task</option>
-                      <option value="milestone">Milestone</option>
-                      <option value="call">Call</option>
-                    </select>
-                  </label>
-
-                  <label className="space-y-1 text-sm">
-                    <span className="font-medium text-content-secondary">
-                      Status
-                    </span>
-                    <select
-                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                      value={eventForm.status}
-                      onChange={(e) =>
-                        handleEventFormChange("status", e.target.value)
-                      }
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="approved">Approved</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </label>
-
-                  <label className="space-y-1 text-sm">
-                    <span className="font-medium text-content-secondary">
-                      Client
-                    </span>
-                    <select
-                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                      value={eventForm.clientId}
-                      onChange={(e) =>
-                        handleEventFormChange("clientId", e.target.value)
-                      }
-                    >
-                      <option value="">Unassigned</option>
-                      {clients.map((client) => (
-                        <option key={client.id} value={client.id}>
-                          {client.companyName ||
-                            client.clientName ||
-                            client.email}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="space-y-1 text-sm">
-                    <span className="font-medium text-content-secondary">
-                      Date
-                    </span>
-                    <input
-                      type="date"
-                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                      value={eventForm.date}
-                      onChange={(e) =>
-                        handleEventFormChange("date", e.target.value)
-                      }
-                      required
-                    />
-                  </label>
-
-                  <label className="space-y-1 text-sm">
-                    <span className="font-medium text-content-secondary">
-                      Time
-                    </span>
-                    <input
-                      type="time"
-                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                      value={eventForm.time}
-                      onChange={(e) =>
-                        handleEventFormChange("time", e.target.value)
-                      }
-                    />
-                  </label>
-
-                  <label className="space-y-1 text-sm">
-                    <span className="font-medium text-content-secondary">
-                      Duration (minutes)
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                      value={eventForm.duration}
-                      onChange={(e) =>
-                        handleEventFormChange("duration", e.target.value)
-                      }
-                    />
-                  </label>
-
-                  <label className="space-y-1 text-sm">
-                    <span className="font-medium text-content-secondary">
-                      Priority
-                    </span>
-                    <select
-                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                      value={eventForm.priority}
-                      onChange={(e) =>
-                        handleEventFormChange("priority", e.target.value)
-                      }
-                    >
-                      <option value="high">High</option>
-                      <option value="medium">Medium</option>
-                      <option value="low">Low</option>
-                    </select>
-                  </label>
-
-                  <label className="space-y-1 text-sm md:col-span-2">
-                    <span className="font-medium text-content-secondary">
-                      Location
-                    </span>
-                    <input
-                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                      value={eventForm.location}
-                      onChange={(e) =>
-                        handleEventFormChange("location", e.target.value)
-                      }
-                      placeholder="Conference Room B"
-                    />
-                  </label>
-
-                  <label className="space-y-1 text-sm md:col-span-2">
-                    <span className="font-medium text-content-secondary">
-                      Description
-                    </span>
-                    <textarea
-                      rows={3}
-                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                      value={eventForm.description}
-                      onChange={(e) =>
-                        handleEventFormChange("description", e.target.value)
-                      }
-                      placeholder="Agenda or key talking points"
-                    />
-                  </label>
-
-                  <label className="space-y-1 text-sm md:col-span-2">
-                    <span className="font-medium text-content-secondary">
-                      Attendees (comma separated)
-                    </span>
-                    <textarea
-                      rows={2}
-                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                      value={eventForm.attendeesText}
-                      onChange={(e) =>
-                        handleEventFormChange("attendeesText", e.target.value)
-                      }
-                      placeholder="John Doe, Jane Smith"
-                    />
-                  </label>
-                </div>
-
-                <div className="flex justify-end gap-3">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={closeEventModal}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit">
-                    {editingEvent ? "Save Changes" : "Create Event"}
-                  </Button>
-                </div>
-              </form>
             </Card>
           </div>
-        )}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Calendar Controls */}
+          <Card className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigateMonth(-1)}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    <FaChevronLeft />
+                  </button>
+                  <h2 className="text-lg font-semibold min-w-[200px] text-center">
+                    {monthNames[currentDate.getMonth()]}{" "}
+                    {currentDate.getFullYear()}
+                  </h2>
+                  <button
+                    onClick={() => navigateMonth(1)}
+                    className="p-2 hover:bg-gray-100 rounded-lg"
+                  >
+                    <FaChevronRight />
+                  </button>
+                </div>
 
-        {/* Meeting Requests Modal */}
-        {showRequestModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div
-              className="absolute inset-0 bg-black/50"
-              onClick={() => {
-                setShowRequestModal(false);
-                setActiveRequestDate(null);
-              }}
-            />
-            <Card className="z-10 w-full max-w-4xl max-h-[90vh] overflow-auto">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-semibold">
-                  Meeting Requests -{" "}
-                  {activeRequestDate
-                    ? new Date(
-                        activeRequestDate + "T00:00"
-                      ).toLocaleDateString()
-                    : ""}
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowRequestModal(false);
-                    setActiveRequestDate(null);
-                  }}
-                  className="rounded-lg p-2 text-content-secondary hover:bg-surface-subtle"
+                <Button
+                  variant="secondary"
+                  onClick={() => setCurrentDate(new Date())}
                 >
-                  ✕
-                </button>
+                  Today
+                </Button>
               </div>
 
-              <div className="space-y-4">
-                {requestsForModal.map((request) => (
+              <div className="flex items-center gap-3">
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                >
+                  <option value="all">All Types</option>
+                  <option value="meeting">Meetings</option>
+                  <option value="task">Tasks</option>
+                  <option value="milestone">Milestones</option>
+                  <option value="call">Calls</option>
+                </select>
+
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                >
+                  <option value="all">All Status</option>
+                  <option value="approved">Approved</option>
+                  <option value="pending">Pending</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="completed">Completed</option>
+                </select>
+
+                <Button onClick={() => openEventModal(null)}>
+                  <FaPlus /> Add Event
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* Calendar Stats */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-l-4" style={{ borderLeftColor: "#4f46e5" }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-content-tertiary">
+                    Total Scheduled
+                  </p>
+                  <p className="text-3xl font-bold mt-1">
+                    {calendarStats.totalEvents}
+                  </p>
+                </div>
+                <FaCalendarAlt className="h-8 w-8 text-indigo-600 opacity-60" />
+              </div>
+            </Card>
+
+            <Card className="border-l-4" style={{ borderLeftColor: "#10b981" }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-content-tertiary">
+                    Approved Meetings
+                  </p>
+                  <p className="text-3xl font-bold mt-1">
+                    {calendarStats.approvedMeetings}
+                  </p>
+                </div>
+                <FaCheck className="h-8 w-8 text-emerald-500 opacity-60" />
+              </div>
+            </Card>
+
+            <Card className="border-l-4" style={{ borderLeftColor: "#f97316" }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-content-tertiary">
+                    Upcoming Deadlines
+                  </p>
+                  <p className="text-3xl font-bold mt-1">
+                    {calendarStats.upcomingDeadlines}
+                  </p>
+                </div>
+                <FaClock className="h-8 w-8 text-orange-500 opacity-60" />
+              </div>
+            </Card>
+
+            <Card className="border-l-4" style={{ borderLeftColor: "#ef4444" }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-content-tertiary">
+                    Pending Requests
+                  </p>
+                  <p className="text-3xl font-bold mt-1">
+                    {calendarStats.pendingRequests}
+                  </p>
+                </div>
+                <FaTimes className="h-8 w-8 text-red-500 opacity-60" />
+              </div>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Calendar Grid */}
+            <Card className="lg:col-span-3 p-4">
+              <div className="grid grid-cols-7 gap-0 mb-4">
+                {dayNames.map((day) => (
                   <div
-                    key={request.id}
-                    className="border rounded-lg p-4 space-y-3"
+                    key={day}
+                    className="p-2 text-center font-medium text-gray-600 border-b"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg text-content-primary">
-                          {request.companyName}
-                        </h3>
-                        <p className="text-sm text-content-secondary">
-                          Contact: {request.clientName}
-                        </p>
-                      </div>
-                      {/* Remove status badge */}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium text-content-secondary">
-                          Requested Time:
-                        </span>
-                        <div>{request.requestedTime}</div>
-                      </div>
-                      <div>
-                        <span className="font-medium text-content-secondary">
-                          Duration:
-                        </span>
-                        <div>{request.duration} minutes</div>
-                      </div>
-                      <div>
-                        <span className="font-medium text-content-secondary">
-                          Email:
-                        </span>
-                        <div>{request.email}</div>
-                      </div>
-                      <div>
-                        <span className="font-medium text-content-secondary">
-                          Phone:
-                        </span>
-                        <div>{request.phone}</div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="font-medium text-content-secondary">
-                        Purpose:
-                      </span>
-                      <p className="mt-1 text-sm text-content-primary">
-                        {request.purpose}
-                      </p>
-                    </div>
-
-                    {/* Remove priority section */}
-
-                    <div className="text-xs text-content-tertiary">
-                      Requested on:{" "}
-                      {request.requestedAt
-                        ? request.requestedAt.toLocaleString()
-                        : "—"}
-                    </div>
-
-                    {/* Remove conditional status check and always show buttons */}
-                    <div className="flex gap-3 pt-3 border-t">
-                      <Button
-                        variant="primary"
-                        onClick={() => handleApproveRequest(request.id)}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        <FaCheck /> Accept
-                      </Button>
-                      <Button
-                        variant="danger"
-                        onClick={() => handleRejectRequest(request.id)}
-                      >
-                        <FaTimes /> Reject
-                      </Button>
-                    </div>
+                    {day.slice(0, 3)}
                   </div>
                 ))}
               </div>
-
-              <div className="mt-6 flex justify-end">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setShowRequestModal(false);
-                    setActiveRequestDate(null);
-                  }}
-                >
-                  Close
-                </Button>
+              <div className="grid grid-cols-7 gap-0">
+                {renderCalendarDays()}
               </div>
             </Card>
+
+            {/* Event Details Sidebar */}
+            <Card className="p-4">
+              <h3 className="font-semibold text-lg mb-4">
+                {selectedDate
+                  ? `Events for ${selectedDate.toLocaleDateString()}`
+                  : "Select a date"}
+              </h3>
+
+              {selectedDate ? (
+                <div className="space-y-3">
+                  {getEventsForDate(selectedDate).length === 0 ? (
+                    <p className="text-gray-500 text-sm">
+                      No events on this date
+                    </p>
+                  ) : (
+                    getEventsForDate(selectedDate).map((event) => {
+                      const clientRecord = event.clientId
+                        ? clientsById.get(event.clientId)
+                        : null;
+                      const contactName =
+                        event.clientName ||
+                        clientRecord?.companyName ||
+                        clientRecord?.clientName ||
+                        "—";
+                      const contactEmail =
+                        clientRecord?.email || event.email || "—";
+                      const isTaskEvent = Boolean(event.isTask);
+                      const statusStyles = {
+                        approved: "bg-green-100 text-green-700",
+                        pending: "bg-yellow-100 text-yellow-700",
+                        cancelled: "bg-red-100 text-red-700",
+                        completed: "bg-blue-100 text-blue-700",
+                      };
+                      const statusClass =
+                        statusStyles[event.status] ||
+                        "bg-gray-100 text-gray-600";
+                      const statusLabel = event.status
+                        ? event.status.replace(/\b\w/g, (ch) =>
+                            ch.toUpperCase()
+                          )
+                        : "Pending";
+
+                      return (
+                        <div
+                          key={event.id}
+                          className="border rounded-lg p-3 space-y-2"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h4 className="font-medium text-sm">
+                                {event.title}
+                              </h4>
+                              <span
+                                className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${statusClass}`}
+                              >
+                                {statusLabel}
+                              </span>
+                            </div>
+                            {!isTaskEvent && (
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => openEventModal(event)}
+                                  className="text-blue-600 hover:text-blue-800"
+                                  title="Edit event"
+                                >
+                                  <FaEdit size={12} />
+                                </button>
+                                <button
+                                  onClick={() => deleteEvent(event.id)}
+                                  className="text-red-600 hover:text-red-800"
+                                  title="Delete event"
+                                >
+                                  <FaTrash size={12} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="text-xs text-gray-600 space-y-1">
+                            <div>Time: {event.time || "—"}</div>
+                            <div>Client: {contactName}</div>
+                            <div>
+                              Duration:{" "}
+                              {event.duration
+                                ? `${event.duration} minutes`
+                                : "—"}
+                            </div>
+                            <div>Email: {contactEmail}</div>
+                            {event.location && (
+                              <div>Location: {event.location}</div>
+                            )}
+                            {event.description && (
+                              <div className="text-[11px] text-content-secondary">
+                                Notes: {event.description}
+                              </div>
+                            )}
+                          </div>
+
+                          {event.objectives && event.objectives.length > 0 && (
+                            <div className="border-t pt-2">
+                              <p className="text-[11px] font-semibold text-content-secondary mb-1">
+                                Objectives
+                              </p>
+                              <ul className="space-y-1">
+                                {event.objectives.map((objective) => (
+                                  <li
+                                    key={objective.id}
+                                    className="text-[11px] text-content-secondary"
+                                  >
+                                    • {objective.text}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          <div className="flex gap-2 mt-2">
+                            {event.status === "pending" && !isTaskEvent && (
+                              <>
+                                <button
+                                  onClick={() => handleApproveEvent(event.id)}
+                                  className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200"
+                                >
+                                  <FaCheck size={10} /> Approve
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleCancelEvent(
+                                      event.id,
+                                      "Cancelled by admin"
+                                    )
+                                  }
+                                  className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
+                                >
+                                  <FaTimes size={10} /> Cancel
+                                </button>
+                              </>
+                            )}
+                            {isTaskEvent && event.status !== "completed" && (
+                              <button
+                                onClick={() => handleCompleteTask(event.id)}
+                                className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                              >
+                                <FaCheck size={10} /> Complete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 mt-8">
+                  <FaCalendarAlt
+                    size={48}
+                    className="mx-auto mb-4 opacity-50"
+                  />
+                  <p className="text-sm">Click on a date to view events</p>
+                </div>
+              )}
+            </Card>
           </div>
-        )}
-      </div>
+
+          {upcomingEvents.length > 0 && (
+            <Card title="Upcoming Schedule" icon={<FaClock />}>
+              <ul className="space-y-3">
+                {upcomingEvents.map((event) => {
+                  const clientRecord = event.clientId
+                    ? clientsById.get(event.clientId)
+                    : null;
+                  const contactName =
+                    event.clientName ||
+                    clientRecord?.companyName ||
+                    clientRecord?.clientName ||
+                    "—";
+                  const eventDateTime = new Date(
+                    `${event.date}T${event.time || "00:00"}`
+                  );
+                  const dateLabel = Number.isNaN(eventDateTime.getTime())
+                    ? "TBD"
+                    : eventDateTime.toLocaleDateString();
+                  const timeLabel = Number.isNaN(eventDateTime.getTime())
+                    ? "—"
+                    : event.time || "—";
+                  return (
+                    <li
+                      key={event.id}
+                      className="flex items-center justify-between gap-4 border-b border-subtle pb-2 last:border-0 last:pb-0"
+                    >
+                      <div>
+                        <p className="font-medium text-sm text-content-primary">
+                          {event.title}
+                        </p>
+                        <p className="text-xs text-content-secondary">
+                          {contactName}
+                        </p>
+                      </div>
+                      <div className="text-right text-xs text-content-secondary">
+                        <div>{dateLabel}</div>
+                        <div>{timeLabel}</div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Card>
+          )}
+
+          {/* Event Create/Edit Modal */}
+          {showEventModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div
+                className="absolute inset-0 bg-black/50"
+                onClick={closeEventModal}
+              />
+              <Card className="z-10 w-full max-w-3xl max-h-[90vh] overflow-auto">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">
+                    {editingEvent ? "Edit Event" : "Create Event"}
+                  </h2>
+                  <button
+                    onClick={closeEventModal}
+                    className="rounded-lg p-2 text-content-secondary hover:bg-surface-subtle"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form className="space-y-4" onSubmit={handleSaveEvent}>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-content-secondary">
+                        Title
+                      </span>
+                      <input
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={eventForm.title}
+                        onChange={(e) =>
+                          handleEventFormChange("title", e.target.value)
+                        }
+                        placeholder="Project sync with client"
+                        required
+                      />
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-content-secondary">
+                        Type
+                      </span>
+                      <select
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={eventForm.type}
+                        onChange={(e) =>
+                          handleEventFormChange("type", e.target.value)
+                        }
+                      >
+                        <option value="meeting">Meeting</option>
+                        <option value="task">Task</option>
+                        <option value="milestone">Milestone</option>
+                        <option value="call">Call</option>
+                      </select>
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-content-secondary">
+                        Status
+                      </span>
+                      <select
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={eventForm.status}
+                        onChange={(e) =>
+                          handleEventFormChange("status", e.target.value)
+                        }
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-content-secondary">
+                        Client
+                      </span>
+                      <select
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={eventForm.clientId}
+                        onChange={(e) =>
+                          handleEventFormChange("clientId", e.target.value)
+                        }
+                      >
+                        <option value="">Unassigned</option>
+                        {clients.map((client) => (
+                          <option key={client.id} value={client.id}>
+                            {client.companyName ||
+                              client.clientName ||
+                              client.email}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-content-secondary">
+                        Date
+                      </span>
+                      <input
+                        type="date"
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={eventForm.date}
+                        onChange={(e) =>
+                          handleEventFormChange("date", e.target.value)
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-content-secondary">
+                        Time
+                      </span>
+                      <input
+                        type="time"
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={eventForm.time}
+                        onChange={(e) =>
+                          handleEventFormChange("time", e.target.value)
+                        }
+                      />
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-content-secondary">
+                        Duration (minutes)
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={eventForm.duration}
+                        onChange={(e) =>
+                          handleEventFormChange("duration", e.target.value)
+                        }
+                      />
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-content-secondary">
+                        Priority
+                      </span>
+                      <select
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={eventForm.priority}
+                        onChange={(e) =>
+                          handleEventFormChange("priority", e.target.value)
+                        }
+                      >
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                      </select>
+                    </label>
+
+                    <label className="space-y-1 text-sm md:col-span-2">
+                      <span className="font-medium text-content-secondary">
+                        Location
+                      </span>
+                      <input
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={eventForm.location}
+                        onChange={(e) =>
+                          handleEventFormChange("location", e.target.value)
+                        }
+                        placeholder="Conference Room B"
+                      />
+                    </label>
+
+                    <label className="space-y-1 text-sm md:col-span-2">
+                      <span className="font-medium text-content-secondary">
+                        Description
+                      </span>
+                      <textarea
+                        rows={3}
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={eventForm.description}
+                        onChange={(e) =>
+                          handleEventFormChange("description", e.target.value)
+                        }
+                        placeholder="Agenda or key talking points"
+                      />
+                    </label>
+
+                    <label className="space-y-1 text-sm md:col-span-2">
+                      <span className="font-medium text-content-secondary">
+                        Attendees (comma separated)
+                      </span>
+                      <textarea
+                        rows={2}
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={eventForm.attendeesText}
+                        onChange={(e) =>
+                          handleEventFormChange("attendeesText", e.target.value)
+                        }
+                        placeholder="John Doe, Jane Smith"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={closeEventModal}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit">
+                      {editingEvent ? "Save Changes" : "Create Event"}
+                    </Button>
+                  </div>
+                </form>
+              </Card>
+            </div>
+          )}
+
+          {/* Meeting Requests Modal */}
+          {showRequestModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div
+                className="absolute inset-0 bg-black/50"
+                onClick={() => {
+                  setShowRequestModal(false);
+                  setActiveRequestDate(null);
+                }}
+              />
+              <Card className="z-10 w-full max-w-4xl max-h-[90vh] overflow-auto">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">
+                    Meeting Requests -{" "}
+                    {activeRequestDate
+                      ? new Date(
+                          activeRequestDate + "T00:00"
+                        ).toLocaleDateString()
+                      : ""}
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowRequestModal(false);
+                      setActiveRequestDate(null);
+                    }}
+                    className="rounded-lg p-2 text-content-secondary hover:bg-surface-subtle"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {requestsForModal.map((request) => (
+                    <div
+                      key={request.id}
+                      className="border rounded-lg p-4 space-y-3"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg text-content-primary">
+                            {request.companyName}
+                          </h3>
+                          <p className="text-sm text-content-secondary">
+                            Contact: {request.clientName}
+                          </p>
+                        </div>
+                        {/* Remove status badge */}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="font-medium text-content-secondary">
+                            Requested Time:
+                          </span>
+                          <div>{request.requestedTime}</div>
+                        </div>
+                        <div>
+                          <span className="font-medium text-content-secondary">
+                            Duration:
+                          </span>
+                          <div>{request.duration} minutes</div>
+                        </div>
+                        <div>
+                          <span className="font-medium text-content-secondary">
+                            Email:
+                          </span>
+                          <div>{request.email}</div>
+                        </div>
+                        <div>
+                          <span className="font-medium text-content-secondary">
+                            Phone:
+                          </span>
+                          <div>{request.phone}</div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="font-medium text-content-secondary">
+                          Purpose:
+                        </span>
+                        <p className="mt-1 text-sm text-content-primary">
+                          {request.purpose}
+                        </p>
+                      </div>
+
+                      {/* Remove priority section */}
+
+                      <div className="text-xs text-content-tertiary">
+                        Requested on:{" "}
+                        {request.requestedAt
+                          ? request.requestedAt.toLocaleString()
+                          : "—"}
+                      </div>
+
+                      {/* Remove conditional status check and always show buttons */}
+                      <div className="flex gap-3 pt-3 border-t">
+                        <Button
+                          variant="primary"
+                          onClick={() => handleApproveRequest(request.id)}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <FaCheck /> Accept
+                        </Button>
+                        <Button
+                          variant="danger"
+                          onClick={() => handleRejectRequest(request.id)}
+                        >
+                          <FaTimes /> Reject
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 flex justify-end">
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setShowRequestModal(false);
+                      setActiveRequestDate(null);
+                    }}
+                  >
+                    Close
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -435,10 +435,7 @@ export default function ReportsPage() {
 
           <div className="mt-4 flex items-center gap-3">
             <Button onClick={() => exportReport("csv")} variant="secondary">
-              <FaDownload /> Export CSV
-            </Button>
-            <Button onClick={() => exportReport("json")} variant="secondary">
-              <FaDownload /> Export JSON
+              <FaDownload /> Export Excel
             </Button>
           </div>
         </Card>
