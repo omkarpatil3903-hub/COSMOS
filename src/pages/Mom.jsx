@@ -162,25 +162,79 @@ export default function Mom() {
       const selectedProject = projects.find((p) => p.id === projectId);
       const projectName = selectedProject ? selectedProject.name : "N/A";
 
-      const prompt = `Generate professional Minutes of Meeting (MoM) based on the following information:
+      const prompt = `
+You are an expert business meeting summarizer and project coordinator. 
+Your task is to generate a **professional and actionable Minutes of Meeting (MoM)** document 
+based on the following inputs.
 
-Meeting Title: ${title}
-Project: ${projectName}
-Date: ${meetingDate || "Not specified"}
-Time: ${meetingTime || "Not specified"}
-Attendees: ${attendees || "Not specified"}
+---
 
-Discussion Points:
+**Meeting Details**
+- Title:${title}
+- Project: ${projectName}
+- Date: ${meetingDate || "Not specified"}
+- Time: ${meetingTime || "Not specified"}
+- Attendees: ${attendees || "Not specified"}
+
+---
+
+**Discussion Points:**
 ${points.map((p, i) => `${i + 1}. ${p}`).join("\n")}
 
-Please generate a well-formatted MoM document in markdown format with the following sections:
-1. Meeting Header (title, date, time, attendees, project)
-2. Discussion Summary
-3. Key Decisions Made
-4. Action Items (identify actionable tasks from the discussion points)
-5. Next Steps
+---
 
-Format it professionally and concisely.`;
+### 🔧 Instructions for MoM Generation
+
+1. **Overall Style:**
+   - Write in clear, formal, and professional tone suitable for business communication.
+   - Use proper Markdown formatting with headings, bullet points, and bold text for clarity.
+   - Keep it concise but *informative*, avoiding repetition.
+
+2. **MoM Sections to Include:**
+
+#### 1. Meeting Header
+Summarize the meeting details in a clean, tabular or bullet format (title, project, date, time, attendees).
+
+#### 2. Discussion Summary
+Provide a concise yet comprehensive summary of all discussion points.
+Group related points together logically.
+Highlight project progress, issues discussed, and brainstorming outcomes.
+
+#### 3. Key Decisions Made
+List all final decisions or conclusions reached in the meeting.
+Each decision should clearly indicate *what* was decided and *why* if relevant.
+
+#### 4. Action Items (for Employee Assignment)
+- Extract all **actionable tasks** from the discussion points.
+- Each task should include:
+  - Task Title
+  - Description
+  - Assigned To (if mentioned or deduce if possible)
+  - Priority (High / Medium / Low)
+  - Deadline (if specified, or mark as “TBD”)
+  - Status (default: “Pending”)
+- Present these in a Markdown table for clarity.
+
+Example format:
+
+| Task Title | Description | Assigned To | Priority | Deadline | Status |
+|-------------|-------------|-------------|-----------|-----------|---------|
+| Setup Firebase Integration | Configure and connect Firebase to dashboard | Ramesh | High | 05-Nov-2025 | Pending |
+
+#### 5. Next Steps
+List follow-up plans, pending reviews, and upcoming tasks for the next meeting or sprint.
+
+---
+
+### ⚡ Output Requirements:
+- The entire MoM must be in **Markdown format**.
+- Maintain a clean, structured layout for readability.
+- Ensure action items can be directly used for task assignment in a project management tool.
+
+---
+
+Now generate the **final Minutes of Meeting (MoM)** below:
+`;
 
       // Call Gemini API (using latest gemini-2.5-flash model for balanced performance)
       const res = await fetch(
@@ -727,14 +781,204 @@ Format it professionally and concisely.`;
               </div>
             }
           >
-            <textarea
-              ref={outRef}
-              readOnly
-              value={generated}
-              placeholder="Your generated MoM will appear here..."
-              className="w-full min-h-[220px] resize-vertical rounded-md border border-subtle bg-transparent p-3 text-sm"
-              tabIndex={0}
-            />
+            {/* Proper MoM Document View */}
+            <div className="mom-document bg-white rounded-lg border border-gray-200 p-8 shadow-sm">
+              {/* Document Header */}
+              <div className="border-b-2 border-indigo-600 pb-4 mb-6">
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  {title}
+                </h1>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-semibold text-gray-700">
+                      Project:
+                    </span>{" "}
+                    <span className="text-gray-600">
+                      {selectedProject?.name || "N/A"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-700">Date:</span>{" "}
+                    <span className="text-gray-600">
+                      {meetingDate || "N/A"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-700">Time:</span>{" "}
+                    <span className="text-gray-600">
+                      {meetingTime || "N/A"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-semibold text-gray-700">
+                      Attendees:
+                    </span>{" "}
+                    <span className="text-gray-600">{attendees || "N/A"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Generated Content with Markdown Rendering */}
+              <div className="prose prose-sm max-w-none">
+                {generated.split("\n").map((line, idx) => {
+                  // Render Markdown-style headers
+                  if (line.startsWith("# ")) {
+                    return (
+                      <h1
+                        key={idx}
+                        className="text-2xl font-bold text-gray-900 mt-6 mb-3"
+                      >
+                        {line.replace("# ", "")}
+                      </h1>
+                    );
+                  }
+                  if (line.startsWith("## ")) {
+                    return (
+                      <h2
+                        key={idx}
+                        className="text-xl font-semibold text-gray-800 mt-5 mb-2"
+                      >
+                        {line.replace("## ", "")}
+                      </h2>
+                    );
+                  }
+                  if (line.startsWith("### ")) {
+                    return (
+                      <h3
+                        key={idx}
+                        className="text-lg font-semibold text-gray-700 mt-4 mb-2"
+                      >
+                        {line.replace("### ", "")}
+                      </h3>
+                    );
+                  }
+                  if (line.startsWith("#### ")) {
+                    return (
+                      <h4
+                        key={idx}
+                        className="text-base font-semibold text-gray-700 mt-3 mb-2"
+                      >
+                        {line.replace("#### ", "")}
+                      </h4>
+                    );
+                  }
+
+                  // Render bullet points
+                  if (
+                    line.trim().startsWith("- ") ||
+                    line.trim().startsWith("* ")
+                  ) {
+                    return (
+                      <li key={idx} className="ml-6 text-gray-700 mb-1">
+                        {line.trim().substring(2)}
+                      </li>
+                    );
+                  }
+
+                  // Render numbered lists
+                  if (/^\d+\.\s/.test(line.trim())) {
+                    return (
+                      <li
+                        key={idx}
+                        className="ml-6 text-gray-700 mb-1 list-decimal"
+                      >
+                        {line.trim().replace(/^\d+\.\s/, "")}
+                      </li>
+                    );
+                  }
+
+                  // Render bold text
+                  if (line.includes("**")) {
+                    const parts = line.split("**");
+                    return (
+                      <p
+                        key={idx}
+                        className="text-gray-700 mb-2 leading-relaxed"
+                      >
+                        {parts.map((part, i) =>
+                          i % 2 === 0 ? (
+                            part
+                          ) : (
+                            <strong key={i} className="font-semibold">
+                              {part}
+                            </strong>
+                          )
+                        )}
+                      </p>
+                    );
+                  }
+
+                  // Render horizontal rule
+                  if (line.trim() === "---" || line.trim() === "***") {
+                    return <hr key={idx} className="my-4 border-gray-300" />;
+                  }
+
+                  // Render table rows (simplified)
+                  if (line.includes("|")) {
+                    const cells = line.split("|").filter((cell) => cell.trim());
+                    const isHeader = line.includes("---");
+                    if (isHeader)
+                      return <hr key={idx} className="my-2 border-gray-200" />;
+
+                    return (
+                      <div
+                        key={idx}
+                        className="flex border-b border-gray-200 py-2"
+                      >
+                        {cells.map((cell, i) => (
+                          <div
+                            key={i}
+                            className="flex-1 px-2 text-sm text-gray-700"
+                          >
+                            {cell.trim()}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+
+                  // Render regular paragraphs
+                  if (line.trim()) {
+                    return (
+                      <p
+                        key={idx}
+                        className="text-gray-700 mb-2 leading-relaxed"
+                      >
+                        {line}
+                      </p>
+                    );
+                  }
+
+                  // Empty line
+                  return <div key={idx} className="h-2" />;
+                })}
+              </div>
+
+              {/* Document Footer */}
+              <div className="mt-8 pt-4 border-t border-gray-200 text-xs text-gray-500">
+                <div className="flex justify-between items-center">
+                  <span>
+                    Generated on {new Date().toLocaleDateString()} at{" "}
+                    {new Date().toLocaleTimeString()}
+                  </span>
+                  <span>MoM ID: {currentMomId || "Not saved"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Raw Text View (Collapsible) */}
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+                View/Edit Raw Markdown
+              </summary>
+              <textarea
+                ref={outRef}
+                value={generated}
+                onChange={(e) => setGenerated(e.target.value)}
+                className="mt-2 w-full min-h-[220px] resize-vertical rounded-md border border-subtle bg-transparent p-3 text-sm font-mono"
+                tabIndex={0}
+              />
+            </details>
           </Card>
         )}
 
