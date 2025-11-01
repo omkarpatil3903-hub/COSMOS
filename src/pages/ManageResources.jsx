@@ -8,6 +8,8 @@ import {
   FaEdit,
   FaTrash,
   FaEye,
+  FaFilter,
+  FaTimes,
 } from "react-icons/fa";
 import {
   HiOutlineArrowDownTray,
@@ -67,6 +69,7 @@ function ManageResources() {
 
   // State for search, sorting, and pagination
   const [searchTerm, setSearchTerm] = useState("");
+  const [resourceTypeFilter, setResourceTypeFilter] = useState("all"); // all, In-house, Outsourced
   const [sortConfig, setSortConfig] = useState({
     key: "fullName",
     direction: "asc",
@@ -109,6 +112,7 @@ function ManageResources() {
   const filteredResources = useMemo(() => {
     let result = [...resources];
 
+    // Filter by search term
     if (searchTerm) {
       const normalisedTerm = searchTerm.trim().toLowerCase();
       result = result.filter(
@@ -118,6 +122,14 @@ function ManageResources() {
       );
     }
 
+    // Filter by resource type
+    if (resourceTypeFilter !== "all") {
+      result = result.filter(
+        (resource) => resource.resourceType === resourceTypeFilter
+      );
+    }
+
+    // Sort results
     if (sortConfig?.key) {
       const { key, direction } = sortConfig;
       const multiplier = direction === "asc" ? 1 : -1;
@@ -135,11 +147,11 @@ function ManageResources() {
     }
 
     return result;
-  }, [resources, searchTerm, sortConfig]);
+  }, [resources, searchTerm, resourceTypeFilter, sortConfig]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, sortConfig]);
+  }, [searchTerm, resourceTypeFilter, sortConfig]);
 
   const totalPages = Math.max(
     1,
@@ -212,9 +224,13 @@ function ManageResources() {
         email: formData.email,
         mobile: formData.mobile,
         resourceType: formData.resourceType,
+        role: "resource", // Resources/employees
         status: "Active",
         joinDate: new Date().toISOString().slice(0, 10),
         createdAt: serverTimestamp(),
+        // ⚠️ WARNING: Storing password in plain text - DEVELOPMENT ONLY!
+        // Remove this field before deploying to production
+        devPassword: formData.password,
       });
 
       // Sign out secondary session
@@ -262,6 +278,7 @@ function ManageResources() {
         email: formData.email,
         mobile: formData.mobile,
         resourceType: formData.resourceType,
+        role: "resource", // Resources/employees
       });
       setFormData({
         fullName: "",
@@ -390,7 +407,7 @@ function ManageResources() {
               </div>
             }
           >
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-1">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                 Search by name or email
                 <div className="relative">
@@ -406,7 +423,62 @@ function ManageResources() {
                   />
                 </div>
               </label>
+
+              <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                Filter by Resource Type
+                <select
+                  value={resourceTypeFilter}
+                  onChange={(e) => setResourceTypeFilter(e.target.value)}
+                  className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                >
+                  <option value="all">All Resources</option>
+                  <option value="In-house">In-house Only</option>
+                  <option value="Outsourced">Outsourced Only</option>
+                </select>
+              </label>
             </div>
+
+            {/* Active Filters Display */}
+            {(searchTerm || resourceTypeFilter !== "all") && (
+              <div className="flex items-center gap-2 flex-wrap pt-2 border-t mt-4">
+                <FaFilter className="text-indigo-600 h-4 w-4" />
+                <span className="text-sm font-medium text-gray-600">
+                  Active filters:
+                </span>
+                {searchTerm && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full">
+                    Search: "{searchTerm}"
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      className="hover:bg-indigo-200 rounded-full p-0.5"
+                    >
+                      <FaTimes className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+                {resourceTypeFilter !== "all" && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                    Type: {resourceTypeFilter}
+                    <button
+                      onClick={() => setResourceTypeFilter("all")}
+                      className="hover:bg-blue-200 rounded-full p-0.5"
+                    >
+                      <FaTimes className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setResourceTypeFilter("all");
+                  }}
+                  className="ml-2 text-xs text-red-600 hover:text-red-800 font-medium"
+                >
+                  Clear All Filters
+                </button>
+              </div>
+            )}
+
             <div className="mt-4 flex gap-3 sm:hidden">
               <Button onClick={() => setShowAddForm(true)} className="flex-1">
                 <FaPlus className="h-4 w-4" aria-hidden="true" />
@@ -868,6 +940,19 @@ function ManageResources() {
                       {selectedResource.mobile}
                     </p>
                   </div>
+                  {selectedResource.devPassword && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <label className="text-sm font-medium text-yellow-800 flex items-center gap-2">
+                        <span>⚠️ Password (Dev Only)</span>
+                      </label>
+                      <p className="text-content-primary font-mono font-semibold">
+                        {selectedResource.devPassword}
+                      </p>
+                      <p className="text-xs text-yellow-600 mt-1">
+                        Remove this field before production deployment
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <label className="text-sm font-medium text-content-secondary">
                       Resource Type

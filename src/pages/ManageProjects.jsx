@@ -264,6 +264,7 @@ function ManageProjects() {
         endDate: formData.endDate
           ? Timestamp.fromDate(new Date(formData.endDate))
           : null,
+        objectives: formData.objectives,
         goals: formData.goals,
         createdAt: serverTimestamp(),
       });
@@ -374,19 +375,25 @@ function ManageProjects() {
   };
 
   const confirmDelete = async () => {
+    if (!selectedProject?.id) {
+      toast.error("No project selected");
+      return;
+    }
+
     try {
-      await deleteDoc(doc(db, "projects", selectedProject.id));
+      const projectRef = doc(db, "projects", selectedProject.id);
+      await deleteDoc(projectRef);
       setShowDeleteModal(false);
       setSelectedProject(null);
       toast.success("Project deleted successfully!");
     } catch (err) {
-      console.error("Delete project failed", err);
-      toast.error("Failed to delete project");
+      console.error("Delete project failed:", err);
+      toast.error(`Failed to delete project: ${err.message}`);
     }
   };
 
   const handleView = (id) => {
-    const project = projects.find((p) => p.id === id);
+    const project = projectsWithDerived.find((p) => p.id === id);
     setSelectedProject(project);
     setShowViewModal(true);
   };
@@ -573,28 +580,28 @@ function ManageProjects() {
                 >
                   Showing {filteredProjects.length} records
                 </span>
-                <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                   <button
                     onClick={() => setViewMode("table")}
-                    className={`p-2 rounded ${
+                    className={`p-2 rounded transition-colors ${
                       viewMode === "table"
-                        ? "bg-white shadow-sm"
-                        : "text-gray-600"
+                        ? "bg-white text-indigo-600 shadow"
+                        : "text-gray-600 hover:text-gray-900"
                     }`}
-                    title="Table View"
+                    title="List View"
                   >
-                    <FaList className="h-4 w-4" />
+                    <FaList className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setViewMode("kanban")}
-                    className={`p-2 rounded ${
+                    className={`p-2 rounded transition-colors ${
                       viewMode === "kanban"
-                        ? "bg-white shadow-sm"
-                        : "text-gray-600"
+                        ? "bg-white text-indigo-600 shadow"
+                        : "text-gray-600 hover:text-gray-900"
                     }`}
                     title="Kanban View"
                   >
-                    <FaTh className="h-4 w-4" />
+                    <FaTh className="w-4 h-4" />
                   </button>
                 </div>
                 <Button onClick={() => setShowAddForm(true)}>
@@ -1217,8 +1224,9 @@ function ManageProjects() {
                         Project Objectives
                       </label>
                       <div className="bg-gray-50 p-4 rounded-lg border">
-                        <p className="text-gray-900 text-sm leading-relaxed">
-                          {selectedProject.objectives}
+                        <p className="text-gray-900 text-sm leading-relaxed whitespace-pre-wrap">
+                          {selectedProject.objectives ||
+                            "No objectives specified"}
                         </p>
                       </div>
                     </div>
@@ -1228,8 +1236,8 @@ function ManageProjects() {
                         Project Goals
                       </label>
                       <div className="bg-gray-50 p-4 rounded-lg border">
-                        <p className="text-gray-900 text-sm leading-relaxed">
-                          {selectedProject.goals}
+                        <p className="text-gray-900 text-sm leading-relaxed whitespace-pre-wrap">
+                          {selectedProject.goals || "No goals specified"}
                         </p>
                       </div>
                     </div>

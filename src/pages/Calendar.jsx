@@ -80,6 +80,9 @@ function Calendar() {
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [activeRequestDate, setActiveRequestDate] = useState(null);
   const [eventForm, setEventForm] = useState(() => buildDefaultEventForm());
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectingRequest, setRejectingRequest] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const clientsById = useMemo(() => {
     const map = new Map();
@@ -97,41 +100,41 @@ function Calendar() {
       unsubEvents = onSnapshot(
         query(collection(db, "events"), orderBy("date", "asc")),
         (snap) => {
-          setEvents(
-            snap.docs.map((d) => {
-              const data = d.data() || {};
-              const cancelledAt = tsToDate(data.cancelledAt);
-              const completedAt = tsToDate(data.completedAt);
-              const createdAt = tsToDate(data.createdAt);
-              const status = String(data.status || "pending").toLowerCase();
-              const type = String(data.type || "meeting").toLowerCase();
-              const priority = String(data.priority || "medium").toLowerCase();
-              return {
-                id: d.id,
-                title: data.title || "",
-                type,
-                status,
-                date: data.date || "",
-                time: data.time || "",
-                duration: data.duration || 60,
-                clientId: data.clientId || "",
-                clientName: data.clientName || "",
-                description: data.description || "",
-                priority,
-                location: data.location || "",
-                attendees: data.attendees || [],
-                createdBy: data.createdBy || "",
-                objectives: data.objectives || [],
-                cancelReason: data.cancelReason || "",
-                cancelledBy: data.cancelledBy || "",
-                cancelledAt,
-                completedAt,
-                createdAt,
-                assignee: data.assignee || "",
-                progress: data.progress || 0,
-              };
-            })
-          );
+          const loadedEvents = snap.docs.map((d) => {
+            const data = d.data() || {};
+            const cancelledAt = tsToDate(data.cancelledAt);
+            const completedAt = tsToDate(data.completedAt);
+            const createdAt = tsToDate(data.createdAt);
+            const status = String(data.status || "pending").toLowerCase();
+            const type = String(data.type || "meeting").toLowerCase();
+            const priority = String(data.priority || "medium").toLowerCase();
+            return {
+              id: d.id,
+              title: data.title || "",
+              type,
+              status,
+              date: data.date || "",
+              time: data.time || "",
+              duration: data.duration || 60,
+              clientId: data.clientId || "",
+              clientName: data.clientName || "",
+              description: data.description || "",
+              priority,
+              location: data.location || "",
+              attendees: data.attendees || [],
+              createdBy: data.createdBy || "",
+              objectives: data.objectives || [],
+              cancelReason: data.cancelReason || "",
+              cancelledBy: data.cancelledBy || "",
+              cancelledAt,
+              completedAt,
+              createdAt,
+              assignee: data.assignee || "",
+              progress: data.progress || 0,
+            };
+          });
+          console.log("📅 Events loaded:", loadedEvents.length, loadedEvents);
+          setEvents(loadedEvents);
         }
       );
 
@@ -142,6 +145,7 @@ function Calendar() {
             snap.docs.map((d) => {
               const data = d.data() || {};
               const requestedAt = tsToDate(data.requestedAt);
+              const rejectedAt = tsToDate(data.rejectedAt);
               return {
                 id: d.id,
                 clientId: data.clientId || "",
@@ -154,6 +158,9 @@ function Calendar() {
                 priority: data.priority || "medium",
                 status: data.status || "pending",
                 requestedAt,
+                rejectedAt,
+                rejectedBy: data.rejectedBy || "",
+                rejectionReason: data.rejectionReason || "",
                 email: data.email || "",
                 phone: data.phone || "",
               };
@@ -214,27 +221,51 @@ function Calendar() {
       if (task.dueDate && !task.archived) {
         const dueDate =
           task.dueDate instanceof Date ? task.dueDate : tsToDate(task.dueDate);
-        const dateStr = dueDate.toISOString().slice(0, 10);
+
+        // Use local date string to avoid timezone issues
+        const year = dueDate.getFullYear();
+        const month = String(dueDate.getMonth() + 1).padStart(2, "0");
+        const day = String(dueDate.getDate()).padStart(2, "0");
+        const dateStr = `${year}-${month}-${day}`;
         const timeStr = "23:59"; // Default to end of day for tasks
+
+        // Find assignee name (client or user)
+        let assigneeName = "";
+        if (task.assigneeType === "client") {
+          const client = clients.find((c) => c.id === task.assigneeId);
+          assigneeName = client?.clientName || client?.companyName || "Client";
+        } else {
+          assigneeName = "Team Member";
+        }
 
         eventList.push({
           id: `task_${task.id}`,
-          title: `Task Deadline - ${task.title}`,
+          title: `Task: ${task.title}`,
           type: "task",
-          status: task.status === "Done" ? "completed" : "pending",
+          status:
+            task.status === "Done"
+              ? "completed"
+              : task.status === "In Progress"
+              ? "pending"
+              : "pending",
           date: dateStr,
           time: timeStr,
           duration: 0,
-          clientId: "", // Tasks may not have client directly
-          clientName: "",
-          description: task.title,
+          clientId: task.assigneeType === "client" ? task.assigneeId : "",
+          clientName: assigneeName,
+          description: `Task assigned to ${assigneeName}`,
           priority: task.priority.toLowerCase(),
           location: "",
-          attendees: [],
+          attendees: [assigneeName],
           createdBy: "",
           objectives: [],
           assignee: task.assigneeId,
-          progress: task.status === "Done" ? 100 : 0,
+          progress:
+            task.status === "Done"
+              ? 100
+              : task.status === "In Progress"
+              ? 50
+              : 0,
           isTask: true, // Mark as task event
           taskId: task.id,
         });
@@ -242,7 +273,7 @@ function Calendar() {
     });
 
     return eventList;
-  }, [events, tasks]);
+  }, [events, tasks, clients]);
 
   const upcomingEvents = useMemo(() => {
     const now = new Date();
@@ -373,7 +404,12 @@ function Calendar() {
 
   // Get events for a specific date
   const getEventsForDate = (date) => {
-    const dateStr = date.toISOString().slice(0, 10);
+    // Use local date string to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const dateStr = `${year}-${month}-${day}`;
+
     return allEvents.filter((event) => {
       const eventDate = event.date;
       let typeMatch = filterType === "all" || event.type === filterType;
@@ -384,8 +420,16 @@ function Calendar() {
 
   // Get meeting requests for a specific date
   const getMeetingRequestsForDate = (date) => {
-    const dateStr = date.toISOString().slice(0, 10);
-    return meetingRequests.filter((req) => req.requestedDate === dateStr);
+    // Use local date string to avoid timezone issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const dateStr = `${year}-${month}-${day}`;
+
+    const filtered = meetingRequests.filter(
+      (req) => req.requestedDate === dateStr
+    );
+    return filtered;
   };
 
   // Handle event actions
@@ -457,12 +501,11 @@ function Calendar() {
     const request = meetingRequests.find((req) => req.id === requestId);
     if (!request) return;
 
-    try {
-      // Remove the request
-      await deleteDoc(doc(db, "meetingRequests", requestId));
+    console.log("🎯 Approving request:", request);
 
-      // Create new event
-      await addDoc(collection(db, "events"), {
+    try {
+      // Create new event first
+      const eventData = {
         title: `Client Meeting - ${request.purpose}`,
         type: "meeting",
         status: "approved",
@@ -476,6 +519,7 @@ function Calendar() {
         location: "Conference Room",
         attendees: [request.clientName],
         createdBy: "admin",
+        createdAt: serverTimestamp(),
         objectives: [
           {
             id: `o_${Date.now()}`,
@@ -488,24 +532,54 @@ function Calendar() {
             completed: false,
           },
         ],
-      });
+      };
+
+      console.log("📝 Creating event with data:", eventData);
+      const newEventRef = await addDoc(collection(db, "events"), eventData);
+      console.log("✅ Event created with ID:", newEventRef.id);
+
+      // Remove the request after successful event creation
+      await deleteDoc(doc(db, "meetingRequests", requestId));
+      console.log("🗑️ Request deleted");
 
       toast.success(
         `Meeting with ${request.clientName} approved and scheduled!`
       );
-    } catch {
+    } catch (error) {
+      console.error("❌ Error approving request:", error);
       toast.error("Failed to approve meeting request");
     }
   };
 
+  // Open rejection modal
+  const openRejectModal = (request) => {
+    setRejectingRequest(request);
+    setRejectReason("");
+    setShowRejectModal(true);
+  };
+
   // Handle meeting request rejection
-  const handleRejectRequest = async (requestId) => {
-    const request = meetingRequests.find((req) => req.id === requestId);
-    if (!request) return;
+  const handleRejectRequest = async () => {
+    if (!rejectingRequest) return;
+
+    if (!rejectReason.trim()) {
+      toast.error("Please provide a reason for rejection");
+      return;
+    }
 
     try {
-      await deleteDoc(doc(db, "meetingRequests", requestId));
-      toast.success(`Meeting request from ${request.clientName} rejected.`);
+      await updateDoc(doc(db, "meetingRequests", rejectingRequest.id), {
+        status: "rejected",
+        rejectedAt: serverTimestamp(),
+        rejectedBy: "admin",
+        rejectionReason: rejectReason.trim(),
+      });
+      toast.success(
+        `Meeting request from ${rejectingRequest.clientName} rejected.`
+      );
+      setShowRejectModal(false);
+      setRejectingRequest(null);
+      setRejectReason("");
     } catch {
       toast.error("Failed to reject meeting request");
     }
@@ -515,7 +589,12 @@ function Calendar() {
   const showRequestsForDate = (date) => {
     const requests = getMeetingRequestsForDate(date);
     if (requests.length > 0) {
-      setActiveRequestDate(date.toISOString().slice(0, 10));
+      // Use local date string to avoid timezone issues
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      const dateStr = `${year}-${month}-${day}`;
+      setActiveRequestDate(dateStr);
       setShowRequestModal(true);
     }
   };
@@ -675,10 +754,10 @@ function Calendar() {
 
   return (
     <div>
-      <PageHeader
-        title="Project Calendar"
-        description="Manage meetings, tasks, milestones, and client interactions in one place."
-      />
+      <PageHeader title="Project Calendar">
+        Manage meetings, tasks, milestones, and client interactions in one
+        place.
+      </PageHeader>
 
       {loading ? (
         <div className="space-y-6">
@@ -1099,7 +1178,7 @@ function Calendar() {
 
                 <form className="space-y-4" onSubmit={handleSaveEvent}>
                   <div className="grid gap-4 md:grid-cols-2">
-                    <label className="space-y-1 text-sm">
+                    <label className="space-y-1 text-sm md:col-span-2">
                       <span className="font-medium text-content-secondary">
                         Title
                       </span>
@@ -1116,42 +1195,6 @@ function Calendar() {
 
                     <label className="space-y-1 text-sm">
                       <span className="font-medium text-content-secondary">
-                        Type
-                      </span>
-                      <select
-                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                        value={eventForm.type}
-                        onChange={(e) =>
-                          handleEventFormChange("type", e.target.value)
-                        }
-                      >
-                        <option value="meeting">Meeting</option>
-                        <option value="task">Task</option>
-                        <option value="milestone">Milestone</option>
-                        <option value="call">Call</option>
-                      </select>
-                    </label>
-
-                    <label className="space-y-1 text-sm">
-                      <span className="font-medium text-content-secondary">
-                        Status
-                      </span>
-                      <select
-                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                        value={eventForm.status}
-                        onChange={(e) =>
-                          handleEventFormChange("status", e.target.value)
-                        }
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="approved">Approved</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                      </select>
-                    </label>
-
-                    <label className="space-y-1 text-sm">
-                      <span className="font-medium text-content-secondary">
                         Client
                       </span>
                       <select
@@ -1161,7 +1204,7 @@ function Calendar() {
                           handleEventFormChange("clientId", e.target.value)
                         }
                       >
-                        <option value="">Unassigned</option>
+                        <option value="">Select Client</option>
                         {clients.map((client) => (
                           <option key={client.id} value={client.id}>
                             {client.companyName ||
@@ -1170,6 +1213,21 @@ function Calendar() {
                           </option>
                         ))}
                       </select>
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-content-secondary">
+                        Duration (minutes)
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={eventForm.duration}
+                        onChange={(e) =>
+                          handleEventFormChange("duration", e.target.value)
+                        }
+                      />
                     </label>
 
                     <label className="space-y-1 text-sm">
@@ -1198,52 +1256,6 @@ function Calendar() {
                         onChange={(e) =>
                           handleEventFormChange("time", e.target.value)
                         }
-                      />
-                    </label>
-
-                    <label className="space-y-1 text-sm">
-                      <span className="font-medium text-content-secondary">
-                        Duration (minutes)
-                      </span>
-                      <input
-                        type="number"
-                        min="0"
-                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                        value={eventForm.duration}
-                        onChange={(e) =>
-                          handleEventFormChange("duration", e.target.value)
-                        }
-                      />
-                    </label>
-
-                    <label className="space-y-1 text-sm">
-                      <span className="font-medium text-content-secondary">
-                        Priority
-                      </span>
-                      <select
-                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                        value={eventForm.priority}
-                        onChange={(e) =>
-                          handleEventFormChange("priority", e.target.value)
-                        }
-                      >
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
-                      </select>
-                    </label>
-
-                    <label className="space-y-1 text-sm md:col-span-2">
-                      <span className="font-medium text-content-secondary">
-                        Location
-                      </span>
-                      <input
-                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                        value={eventForm.location}
-                        onChange={(e) =>
-                          handleEventFormChange("location", e.target.value)
-                        }
-                        placeholder="Conference Room B"
                       />
                     </label>
 
@@ -1389,22 +1401,41 @@ function Calendar() {
                           : "—"}
                       </div>
 
-                      {/* Remove conditional status check and always show buttons */}
-                      <div className="flex gap-3 pt-3 border-t">
-                        <Button
-                          variant="primary"
-                          onClick={() => handleApproveRequest(request.id)}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <FaCheck /> Accept
-                        </Button>
-                        <Button
-                          variant="danger"
-                          onClick={() => handleRejectRequest(request.id)}
-                        >
-                          <FaTimes /> Reject
-                        </Button>
-                      </div>
+                      {/* Show buttons only for pending requests */}
+                      {request.status === "pending" ? (
+                        <div className="flex gap-3 pt-3 border-t">
+                          <Button
+                            variant="primary"
+                            onClick={() => handleApproveRequest(request.id)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <FaCheck /> Accept
+                          </Button>
+                          <Button
+                            variant="danger"
+                            onClick={() => openRejectModal(request)}
+                          >
+                            <FaTimes /> Reject
+                          </Button>
+                        </div>
+                      ) : request.status === "rejected" ? (
+                        <div className="pt-3 border-t">
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <p className="text-sm font-semibold text-red-800 mb-1">
+                              Rejected
+                            </p>
+                            <p className="text-sm text-red-700">
+                              <strong>Reason:</strong> {request.rejectionReason}
+                            </p>
+                            {request.rejectedAt && (
+                              <p className="text-xs text-red-600 mt-1">
+                                Rejected on:{" "}
+                                {request.rejectedAt.toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -1419,6 +1450,87 @@ function Calendar() {
                   >
                     Close
                   </Button>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {/* Rejection Reason Modal */}
+          {showRejectModal && rejectingRequest && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+              <div
+                className="absolute inset-0 bg-black/50"
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectingRequest(null);
+                  setRejectReason("");
+                }}
+              />
+              <Card className="z-10 w-full max-w-lg">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-xl font-semibold text-red-600">
+                    Reject Meeting Request
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowRejectModal(false);
+                      setRejectingRequest(null);
+                      setRejectReason("");
+                    }}
+                    className="rounded-lg p-2 text-content-secondary hover:bg-surface-subtle"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <p className="text-sm text-gray-700">
+                      <strong>Client:</strong> {rejectingRequest.clientName}
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      <strong>Company:</strong> {rejectingRequest.companyName}
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      <strong>Requested Date:</strong>{" "}
+                      {new Date(
+                        rejectingRequest.requestedDate + "T00:00"
+                      ).toLocaleDateString()}
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      <strong>Time:</strong> {rejectingRequest.requestedTime}
+                    </p>
+                  </div>
+
+                  <label className="space-y-2 text-sm">
+                    <span className="font-medium text-content-secondary">
+                      Reason for Rejection *
+                    </span>
+                    <textarea
+                      rows={4}
+                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                      placeholder="Please provide a reason for rejecting this meeting request..."
+                      required
+                    />
+                  </label>
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setShowRejectModal(false);
+                        setRejectingRequest(null);
+                        setRejectReason("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button variant="danger" onClick={handleRejectRequest}>
+                      <FaTimes /> Confirm Rejection
+                    </Button>
+                  </div>
                 </div>
               </Card>
             </div>

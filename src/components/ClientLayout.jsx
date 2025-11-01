@@ -1,26 +1,25 @@
-// src/components/MainLayout.jsx
-import React, { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+// src/components/ClientLayout.jsx
+import { useState, useEffect } from "react";
+import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebase";
+import { useAuthContext } from "../context/useAuthContext";
 import { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import {
   FaTachometerAlt,
-  FaSearch,
-  FaChartBar,
-  FaUserCheck,
   FaProjectDiagram,
   FaTasks,
-  FaListAlt,
-  FaSignOutAlt,
-  FaChevronLeft,
-  FaShieldAlt,
   FaCalendarAlt,
+  FaChartBar,
+  FaSignOutAlt,
+  FaUserCircle,
   FaBars,
   FaTimes,
+  FaChevronLeft,
 } from "react-icons/fa";
 
-// NEW: A reusable link component to keep our code clean
+// Reusable sidebar link component matching admin panel
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   const baseClasses =
     "group flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-sm font-medium transition-colors";
@@ -32,8 +31,7 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   return (
     <NavLink
       to={to}
-      end={to === "/"}
-      // The 'title' attribute provides a native browser tooltip
+      end={to === "/client"}
       title={isCollapsed ? text : ""}
       className={({ isActive }) =>
         `${baseClasses} ${isActive ? activeClasses : inactiveClasses}`
@@ -48,7 +46,8 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   );
 };
 
-function MainLayout() {
+export default function ClientLayout() {
+  const { userData } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -57,62 +56,42 @@ function MainLayout() {
   // Dynamic page title based on route
   useEffect(() => {
     const pathToTitle = {
-      "/": "Dashboard - Admin Panel",
-      "/manage-resources": "Manage Resources - Admin Panel",
-      "/manage-clients": "Manage Clients - Admin Panel",
-      "/manage-projects": "Manage Projects - Admin Panel",
-      "/mom": "Meeting Minutes - Admin Panel",
-      "/task-management": "Task Management - Admin Panel",
-      "/reports": "Reports - Admin Panel",
-      "/calender": "Calendar - Admin Panel",
+      "/client": "Dashboard - Client Portal",
+      "/client/projects": "My Projects - Client Portal",
+      "/client/tasks": "My Tasks - Client Portal",
+      "/client/calendar": "Calendar - Client Portal",
+      "/client/reports": "Reports - Client Portal",
     };
 
-    const title = pathToTitle[location.pathname] || "Admin Panel";
+    const title = pathToTitle[location.pathname] || "Client Portal";
     document.title = title;
   }, [location.pathname]);
 
   const navigationItems = [
     {
-      to: "/",
+      to: "/client",
       text: "Dashboard",
       icon: <FaTachometerAlt className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/manage-resources",
-      text: "Manage Resources",
-      icon: <FaSearch className="h-4 w-4" aria-hidden="true" />,
-    },
-    {
-      to: "/manage-clients",
-      text: "Manage Clients",
-      icon: <FaUserCheck className="h-4 w-4" aria-hidden="true" />,
-    },
-    {
-      to: "/manage-projects",
-      text: "Manage Projects",
+      to: "/client/projects",
+      text: "Projects",
       icon: <FaProjectDiagram className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/task-management",
-      text: "Task Management",
+      to: "/client/tasks",
+      text: "Tasks",
       icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
     },
-
     {
-      to: "/reports",
+      to: "/client/calendar",
+      text: "Calendar",
+      icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/client/reports",
       text: "Reports",
       icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
-    },
-
-    {
-      to: "/mom",
-      text: "Minutes of Meeting",
-      icon: <FaListAlt className="h-4 w-4" aria-hidden="true" />,
-    },
-    {
-      to: "/calender",
-      text: "Calender",
-      icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
     },
   ];
 
@@ -123,9 +102,11 @@ function MainLayout() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      toast.success("Logged out successfully");
       navigate("/login");
     } catch (error) {
-      console.error("Failed to log out", error);
+      console.error("Logout error:", error);
+      toast.error("Failed to logout");
     }
   };
 
@@ -146,6 +127,8 @@ function MainLayout() {
         Skip to main content
       </a>
       <Toaster position="top-right" />
+
+      {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface p-6 shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${
           isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
@@ -155,15 +138,15 @@ function MainLayout() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft">
-              <FaShieldAlt className="h-5 w-5" aria-hidden="true" />
+              <FaUserCircle className="h-5 w-5" aria-hidden="true" />
             </span>
             {!isCollapsed && (
               <div>
                 <p className="text-sm font-medium text-content-tertiary">
-                  Buisness Cunsaltancy
+                  {userData?.name || "Client User"}
                 </p>
                 <h2 className="text-lg font-semibold text-content-primary">
-                  Admin Panel
+                  Client Portal
                 </h2>
               </div>
             )}
@@ -254,5 +237,3 @@ function MainLayout() {
     </div>
   );
 }
-
-export default MainLayout;

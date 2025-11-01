@@ -1,4 +1,3 @@
-// src/components/MainLayout.jsx
 import React, { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
@@ -6,21 +5,19 @@ import { auth } from "../firebase";
 import { Toaster } from "react-hot-toast";
 import {
   FaTachometerAlt,
-  FaSearch,
-  FaChartBar,
-  FaUserCheck,
-  FaProjectDiagram,
   FaTasks,
-  FaListAlt,
+  FaProjectDiagram,
+  FaCalendarAlt,
+  FaChartBar,
   FaSignOutAlt,
   FaChevronLeft,
-  FaShieldAlt,
-  FaCalendarAlt,
+  FaUserTie,
   FaBars,
   FaTimes,
 } from "react-icons/fa";
+import { useAuthContext } from "../context/useAuthContext";
 
-// NEW: A reusable link component to keep our code clean
+// Reusable sidebar link component matching admin panel exactly
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   const baseClasses =
     "group flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-sm font-medium transition-colors";
@@ -32,8 +29,7 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   return (
     <NavLink
       to={to}
-      end={to === "/"}
-      // The 'title' attribute provides a native browser tooltip
+      end={to === "/employee"}
       title={isCollapsed ? text : ""}
       className={({ isActive }) =>
         `${baseClasses} ${isActive ? activeClasses : inactiveClasses}`
@@ -48,71 +44,52 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   );
 };
 
-function MainLayout() {
+function EmployeeLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { userData } = useAuthContext();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   // Dynamic page title based on route
   useEffect(() => {
     const pathToTitle = {
-      "/": "Dashboard - Admin Panel",
-      "/manage-resources": "Manage Resources - Admin Panel",
-      "/manage-clients": "Manage Clients - Admin Panel",
-      "/manage-projects": "Manage Projects - Admin Panel",
-      "/mom": "Meeting Minutes - Admin Panel",
-      "/task-management": "Task Management - Admin Panel",
-      "/reports": "Reports - Admin Panel",
-      "/calender": "Calendar - Admin Panel",
+      "/employee": "Dashboard - Employee Portal",
+      "/employee/tasks": "My Tasks - Employee Portal",
+      "/employee/projects": "My Projects - Employee Portal",
+      "/employee/calendar": "Calendar - Employee Portal",
+      "/employee/reports": "Reports - Employee Portal",
     };
 
-    const title = pathToTitle[location.pathname] || "Admin Panel";
+    const title = pathToTitle[location.pathname] || "Employee Portal";
     document.title = title;
   }, [location.pathname]);
 
   const navigationItems = [
     {
-      to: "/",
+      to: "/employee",
       text: "Dashboard",
       icon: <FaTachometerAlt className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/manage-resources",
-      text: "Manage Resources",
-      icon: <FaSearch className="h-4 w-4" aria-hidden="true" />,
+      to: "/employee/tasks",
+      text: "My Tasks",
+      icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/manage-clients",
-      text: "Manage Clients",
-      icon: <FaUserCheck className="h-4 w-4" aria-hidden="true" />,
-    },
-    {
-      to: "/manage-projects",
-      text: "Manage Projects",
+      to: "/employee/projects",
+      text: "Projects",
       icon: <FaProjectDiagram className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/task-management",
-      text: "Task Management",
-      icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
+      to: "/employee/calendar",
+      text: "Calendar",
+      icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
     },
-
     {
-      to: "/reports",
+      to: "/employee/reports",
       text: "Reports",
       icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
-    },
-
-    {
-      to: "/mom",
-      text: "Minutes of Meeting",
-      icon: <FaListAlt className="h-4 w-4" aria-hidden="true" />,
-    },
-    {
-      to: "/calender",
-      text: "Calender",
-      icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
     },
   ];
 
@@ -155,15 +132,15 @@ function MainLayout() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft">
-              <FaShieldAlt className="h-5 w-5" aria-hidden="true" />
+              <FaUserTie className="h-5 w-5" aria-hidden="true" />
             </span>
             {!isCollapsed && (
               <div>
                 <p className="text-sm font-medium text-content-tertiary">
-                  Buisness Cunsaltancy
+                  {userData?.name || "Employee"}
                 </p>
                 <h2 className="text-lg font-semibold text-content-primary">
-                  Admin Panel
+                  Employee Portal
                 </h2>
               </div>
             )}
@@ -255,4 +232,4 @@ function MainLayout() {
   );
 }
 
-export default MainLayout;
+export default EmployeeLayout;

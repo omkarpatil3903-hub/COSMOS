@@ -693,7 +693,7 @@ function DashboardPage() {
           <Card className="p-6">
             <BarChart
               data={monthlyStatus}
-              title="Monthly Project Status (2024)"
+              title="Monthly Project Status (2025)"
               dataKey1="completed"
               dataKey2="inProgress"
               dataKey3="pending"

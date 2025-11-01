@@ -16,13 +16,31 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+        // First check users collection
         const userDocRef = doc(db, "users", currentUser.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
-          setUserData(userDoc.data());
+          const data = userDoc.data();
+          // If user is in 'users' collection but doesn't have a role, default to 'admin'
+          setUserData({
+            ...data,
+            role: data.role || "admin",
+          });
         } else {
-          // Handle case where user exists in Auth but not in Firestore
-          setUserData(null);
+          // If not in users, check clients collection
+          const clientDocRef = doc(db, "clients", currentUser.uid);
+          const clientDoc = await getDoc(clientDocRef);
+          if (clientDoc.exists()) {
+            setUserData(clientDoc.data());
+          } else {
+            // User exists in Auth but not in Firestore - treat as admin (for manually created admin accounts)
+            setUserData({
+              email: currentUser.email,
+              name: currentUser.displayName || currentUser.email,
+              role: "admin",
+              uid: currentUser.uid,
+            });
+          }
         }
       } else {
         setUserData(null);

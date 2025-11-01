@@ -11,6 +11,8 @@ import {
   FaCheckCircle,
   FaClock,
   FaListAlt,
+  FaList,
+  FaTh,
 } from "react-icons/fa";
 import { db } from "../firebase";
 import {
@@ -50,10 +52,7 @@ function TasksManagement() {
 
   const [selectedIds, setSelectedIds] = useState(new Set());
 
-  const wipLimits = useMemo(
-    () => ({ "To-Do": 8, "In Progress": 5, "In Review": 4 }),
-    []
-  );
+  const wipLimits = useMemo(() => ({}), []);
 
   useEffect(() => {
     const unsubTasks = onSnapshot(
@@ -85,14 +84,16 @@ function TasksManagement() {
     const unsubProjects = onSnapshot(
       query(collection(db, "projects"), orderBy("projectName", "asc")),
       (snap) => {
-        const list = snap.docs.map((d) => {
-          const data = d.data() || {};
-          return {
-            id: d.id,
-            ...data,
-            name: data.projectName || data.name || "",
-          };
-        });
+        const list = snap.docs
+          .map((d) => {
+            const data = d.data() || {};
+            return {
+              id: d.id,
+              ...data,
+              name: data.projectName || data.name || "",
+            };
+          })
+          .filter((p) => !p.deleted && !p.isDeleted); // Filter out soft-deleted projects
         setProjects(list);
       }
     );
@@ -532,10 +533,9 @@ function TasksManagement() {
 
   return (
     <div>
-      <PageHeader
-        title="Task Management"
-        description="Create, assign, track, and analyze tasks across all projects."
-      />
+      <PageHeader title="Task Management">
+        Create, assign, track, and analyze tasks across all projects.
+      </PageHeader>
 
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -752,28 +752,28 @@ function TasksManagement() {
                     Clients
                   </button>
                 </div>
-                <div className="mr-2 flex items-center rounded-lg border border-subtle p-0.5">
+                <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 mr-2">
                   <button
-                    className={`rounded-md px-3 py-1 text-sm ${
-                      view === "list"
-                        ? "bg-indigo-600 text-white"
-                        : "text-content-primary"
-                    }`}
                     onClick={() => setView("list")}
-                    title="List view"
+                    className={`p-2 rounded transition-colors ${
+                      view === "list"
+                        ? "bg-white text-indigo-600 shadow"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="List View"
                   >
-                    List
+                    <FaList className="w-4 h-4" />
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1 text-sm ${
-                      view === "board"
-                        ? "bg-indigo-600 text-white"
-                        : "text-content-primary"
-                    }`}
                     onClick={() => setView("board")}
-                    title="Board view"
+                    className={`p-2 rounded transition-colors ${
+                      view === "board"
+                        ? "bg-white text-indigo-600 shadow"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="Kanban View"
                   >
-                    Board
+                    <FaTh className="w-4 h-4" />
                   </button>
                 </div>
                 <Button variant="secondary" onClick={handleArchive}>
@@ -807,13 +807,6 @@ function TasksManagement() {
                   onEdit={handleEdit}
                   getProject={projectById}
                   getAssignee={assigneeById}
-                  wipLimits={wipLimits}
-                  enforceWip
-                  onBlocked={(status, limit) =>
-                    toast.error(
-                      `WIP limit reached in ${status} (${limit}). Complete or move tasks out before adding more.`
-                    )
-                  }
                   showReassignOnCard
                   users={users}
                   onReassign={(taskId, value) => reassignTask(taskId, value)}

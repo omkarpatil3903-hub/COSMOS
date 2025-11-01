@@ -1,8 +1,9 @@
 // src/pages/LoginPage.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase";
+import { auth, db } from "../firebase";
+import { getDoc, doc } from "firebase/firestore";
 import toast from "react-hot-toast";
 import {
   FaShieldAlt,
@@ -22,6 +23,11 @@ function LoginPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const navigate = useNavigate();
+
+  // Set page title
+  useEffect(() => {
+    document.title = "Login - Triology Consultancy";
+  }, []);
 
   const friendlyAuthError = (code) => {
     switch (code) {
@@ -50,14 +56,48 @@ function LoginPage() {
     try {
       const emailTrimmed = email.trim();
       const passwordTrimmed = password;
-      await signInWithEmailAndPassword(auth, emailTrimmed, passwordTrimmed);
+      const cred = await signInWithEmailAndPassword(
+        auth,
+        emailTrimmed,
+        passwordTrimmed
+      );
 
       toast.success("Logged in successfully");
 
-      // Navigate after a short delay to allow the user to see the toast
+      // Try to determine role from token claims first
+      let role = null;
+      try {
+        const tokenRes = await cred.user.getIdTokenResult();
+        role = tokenRes?.claims?.role || null;
+      } catch {
+        // ignore
+      }
+
+      // Fallback to Firestore profile (users or clients)
+      if (!role) {
+        try {
+          const uSnap = await getDoc(doc(db, "users", cred.user.uid));
+          if (uSnap.exists() && uSnap.data()?.role) {
+            role = uSnap.data().role;
+          } else {
+            const cSnap = await getDoc(doc(db, "clients", cred.user.uid));
+            if (cSnap.exists() && cSnap.data()?.role) role = cSnap.data().role;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // Redirect based on role
       setTimeout(() => {
-        navigate("/");
-      }, 1000);
+        if (role === "client") {
+          navigate("/client");
+        } else if (role === "resource") {
+          navigate("/employee");
+        } else {
+          navigate("/");
+        }
+      }, 700);
     } catch (err) {
       const message = friendlyAuthError(err?.code);
       setErrorMsg(message);

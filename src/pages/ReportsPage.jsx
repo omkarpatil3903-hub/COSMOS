@@ -829,10 +829,28 @@ export default function ReportsPage() {
                           {task.priority}
                         </td>
                         <td className="py-2 px-3 text-content-tertiary">
-                          {task.createdDate}
+                          {task.createdDate
+                            ? new Date(task.createdDate).toLocaleDateString(
+                                "en-US",
+                                {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                }
+                              )
+                            : "-"}
                         </td>
                         <td className="py-2 px-3 text-content-tertiary">
-                          {task.completedDate || "-"}
+                          {task.completedDate
+                            ? new Date(task.completedDate).toLocaleDateString(
+                                "en-US",
+                                {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                }
+                              )
+                            : "-"}
                         </td>
                       </tr>
                     );
