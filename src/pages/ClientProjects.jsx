@@ -17,7 +17,6 @@ export default function ClientProjects() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
 
   useEffect(() => {
     if (!uid) return;
@@ -27,6 +26,7 @@ export default function ClientProjects() {
       setProjects(
         snap.docs.map((d) => {
           const data = d.data();
+          console.log("client project data ", data);
           return {
             id: d.id,
             ...data,
@@ -45,22 +45,14 @@ export default function ClientProjects() {
     return () => unsub();
   }, [uid]);
 
-  // Filter projects
+  // Filter projects by search term (client requested)
   const filteredProjects = projects.filter((project) => {
-    const matchesSearch =
-      !searchTerm ||
-      (project.name || project.projectName || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      (project.description || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
-
-    const matchesStatus =
-      filterStatus === "all" ||
-      (project.status || "").toLowerCase() === filterStatus.toLowerCase();
-
-    return matchesSearch && matchesStatus;
+    if (!searchTerm) return true;
+    const s = searchTerm.trim().toLowerCase();
+    return (
+      (project.name || project.projectName || "").toLowerCase().includes(s) ||
+      (project.description || "").toLowerCase().includes(s)
+    );
   });
 
   if (loading) {
@@ -84,7 +76,7 @@ export default function ClientProjects() {
         </p>
       </div>
 
-      {/* Filters */}
+      {/* Search (client requested) */}
       <Card>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Search */}
@@ -98,19 +90,6 @@ export default function ClientProjects() {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
-
-          {/* Status Filter */}
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="in progress">In Progress</option>
-            <option value="completed">Completed</option>
-            <option value="on hold">On Hold</option>
-          </select>
         </div>
       </Card>
 
@@ -123,9 +102,7 @@ export default function ClientProjects() {
               No projects found
             </h3>
             <p className="text-gray-600">
-              {searchTerm || filterStatus !== "all"
-                ? "Try adjusting your filters"
-                : "No projects have been assigned to you yet"}
+              No projects have been assigned to you yet
             </p>
           </div>
         </Card>

@@ -24,6 +24,12 @@ import {
   FaTimes,
   FaPlus,
 } from "react-icons/fa";
+import {
+  TYPE_CLASSES,
+  STATUS_BORDER_CLASSES,
+  PRIORITY_CLASSES,
+  getPriorityBadge,
+} from "../utils/colorMaps";
 
 const tsToDate = (value) => {
   if (!value) return null;
@@ -203,29 +209,34 @@ export default function ClientCalendar() {
 
           <div className="mt-1 space-y-0.5">
             {dayEvents.slice(0, 2).map((event) => {
-              const colors = {
-                meeting: "bg-blue-100 text-blue-700",
-                task: "bg-green-100 text-green-700",
-                milestone: "bg-purple-100 text-purple-700",
-                call: "bg-yellow-100 text-yellow-700",
-              };
-
-              const statusColors = {
-                approved: "border-l-4 border-green-500",
-                pending: "border-l-4 border-yellow-500",
-                cancelled: "border-l-4 border-red-500",
-                completed: "border-l-4 border-blue-500",
-              };
+              const typeKey = String(event.type || "").toLowerCase();
+              const priorityKey = String(
+                event.priority || "medium"
+              ).toLowerCase();
+              const typeBadge =
+                TYPE_CLASSES[typeKey]?.badge || "bg-gray-100 text-gray-700";
+              const priorityDot =
+                PRIORITY_CLASSES[priorityKey]?.dot || "bg-gray-400";
 
               return (
                 <div
                   key={event.id}
-                  className={`text-xs p-1 rounded ${colors[event.type]} ${
-                    statusColors[event.status]
-                  } truncate`}
+                  className={`text-xs p-1 rounded ${typeBadge} truncate relative`}
                   title={event.title}
                 >
-                  {event.time} - {event.title}
+                  {/* Priority strip on the left -- hidden for meetings */}
+                  {typeKey !== "meeting" && (
+                    <span
+                      className={`absolute left-0 top-1 bottom-1 w-1 rounded-l ${priorityDot}`}
+                      aria-hidden
+                    />
+                  )}
+
+                  <div className="flex items-center gap-2 pl-3">
+                    <span className="truncate">
+                      {event.time} - {event.title}
+                    </span>
+                  </div>
                 </div>
               );
             })}
@@ -417,8 +428,6 @@ export default function ClientCalendar() {
                   <option value="all">All Types</option>
                   <option value="meeting">Meetings</option>
                   <option value="task">Tasks</option>
-                  <option value="milestone">Milestones</option>
-                  <option value="call">Calls</option>
                 </select>
 
                 <select
@@ -480,7 +489,6 @@ export default function ClientCalendar() {
                           </p>
                           <div className="flex items-center gap-4 text-xs text-gray-500">
                             <span>Duration: {request.duration} min</span>
-                            <span>Priority: {request.priority}</span>
                           </div>
                         </div>
                       </div>
@@ -636,6 +644,22 @@ export default function ClientCalendar() {
                                 ? `${event.duration} minutes`
                                 : "—"}
                             </div>
+                            {event.priority && event.type !== "meeting" && (
+                              <div>
+                                Priority:{" "}
+                                <span
+                                  className={`inline-block ml-1 px-2 py-0.5 rounded ${getPriorityBadge(
+                                    event.priority
+                                  )}`}
+                                >
+                                  {String(event.priority)
+                                    .trim()
+                                    .charAt(0)
+                                    .toUpperCase() +
+                                    String(event.priority).trim().slice(1)}
+                                </span>
+                              </div>
+                            )}
                             {event.location && (
                               <div>Location: {event.location}</div>
                             )}

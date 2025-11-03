@@ -1,3 +1,45 @@
+// Helper function for inline markdown rendering (bold/italic)
+function renderMarkdownInline(text) {
+  // Replace **bold**
+  let parts = [];
+  let regexBold = /\*\*(.*?)\*\*/g;
+  let lastIndex = 0;
+  let match;
+  let key = 0;
+  while ((match = regexBold.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+    parts.push(
+      <strong key={key++} className="font-semibold">
+        {match[1]}
+      </strong>
+    );
+    lastIndex = regexBold.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    text = text.substring(lastIndex);
+    // Now handle *italic*
+    let regexItalic = /\*(.*?)\*/g;
+    let lastItalic = 0;
+    let matchItalic;
+    while ((matchItalic = regexItalic.exec(text)) !== null) {
+      if (matchItalic.index > lastItalic) {
+        parts.push(text.substring(lastItalic, matchItalic.index));
+      }
+      parts.push(
+        <em key={key++} className="italic">
+          {matchItalic[1]}
+        </em>
+      );
+      lastItalic = regexItalic.lastIndex;
+    }
+    if (lastItalic < text.length) {
+      parts.push(text.substring(lastItalic));
+    }
+  }
+  return parts.length > 0 ? parts : text;
+}
 import React, { useState, useRef, useEffect } from "react";
 import {
   FaPlus,
@@ -33,7 +75,10 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 
 export default function Mom() {
-  // Load projects from Firestore
+  // Rate limit state
+  const [lastGenerateTime, setLastGenerateTime] = useState(0);
+  const [lastSaveTime, setLastSaveTime] = useState(0);
+  const [lastCommentTime, setLastCommentTime] = useState(0);
   const [projects, setProjects] = useState([]);
 
   // Basic fields
@@ -140,6 +185,13 @@ export default function Mom() {
   const removePoint = (i) => setPoints((p) => p.filter((_, idx) => idx !== i));
 
   const generateMom = async () => {
+    // Rate limit: 5 seconds between generates
+    const now = Date.now();
+    if (now - lastGenerateTime < 5000) {
+      return toast.error("Please wait before generating again.");
+    }
+    setLastGenerateTime(now);
+
     if (!title.trim()) return toast.error("Please provide a meeting title");
     if (points.length === 0) return toast.error("Add at least one point");
 
@@ -319,6 +371,13 @@ Now generate the **final Minutes of Meeting (MoM)** below:
   };
 
   const saveMomToFirestore = async () => {
+    // Rate limit: 5 seconds between saves
+    const now = Date.now();
+    if (now - lastSaveTime < 5000) {
+      return toast.error("Please wait before saving again.");
+    }
+    setLastSaveTime(now);
+
     if (!generated) return toast.error("Generate MoM first");
     if (!projectId) return toast.error("Select a project first");
 
@@ -358,6 +417,12 @@ Now generate the **final Minutes of Meeting (MoM)** below:
   };
 
   const addComment = () => {
+    // Rate limit: 5 seconds between comments
+    const now = Date.now();
+    if (now - lastCommentTime < 5000) {
+      return toast.error("Please wait before adding another comment.");
+    }
+    setLastCommentTime(now);
     if (!newComment.trim()) return;
     const comment = {
       id: Date.now().toString(),
@@ -870,7 +935,7 @@ Now generate the **final Minutes of Meeting (MoM)** below:
                   ) {
                     return (
                       <li key={idx} className="ml-6 text-gray-700 mb-1">
-                        {line.trim().substring(2)}
+                        {renderMarkdownInline(line.trim().substring(2))}
                       </li>
                     );
                   }
@@ -882,29 +947,10 @@ Now generate the **final Minutes of Meeting (MoM)** below:
                         key={idx}
                         className="ml-6 text-gray-700 mb-1 list-decimal"
                       >
-                        {line.trim().replace(/^\d+\.\s/, "")}
-                      </li>
-                    );
-                  }
-
-                  // Render bold text
-                  if (line.includes("**")) {
-                    const parts = line.split("**");
-                    return (
-                      <p
-                        key={idx}
-                        className="text-gray-700 mb-2 leading-relaxed"
-                      >
-                        {parts.map((part, i) =>
-                          i % 2 === 0 ? (
-                            part
-                          ) : (
-                            <strong key={i} className="font-semibold">
-                              {part}
-                            </strong>
-                          )
+                        {renderMarkdownInline(
+                          line.trim().replace(/^\d+\.\s/, "")
                         )}
-                      </p>
+                      </li>
                     );
                   }
 
@@ -919,7 +965,6 @@ Now generate the **final Minutes of Meeting (MoM)** below:
                     const isHeader = line.includes("---");
                     if (isHeader)
                       return <hr key={idx} className="my-2 border-gray-200" />;
-
                     return (
                       <div
                         key={idx}
@@ -930,7 +975,7 @@ Now generate the **final Minutes of Meeting (MoM)** below:
                             key={i}
                             className="flex-1 px-2 text-sm text-gray-700"
                           >
-                            {cell.trim()}
+                            {renderMarkdownInline(cell.trim())}
                           </div>
                         ))}
                       </div>
@@ -944,7 +989,7 @@ Now generate the **final Minutes of Meeting (MoM)** below:
                         key={idx}
                         className="text-gray-700 mb-2 leading-relaxed"
                       >
-                        {line}
+                        {renderMarkdownInline(line)}
                       </p>
                     );
                   }
@@ -953,6 +998,8 @@ Now generate the **final Minutes of Meeting (MoM)** below:
                   return <div key={idx} className="h-2" />;
                 })}
               </div>
+              {/* Inline Markdown renderer for bold/italic */}
+              {/** Helper function below main component **/}
 
               {/* Document Footer */}
               <div className="mt-8 pt-4 border-t border-gray-200 text-xs text-gray-500">

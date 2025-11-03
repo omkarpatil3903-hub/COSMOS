@@ -143,10 +143,31 @@ function ManageProjects() {
   // Compute progress based on tasks: progress = done/total * 100, rounded
   const projectsWithDerived = useMemo(() => {
     if (!projects.length) return [];
+    const normalizeStatus = (s) => {
+      const x = String(s || "")
+        .trim()
+        .toLowerCase();
+      if (x === "done" || x === "completed" || x === "complete") return "Done";
+      if (x === "in progress" || x === "in-progress" || x === "inprogress")
+        return "In Progress";
+      if (x === "in review" || x === "in-review" || x === "inreview")
+        return "In Review";
+      if (
+        x === "to-do" ||
+        x === "to do" ||
+        x === "todo" ||
+        x === "" ||
+        x === "open"
+      )
+        return "To-Do";
+      return s || "To-Do";
+    };
     return projects.map((p) => {
       const projTasks = tasks.filter((t) => t.projectId === p.id);
       const total = projTasks.length;
-      const done = projTasks.filter((t) => t.status === "Done").length;
+      const done = projTasks.filter(
+        (t) => normalizeStatus(t.status) === "Done"
+      ).length;
       const derived = total > 0 ? Math.round((done / total) * 100) : 0;
       return { ...p, progress: derived };
     });

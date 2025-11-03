@@ -88,11 +88,11 @@ export default function ClientLayout() {
       text: "Calendar",
       icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
     },
-    {
-      to: "/client/reports",
-      text: "Reports",
-      icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
-    },
+    // {
+    //   to: "/client/reports",
+    //   text: "Reports",
+    //   icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
+    // },
   ];
 
   useEffect(() => {

@@ -8,6 +8,7 @@ import {
   FaCalendarCheck,
 } from "react-icons/fa";
 import { db } from "../firebase";
+import { TYPE_HEX, PRIORITY_HEX, getTypeHex } from "../utils/colorMaps";
 import { collection, onSnapshot } from "firebase/firestore";
 
 // Reusable UI Components
@@ -21,6 +22,7 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [events, setEvents] = useState([]);
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
 
@@ -50,6 +52,32 @@ function DashboardPage() {
       setClients(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
     });
 
+    // Subscribe to global events so dashboard calendar can render real events
+    const unsubEvents = onSnapshot(collection(db, "events"), (snap) => {
+      setEvents(
+        snap.docs.map((d) => {
+          const data = d.data() || {};
+          return {
+            id: d.id,
+            title: data.title || "",
+            type: String(data.type || "meeting").toLowerCase(),
+            status: String(data.status || "pending").toLowerCase(),
+            date: data.date || "",
+            time: data.time || "",
+            duration: data.duration || 60,
+            clientId: data.clientId || "",
+            clientName: data.clientName || "",
+            description: data.description || "",
+            priority: data.priority || "medium",
+            location: data.location || "",
+            attendees: data.attendees || [],
+            attendeeIds: data.attendeeIds || [],
+            color: data.color || getTypeHex(data.type),
+          };
+        })
+      );
+    });
+
     // Mark loading false after first data frames arrive
     const timer = setTimeout(() => setLoading(false), 300);
     return () => {
@@ -57,6 +85,7 @@ function DashboardPage() {
       unsubTasks();
       unsubUsers();
       unsubClients();
+      if (unsubEvents) unsubEvents();
       clearTimeout(timer);
     };
   }, []);
@@ -619,21 +648,33 @@ function DashboardPage() {
         {/* Legend */}
         <div className="mt-3 flex flex-wrap gap-3 text-xs">
           <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-red-500"></div>
-            <span className="text-content-secondary">Deadlines</span>
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: PRIORITY_HEX.high }}
+            ></div>
+            <span className="text-content-secondary">High Priority</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: TYPE_HEX.meeting }}
+            ></div>
             <span className="text-content-secondary">Meetings</span>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+          {/* <div className="flex items-center gap-1">
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: TYPE_HEX.milestone }}
+            ></div>
             <span className="text-content-secondary">Milestones</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+          </div> */}
+          {/* <div className="flex items-center gap-1">
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: TYPE_HEX.task }}
+            ></div>
             <span className="text-content-secondary">Tasks</span>
-          </div>
+          </div> */}
         </div>
       </div>
     );
@@ -707,7 +748,7 @@ function DashboardPage() {
           </Card>
 
           <Card className="p-6">
-            <Calendar data={[]} title="Project Calendar & Events" />
+            <Calendar data={events} title="Project Calendar & Events" />
           </Card>
         </div>
 
@@ -875,7 +916,7 @@ function DashboardPage() {
                                 );
                                 const total = projTasks.length;
                                 const done = projTasks.filter(
-                                  (t) => t.status === "Done"
+                                  (t) => normalizeStatus(t.status) === "Done"
                                 ).length;
                                 return total > 0 ? (done / total) * 100 : 0;
                               })

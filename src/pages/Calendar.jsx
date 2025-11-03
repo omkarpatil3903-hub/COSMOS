@@ -16,6 +16,12 @@ import {
 } from "react-icons/fa";
 import { db } from "../firebase";
 import {
+  TYPE_CLASSES,
+  STATUS_BORDER_CLASSES,
+  PRIORITY_CLASSES,
+  getPriorityBadge,
+} from "../utils/colorMaps";
+import {
   collection,
   onSnapshot,
   query,
@@ -69,6 +75,7 @@ function Calendar() {
   const [events, setEvents] = useState([]);
   const [meetingRequests, setMeetingRequests] = useState([]);
   const [clients, setClients] = useState([]);
+  const [resources, setResources] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -83,6 +90,7 @@ function Calendar() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectingRequest, setRejectingRequest] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [selectedAttendees, setSelectedAttendees] = useState([]);
 
   const clientsById = useMemo(() => {
     const map = new Map();
@@ -94,7 +102,11 @@ function Calendar() {
 
   // Firestore subscriptions
   useEffect(() => {
-    let unsubEvents, unsubMeetingRequests, unsubClients, unsubTasks;
+    let unsubEvents,
+      unsubMeetingRequests,
+      unsubClients,
+      unsubTasks,
+      unsubResources;
 
     const initSubscriptions = async () => {
       unsubEvents = onSnapshot(
@@ -122,6 +134,7 @@ function Calendar() {
               priority,
               location: data.location || "",
               attendees: data.attendees || [],
+              attendeeIds: data.attendeeIds || [],
               createdBy: data.createdBy || "",
               objectives: data.objectives || [],
               cancelReason: data.cancelReason || "",
@@ -200,6 +213,20 @@ function Calendar() {
           setLoading(false);
         }
       );
+
+      // Load resources (employees)
+      unsubResources = onSnapshot(
+        query(collection(db, "users"), orderBy("name", "asc")),
+        (snap) => {
+          const loadedResources = snap.docs.map((d) => ({
+            id: d.id,
+            name: d.data().name || d.data().email || "Unknown",
+            email: d.data().email || "",
+            role: d.data().role || "resource",
+          }));
+          setResources(loadedResources);
+        }
+      );
     };
 
     initSubscriptions();
@@ -209,6 +236,7 @@ function Calendar() {
       if (unsubMeetingRequests) unsubMeetingRequests();
       if (unsubClients) unsubClients();
       if (unsubTasks) unsubTasks();
+      if (unsubResources) unsubResources();
     };
   }, []);
 
@@ -318,10 +346,13 @@ function Calendar() {
         location: event.location || "",
         attendeesText: (event.attendees || []).join(", "),
       });
+      // Set selected attendees from event.attendeeIds
+      setSelectedAttendees(event.attendeeIds || []);
     } else {
       const base = selectedDate || new Date();
       setEditingEvent(null);
       setEventForm(buildDefaultEventForm(base));
+      setSelectedAttendees([]);
     }
     setShowEventModal(true);
   };
@@ -331,6 +362,7 @@ function Calendar() {
     setShowEventModal(false);
     setEditingEvent(null);
     setEventForm(buildDefaultEventForm(base));
+    setSelectedAttendees([]);
   };
 
   const handleEventFormChange = (field, value) => {
@@ -348,10 +380,14 @@ function Calendar() {
       return;
     }
 
-    const attendees = eventForm.attendeesText
-      .split(",")
-      .map((item) => item.trim())
+    // Get attendee names from IDs
+    const attendeeNames = selectedAttendees
+      .map((id) => {
+        const resource = resources.find((r) => r.id === id);
+        return resource ? resource.name : "";
+      })
       .filter(Boolean);
+
     const duration = Number(eventForm.duration) || 0;
     const clientRecord = eventForm.clientId
       ? clientsById.get(eventForm.clientId)
@@ -371,7 +407,8 @@ function Calendar() {
       description: eventForm.description,
       priority: eventForm.priority,
       location: eventForm.location,
-      attendees,
+      attendees: attendeeNames, // Store names for display
+      attendeeIds: selectedAttendees, // Store IDs for filtering
       updatedAt: serverTimestamp(),
     };
 
@@ -455,33 +492,6 @@ function Calendar() {
       toast.success("Event cancelled successfully!");
     } catch {
       toast.error("Failed to cancel event");
-    }
-  };
-
-  const handleCompleteTask = async (eventId) => {
-    // Check if it's a task event
-    if (eventId.startsWith("task_")) {
-      const taskId = eventId.replace("task_", "");
-      try {
-        await updateDoc(doc(db, "tasks", taskId), {
-          status: "Done",
-          completedAt: serverTimestamp(),
-        });
-        toast.success("Task marked as completed!");
-      } catch {
-        toast.error("Failed to complete task");
-      }
-    } else {
-      // Regular event
-      try {
-        await updateDoc(doc(db, "events", eventId), {
-          status: "completed",
-          completedAt: serverTimestamp(),
-        });
-        toast.success("Event marked as completed!");
-      } catch {
-        toast.error("Failed to complete event");
-      }
     }
   };
 
@@ -688,29 +698,37 @@ function Calendar() {
 
           <div className="mt-1 space-y-0.5">
             {dayEvents.slice(0, 2).map((event) => {
-              const colors = {
-                meeting: "bg-blue-100 text-blue-700",
-                task: "bg-green-100 text-green-700",
-                milestone: "bg-purple-100 text-purple-700",
-                call: "bg-yellow-100 text-yellow-700",
-              };
-
-              const statusColors = {
-                approved: "border-l-4 border-green-500",
-                pending: "border-l-4 border-yellow-500",
-                cancelled: "border-l-4 border-red-500",
-                completed: "border-l-4 border-blue-500",
-              };
+              const typeKey = String(event.type || "").toLowerCase();
+              // statusKey was previously used to render a left border indicating status.
+              // We removed the grid left-border in favor of the priority strip, so
+              // statusKey is no longer needed here.
+              const priorityKey = String(event.priority || "").toLowerCase();
+              const typeBadge =
+                TYPE_CLASSES[typeKey]?.badge || "bg-gray-100 text-gray-700";
+              // statusBorder intentionally removed here so the priority strip
+              // replaces the previous left status border visual indicator.
+              const priorityDot =
+                PRIORITY_CLASSES[priorityKey]?.dot || "bg-gray-400";
 
               return (
                 <div
                   key={event.id}
-                  className={`text-xs p-1 rounded ${colors[event.type]} ${
-                    statusColors[event.status]
-                  } truncate`}
+                  className={`text-xs p-1 rounded ${typeBadge} truncate relative`}
                   title={event.title}
                 >
-                  {event.time} - {event.title}
+                  {/* Priority strip on the left -- hidden for meetings */}
+                  {typeKey !== "meeting" && (
+                    <span
+                      className={`absolute left-0 top-1 bottom-1 w-1 rounded-l ${priorityDot}`}
+                      aria-hidden
+                    />
+                  )}
+
+                  <div className="flex items-center gap-2 pl-3">
+                    <span className="truncate">
+                      {event.time} - {event.title}
+                    </span>
+                  </div>
                 </div>
               );
             })}
@@ -847,8 +865,6 @@ function Calendar() {
                   <option value="all">All Types</option>
                   <option value="meeting">Meetings</option>
                   <option value="task">Tasks</option>
-                  <option value="milestone">Milestones</option>
-                  <option value="call">Calls</option>
                 </select>
 
                 <select
@@ -1035,6 +1051,22 @@ function Calendar() {
                                 : "—"}
                             </div>
                             <div>Email: {contactEmail}</div>
+                            {event.priority && event.type !== "meeting" && (
+                              <div>
+                                Priority:{" "}
+                                <span
+                                  className={`inline-block ml-1 px-2 py-0.5 rounded ${getPriorityBadge(
+                                    event.priority
+                                  )}`}
+                                >
+                                  {String(event.priority)
+                                    .trim()
+                                    .charAt(0)
+                                    .toUpperCase() +
+                                    String(event.priority).trim().slice(1)}
+                                </span>
+                              </div>
+                            )}
                             {event.location && (
                               <div>Location: {event.location}</div>
                             )}
@@ -1084,14 +1116,6 @@ function Calendar() {
                                   <FaTimes size={10} /> Cancel
                                 </button>
                               </>
-                            )}
-                            {isTaskEvent && event.status !== "completed" && (
-                              <button
-                                onClick={() => handleCompleteTask(event.id)}
-                                className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
-                              >
-                                <FaCheck size={10} /> Complete
-                              </button>
                             )}
                           </div>
                         </div>
@@ -1276,17 +1300,55 @@ function Calendar() {
 
                     <label className="space-y-1 text-sm md:col-span-2">
                       <span className="font-medium text-content-secondary">
-                        Attendees (comma separated)
+                        Attendees (Select Resources)
                       </span>
-                      <textarea
-                        rows={2}
-                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                        value={eventForm.attendeesText}
-                        onChange={(e) =>
-                          handleEventFormChange("attendeesText", e.target.value)
-                        }
-                        placeholder="John Doe, Jane Smith"
-                      />
+                      <div className="border border-subtle rounded-md bg-surface p-3 max-h-48 overflow-y-auto">
+                        {resources.length === 0 ? (
+                          <p className="text-sm text-content-tertiary">
+                            No resources available
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {resources.map((resource) => (
+                              <label
+                                key={resource.id}
+                                className="flex items-center gap-2 cursor-pointer hover:bg-surface-subtle p-2 rounded"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedAttendees.includes(
+                                    resource.id
+                                  )}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedAttendees([
+                                        ...selectedAttendees,
+                                        resource.id,
+                                      ]);
+                                    } else {
+                                      setSelectedAttendees(
+                                        selectedAttendees.filter(
+                                          (id) => id !== resource.id
+                                        )
+                                      );
+                                    }
+                                  }}
+                                  className="rounded border-gray-300"
+                                />
+                                <span className="text-sm">{resource.name}</span>
+                                <span className="text-xs text-content-tertiary">
+                                  ({resource.email})
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {selectedAttendees.length > 0 && (
+                        <p className="text-xs text-content-tertiary mt-1">
+                          {selectedAttendees.length} attendee(s) selected
+                        </p>
+                      )}
                     </label>
                   </div>
 

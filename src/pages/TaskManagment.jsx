@@ -15,6 +15,7 @@ import {
   FaTh,
 } from "react-icons/fa";
 import { db } from "../firebase";
+import { updateProjectProgress } from "../utils/projectProgress";
 import {
   addDoc,
   collection,
@@ -41,6 +42,8 @@ function TasksManagement() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingTask, setViewingTask] = useState(null);
 
   const [filterProject, setFilterProject] = useState("");
   const [filterAssignee, setFilterAssignee] = useState("");
@@ -213,6 +216,19 @@ function TasksManagement() {
         else if (update.status !== "Done" && current?.status === "Done")
           update.completedAt = null;
         await updateDoc(ref, update);
+        // Update project progress for previous and possibly new project
+        const prevProjectId = current?.projectId;
+        const nextProjectId = update.projectId || prevProjectId;
+        const affected = new Set(
+          [prevProjectId, nextProjectId].filter(Boolean)
+        );
+        for (const pid of affected) {
+          try {
+            await updateProjectProgress(pid);
+          } catch {
+            /* ignore */
+          }
+        }
         toast.success("Task updated successfully!");
       } else {
         // Enforce WIP on creation
@@ -239,6 +255,14 @@ function TasksManagement() {
         };
         await addDoc(collection(db, "tasks"), payload);
         toast.success("Task created successfully!");
+        // Update project progress for created task's project
+        if (payload.projectId) {
+          try {
+            await updateProjectProgress(payload.projectId);
+          } catch {
+            /* ignore */
+          }
+        }
         const res = users.find((u) => u.id === payload.assigneeId);
         const cli = clients.find((c) => c.id === payload.assigneeId);
         const name = res?.name || cli?.clientName;
@@ -256,6 +280,11 @@ function TasksManagement() {
     setShowModal(true);
   };
 
+  const handleView = (task) => {
+    setViewingTask(task);
+    setShowViewModal(true);
+  };
+
   const handleDelete = async (id) => {
     const task = tasks.find((t) => t.id === id);
     if (!task) return;
@@ -263,6 +292,13 @@ function TasksManagement() {
     try {
       await deleteDoc(doc(db, "tasks", id));
       toast.success("Task deleted!");
+      if (task.projectId) {
+        try {
+          await updateProjectProgress(task.projectId);
+        } catch {
+          /* ignore */
+        }
+      }
     } catch (err) {
       console.error("Delete failed", err);
       toast.error("Failed to delete");
@@ -287,11 +323,23 @@ function TasksManagement() {
     if (selectedIds.size === 0) return toast.error("No tasks selected");
     if (!window.confirm(`Delete ${selectedIds.size} selected task(s)?`)) return;
     try {
+      const affectedProjects = new Set();
+      const selectedList = Array.from(selectedIds);
+      selectedList.forEach((id) => {
+        const t = tasks.find((x) => x.id === id);
+        if (t?.projectId) affectedProjects.add(t.projectId);
+      });
       await Promise.all(
-        Array.from(selectedIds).map((id) => deleteDoc(doc(db, "tasks", id)))
+        selectedList.map((id) => deleteDoc(doc(db, "tasks", id)))
       );
       setSelectedIds(new Set());
       toast.success(`Deleted ${selectedIds.size} task(s)!`);
+      // refresh project progress for affected projects
+      await Promise.all(
+        Array.from(affectedProjects).map((pid) =>
+          updateProjectProgress(pid).catch(() => {})
+        )
+      );
     } catch (err) {
       console.error("Bulk delete failed", err);
       toast.error("Bulk delete failed");
@@ -307,6 +355,15 @@ function TasksManagement() {
       .then(() => {
         toast.success(`Archived ${ids.length} task(s)!`);
         setSelectedIds(new Set());
+        // update progress for affected projects
+        const affected = new Set(
+          ids
+            .map((id) => tasks.find((t) => t.id === id)?.projectId)
+            .filter(Boolean)
+        );
+        affected.forEach((pid) => {
+          updateProjectProgress(pid).catch(() => {});
+        });
       })
       .catch((err) => {
         console.error("Archive failed", err);
@@ -323,6 +380,14 @@ function TasksManagement() {
       .then(() => {
         toast.success(`Unarchived ${ids.length} task(s)!`);
         setSelectedIds(new Set());
+        const affected = new Set(
+          ids
+            .map((id) => tasks.find((t) => t.id === id)?.projectId)
+            .filter(Boolean)
+        );
+        affected.forEach((pid) => {
+          updateProjectProgress(pid).catch(() => {});
+        });
       })
       .catch((err) => {
         console.error("Unarchive failed", err);
@@ -349,6 +414,13 @@ function TasksManagement() {
         completedAt: serverTimestamp(),
       });
       toast.success(`Task "${t.title}" marked as done!`);
+      if (t.projectId) {
+        try {
+          await updateProjectProgress(t.projectId);
+        } catch {
+          /* ignore */
+        }
+      }
     } catch (err) {
       console.error("Mark done failed", err);
       toast.error("Failed to mark as done");
@@ -397,6 +469,13 @@ function TasksManagement() {
           ? null
           : t.completedAt || null,
       });
+      if (t.projectId) {
+        try {
+          await updateProjectProgress(t.projectId);
+        } catch {
+          /* ignore */
+        }
+      }
     } catch (err) {
       console.error("Move failed", err);
       toast.error("Failed to move task");
@@ -914,6 +993,12 @@ function TasksManagement() {
                               </div>
                             </div>
                             <div className="mt-3 flex flex-wrap items-center gap-2">
+                              <button
+                                onClick={() => handleView(t)}
+                                className="rounded-md bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-200"
+                              >
+                                View
+                              </button>
                               {t.status !== "Done" && (
                                 <button
                                   onClick={() => markDone(t.id)}
@@ -977,6 +1062,159 @@ function TasksManagement() {
           assignees={users}
           clients={clients}
         />
+      )}
+
+      {showViewModal && viewingTask && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowViewModal(false)}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">Task Details</h2>
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Title
+                </label>
+                <p className="mt-1 text-gray-900">{viewingTask.title}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Description
+                </label>
+                <p className="mt-1 text-gray-900">
+                  {viewingTask.description || "No description"}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Project
+                  </label>
+                  <p className="mt-1 text-gray-900">
+                    {projectById(viewingTask.projectId)?.name || "—"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Assigned To
+                  </label>
+                  <p className="mt-1 text-gray-900">
+                    {(() => {
+                      const assignee = assigneeById(viewingTask.assigneeId);
+                      if (!assignee) return "Unassigned";
+                      return assignee.name || assignee.clientName || "—";
+                    })()}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Status
+                  </label>
+                  <p className="mt-1 text-gray-900">{viewingTask.status}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Priority
+                  </label>
+                  <p className="mt-1 text-gray-900">{viewingTask.priority}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Due Date
+                  </label>
+                  <p className="mt-1 text-gray-900">
+                    {viewingTask.dueDate
+                      ? new Date(viewingTask.dueDate).toLocaleDateString()
+                      : "No due date"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Created At
+                  </label>
+                  <p className="mt-1 text-gray-900">
+                    {viewingTask.createdAt
+                      ? new Date(viewingTask.createdAt).toLocaleDateString()
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+
+              {viewingTask.completedAt && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Completed At
+                  </label>
+                  <p className="mt-1 text-gray-900">
+                    {new Date(viewingTask.completedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+
+              {viewingTask.archived && (
+                <div className="rounded-md bg-gray-100 p-3">
+                  <p className="text-sm font-medium text-gray-700">
+                    This task is archived
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowViewModal(false);
+                  handleEdit(viewingTask);
+                }}
+                className="rounded-md bg-yellow-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-yellow-600"
+              >
+                Edit Task
+              </button>
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-300"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
