@@ -14,7 +14,6 @@ import {
 import {
   HiOutlineArrowDownTray,
   HiMiniArrowPath,
-  HiXMark,
 } from "react-icons/hi2";
 // Excel export not used on this page currently
 import toast from "react-hot-toast";
@@ -44,6 +43,9 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import SkeletonRow from "../components/SkeletonRow";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
+import AddResourceModal from "../components/AddResourceModal";
+import EditResourceModal from "../components/EditResourceModal";
+import ViewResourceModal from "../components/ViewResourceModal";
 
 // Removed placeholder data; now loading users/resources from Firestore
 
@@ -52,8 +54,10 @@ const tableHeaders = [
   { key: "fullName", label: "Full Name", sortable: true },
   { key: "email", label: "Email", sortable: true },
   { key: "mobile", label: "Mobile", sortable: true },
+  { key: "employmentType", label: "Employment Type", sortable: true },
   { key: "resourceType", label: "Resource Type", sortable: true },
-  { key: "joinDate", label: "Join Date", sortable: true },
+  { key: "resourceRole", label: "Resource Role", sortable: true },
+  { key: "status", label: "Status", sortable: true },
   { key: "actions", label: "Actions", sortable: false },
 ];
 // --- End Placeholder Data ---
@@ -70,6 +74,8 @@ function ManageResources() {
   // State for search, sorting, and pagination
   const [searchTerm, setSearchTerm] = useState("");
   const [resourceTypeFilter, setResourceTypeFilter] = useState("all"); // all, In-house, Outsourced
+  const [employmentTypeFilter, setEmploymentTypeFilter] = useState("all"); // all, Full-time, Part-time
+  const [statusFilter, setStatusFilter] = useState("all"); // all, Active, Inactive
   const [sortConfig, setSortConfig] = useState({
     key: "fullName",
     direction: "asc",
@@ -84,6 +90,9 @@ function ManageResources() {
     mobile: "",
     password: "",
     resourceType: "In-house",
+    employmentType: "Full-time",
+    resourceRole: "",
+    status: "Active",
   });
 
   // Subscribe to Firestore users collection
@@ -102,6 +111,8 @@ function ManageResources() {
         status: u.status || "Active",
         department: u.department || "",
         skills: u.skills || "",
+        employmentType: u.employmentType || "Full-time",
+        resourceRole: u.resourceRole || "",
       }));
       setResources(mapped);
       setLoading(false);
@@ -129,6 +140,20 @@ function ManageResources() {
       );
     }
 
+    // Filter by employment type
+    if (employmentTypeFilter !== "all") {
+      result = result.filter(
+        (resource) => resource.employmentType === employmentTypeFilter
+      );
+    }
+
+    // Filter by status
+    if (statusFilter !== "all") {
+      result = result.filter(
+        (resource) => resource.status === statusFilter
+      );
+    }
+
     // Sort results
     if (sortConfig?.key) {
       const { key, direction } = sortConfig;
@@ -147,11 +172,11 @@ function ManageResources() {
     }
 
     return result;
-  }, [resources, searchTerm, resourceTypeFilter, sortConfig]);
+  }, [resources, searchTerm, resourceTypeFilter, employmentTypeFilter, statusFilter, sortConfig]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, resourceTypeFilter, sortConfig]);
+  }, [searchTerm, resourceTypeFilter, employmentTypeFilter, statusFilter, sortConfig]);
 
   const totalPages = Math.max(
     1,
@@ -224,8 +249,10 @@ function ManageResources() {
         email: formData.email,
         mobile: formData.mobile,
         resourceType: formData.resourceType,
-        role: "resource", // Resources/employees
-        status: "Active",
+        employmentType: formData.employmentType,
+        role: "resource",
+        resourceRole: formData.resourceRole,
+        status: formData.status,
         joinDate: new Date().toISOString().slice(0, 10),
         createdAt: serverTimestamp(),
         // ⚠️ WARNING: Storing password in plain text - DEVELOPMENT ONLY!
@@ -242,6 +269,9 @@ function ManageResources() {
         mobile: "",
         password: "",
         resourceType: "In-house",
+        employmentType: "Full-time",
+        resourceRole: "",
+        status: "Active",
       });
       setShowAddForm(false);
       toast.success("Resource added successfully!");
@@ -260,6 +290,9 @@ function ManageResources() {
       mobile: resource.mobile,
       password: "",
       resourceType: resource.resourceType,
+      employmentType: resource.employmentType || "Full-time",
+      resourceRole: resource.resourceRole || "",
+      status: resource.status || "Active",
     });
     setShowEditForm(true);
   };
@@ -278,7 +311,9 @@ function ManageResources() {
         email: formData.email,
         mobile: formData.mobile,
         resourceType: formData.resourceType,
-        role: "resource", // Resources/employees
+        employmentType: formData.employmentType,
+        resourceRole: formData.resourceRole,
+        status: formData.status,
       });
       setFormData({
         fullName: "",
@@ -286,6 +321,9 @@ function ManageResources() {
         mobile: "",
         password: "",
         resourceType: "In-house",
+        employmentType: "Full-time",
+        resourceRole: "",
+        status: "Active",
       });
       setShowEditForm(false);
       setSelectedResource(null);
@@ -407,8 +445,8 @@ function ManageResources() {
               </div>
             }
           >
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2 lg:col-span-1">
                 Search by name or email
                 <div className="relative">
                   <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-content-tertiary">
@@ -425,21 +463,47 @@ function ManageResources() {
               </label>
 
               <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                Filter by Resource Type
+                Employment Type
+                <select
+                  value={employmentTypeFilter}
+                  onChange={(e) => setEmploymentTypeFilter(e.target.value)}
+                  className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                >
+                  <option value="all">All Types</option>
+                  <option value="Full-time">Full-time</option>
+                  <option value="Part-time">Part-time</option>
+                </select>
+              </label>
+
+              <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                Resource Type
                 <select
                   value={resourceTypeFilter}
                   onChange={(e) => setResourceTypeFilter(e.target.value)}
                   className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
                 >
                   <option value="all">All Resources</option>
-                  <option value="In-house">In-house Only</option>
-                  <option value="Outsourced">Outsourced Only</option>
+                  <option value="In-house">In-house</option>
+                  <option value="Outsourced">Outsourced</option>
+                </select>
+              </label>
+
+              <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                Status
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                >
+                  <option value="all">All Status</option>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
                 </select>
               </label>
             </div>
 
             {/* Active Filters Display */}
-            {(searchTerm || resourceTypeFilter !== "all") && (
+            {(searchTerm || employmentTypeFilter !== "all" || resourceTypeFilter !== "all" || statusFilter !== "all") && (
               <div className="flex items-center gap-2 flex-wrap pt-2 border-t mt-4">
                 <FaFilter className="text-indigo-600 h-4 w-4" />
                 <span className="text-sm font-medium text-gray-600">
@@ -456,9 +520,20 @@ function ManageResources() {
                     </button>
                   </span>
                 )}
+                {employmentTypeFilter !== "all" && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                    Employment: {employmentTypeFilter}
+                    <button
+                      onClick={() => setEmploymentTypeFilter("all")}
+                      className="hover:bg-green-200 rounded-full p-0.5"
+                    >
+                      <FaTimes className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
                 {resourceTypeFilter !== "all" && (
                   <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                    Type: {resourceTypeFilter}
+                    Resource: {resourceTypeFilter}
                     <button
                       onClick={() => setResourceTypeFilter("all")}
                       className="hover:bg-blue-200 rounded-full p-0.5"
@@ -467,10 +542,23 @@ function ManageResources() {
                     </button>
                   </span>
                 )}
+                {statusFilter !== "all" && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
+                    Status: {statusFilter}
+                    <button
+                      onClick={() => setStatusFilter("all")}
+                      className="hover:bg-purple-200 rounded-full p-0.5"
+                    >
+                      <FaTimes className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
                 <button
                   onClick={() => {
                     setSearchTerm("");
+                    setEmploymentTypeFilter("all");
                     setResourceTypeFilter("all");
+                    setStatusFilter("all");
                   }}
                   className="ml-2 text-xs text-red-600 hover:text-red-800 font-medium"
                 >
@@ -600,6 +688,24 @@ function ManageResources() {
                       <td className="whitespace-nowrap px-6 py-4 text-sm">
                         <span
                           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
+                            resource.employmentType === "Full-time"
+                              ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300"
+                              : "bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 border border-purple-300"
+                          }`}
+                        >
+                          <div
+                            className={`w-2 h-2 rounded-full mr-2 ${
+                              resource.employmentType === "Full-time"
+                                ? "bg-green-500"
+                                : "bg-purple-500"
+                            }`}
+                          ></div>
+                          {resource.employmentType || "Full-time"}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
                             resource.resourceType === "In-house"
                               ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300"
                               : "bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 border border-orange-300"
@@ -615,11 +721,26 @@ function ManageResources() {
                           {resource.resourceType}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
-                        <div className="flex items-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-2"></div>
-                          {resource.joinDate}
-                        </div>
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        {resource.resourceRole || "-"}
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-4 text-sm">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
+                            resource.status === "Active"
+                              ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300"
+                              : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300"
+                          }`}
+                        >
+                          <div
+                            className={`w-2 h-2 rounded-full mr-2 ${
+                              resource.status === "Active"
+                                ? "bg-green-500"
+                                : "bg-gray-500"
+                            }`}
+                          ></div>
+                          {resource.status || "Active"}
+                        </span>
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-sm">
                         <div className="flex items-center space-x-3">
@@ -678,320 +799,46 @@ function ManageResources() {
 
       {/* All modals with fixed positioning using z-[9999] and bg-black/10 */}
       {showAddForm && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative z-[10000]">
-            {/* Add Resource Modal Content */}
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-content-primary">
-                  Add New Resource
-                </h2>
-                <button
-                  onClick={() => setShowAddForm(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <HiXMark className="h-6 w-6" />
-                </button>
-              </div>
-              <form onSubmit={handleFormSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Full Name *
-                    <input
-                      type="text"
-                      value={formData.fullName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, fullName: e.target.value })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Email *
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Mobile *
-                    <input
-                      type="tel"
-                      value={formData.mobile}
-                      onChange={(e) =>
-                        setFormData({ ...formData, mobile: e.target.value })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Password *
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2">
-                    Resource Type
-                    <select
-                      value={formData.resourceType}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          resourceType: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                    >
-                      <option value="In-house">In-house</option>
-                      <option value="Outsourced">Outsourced</option>
-                    </select>
-                  </label>
-                </div>
-                <div className="flex gap-3 pt-4">
-                  <Button type="submit">Add Resource</Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setShowAddForm(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+        <AddResourceModal
+          formData={formData}
+          setFormData={setFormData}
+          onSubmit={handleFormSubmit}
+          onClose={() => setShowAddForm(false)}
+        />
       )}
 
-      {/* Similar structure for edit, view, and delete modals */}
+      {/* Edit Resource Modal */}
       {showEditForm && selectedResource && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative z-[10000]">
-            {/* Edit Resource Modal Content */}
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-content-primary">
-                  Edit Resource
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowEditForm(false);
-                    setSelectedResource(null);
-                    setFormData({
-                      fullName: "",
-                      email: "",
-                      mobile: "",
-                      password: "",
-                      resourceType: "In-house",
-                    });
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <HiXMark className="h-6 w-6" />
-                </button>
-              </div>
-              <form onSubmit={handleEditSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Full Name *
-                    <input
-                      type="text"
-                      value={formData.fullName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, fullName: e.target.value })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Email *
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Mobile *
-                    <input
-                      type="tel"
-                      value={formData.mobile}
-                      onChange={(e) =>
-                        setFormData({ ...formData, mobile: e.target.value })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Password (leave blank to keep current)
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2">
-                    Resource Type
-                    <select
-                      value={formData.resourceType}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          resourceType: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                    >
-                      <option value="In-house">In-house</option>
-                      <option value="Outsourced">Outsourced</option>
-                    </select>
-                  </label>
-                </div>
-                <div className="flex gap-3 pt-4">
-                  <Button type="submit">Update Resource</Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      setShowEditForm(false);
-                      setSelectedResource(null);
-                      setFormData({
-                        fullName: "",
-                        email: "",
-                        mobile: "",
-                        password: "",
-                        resourceType: "In-house",
-                      });
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+        <EditResourceModal
+          formData={formData}
+          setFormData={setFormData}
+          onSubmit={handleEditSubmit}
+          onClose={() => {
+            setShowEditForm(false);
+            setSelectedResource(null);
+            setFormData({
+              fullName: "",
+              email: "",
+              mobile: "",
+              password: "",
+              resourceType: "In-house",
+              employmentType: "Full-time",
+              resourceRole: "",
+              status: "Active",
+            });
+          }}
+        />
       )}
 
+      {/* View Resource Modal */}
       {showViewModal && selectedResource && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg">
-            {/* View Resource Modal Content */}
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-content-primary">
-                  Resource Details
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowViewModal(false);
-                    setSelectedResource(null);
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <HiXMark className="h-6 w-6" />
-                </button>
-              </div>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-content-secondary">
-                      Full Name
-                    </label>
-                    <p className="text-content-primary font-medium">
-                      {selectedResource.fullName}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-content-secondary">
-                      Email
-                    </label>
-                    <p className="text-content-primary">
-                      {selectedResource.email}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-content-secondary">
-                      Mobile
-                    </label>
-                    <p className="text-content-primary">
-                      {selectedResource.mobile}
-                    </p>
-                  </div>
-                  {selectedResource.devPassword && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                      <label className="text-sm font-medium text-yellow-800 flex items-center gap-2">
-                        <span>⚠️ Password (Dev Only)</span>
-                      </label>
-                      <p className="text-content-primary font-mono font-semibold">
-                        {selectedResource.devPassword}
-                      </p>
-                      <p className="text-xs text-yellow-600 mt-1">
-                        Remove this field before production deployment
-                      </p>
-                    </div>
-                  )}
-                  <div>
-                    <label className="text-sm font-medium text-content-secondary">
-                      Resource Type
-                    </label>
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        selectedResource.resourceType === "In-house"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-orange-100 text-orange-800"
-                      }`}
-                    >
-                      {selectedResource.resourceType}
-                    </span>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-content-secondary">
-                      Join Date
-                    </label>
-                    <p className="text-content-primary">
-                      {selectedResource.joinDate}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex justify-end pt-4">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      setShowViewModal(false);
-                      setSelectedResource(null);
-                    }}
-                  >
-                    Close
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ViewResourceModal
+          resource={selectedResource}
+          onClose={() => {
+            setShowViewModal(false);
+            setSelectedResource(null);
+          }}
+        />
       )}
 
       {/* Delete Confirmation Modal - Outside blurred container */}

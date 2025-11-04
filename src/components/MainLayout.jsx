@@ -64,7 +64,7 @@ function MainLayout() {
       "/mom": "Meeting Minutes - Admin Panel",
       "/task-management": "Task Management - Admin Panel",
       "/reports": "Reports - Admin Panel",
-      "/calender": "Calendar - Admin Panel",
+      "/calendar": "Calendar - Admin Panel",
     };
 
     const title = pathToTitle[location.pathname] || "Admin Panel";
@@ -110,8 +110,8 @@ function MainLayout() {
       icon: <FaListAlt className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/calender",
-      text: "Calender",
+      to: "/calendar",
+      text: "Calendar",
       icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
     },
   ];

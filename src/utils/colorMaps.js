@@ -64,6 +64,21 @@ export const STATUS_BORDER_CLASSES = {
   completed: "border-l-4 border-blue-500",
 };
 
+export const STATUS_CLASSES = {
+  "to-do": {
+    badge: "bg-gray-100 text-gray-700",
+  },
+  "in progress": {
+    badge: "bg-blue-100 text-blue-700",
+  },
+  "in review": {
+    badge: "bg-yellow-100 text-yellow-700",
+  },
+  done: {
+    badge: "bg-green-100 text-green-700",
+  },
+};
+
 export function normalizeKey(val) {
   return String(val || "")
     .trim()
@@ -86,4 +101,9 @@ export function getTypeBadge(type) {
 export function getPriorityBadge(priority) {
   const k = normalizeKey(priority);
   return PRIORITY_CLASSES[k]?.badge || "bg-gray-100 text-gray-700";
+}
+
+export function getStatusBadge(status) {
+  const k = normalizeKey(status);
+  return STATUS_CLASSES[k]?.badge || "bg-gray-100 text-gray-700";
 }

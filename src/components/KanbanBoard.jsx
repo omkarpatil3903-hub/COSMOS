@@ -1,4 +1,6 @@
 import React from "react";
+import { FaFlag } from "react-icons/fa";
+import { getPriorityBadge } from "../utils/colorMaps";
 
 // Simple Kanban board with 4 default columns using HTML5 drag-and-drop
 // Props:
@@ -138,26 +140,41 @@ export default function KanbanBoard({
                     } ${t.archived ? "opacity-70" : ""}`}
                     title="Drag to another column to change status"
                   >
-                    <div className="mb-1 flex items-start justify-between gap-2">
-                      <div className="font-medium text-content-primary line-clamp-2">
-                        {t.title}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <div className="font-medium text-content-primary line-clamp-2">
+                          {t.title}
+                        </div>
                       </div>
-                      {overdue && (
-                        <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
-                          Overdue
-                        </span>
-                      )}
-                      {t.archived && (
-                        <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700">
-                          Archived
-                        </span>
-                      )}
+                      <div className="flex flex-col items-end gap-1">
+                        {t.priority && (
+                          <span
+                            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getPriorityBadge(
+                              t.priority
+                            )}`}
+                          >
+                            <FaFlag />
+                            <span>{t.priority}</span>
+                          </span>
+                        )}
+                        {overdue && (
+                          <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+                            Overdue
+                          </span>
+                        )}
+                        {t.archived && (
+                          <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700">
+                            Archived
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="mb-2 text-xs text-content-secondary line-clamp-3">
+
+                    <div className="mt-2 text-xs text-content-secondary line-clamp-3">
                       {t.description}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-content-tertiary">
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-content-tertiary">
                       <span
                         className="rounded px-1.5 py-0.5"
                         style={{
@@ -178,19 +195,6 @@ export default function KanbanBoard({
                       {t.dueDate && (
                         <span>
                           Due: {new Date(t.dueDate).toLocaleDateString()}
-                        </span>
-                      )}
-                      {t.priority && (
-                        <span
-                          className={
-                            t.priority === "High"
-                              ? "rounded bg-red-100 px-1.5 py-0.5 text-red-700"
-                              : t.priority === "Medium"
-                              ? "rounded bg-yellow-100 px-1.5 py-0.5 text-yellow-700"
-                              : "rounded bg-green-100 px-1.5 py-0.5 text-green-700"
-                          }
-                        >
-                          {t.priority}
                         </span>
                       )}
                       {showReassignOnCard &&

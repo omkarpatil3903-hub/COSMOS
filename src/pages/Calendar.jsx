@@ -77,6 +77,7 @@ function Calendar() {
   const [clients, setClients] = useState([]);
   const [resources, setResources] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
@@ -84,6 +85,7 @@ function Calendar() {
   const [editingEvent, setEditingEvent] = useState(null);
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterProject, setFilterProject] = useState("all");
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [activeRequestDate, setActiveRequestDate] = useState(null);
   const [eventForm, setEventForm] = useState(() => buildDefaultEventForm());
@@ -106,7 +108,8 @@ function Calendar() {
       unsubMeetingRequests,
       unsubClients,
       unsubTasks,
-      unsubResources;
+      unsubResources,
+      unsubProjects;
 
     const initSubscriptions = async () => {
       unsubEvents = onSnapshot(
@@ -227,6 +230,24 @@ function Calendar() {
           setResources(loadedResources);
         }
       );
+
+      // Load projects
+      unsubProjects = onSnapshot(
+        query(collection(db, "projects"), orderBy("projectName", "asc")),
+        (snap) => {
+          const loadedProjects = snap.docs
+            .map((d) => {
+              const data = d.data() || {};
+              return {
+                id: d.id,
+                name: data.projectName || data.name || "",
+                ...data,
+              };
+            })
+            .filter((p) => !p.deleted && !p.isDeleted);
+          setProjects(loadedProjects);
+        }
+      );
     };
 
     initSubscriptions();
@@ -237,6 +258,7 @@ function Calendar() {
       if (unsubClients) unsubClients();
       if (unsubTasks) unsubTasks();
       if (unsubResources) unsubResources();
+      if (unsubProjects) unsubProjects();
     };
   }, []);
 
@@ -451,7 +473,8 @@ function Calendar() {
       const eventDate = event.date;
       let typeMatch = filterType === "all" || event.type === filterType;
       let statusMatch = filterStatus === "all" || event.status === filterStatus;
-      return eventDate === dateStr && typeMatch && statusMatch;
+      let projectMatch = filterProject === "all" || (event.isTask && tasks.find(t => t.id === event.taskId)?.projectId === filterProject);
+      return eventDate === dateStr && typeMatch && statusMatch && projectMatch;
     });
   };
 
@@ -877,6 +900,19 @@ function Calendar() {
                   <option value="pending">Pending</option>
                   <option value="cancelled">Cancelled</option>
                   <option value="completed">Completed</option>
+                </select>
+
+                <select
+                  value={filterProject}
+                  onChange={(e) => setFilterProject(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                >
+                  <option value="all">All Projects</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
                 </select>
 
                 <Button onClick={() => openEventModal(null)}>

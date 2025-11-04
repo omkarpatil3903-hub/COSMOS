@@ -13,9 +13,13 @@ import {
   FaListAlt,
   FaList,
   FaTh,
+  FaFlag,
+  FaClipboardList,
+  FaSpinner,
 } from "react-icons/fa";
 import { db } from "../firebase";
 import { updateProjectProgress } from "../utils/projectProgress";
+import { getPriorityBadge, getStatusBadge } from "../utils/colorMaps";
 import {
   addDoc,
   collection,
@@ -27,6 +31,13 @@ import {
   serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
+
+const statusIcons = {
+  "To-Do": <FaClipboardList />,
+  "In Progress": <FaSpinner className="animate-spin" />,
+  "In Review": <FaClock />,
+  Done: <FaCheckCircle />,
+};
 
 const tsToISO = (v) => {
   if (!v) return null;
@@ -943,23 +954,45 @@ function TasksManagement() {
                                   </p>
                                 )}
                               </div>
-                              <div className="text-xs text-content-tertiary whitespace-nowrap">
-                                {t.dueDate
-                                  ? new Date(t.dueDate).toLocaleDateString()
-                                  : "No due"}
-                                {t.dueDate &&
-                                  t.status !== "Done" &&
-                                  t.dueDate <
-                                    new Date().toISOString().slice(0, 10) && (
-                                    <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
-                                      Overdue
+                              <div className="flex flex-col items-end gap-1 text-xs text-content-tertiary whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  {t.priority && (
+                                    <span
+                                      className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getPriorityBadge(
+                                        t.priority
+                                      )}`}
+                                    >
+                                      <FaFlag />
+                                      <span>{t.priority}</span>
                                     </span>
                                   )}
-                                {t.archived && (
-                                  <span className="ml-2 rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700">
-                                    Archived
+                                  <span
+                                    className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getStatusBadge(
+                                      t.status
+                                    )}`}
+                                  >
+                                    {statusIcons[t.status]}
+                                    <span>{t.status}</span>
                                   </span>
-                                )}
+                                </div>
+                                <div className="mt-1">
+                                  {t.dueDate
+                                    ? new Date(t.dueDate).toLocaleDateString()
+                                    : "No due"}
+                                  {t.dueDate &&
+                                    t.status !== "Done" &&
+                                    t.dueDate <
+                                      new Date().toISOString().slice(0, 10) && (
+                                      <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+                                        Overdue
+                                      </span>
+                                    )}
+                                  {t.archived && (
+                                    <span className="ml-2 rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700">
+                                      Archived
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                             <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-content-tertiary">
@@ -982,14 +1015,6 @@ function TasksManagement() {
                                   : assignee?.clientName
                                   ? " (Client)"
                                   : ""}
-                              </div>
-                              <div>
-                                <span className="font-medium">Status:</span>{" "}
-                                {t.status}
-                              </div>
-                              <div>
-                                <span className="font-medium">Priority:</span>{" "}
-                                {t.priority}
                               </div>
                             </div>
                             <div className="mt-3 flex flex-wrap items-center gap-2">

@@ -698,6 +698,12 @@ function DashboardPage() {
       {/* --- Stat Cards Section --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
+          icon={<FaProjectDiagram className="h-5 w-5" />}
+          label="Total Projects"
+          value={stats.totalProjects}
+          color="indigo"
+        />
+        <StatCard
           icon={<FaUsers className="h-5 w-5" />}
           label="Total Resources"
           value={stats.totalResources}
@@ -708,12 +714,6 @@ function DashboardPage() {
           label="Total Clients"
           value={stats.totalClients}
           color="red"
-        />
-        <StatCard
-          icon={<FaProjectDiagram className="h-5 w-5" />}
-          label="Total Projects"
-          value={stats.totalProjects}
-          color="indigo"
         />
         <StatCard
           icon={<FaCalendarCheck className="h-5 w-5" />}

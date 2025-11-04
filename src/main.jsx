@@ -86,7 +86,7 @@ const router = createBrowserRouter([
       { path: "/mom", element: <Mom /> },
       { path: "/task-management", element: <TaskManagment /> },
       { path: "/reports", element: <ReportsPage /> },
-      { path: "/calender", element: <Calendar /> },
+      { path: "/calendar", element: <Calendar /> },
     ],
   },
 ]);
