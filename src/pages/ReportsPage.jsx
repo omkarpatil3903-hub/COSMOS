@@ -38,7 +38,7 @@ const normalizeStatus = (s) => {
   if (x === "in progress" || x === "in-progress" || x === "inprogress")
     return "In Progress";
   if (x === "in review" || x === "in-review" || x === "inreview")
-    return "In Review";
+    return "In Progress";
   if (
     x === "to-do" ||
     x === "to do" ||
@@ -167,7 +167,6 @@ export default function ReportsPage() {
       (t) => t.status === "In Progress"
     ).length;
     const todoTasks = tasks.filter((t) => t.status === "To-Do").length;
-    const inReviewTasks = tasks.filter((t) => t.status === "In Review").length;
 
     const completionRate =
       totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -190,7 +189,6 @@ export default function ReportsPage() {
       completedTasks,
       inProgressTasks,
       todoTasks,
-      inReviewTasks,
       completionRate,
       priorityBreakdown,
       projectBreakdown,
@@ -214,9 +212,6 @@ export default function ReportsPage() {
         (t) => t.status === "In Progress"
       ).length;
       const todo = resourceTasks.filter((t) => t.status === "To-Do").length;
-      const inReview = resourceTasks.filter(
-        (t) => t.status === "In Review"
-      ).length;
       const total = resourceTasks.length;
       const completionRate =
         total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -228,7 +223,6 @@ export default function ReportsPage() {
           completed,
           inProgress,
           todo,
-          inReview,
           completionRate,
           tasks: resourceTasks,
         };
@@ -323,7 +317,7 @@ export default function ReportsPage() {
     csvContent += `Project: ${projectName}\n`;
     csvContent += `Generated: ${new Date().toLocaleString()}\n\n`;
 
-    csvContent += `Resource Name,Email,Role,Total Tasks,Completed,In Progress,To-Do,In Review,Completion Rate\n`;
+    csvContent += `Resource Name,Email,Role,Total Tasks,Completed,In Progress,To-Do,Completion Rate\n`;
 
     Object.values(resourceStats)
       .sort((a, b) => b.completionRate - a.completionRate)
@@ -337,7 +331,6 @@ export default function ReportsPage() {
             resource.completed,
             resource.inProgress,
             resource.todo,
-            resource.inReview,
             `${resource.completionRate}%`,
           ].join(",") + "\n";
       });
@@ -380,7 +373,6 @@ export default function ReportsPage() {
     stats.totalTasks > 0 ? (count / stats.totalTasks) * 100 : 0;
   const completedWidth = pct(stats.completedTasks);
   const inProgressWidth = pct(stats.inProgressTasks);
-  const inReviewWidth = pct(stats.inReviewTasks);
   const todoWidth = pct(stats.todoTasks);
 
   return (
@@ -522,20 +514,7 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">In Review</span>
-                <span className="text-sm text-content-tertiary">
-                  {stats.inReviewTasks} tasks
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
-                <div
-                  className="bg-yellow-600 h-3 rounded-full transition-all"
-                  style={{ width: `${inReviewWidth}%` }}
-                ></div>
-              </div>
-            </div>
+
 
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -666,7 +645,6 @@ export default function ReportsPage() {
                     <th className="text-center py-3 px-4">Completed</th>
                     <th className="text-center py-3 px-4">In Progress</th>
                     <th className="text-center py-3 px-4">To-Do</th>
-                    <th className="text-center py-3 px-4">In Review</th>
                     <th className="text-center py-3 px-4">Completion %</th>
                   </tr>
                 </thead>
@@ -716,9 +694,6 @@ export default function ReportsPage() {
                           </td>
                           <td className="py-3 px-4 text-center text-gray-600">
                             {resource.todo}
-                          </td>
-                          <td className="py-3 px-4 text-center text-yellow-600">
-                            {resource.inReview}
                           </td>
                           <td
                             className={`py-3 px-4 text-center font-bold ${completionColor}`}
@@ -782,7 +757,6 @@ export default function ReportsPage() {
                       Done: "bg-green-100 text-green-700",
                       "In Progress": "bg-cyan-100 text-cyan-700",
                       "To-Do": "bg-gray-100 text-gray-700",
-                      "In Review": "bg-yellow-100 text-yellow-700",
                     };
                     const priorityColors = {
                       High: "text-red-600",

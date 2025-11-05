@@ -74,7 +74,7 @@ export default function EmployeeReports() {
   const inProgressTasks = tasks.filter(
     (t) => t.status === "In Progress"
   ).length;
-  const inReviewTasks = tasks.filter((t) => t.status === "In Review").length;
+  // 'In Review' is no longer a status
 
   const taskCompletionRate =
     totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
@@ -101,7 +101,6 @@ export default function EmployeeReports() {
       ["Completed Tasks", completedTasks, `${taskCompletionRate.toFixed(1)}%`],
       ["Pending Tasks", pendingTasks, "-"],
       ["In Progress Tasks", inProgressTasks, "-"],
-      ["In Review Tasks", inReviewTasks, "-"],
       ["Overdue Tasks", overdueTasks, "-"],
       ["High Priority", highPriorityTasks, "-"],
       ["Medium Priority", mediumPriorityTasks, "-"],
@@ -221,7 +220,7 @@ export default function EmployeeReports() {
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-2 pt-4">
+            <div className="grid grid-cols-3 gap-2 pt-4">
               <div className="text-center p-3 bg-green-50 rounded-lg">
                 <p className="text-xl font-bold text-green-600">
                   {completedTasks}
@@ -233,12 +232,6 @@ export default function EmployeeReports() {
                   {inProgressTasks}
                 </p>
                 <p className="text-xs text-gray-600 mt-1">In Progress</p>
-              </div>
-              <div className="text-center p-3 bg-purple-50 rounded-lg">
-                <p className="text-xl font-bold text-purple-600">
-                  {inReviewTasks}
-                </p>
-                <p className="text-xs text-gray-600 mt-1">In Review</p>
               </div>
               <div className="text-center p-3 bg-yellow-50 rounded-lg">
                 <p className="text-xl font-bold text-yellow-600">

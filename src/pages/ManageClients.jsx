@@ -44,9 +44,13 @@ const CLIENTS_COLLECTION = "clients";
 
 const tableHeaders = [
   { key: "srNo", label: "Sr. No.", sortable: false },
+  { key: "image", label: "Logo/Image", sortable: false },
   { key: "companyName", label: "Company Name", sortable: true },
   { key: "clientName", label: "Client Name", sortable: true },
   { key: "email", label: "Email", sortable: true },
+  { key: "contactNo", label: "Contact No", sortable: true },
+  { key: "typeOfBusiness", label: "Business Type", sortable: true },
+  { key: "noOfEmployees", label: "Employees", sortable: true },
   { key: "actions", label: "Actions", sortable: false },
 ];
 // --- End Placeholder Data ---
@@ -75,8 +79,17 @@ function ManageClients() {
     clientName: "",
     email: "",
     password: "",
+    contactNo: "",
+    typeOfBusiness: "",
+    address: "",
+    noOfEmployees: "",
+    imageUrl: "",
     role: "client",
   });
+
+  // State for image upload
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
   // Subscribe to clients from Firestore
   useEffect(() => {
@@ -93,6 +106,11 @@ function ManageClients() {
             companyName: data.companyName || "",
             clientName: data.clientName || "",
             email: data.email || "",
+            contactNo: data.contactNo || "",
+            typeOfBusiness: data.typeOfBusiness || "",
+            address: data.address || "",
+            noOfEmployees: data.noOfEmployees || "",
+            imageUrl: data.imageUrl || "",
             role: data.role || "client",
             status: data.status || "Active",
             joinDate, // Date | null
@@ -178,6 +196,26 @@ function ManageClients() {
 
   // Note: Reset/export actions omitted to keep UI focused; add as needed.
 
+  // Handle image file selection and convert to base64
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Check file size (limit to 1MB for Firestore)
+      if (file.size > 1024 * 1024) {
+        toast.error("Image size should be less than 1MB");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result;
+        setImagePreview(base64String);
+        setImageFile(base64String); // Store base64 string instead of file object
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
 
@@ -210,6 +248,11 @@ function ManageClients() {
         companyName: formData.companyName,
         clientName: formData.clientName,
         email: formData.email,
+        contactNo: formData.contactNo,
+        typeOfBusiness: formData.typeOfBusiness,
+        address: formData.address,
+        noOfEmployees: formData.noOfEmployees,
+        imageUrl: imageFile || "",
         role: formData.role || "client",
         status: "Active",
         joinDate: serverTimestamp(),
@@ -226,8 +269,15 @@ function ManageClients() {
         clientName: "",
         email: "",
         password: "",
+        contactNo: "",
+        typeOfBusiness: "",
+        address: "",
+        noOfEmployees: "",
+        imageUrl: "",
         role: "client",
       });
+      setImageFile(null);
+      setImagePreview(null);
       setShowAddForm(false);
       toast.success("Client added successfully!");
     } catch (error) {
@@ -243,8 +293,17 @@ function ManageClients() {
       companyName: client.companyName,
       clientName: client.clientName,
       email: client.email,
+      contactNo: client.contactNo || "",
+      typeOfBusiness: client.typeOfBusiness || "",
+      address: client.address || "",
+      noOfEmployees: client.noOfEmployees || "",
+      imageUrl: client.imageUrl || "",
       role: client.role,
     });
+    // Show existing image in preview
+    setImagePreview(client.imageUrl || null);
+    // Set imageFile to null - will only update if user selects new image
+    setImageFile(null);
     setShowEditForm(true);
   };
 
@@ -263,6 +322,11 @@ function ManageClients() {
         companyName: formData.companyName,
         clientName: formData.clientName,
         email: formData.email,
+        contactNo: formData.contactNo,
+        typeOfBusiness: formData.typeOfBusiness,
+        address: formData.address,
+        noOfEmployees: formData.noOfEmployees,
+        imageUrl: imageFile || formData.imageUrl || "",
         role: formData.role || "client",
         updatedAt: serverTimestamp(),
       });
@@ -271,8 +335,15 @@ function ManageClients() {
         companyName: "",
         clientName: "",
         email: "",
+        contactNo: "",
+        typeOfBusiness: "",
+        address: "",
+        noOfEmployees: "",
+        imageUrl: "",
         role: "client",
       });
+      setImageFile(null);
+      setImagePreview(null);
       setShowEditForm(false);
       setSelectedClient(null);
       toast.success("Client updated successfully!");
@@ -484,7 +555,7 @@ function ManageClients() {
                           key={header.key}
                           scope="col"
                           aria-sort={ariaSort}
-                          className="group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200"
+                          className="group px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200"
                         >
                           {header.sortable ? (
                             <button
@@ -507,25 +578,56 @@ function ManageClients() {
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
                   {currentRows.map((client, index) => (
-                    <tr key={client.id} className="bg-white">
-                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-500">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
+                    <tr key={client.id} className="bg-white hover:bg-gray-50">
+                      <td className="whitespace-nowrap px-3 py-3 text-sm font-medium text-gray-500">
+                        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-xs">
                           {indexOfFirstRow + index + 1}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                      <td className="whitespace-nowrap px-2 py-3">
+                        {client.imageUrl ? (
+                          <img
+                            src={client.imageUrl}
+                            alt={client.companyName}
+                            className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold text-xs">
+                            {client.companyName?.charAt(0)?.toUpperCase() ||
+                              "C"}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-sm font-semibold text-gray-900">
                         <span>{client.companyName}</span>
                       </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                      <td className="px-3 py-3 text-sm font-semibold text-gray-900">
                         <span>{client.clientName}</span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-3 py-3 text-sm text-gray-600">
                         <div className="flex items-center">
                           <div className="w-2 h-2 rounded-full bg-green-400 mr-2 animate-pulse"></div>
                           {client.email}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm">
+                      <td className="px-3 py-3 text-sm text-gray-600">
+                        {client.contactNo || "-"}
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-600">
+                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                          {client.typeOfBusiness || "Not specified"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-600 text-center">
+                        {client.noOfEmployees ? (
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                            {client.noOfEmployees}
+                          </span>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 text-sm">
                         <div className="flex items-center space-x-3">
                           <button
                             onClick={() => handleView(client.id)}
@@ -644,6 +746,47 @@ function ManageClients() {
                     />
                   </label>
                   <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                    Contact No *
+                    <input
+                      type="tel"
+                      value={formData.contactNo}
+                      onChange={(e) =>
+                        setFormData({ ...formData, contactNo: e.target.value })
+                      }
+                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                      required
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                    Type of Business *
+                    <input
+                      type="text"
+                      value={formData.typeOfBusiness}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          typeOfBusiness: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                      required
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                    No of Employees
+                    <input
+                      type="number"
+                      value={formData.noOfEmployees}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          noOfEmployees: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                     Password *
                     <input
                       type="password"
@@ -654,6 +797,36 @@ function ManageClients() {
                       className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
                       required
                     />
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2">
+                    Address *
+                    <textarea
+                      value={formData.address}
+                      onChange={(e) =>
+                        setFormData({ ...formData, address: e.target.value })
+                      }
+                      rows="3"
+                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                      required
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2">
+                    Company Logo / Image
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                    />
+                    {imagePreview && (
+                      <div className="mt-2">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="h-32 w-32 object-cover rounded-lg border border-gray-200"
+                        />
+                      </div>
+                    )}
                   </label>
                 </div>
                 <div className="flex gap-3 pt-4">
@@ -693,8 +866,15 @@ function ManageClients() {
                       clientName: "",
                       email: "",
                       password: "",
+                      contactNo: "",
+                      typeOfBusiness: "",
+                      address: "",
+                      noOfEmployees: "",
+                      imageUrl: "",
                       role: "client",
                     });
+                    setImageFile(null);
+                    setImagePreview(null);
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
@@ -745,7 +925,77 @@ function ManageClients() {
                       required
                     />
                   </label>
-                  {/* Password field omitted; not stored for clients */}
+                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                    Contact No *
+                    <input
+                      type="tel"
+                      value={formData.contactNo}
+                      onChange={(e) =>
+                        setFormData({ ...formData, contactNo: e.target.value })
+                      }
+                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                      required
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                    Type of Business *
+                    <input
+                      type="text"
+                      value={formData.typeOfBusiness}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          typeOfBusiness: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                      required
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                    No of Employees
+                    <input
+                      type="number"
+                      value={formData.noOfEmployees}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          noOfEmployees: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2">
+                    Address *
+                    <textarea
+                      value={formData.address}
+                      onChange={(e) =>
+                        setFormData({ ...formData, address: e.target.value })
+                      }
+                      rows="3"
+                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                      required
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2">
+                    Company Logo / Image
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                    />
+                    {imagePreview && (
+                      <div className="mt-2">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="h-32 w-32 object-cover rounded-lg border border-gray-200"
+                        />
+                      </div>
+                    )}
+                  </label>
                 </div>
                 <div className="flex gap-3 pt-4">
                   <Button type="submit">Update Client</Button>
@@ -759,8 +1009,15 @@ function ManageClients() {
                         companyName: "",
                         clientName: "",
                         email: "",
+                        contactNo: "",
+                        typeOfBusiness: "",
+                        address: "",
+                        noOfEmployees: "",
+                        imageUrl: "",
                         role: "client",
                       });
+                      setImageFile(null);
+                      setImagePreview(null);
                     }}
                   >
                     Cancel
@@ -794,32 +1051,82 @@ function ManageClients() {
                   <HiXMark className="h-6 w-6" />
                 </button>
               </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Company Name
-                  </label>
-                  <p className="text-gray-900 font-semibold">
-                    {selectedClient.companyName}
-                  </p>
+              <div className="space-y-6">
+                {/* Company Logo/Image Section */}
+                <div className="flex items-center justify-center pb-4 border-b border-gray-200">
+                  {selectedClient.imageUrl ? (
+                    <img
+                      src={selectedClient.imageUrl}
+                      alt="Company Logo"
+                      className="h-24 w-24 object-cover rounded-full border-4 border-indigo-100 shadow-lg"
+                    />
+                  ) : (
+                    <div className="h-24 w-24 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-3xl shadow-lg">
+                      {selectedClient.companyName?.charAt(0)?.toUpperCase() ||
+                        "C"}
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Client Name
-                  </label>
-                  <p className="text-gray-900 font-semibold">
-                    {selectedClient.clientName}
-                  </p>
+
+                {/* Company Information Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Company Name
+                    </label>
+                    <p className="text-gray-900 font-semibold">
+                      {selectedClient.companyName}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Client Name
+                    </label>
+                    <p className="text-gray-900 font-semibold">
+                      {selectedClient.clientName}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Email Address
+                    </label>
+                    <p className="text-gray-900 break-all text-sm">
+                      {selectedClient.email}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Contact No
+                    </label>
+                    <p className="text-gray-900 font-medium">
+                      {selectedClient.contactNo || "Not provided"}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Type of Business
+                    </label>
+                    <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                      {selectedClient.typeOfBusiness || "Not specified"}
+                    </span>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      No of Employees
+                    </label>
+                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                      {selectedClient.noOfEmployees || "Not provided"}
+                    </span>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg md:col-span-2">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Address
+                    </label>
+                    <p className="text-gray-900">
+                      {selectedClient.address || "Not provided"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-1">
-                    Email Address
-                  </label>
-                  <p className="text-gray-900 break-all">
-                    {selectedClient.email}
-                  </p>
-                </div>
-                {/* Password is not stored or displayed for clients */}
               </div>
               <div className="flex justify-end pt-6 border-t border-gray-200 mt-6">
                 <Button

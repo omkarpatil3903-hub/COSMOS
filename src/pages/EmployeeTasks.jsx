@@ -6,6 +6,7 @@ import {
   onSnapshot,
   updateDoc,
   doc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuthContext } from "../context/useAuthContext";
@@ -14,6 +15,7 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import KanbanBoard from "../components/KanbanBoard";
 import toast from "react-hot-toast";
+import CompletionCommentModal from "../components/CompletionCommentModal";
 import {
   FaTasks,
   FaFilter,
@@ -40,6 +42,8 @@ const EmployeeTasks = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [viewMode, setViewMode] = useState("all"); // all, overdue, today, week
   const [displayMode, setDisplayMode] = useState("list"); // list, kanban
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [completionTaskId, setCompletionTaskId] = useState(null);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -54,6 +58,11 @@ const EmployeeTasks = () => {
         .map((doc) => ({
           id: doc.id,
           ...doc.data(),
+          status:
+            doc.data().status === "In Review"
+              ? "In Progress"
+              : doc.data().status || "To-Do",
+          progressPercent: doc.data().progressPercent ?? 0,
         }))
         .filter((task) => task.assigneeType === "user")
         .sort((a, b) => {
@@ -70,14 +79,57 @@ const EmployeeTasks = () => {
 
   const handleStatusChange = async (taskId, newStatus) => {
     try {
-      await updateDoc(doc(db, "tasks", taskId), {
-        status: newStatus,
-        ...(newStatus === "Done" && { completedAt: new Date() }),
-      });
+      if (newStatus === "Done") {
+        setCompletionTaskId(taskId);
+        setShowCompletionModal(true);
+        return;
+      }
+      let updates = { status: newStatus };
+      if (newStatus === "In Progress") {
+        updates = { status: newStatus, progressPercent: 0 };
+      }
+      await updateDoc(doc(db, "tasks", taskId), updates);
       toast.success("Task status updated!");
     } catch (error) {
       console.error("Error updating task:", error);
       toast.error("Failed to update task status");
+    }
+  };
+
+  const handleSubmitCompletion = async (comment) => {
+    if (!completionTaskId) {
+      setShowCompletionModal(false);
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "tasks", completionTaskId), {
+        status: "Done",
+        completedAt: serverTimestamp(),
+        progressPercent: 100,
+        completedBy: user?.uid || "",
+        completedByType: "user",
+        ...(comment ? { completionComment: comment } : {}),
+      });
+      toast.success("Task marked as complete!");
+    } catch (error) {
+      console.error("Error completing task:", error);
+      toast.error("Failed to complete task");
+    } finally {
+      setShowCompletionModal(false);
+      setCompletionTaskId(null);
+    }
+  };
+
+  const handleProgressUpdate = async (taskId, progressValue) => {
+    try {
+      const clampedProgress = Math.max(0, Math.min(100, parseInt(progressValue) || 0));
+      await updateDoc(doc(db, "tasks", taskId), {
+        progressPercent: clampedProgress,
+      });
+      toast.success("Progress updated!");
+    } catch (error) {
+      console.error("Error updating progress:", error);
+      toast.error("Failed to update progress");
     }
   };
 
@@ -142,8 +194,7 @@ const EmployeeTasks = () => {
         const statusOrder = {
           "To-Do": 0,
           "In Progress": 1,
-          "In Review": 2,
-          Done: 3,
+          Done: 2,
         };
         return (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
       } else if (sortBy === "title") {
@@ -161,7 +212,6 @@ const EmployeeTasks = () => {
   const statusColors = {
     "To-Do": "bg-gray-100 text-gray-800",
     "In Progress": "bg-blue-100 text-blue-800",
-    "In Review": "bg-purple-100 text-purple-800",
     Done: "bg-green-100 text-green-800",
   };
 
@@ -337,6 +387,19 @@ const EmployeeTasks = () => {
                 <FaTimes />
               </button>
             )}
+
+      <CompletionCommentModal
+        open={showCompletionModal}
+        onClose={() => {
+          setShowCompletionModal(false);
+          setCompletionTaskId(null);
+        }}
+        onSubmit={handleSubmitCompletion}
+        title="Mark Task as Done"
+        confirmLabel="Mark Done"
+        minLength={5}
+        maxLength={300}
+      />
           </div>
 
           {/* Filter Row */}
@@ -354,7 +417,6 @@ const EmployeeTasks = () => {
               <option value="all">All Status</option>
               <option value="To-Do">To-Do</option>
               <option value="In Progress">In Progress</option>
-              <option value="In Review">In Review</option>
               <option value="Done">Done</option>
             </select>
 
@@ -505,12 +567,12 @@ const EmployeeTasks = () => {
                             onClick={() => setSelectedTask(task)}
                             className="flex-1 text-left"
                           >
-                            <h3 className="text-lg font-semibold text-gray-900 hover:text-indigo-600 transition-colors">
+                            <h3 className="font-medium text-content-primary hover:text-indigo-600 transition-colors">
                               {task.title}
                             </h3>
                           </button>
                           <span
-                            className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap ${
+                            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${
                               statusColors[task.status] || statusColors["To-Do"]
                             }`}
                           >
@@ -518,8 +580,13 @@ const EmployeeTasks = () => {
                           </span>
                         </div>
                         {task.description && (
-                          <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                          <p className="mt-1 text-sm text-content-secondary line-clamp-2">
                             {task.description}
+                          </p>
+                        )}
+                        {task.status === "Done" && task.completionComment && (
+                          <p className="mt-1 text-xs italic text-indigo-700 line-clamp-1">
+                            💬 {task.completionComment}
                           </p>
                         )}
                       </div>
@@ -527,7 +594,7 @@ const EmployeeTasks = () => {
 
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
-                        className={`px-3 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${
+                        className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${
                           priorityColors[task.priority] || priorityColors.Medium
                         }`}
                       >
@@ -562,33 +629,56 @@ const EmployeeTasks = () => {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-3 pt-2 border-t">
-                      <span className="text-sm text-gray-600 font-medium">
-                        Update Status:
-                      </span>
+                    {/* Progress Bar and Input for In Progress tasks */}
+                    {task.status === "In Progress" && (
+                      <div className="mt-3 pt-3 border-t space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Progress:</span>
+                          <div className="flex-1 max-w-xs bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-indigo-600 h-2 rounded-full transition-all"
+                              style={{ width: `${task.progressPercent || 0}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">
+                            {task.progressPercent || 0}%
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={task.progressPercent || 0}
+                            onChange={(e) => handleProgressUpdate(task.id, e.target.value)}
+                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            placeholder="%"
+                          />
+                          <span className="text-xs text-gray-500">Update progress</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => setSelectedTask(task)}
+                        className="rounded-md bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-200"
+                      >
+                        View
+                      </button>
+                      
                       <select
                         value={task.status}
                         onChange={(e) =>
                           handleStatusChange(task.id, e.target.value)
                         }
-                        className={`px-3 py-1.5 text-sm font-medium rounded-lg border-2 cursor-pointer transition-colors ${
-                          statusColors[task.status] || statusColors["To-Do"]
-                        } hover:opacity-80`}
+                        className="rounded-md border border-subtle bg-surface px-2 py-1 text-xs"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <option value="To-Do">To-Do</option>
                         <option value="In Progress">In Progress</option>
-                        <option value="In Review">In Review</option>
                         <option value="Done">Done</option>
                       </select>
-
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedTask(task)}
-                        className="whitespace-nowrap ml-auto"
-                      >
-                        View Details
-                      </Button>
                     </div>
                   </div>
                 </Card>
@@ -620,20 +710,19 @@ const EmployeeTasks = () => {
                 </h3>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span
-                    className={`px-3 py-1 text-sm font-medium rounded-full ${
+                    className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${
                       statusColors[selectedTask.status] || statusColors["To-Do"]
                     }`}
                   >
                     {selectedTask.status}
                   </span>
                   <span
-                    className={`px-3 py-1 text-sm font-medium rounded-full ${
-                      priorityColors[selectedTask.priority] ||
-                      priorityColors.Medium
+                    className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${
+                      priorityColors[selectedTask.priority] || priorityColors.Medium
                     }`}
                   >
-                    <FaFlag className="inline mr-1" />
-                    {selectedTask.priority} Priority
+                    <FaFlag className="text-xs" />
+                    {selectedTask.priority}
                   </span>
                 </div>
               </div>
@@ -682,6 +771,44 @@ const EmployeeTasks = () => {
                 )}
               </div>
 
+              {/* Progress (In Modal) */}
+              {selectedTask.status === "In Progress" && (
+                <div className="pt-4 border-t">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Progress</h4>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Progress:</span>
+                    <div className="flex-1 max-w-xs bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-indigo-600 h-2 rounded-full transition-all"
+                        style={{ width: `${selectedTask.progressPercent || 0}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">
+                      {selectedTask.progressPercent || 0}%
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={selectedTask.progressPercent || 0}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleProgressUpdate(selectedTask.id, val);
+                        setSelectedTask({
+                          ...selectedTask,
+                          progressPercent: Math.max(0, Math.min(100, parseInt(val) || 0)),
+                        });
+                      }}
+                      className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      placeholder="%"
+                    />
+                    <span className="text-xs text-gray-500">Update progress</span>
+                  </div>
+                </div>
+              )}
+
               {/* Completion Date */}
               {selectedTask.completedAt && (
                 <div>
@@ -717,13 +844,10 @@ const EmployeeTasks = () => {
                       status: e.target.value,
                     });
                   }}
-                  className={`w-full px-4 py-2 text-sm font-medium rounded-lg border-2 ${
-                    statusColors[selectedTask.status] || statusColors["To-Do"]
-                  }`}
+                  className="rounded-md border border-subtle bg-surface px-2 py-1 text-xs"
                 >
                   <option value="To-Do">To-Do</option>
                   <option value="In Progress">In Progress</option>
-                  <option value="In Review">In Review</option>
                   <option value="Done">Done</option>
                 </select>
               </div>

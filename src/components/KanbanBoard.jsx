@@ -26,7 +26,6 @@ export default function KanbanBoard({
   const columns = [
     { key: "To-Do", title: "To-Do" },
     { key: "In Progress", title: "In Progress" },
-    { key: "In Review", title: "In Review" },
     { key: "Done", title: "Done" },
   ];
 
@@ -68,7 +67,7 @@ export default function KanbanBoard({
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {columns.map((col) => {
         const count = grouped[col.key]?.length || 0;
         const limit = wipLimits?.[col.key];
@@ -173,6 +172,26 @@ export default function KanbanBoard({
                     <div className="mt-2 text-xs text-content-secondary line-clamp-3">
                       {t.description}
                     </div>
+                    {t.status === "Done" && t.completionComment && (
+                      <div className="mt-1 text-[11px] italic text-indigo-700 line-clamp-1">
+                        💬 {t.completionComment}
+                      </div>
+                    )}
+
+                    {/* Progress Bar */}
+                    {t.status === "In Progress" && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                          <div
+                            className="bg-indigo-600 h-1.5 rounded-full transition-all"
+                            style={{ width: `${t.progressPercent || 0}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] font-semibold text-indigo-600 whitespace-nowrap">
+                          {t.progressPercent || 0}%
+                        </span>
+                      </div>
+                    )}
 
                     <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-content-tertiary">
                       <span

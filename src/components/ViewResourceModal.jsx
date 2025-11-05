@@ -18,43 +18,48 @@ function ViewResourceModal({ resource, onClose }) {
               <HiXMark className="h-6 w-6" />
             </button>
           </div>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="text-sm font-medium text-content-secondary">
+          <div className="space-y-6">
+            {/* Profile Image Section */}
+            <div className="flex items-center justify-center pb-4 border-b border-gray-200">
+              {resource.imageUrl ? (
+                <img
+                  src={resource.imageUrl}
+                  alt="Profile"
+                  className="h-24 w-24 object-cover rounded-full border-4 border-indigo-100 shadow-lg"
+                />
+              ) : (
+                <div className="h-24 w-24 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-3xl shadow-lg">
+                  {resource.fullName?.charAt(0)?.toUpperCase() || "R"}
+                </div>
+              )}
+            </div>
+
+            {/* Resource Information Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <label className="block text-xs font-medium text-gray-500 mb-1">
                   Full Name
                 </label>
-                <p className="text-content-primary font-medium">
+                <p className="text-gray-900 font-semibold">
                   {resource.fullName}
                 </p>
               </div>
-              <div>
-                <label className="text-sm font-medium text-content-secondary">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <label className="block text-xs font-medium text-gray-500 mb-1">
                   Email
                 </label>
-                <p className="text-content-primary">{resource.email}</p>
+                <p className="text-gray-900 break-all text-sm">
+                  {resource.email}
+                </p>
               </div>
-              <div>
-                <label className="text-sm font-medium text-content-secondary">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <label className="block text-xs font-medium text-gray-500 mb-1">
                   Mobile
                 </label>
-                <p className="text-content-primary">{resource.mobile}</p>
+                <p className="text-gray-900 font-medium">{resource.mobile}</p>
               </div>
-              {resource.devPassword && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                  <label className="text-sm font-medium text-yellow-800 flex items-center gap-2">
-                    <span>⚠️ Password (Dev Only)</span>
-                  </label>
-                  <p className="text-content-primary font-mono font-semibold">
-                    {resource.devPassword}
-                  </p>
-                  <p className="text-xs text-yellow-600 mt-1">
-                    Remove this field before production deployment
-                  </p>
-                </div>
-              )}
-              <div>
-                <label className="text-sm font-medium text-content-secondary">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <label className="block text-xs font-medium text-gray-500 mb-1">
                   Employment Type
                 </label>
                 <span
@@ -67,8 +72,8 @@ function ViewResourceModal({ resource, onClose }) {
                   {resource.employmentType || "Full-time"}
                 </span>
               </div>
-              <div>
-                <label className="text-sm font-medium text-content-secondary">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <label className="block text-xs font-medium text-gray-500 mb-1">
                   Resource Type
                 </label>
                 <span
@@ -81,16 +86,16 @@ function ViewResourceModal({ resource, onClose }) {
                   {resource.resourceType}
                 </span>
               </div>
-              <div>
-                <label className="text-sm font-medium text-content-secondary">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <label className="block text-xs font-medium text-gray-500 mb-1">
                   Resource Role
                 </label>
-                <p className="text-content-primary">
+                <p className="text-gray-900">
                   {resource.resourceRole || "Not specified"}
                 </p>
               </div>
-              <div>
-                <label className="text-sm font-medium text-content-secondary">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <label className="block text-xs font-medium text-gray-500 mb-1">
                   Status
                 </label>
                 <span
@@ -103,18 +108,33 @@ function ViewResourceModal({ resource, onClose }) {
                   {resource.status || "Active"}
                 </span>
               </div>
-              <div>
-                <label className="text-sm font-medium text-content-secondary">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <label className="block text-xs font-medium text-gray-500 mb-1">
                   Join Date
                 </label>
-                <p className="text-content-primary">{resource.joinDate}</p>
+                <p className="text-gray-900">{resource.joinDate || "Not provided"}</p>
               </div>
             </div>
-            <div className="flex justify-end pt-4">
-              <Button type="button" variant="ghost" onClick={onClose}>
-                Close
-              </Button>
-            </div>
+
+            {/* Dev Password Warning (if exists) */}
+            {resource.devPassword && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <label className="text-sm font-medium text-yellow-800 flex items-center gap-2 mb-2">
+                  <span>⚠️ Password (Dev Only)</span>
+                </label>
+                <p className="text-gray-900 font-mono font-semibold text-sm">
+                  {resource.devPassword}
+                </p>
+                <p className="text-xs text-yellow-600 mt-2">
+                  Remove this field before production deployment
+                </p>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end pt-6 border-t border-gray-200 mt-6">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              Close
+            </Button>
           </div>
         </div>
       </div>

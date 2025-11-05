@@ -5,6 +5,7 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import KanbanBoard from "../components/KanbanBoard";
 import TaskModal from "../components/TaskModal";
+import CompletionCommentModal from "../components/CompletionCommentModal";
 import {
   FaDownload,
   FaExclamationTriangle,
@@ -35,7 +36,6 @@ import {
 const statusIcons = {
   "To-Do": <FaClipboardList />,
   "In Progress": <FaSpinner className="animate-spin" />,
-  "In Review": <FaClock />,
   Done: <FaCheckCircle />,
 };
 
@@ -55,6 +55,8 @@ function TasksManagement() {
   const [showArchived, setShowArchived] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingTask, setViewingTask] = useState(null);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [completionTaskId, setCompletionTaskId] = useState(null);
 
   const [filterProject, setFilterProject] = useState("");
   const [filterAssignee, setFilterAssignee] = useState("");
@@ -81,13 +83,22 @@ function TasksManagement() {
             assigneeId: data.assigneeId || "",
             assigneeType: data.assigneeType || "user",
             projectId: data.projectId || "",
+            assignedDate: data.assignedDate?.toDate
+              ? data.assignedDate.toDate().toISOString().slice(0, 10)
+              : data.assignedDate || "",
             dueDate: data.dueDate?.toDate
               ? data.dueDate.toDate().toISOString().slice(0, 10)
               : data.dueDate || "",
             priority: data.priority || "Medium",
-            status: data.status || "To-Do",
+            status:
+              (data.status === "In Review" ? "In Progress" : data.status) ||
+              "To-Do",
+            progressPercent: data.progressPercent ?? 0,
             createdAt: tsToISO(data.createdAt) || new Date().toISOString(),
             completedAt: tsToISO(data.completedAt),
+            completionComment: data.completionComment || "",
+            completedBy: data.completedBy || "",
+            completedByType: data.completedByType || "",
             archived: !!data.archived,
           };
         });
@@ -174,6 +185,11 @@ function TasksManagement() {
     setFilterAssignee("");
   }, [filterAssigneeType]);
 
+  // Clear assignee selection when project filter changes to avoid stale selection
+  useEffect(() => {
+    setFilterAssignee("");
+  }, [filterProject]);
+
   const openCreate = () => {
     setEditing(null);
     setShowModal(true);
@@ -195,6 +211,14 @@ function TasksManagement() {
 
   const handleSave = async (taskData) => {
     try {
+      const MIN_COMMENT_LEN = 5;
+      if (
+        (taskData.status || "To-Do") === "Done" &&
+        (!taskData.completionComment || taskData.completionComment.trim().length < MIN_COMMENT_LEN)
+      ) {
+        toast.error(`Completion comment must be at least ${MIN_COMMENT_LEN} characters`);
+        return;
+      }
       if (taskData.id) {
         const ref = doc(db, "tasks", taskData.id);
         const update = {
@@ -203,9 +227,12 @@ function TasksManagement() {
           assigneeId: taskData.assigneeId || "",
           assigneeType: taskData.assigneeType || "user",
           projectId: taskData.projectId || "",
+          assignedDate: taskData.assignedDate || "",
           dueDate: taskData.dueDate || "",
           priority: taskData.priority || "Medium",
           status: taskData.status || "To-Do",
+          progressPercent: taskData.status === "Done" ? 100 : (taskData.progressPercent ?? 0),
+          completionComment: taskData.completionComment || "",
         };
         const current = tasks.find((t) => t.id === taskData.id);
         // Enforce WIP on status change (only for active columns)
@@ -257,12 +284,15 @@ function TasksManagement() {
           assigneeId: taskData.assigneeId || "",
           assigneeType: taskData.assigneeType || "user",
           projectId: taskData.projectId || "",
+          assignedDate: taskData.assignedDate || new Date().toISOString().slice(0, 10),
           dueDate: taskData.dueDate || "",
           priority: taskData.priority || "Medium",
           status: taskData.status || "To-Do",
+          progressPercent: taskData.status === "Done" ? 100 : 0,
           createdAt: serverTimestamp(),
           completedAt: taskData.status === "Done" ? serverTimestamp() : null,
           archived: false,
+          completionComment: taskData.completionComment || "",
         };
         await addDoc(collection(db, "tasks"), payload);
         toast.success("Task created successfully!");
@@ -416,28 +446,6 @@ function TasksManagement() {
     setShowArchived(false);
   };
 
-  const markDone = async (id) => {
-    const t = tasks.find((x) => x.id === id);
-    if (!t || t.status === "Done") return;
-    try {
-      await updateDoc(doc(db, "tasks", id), {
-        status: "Done",
-        completedAt: serverTimestamp(),
-      });
-      toast.success(`Task "${t.title}" marked as done!`);
-      if (t.projectId) {
-        try {
-          await updateProjectProgress(t.projectId);
-        } catch {
-          /* ignore */
-        }
-      }
-    } catch (err) {
-      console.error("Mark done failed", err);
-      toast.error("Failed to mark as done");
-    }
-  };
-
   const reassignTask = async (taskId, encoded) => {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
@@ -472,8 +480,14 @@ function TasksManagement() {
     const wasDone = t.status === "Done";
     const willBeDone = newStatus === "Done";
     try {
+      if (willBeDone) {
+        setCompletionTaskId(taskId);
+        setShowCompletionModal(true);
+        return;
+      }
       await updateDoc(doc(db, "tasks", taskId), {
         status: newStatus,
+        progressPercent: willBeDone ? 100 : (wasDone ? 0 : t.progressPercent ?? 0),
         completedAt: willBeDone
           ? serverTimestamp()
           : wasDone
@@ -490,6 +504,36 @@ function TasksManagement() {
     } catch (err) {
       console.error("Move failed", err);
       toast.error("Failed to move task");
+    }
+  };
+
+  const handleSubmitAdminCompletion = async (comment) => {
+    if (!completionTaskId) {
+      setShowCompletionModal(false);
+      return;
+    }
+    try {
+      const t = tasks.find((x) => x.id === completionTaskId);
+      await updateDoc(doc(db, "tasks", completionTaskId), {
+        status: "Done",
+        completedAt: serverTimestamp(),
+        progressPercent: 100,
+        completionComment: comment,
+      });
+      if (t?.projectId) {
+        try {
+          await updateProjectProgress(t.projectId);
+        } catch {
+          /* ignore */
+        }
+      }
+      toast.success("Task marked as done");
+    } catch (err) {
+      console.error("Admin completion failed", err);
+      toast.error("Failed to complete task");
+    } finally {
+      setShowCompletionModal(false);
+      setCompletionTaskId(null);
     }
   };
 
@@ -535,28 +579,59 @@ function TasksManagement() {
     clients,
   ]);
 
-  const activeTasks = useMemo(() => tasks.filter((t) => !t.archived), [tasks]);
+  // Assignee options constrained by selected project
+  const filteredAssigneeUsers = useMemo(() => {
+    if (!filterProject) return users;
+    const ids = new Set(
+      tasks
+        .filter(
+          (t) =>
+            t.projectId === filterProject &&
+            (t.assigneeType || "user") === "user" &&
+            t.assigneeId
+        )
+        .map((t) => t.assigneeId)
+    );
+    return users.filter((u) => ids.has(u.id));
+  }, [filterProject, tasks, users]);
+
+  const filteredAssigneeClients = useMemo(() => {
+    if (!filterProject) return clients;
+    const proj = projects.find((p) => p.id === filterProject);
+    if (proj?.clientId) return clients.filter((c) => c.id === proj.clientId);
+    const ids = new Set(
+      tasks
+        .filter(
+          (t) =>
+            t.projectId === filterProject &&
+            (t.assigneeType || "user") === "client" &&
+            t.assigneeId
+        )
+        .map((t) => t.assigneeId)
+    );
+    return clients.filter((c) => ids.has(c.id));
+  }, [filterProject, projects, clients, tasks]);
 
   const counts = useMemo(() => {
-    const c = { "To-Do": 0, "In Progress": 0, "In Review": 0, Done: 0 };
-    activeTasks.forEach((t) => {
+    const c = { "To-Do": 0, "In Progress": 0, Done: 0 };
+    filtered.forEach((t) => {
       if (c[t.status] !== undefined) c[t.status] += 1;
     });
     return c;
-  }, [activeTasks]);
+  }, [filtered]);
 
   const progressPct = useMemo(() => {
-    if (activeTasks.length === 0) return 0;
-    const done = activeTasks.filter((t) => t.status === "Done").length;
-    return Math.round((done / activeTasks.length) * 100);
-  }, [activeTasks]);
+    if (filtered.length === 0) return 0;
+    const done = filtered.filter((t) => t.status === "Done").length;
+    return Math.round((done / filtered.length) * 100);
+  }, [filtered]);
 
   const overdueTasks = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
-    return activeTasks.filter(
+    return filtered.filter(
       (t) => t.dueDate && t.dueDate < today && t.status !== "Done"
     );
-  }, [activeTasks]);
+  }, [filtered]);
 
   const handleExportExcel = async () => {
     try {
@@ -628,7 +703,7 @@ function TasksManagement() {
       </PageHeader>
 
       <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <div className="flex items-center justify-between">
               <div>
@@ -651,17 +726,6 @@ function TasksManagement() {
                 </div>
               </div>
               <FaClock className="h-8 w-8 text-blue-500" />
-            </div>
-          </Card>
-          <Card>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-content-secondary">In Review</div>
-                <div className="mt-1 text-2xl font-semibold">
-                  {counts["In Review"]}
-                </div>
-              </div>
-              <FaClock className="h-8 w-8 text-yellow-500" />
             </div>
           </Card>
           <Card>
@@ -704,7 +768,7 @@ function TasksManagement() {
                 />
               </div>
               <div className="mt-2 text-xs text-content-tertiary">
-                {counts.Done} of {tasks.length} tasks completed
+                {counts.Done} of {filtered.length} tasks completed
               </div>
             </div>
           </div>
@@ -741,7 +805,7 @@ function TasksManagement() {
                 <option value="">All Assignees</option>
                 {(!filterAssigneeType || filterAssigneeType === "user") && (
                   <optgroup label="Resources">
-                    {users.map((u) => (
+                    {filteredAssigneeUsers.map((u) => (
                       <option key={u.id} value={`user:${u.id}`}>
                         {u.name}
                       </option>
@@ -750,7 +814,7 @@ function TasksManagement() {
                 )}
                 {(!filterAssigneeType || filterAssigneeType === "client") && (
                   <optgroup label="Clients">
-                    {clients.map((c) => (
+                    {filteredAssigneeClients.map((c) => (
                       <option key={c.id} value={`client:${c.id}`}>
                         {c.clientName}{" "}
                         {c.companyName ? `(${c.companyName})` : ""}
@@ -779,7 +843,6 @@ function TasksManagement() {
                 <option value="">All Statuses</option>
                 <option>To-Do</option>
                 <option>In Progress</option>
-                <option>In Review</option>
                 <option>Done</option>
               </select>
 
@@ -953,6 +1016,11 @@ function TasksManagement() {
                                     {t.description}
                                   </p>
                                 )}
+                                {t.status === "Done" && t.completionComment && (
+                                  <p className="mt-1 text-xs italic text-indigo-700 line-clamp-1">
+                                    💬 {t.completionComment}
+                                  </p>
+                                )}
                               </div>
                               <div className="flex flex-col items-end gap-1 text-xs text-content-tertiary whitespace-nowrap">
                                 <div className="flex items-center gap-2">
@@ -1017,6 +1085,21 @@ function TasksManagement() {
                                   : ""}
                               </div>
                             </div>
+                            {/* Progress Bar */}
+                            {t.status === "In Progress" && (
+                              <div className="mt-2 flex items-center gap-2">
+                                <span className="text-xs font-medium text-gray-600">Progress:</span>
+                                <div className="flex-1 max-w-xs bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className="bg-indigo-600 h-2 rounded-full transition-all"
+                                    style={{ width: `${t.progressPercent || 0}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">
+                                  {t.progressPercent || 0}%
+                                </span>
+                              </div>
+                            )}
                             <div className="mt-3 flex flex-wrap items-center gap-2">
                               <button
                                 onClick={() => handleView(t)}
@@ -1024,14 +1107,6 @@ function TasksManagement() {
                               >
                                 View
                               </button>
-                              {t.status !== "Done" && (
-                                <button
-                                  onClick={() => markDone(t.id)}
-                                  className="rounded-md bg-green-100 px-3 py-1 text-xs font-medium text-green-700 transition hover:bg-green-200"
-                                >
-                                  Mark Done
-                                </button>
-                              )}
                               {(t.assigneeType || "user") !== "client" && (
                                 <select
                                   value={`${t.assigneeType || "user"}:${
@@ -1122,10 +1197,27 @@ function TasksManagement() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Title
-                </label>
-                <p className="mt-1 text-gray-900">{viewingTask.title}</p>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900">{viewingTask.title}</h3>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getStatusBadge(
+                        viewingTask.status
+                      )}`}>
+                        {statusIcons[viewingTask.status]}
+                        <span>{viewingTask.status}</span>
+                      </span>
+                      {viewingTask.priority && (
+                        <span className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getPriorityBadge(
+                          viewingTask.priority
+                        )}`}>
+                          <FaFlag />
+                          <span>{viewingTask.priority}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -1212,6 +1304,32 @@ function TasksManagement() {
                 </div>
               )}
 
+              {(viewingTask.completionComment || viewingTask.completedBy) && (
+                <div className="rounded-md bg-indigo-50 p-3">
+                  <div className="text-sm font-medium text-indigo-800">
+                    Completion
+                  </div>
+                  {viewingTask.completionComment && (
+                    <p className="mt-1 text-indigo-900">
+                      {viewingTask.completionComment}
+                    </p>
+                  )}
+                  {viewingTask.completedBy && (
+                    <p className="mt-1 text-xs text-indigo-800">
+                      By: {(() => {
+                        const by =
+                          (viewingTask.completedByType || "user") === "client"
+                            ? clients.find((c) => c.id === viewingTask.completedBy)
+                            : users.find((u) => u.id === viewingTask.completedBy);
+                        return by?.name || by?.clientName || "—";
+                      })()} {viewingTask.completedByType
+                        ? `(${(viewingTask.completedByType === "client" ? "Client" : "Resource")})`
+                        : ""}
+                    </p>
+                  )}
+                </div>
+              )}
+
               {viewingTask.archived && (
                 <div className="rounded-md bg-gray-100 p-3">
                   <p className="text-sm font-medium text-gray-700">
@@ -1241,6 +1359,19 @@ function TasksManagement() {
           </div>
         </div>
       )}
+
+      <CompletionCommentModal
+        open={showCompletionModal}
+        onClose={() => {
+          setShowCompletionModal(false);
+          setCompletionTaskId(null);
+        }}
+        onSubmit={handleSubmitAdminCompletion}
+        title="Add Completion Comment"
+        confirmLabel="Save"
+        minLength={5}
+        maxLength={300}
+      />
     </div>
   );
 }

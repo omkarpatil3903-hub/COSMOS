@@ -14,11 +14,14 @@ import {
 import {
   HiOutlineArrowDownTray,
   HiMiniArrowPath,
-  HiXMark,
 } from "react-icons/hi2";
 // Excel export not used on this page currently
 import toast from "react-hot-toast";
 import { db } from "../firebase";
+import AddProjectModal from "../components/AddProjectModal";
+import EditProjectModal from "../components/EditProjectModal";
+import ViewProjectModal from "../components/ViewProjectModal";
+import DeleteProjectModal from "../components/DeleteProjectModal";
 import {
   addDoc,
   collection,
@@ -80,8 +83,12 @@ function ManageProjects() {
     clientName: "",
     startDate: "",
     endDate: "",
-    objectives: "",
-    goals: "",
+    okrs: [
+      {
+        objective: "",
+        keyResults: [""],
+      },
+    ],
   });
 
   // Subscribe to Firestore projects
@@ -103,8 +110,7 @@ function ManageProjects() {
           endDate: data.endDate?.toDate
             ? data.endDate.toDate().toISOString().slice(0, 10)
             : data.endDate || "",
-          objectives: data.objectives || "",
-          goals: data.goals || "",
+          okrs: data.okrs || [{ objective: "", keyResults: [""] }],
           createdAt: data.createdAt || null,
         };
       });
@@ -151,7 +157,7 @@ function ManageProjects() {
       if (x === "in progress" || x === "in-progress" || x === "inprogress")
         return "In Progress";
       if (x === "in review" || x === "in-review" || x === "inreview")
-        return "In Review";
+        return "In Progress";
       if (
         x === "to-do" ||
         x === "to do" ||
@@ -257,15 +263,21 @@ function ManageProjects() {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
 
+    // Validate OKRs
+    const hasValidOKR = formData.okrs.some(
+      (okr) => okr.objective.trim() && okr.keyResults.some((kr) => kr.trim())
+    );
+
     if (
       !formData.projectName ||
       !formData.clientId ||
       !formData.startDate ||
       !formData.endDate ||
-      !formData.objectives ||
-      !formData.goals
+      !hasValidOKR
     ) {
-      toast.error("Please fill in all required fields.");
+      toast.error(
+        "Please fill in all required fields including at least one objective with key results."
+      );
       return;
     }
 
@@ -285,8 +297,7 @@ function ManageProjects() {
         endDate: formData.endDate
           ? Timestamp.fromDate(new Date(formData.endDate))
           : null,
-        objectives: formData.objectives,
-        goals: formData.goals,
+        okrs: formData.okrs,
         createdAt: serverTimestamp(),
       });
       setFormData({
@@ -296,8 +307,7 @@ function ManageProjects() {
         progress: 0,
         startDate: "",
         endDate: "",
-        objectives: "",
-        goals: "",
+        okrs: [{ objective: "", keyResults: [""] }],
       });
       setShowAddForm(false);
     } catch (err) {
@@ -315,8 +325,7 @@ function ManageProjects() {
       clientName: project.clientName,
       startDate: project.startDate,
       endDate: project.endDate,
-      objectives: project.objectives || "",
-      goals: project.goals || "",
+      okrs: project.okrs || [{ objective: "", keyResults: [""] }],
     });
     setShowEditForm(true);
   };
@@ -341,15 +350,21 @@ function ManageProjects() {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
 
+    // Validate OKRs
+    const hasValidOKR = formData.okrs.some(
+      (okr) => okr.objective.trim() && okr.keyResults.some((kr) => kr.trim())
+    );
+
     if (
       !formData.projectName ||
       !formData.clientId ||
       !formData.startDate ||
       !formData.endDate ||
-      !formData.objectives ||
-      !formData.goals
+      !hasValidOKR
     ) {
-      toast.error("Please fill in all required fields.");
+      toast.error(
+        "Please fill in all required fields including at least one objective with key results."
+      );
       return;
     }
 
@@ -368,8 +383,7 @@ function ManageProjects() {
         endDate: formData.endDate
           ? Timestamp.fromDate(new Date(formData.endDate))
           : null,
-        objectives: formData.objectives,
-        goals: formData.goals,
+        okrs: formData.okrs,
       });
       setFormData({
         projectName: "",
@@ -377,8 +391,7 @@ function ManageProjects() {
         clientName: "",
         startDate: "",
         endDate: "",
-        objectives: "",
-        goals: "",
+        okrs: [{ objective: "", keyResults: [""] }],
       });
       setShowEditForm(false);
       setSelectedProject(null);
@@ -389,20 +402,15 @@ function ManageProjects() {
     }
   };
 
-  const handleDelete = (id) => {
+  const handleDeleteClick = (id) => {
     const project = projects.find((p) => p.id === id);
     setSelectedProject(project);
     setShowDeleteModal(true);
   };
 
-  const confirmDelete = async () => {
-    if (!selectedProject?.id) {
-      toast.error("No project selected");
-      return;
-    }
-
+  const handleDelete = async (id) => {
     try {
-      const projectRef = doc(db, "projects", selectedProject.id);
+      const projectRef = doc(db, "projects", id);
       await deleteDoc(projectRef);
       setShowDeleteModal(false);
       setSelectedProject(null);
@@ -501,7 +509,9 @@ function ManageProjects() {
                     <div>End: {project.endDate}</div>
                     <div className="mt-1 text-gray-600 text-xs">
                       <strong>Obj:</strong>{" "}
-                      {project.objectives?.substring(0, 30)}...
+                      {project.okrs?.[0]?.objective?.substring(0, 30) ||
+                        "No objective"}
+                      ...
                     </div>
                   </div>
                   <div className="flex justify-end space-x-2">
@@ -520,7 +530,7 @@ function ManageProjects() {
                       <FaEdit className="h-3 w-3" />
                     </button>
                     <button
-                      onClick={() => handleDelete(project.id)}
+                      onClick={() => handleDeleteClick(project.id)}
                       className="p-1 rounded text-red-600 hover:bg-red-100"
                       title="Delete Project"
                     >
@@ -811,7 +821,7 @@ function ManageProjects() {
                               <FaEdit className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => handleDelete(project.id)}
+                              onClick={() => handleDeleteClick(project.id)}
                               className="p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md"
                               title="Delete Project"
                             >
@@ -852,448 +862,41 @@ function ManageProjects() {
             </Card>
           )}
 
-          {/* Add Project Modal - Fixed positioning */}
-          {showAddForm && (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
-              <div
-                className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative z-[10000]"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold text-content-primary">
-                      Add New Project
-                    </h2>
-                    <button
-                      onClick={() => setShowAddForm(false)}
-                      className="text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <HiXMark className="h-6 w-6" />
-                    </button>
-                  </div>
-                  <form onSubmit={handleFormSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                        Project Name *
-                        <input
-                          type="text"
-                          value={formData.projectName}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              projectName: e.target.value,
-                            })
-                          }
-                          className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                          required
-                        />
-                      </label>
-                      <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                        Company Name *
-                        <select
-                          value={
-                            formData.clientId ||
-                            clients.find(
-                              (c) => c.companyName === formData.clientName
-                            )?.id ||
-                            ""
-                          }
-                          onChange={(e) => {
-                            const id = e.target.value;
-                            const c = clients.find((cl) => cl.id === id);
-                            setFormData({
-                              ...formData,
-                              clientId: id,
-                              clientName: c?.companyName || "",
-                            });
-                          }}
-                          className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                          required
-                        >
-                          <option value="" disabled>
-                            Select a company
-                          </option>
-                          {clients.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.companyName}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      {/* Progress is derived from tasks; no manual input */}
-                      <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                        Start Date *
-                        <input
-                          type="date"
-                          value={formData.startDate}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              startDate: e.target.value,
-                            })
-                          }
-                          className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                          required
-                        />
-                      </label>
-                      <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                        End Date *
-                        <input
-                          type="date"
-                          value={formData.endDate}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              endDate: e.target.value,
-                            })
-                          }
-                          className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                          required
-                        />
-                      </label>
-                    </div>
+          {/* Modals */}
+          <AddProjectModal
+            showAddForm={showAddForm}
+            setShowAddForm={setShowAddForm}
+            formData={formData}
+            setFormData={setFormData}
+            clients={clients}
+            handleFormSubmit={handleFormSubmit}
+          />
 
-                    <div className="grid grid-cols-1 gap-4">
-                      <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                        Project Objectives *
-                        <textarea
-                          rows={4}
-                          value={formData.objectives}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              objectives: e.target.value,
-                            })
-                          }
-                          placeholder="Describe the main objectives of this project..."
-                          className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100 resize-vertical"
-                          required
-                        />
-                      </label>
-                      <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                        Project Goals *
-                        <textarea
-                          rows={4}
-                          value={formData.goals}
-                          onChange={(e) =>
-                            setFormData({ ...formData, goals: e.target.value })
-                          }
-                          placeholder="Define the specific goals and deliverables..."
-                          className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100 resize-vertical"
-                          required
-                        />
-                      </label>
-                    </div>
+          <EditProjectModal
+            showEditForm={showEditForm}
+            setShowEditForm={setShowEditForm}
+            selectedProject={selectedProject}
+            setSelectedProject={setSelectedProject}
+            formData={formData}
+            setFormData={setFormData}
+            clients={clients}
+            handleEditSubmit={handleEditSubmit}
+          />
 
-                    <div className="flex gap-3 pt-4">
-                      <Button type="submit">Add Project</Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => setShowAddForm(false)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          )}
+          <ViewProjectModal
+            showViewModal={showViewModal}
+            setShowViewModal={setShowViewModal}
+            selectedProject={selectedProject}
+            setSelectedProject={setSelectedProject}
+          />
 
-          {/* Edit Project Modal - Fixed positioning */}
-          {showEditForm && selectedProject && (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
-              <div
-                className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative z-[10000]"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold text-content-primary">
-                      Edit Project
-                    </h2>
-                    <button
-                      onClick={() => {
-                        setShowEditForm(false);
-                        setSelectedProject(null);
-                        setFormData({
-                          projectName: "",
-                          clientName: "",
-                          status: "Planning",
-                          startDate: "",
-                          endDate: "",
-                          objectives: "",
-                          goals: "",
-                        });
-                      }}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <HiXMark className="h-6 w-6" />
-                    </button>
-                  </div>
-                  <form onSubmit={handleEditSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                        Project Name *
-                        <input
-                          type="text"
-                          value={formData.projectName}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              projectName: e.target.value,
-                            })
-                          }
-                          className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                          required
-                        />
-                      </label>
-                      <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                        Company Name *
-                        <select
-                          value={
-                            formData.clientId ||
-                            clients.find(
-                              (c) => c.companyName === formData.clientName
-                            )?.id ||
-                            ""
-                          }
-                          onChange={(e) => {
-                            const id = e.target.value;
-                            const c = clients.find((cl) => cl.id === id);
-                            setFormData({
-                              ...formData,
-                              clientId: id,
-                              clientName: c?.companyName || "",
-                            });
-                          }}
-                          className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                          required
-                        >
-                          <option value="" disabled>
-                            Select a company
-                          </option>
-                          {clients.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.companyName}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      {/* Progress is derived from tasks; no manual input */}
-                      <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                        Start Date *
-                        <input
-                          type="date"
-                          value={formData.startDate}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              startDate: e.target.value,
-                            })
-                          }
-                          className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                          required
-                        />
-                      </label>
-                      <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                        End Date *
-                        <input
-                          type="date"
-                          value={formData.endDate}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              endDate: e.target.value,
-                            })
-                          }
-                          className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                          required
-                        />
-                      </label>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4">
-                      <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                        Project Objectives *
-                        <textarea
-                          rows={4}
-                          value={formData.objectives}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              objectives: e.target.value,
-                            })
-                          }
-                          placeholder="Describe the main objectives of this project..."
-                          className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100 resize-vertical"
-                          required
-                        />
-                      </label>
-                      <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                        Project Goals *
-                        <textarea
-                          rows={4}
-                          value={formData.goals}
-                          onChange={(e) =>
-                            setFormData({ ...formData, goals: e.target.value })
-                          }
-                          placeholder="Define the specific goals and deliverables..."
-                          className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100 resize-vertical"
-                          required
-                        />
-                      </label>
-                    </div>
-
-                    <div className="flex gap-3 pt-4">
-                      <Button type="submit">Update Project</Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                          setShowEditForm(false);
-                          setSelectedProject(null);
-                          setFormData({
-                            projectName: "",
-                            clientName: "",
-                            status: "Planning",
-                            startDate: "",
-                            endDate: "",
-                            objectives: "",
-                            goals: "",
-                          });
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* View Project Modal - Fixed positioning */}
-          {showViewModal && selectedProject && (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
-              <div
-                className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative z-[10000]"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold text-gray-800">
-                      Project Details
-                    </h2>
-                    <button
-                      onClick={() => {
-                        setShowViewModal(false);
-                        setSelectedProject(null);
-                      }}
-                      className="text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <HiXMark className="h-6 w-6" />
-                    </button>
-                  </div>
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">
-                          Project Name
-                        </label>
-                        <p className="text-gray-900 font-semibold">
-                          {selectedProject.projectName}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">
-                          Client Name
-                        </label>
-                        <p className="text-gray-900 font-semibold">
-                          {selectedProject.clientName}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">
-                          Status
-                        </label>
-                        <p className="text-gray-900 font-semibold">
-                          {selectedProject.status}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">
-                          Start Date
-                        </label>
-                        <p className="text-gray-900">
-                          {selectedProject.startDate}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-600 mb-1">
-                          End Date
-                        </label>
-                        <p className="text-gray-900 font-mono bg-gray-50 px-3 py-2 rounded border">
-                          {selectedProject.endDate}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-2">
-                        Project Objectives
-                      </label>
-                      <div className="bg-gray-50 p-4 rounded-lg border">
-                        <p className="text-gray-900 text-sm leading-relaxed whitespace-pre-wrap">
-                          {selectedProject.objectives ||
-                            "No objectives specified"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-2">
-                        Project Goals
-                      </label>
-                      <div className="bg-gray-50 p-4 rounded-lg border">
-                        <p className="text-gray-900 text-sm leading-relaxed whitespace-pre-wrap">
-                          {selectedProject.goals || "No goals specified"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex justify-end pt-6 border-t border-gray-200 mt-6">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        setShowViewModal(false);
-                        setSelectedProject(null);
-                      }}
-                    >
-                      Close
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Delete Confirmation Modal - Fixed positioning */}
-          {showDeleteModal && selectedProject && (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
-              <div className="relative z-[10000]">
-                <DeleteConfirmationModal
-                  onClose={() => {
-                    setShowDeleteModal(false);
-                    setSelectedProject(null);
-                  }}
-                  onConfirm={confirmDelete}
-                />
-              </div>
-            </div>
-          )}
+          <DeleteProjectModal
+            showDeleteModal={showDeleteModal}
+            setShowDeleteModal={setShowDeleteModal}
+            selectedProject={selectedProject}
+            setSelectedProject={setSelectedProject}
+            handleDelete={handleDelete}
+          />
         </div>
       </div>
     </>

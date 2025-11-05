@@ -159,27 +159,48 @@ export default function ClientProjects() {
                   </div>
                 )}
 
-                {/* Project Objectives */}
-                {project.objectives && (
+                {/* OKRs (Objectives and Key Results) */}
+                {project.okrs && project.okrs.length > 0 && (
                   <div className="pt-4 border-t border-gray-200">
-                    <p className="text-sm font-medium text-gray-700 mb-2">
-                      Project Objectives
+                    <p className="text-sm font-medium text-gray-700 mb-3">
+                      OKRs (Objectives & Key Results)
                     </p>
-                    <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                      {project.objectives}
-                    </p>
-                  </div>
-                )}
-
-                {/* Project Goals */}
-                {project.goals && (
-                  <div className="pt-3 border-t border-gray-200">
-                    <p className="text-sm font-medium text-gray-700 mb-2">
-                      Project Goals
-                    </p>
-                    <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                      {project.goals}
-                    </p>
+                    <div className="space-y-3">
+                      {project.okrs.map((okr, index) => (
+                        <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                          <div className="mb-2">
+                            <p className="text-xs font-medium text-gray-500 mb-1">
+                              Objective {index + 1}
+                            </p>
+                            <p className="text-sm text-gray-900 font-semibold">
+                              {okr.objective || "No objective specified"}
+                            </p>
+                          </div>
+                          {okr.keyResults && okr.keyResults.some((kr) => kr) && (
+                            <div>
+                              <p className="text-xs font-medium text-gray-500 mb-1">
+                                Key Results
+                              </p>
+                              <ul className="space-y-1">
+                                {okr.keyResults.map((kr, krIndex) =>
+                                  kr ? (
+                                    <li
+                                      key={krIndex}
+                                      className="flex items-start gap-2 text-sm text-gray-700"
+                                    >
+                                      <span className="text-indigo-600 font-semibold">
+                                        {krIndex + 1}.
+                                      </span>
+                                      <span>{kr}</span>
+                                    </li>
+                                  ) : null
+                                )}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 

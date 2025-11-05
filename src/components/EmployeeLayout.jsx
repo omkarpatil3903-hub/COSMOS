@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "../firebase";
@@ -50,6 +50,7 @@ function EmployeeLayout() {
   const { userData } = useAuthContext();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
 
   // Dynamic page title based on route
   useEffect(() => {
@@ -131,9 +132,24 @@ function EmployeeLayout() {
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft">
-              <FaUserTie className="h-5 w-5" aria-hidden="true" />
+            <span className="h-10 w-10 overflow-hidden rounded-full shadow-md ring-1 ring-indigo-500/20">
+              {userData?.imageUrl && !avatarError ? (
+                <img
+                  src={userData.imageUrl}
+                  alt="Avatar"
+                  className="h-full w-full object-cover object-center transition-transform duration-200 hover:scale-105"
+                  onError={() => setAvatarError(true)}
+                />
+              ) : (
+                <div className="h-full w-full rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold">
+                  {(userData?.name || userData?.clientName || userData?.email || "U")
+                    .toString()
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
+              )}
             </span>
+
             {!isCollapsed && (
               <div>
                 <p className="text-sm font-medium text-content-tertiary">

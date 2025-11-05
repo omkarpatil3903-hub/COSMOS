@@ -2,7 +2,7 @@ import React from "react";
 import { HiXMark } from "react-icons/hi2";
 import Button from "./Button";
 
-function AddResourceModal({ formData, setFormData, onSubmit, onClose }) {
+function AddResourceModal({ formData, setFormData, onSubmit, onClose, imagePreview, onImageChange }) {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative z-[10000]">
@@ -123,6 +123,24 @@ function AddResourceModal({ formData, setFormData, onSubmit, onClose }) {
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                 </select>
+              </label>
+              <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2">
+                Profile Image
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={onImageChange}
+                  className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                />
+                {imagePreview && (
+                  <div className="mt-2">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="h-32 w-32 object-cover rounded-lg border border-gray-200"
+                    />
+                  </div>
+                )}
               </label>
             </div>
             <div className="flex gap-3 pt-4">

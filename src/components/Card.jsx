@@ -1,9 +1,10 @@
 // src/components/Card.jsx
 import React from "react";
 
-function Card({ title, children, actions, className = "" }) {
+function Card({ title, children, actions, className = "", ...props }) {
   return (
     <div
+      {...props}
       className={`bg-surface rounded-xl border border-subtle shadow-soft transition-colors duration-200 ${className}`}
     >
       {/* Card Header */}

@@ -99,7 +99,7 @@ function DashboardPage() {
     if (x === "in progress" || x === "in-progress" || x === "inprogress")
       return "In Progress";
     if (x === "in review" || x === "in-review" || x === "inreview")
-      return "In Review";
+      return "In Progress";
     if (
       x === "" ||
       x === "to-do" ||
@@ -192,19 +192,17 @@ function DashboardPage() {
 
   // Project Health and Status Distribution
   const statusSummary = useMemo(() => {
-    const counts = { done: 0, inProgress: 0, inReview: 0, todo: 0 };
+    const counts = { done: 0, inProgress: 0, todo: 0 };
     for (const t of tasks) {
       const st = normalizeStatus(t.status);
       if (st === "Done") counts.done++;
       else if (st === "In Progress") counts.inProgress++;
-      else if (st === "In Review") counts.inReview++;
       else counts.todo++;
     }
     const total = tasks.length || 1; // avoid div by zero
     const pct = {
       done: Math.round((counts.done / total) * 100),
       inProgress: Math.round((counts.inProgress / total) * 100),
-      inReview: Math.round((counts.inReview / total) * 100),
       todo: Math.round((counts.todo / total) * 100),
     };
     return { counts, pct, total: tasks.length };
@@ -661,20 +659,6 @@ function DashboardPage() {
             ></div>
             <span className="text-content-secondary">Meetings</span>
           </div>
-          {/* <div className="flex items-center gap-1">
-            <div
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: TYPE_HEX.milestone }}
-            ></div>
-            <span className="text-content-secondary">Milestones</span>
-          </div> */}
-          {/* <div className="flex items-center gap-1">
-            <div
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: TYPE_HEX.task }}
-            ></div>
-            <span className="text-content-secondary">Tasks</span>
-          </div> */}
         </div>
       </div>
     );
@@ -781,13 +765,6 @@ function DashboardPage() {
                       title={`In Progress ${statusSummary.counts.inProgress} (${statusSummary.pct.inProgress}%)`}
                     />
                   )}
-                  {statusSummary.counts.inReview > 0 && (
-                    <div
-                      className="h-3 bg-yellow-500"
-                      style={{ flexGrow: statusSummary.counts.inReview }}
-                      title={`In Review ${statusSummary.counts.inReview} (${statusSummary.pct.inReview}%)`}
-                    />
-                  )}
                   {statusSummary.counts.todo > 0 && (
                     <div
                       className="h-3 bg-gray-400"
@@ -809,13 +786,6 @@ function DashboardPage() {
                     In Progress:{" "}
                     <span className="font-medium text-content-primary">
                       {statusSummary.counts.inProgress}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="inline-block w-2 h-2 rounded-full bg-yellow-500" />
-                    In Review:{" "}
-                    <span className="font-medium text-content-primary">
-                      {statusSummary.counts.inReview}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">

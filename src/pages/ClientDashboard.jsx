@@ -34,7 +34,17 @@ export default function ClientDashboard() {
       where("assigneeId", "==", uid)
     );
     const unsubT = onSnapshot(qTasks, (snap) => {
-      setTasks(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setTasks(
+        snap.docs.map((d) => {
+          const data = d.data() || {};
+          return {
+            id: d.id,
+            ...data,
+            status:
+              data.status === "In Review" ? "In Progress" : data.status || "To-Do",
+          };
+        })
+      );
       setLoadingData(false);
     });
 
@@ -67,10 +77,7 @@ export default function ClientDashboard() {
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.status === "Done").length;
   const pendingTasks = tasks.filter(
-    (t) =>
-      t.status === "To-Do" ||
-      t.status === "In Progress" ||
-      t.status === "In Review"
+    (t) => t.status === "To-Do" || t.status === "In Progress"
   ).length;
   const totalProjects = projects.length;
   const upcomingEvents = events.filter((e) => {
@@ -167,8 +174,6 @@ export default function ClientDashboard() {
                           ? "bg-success-100 text-success-600"
                           : task.status === "In Progress"
                           ? "bg-blue-100 text-blue-800"
-                          : task.status === "In Review"
-                          ? "bg-yellow-100 text-yellow-800"
                           : "bg-gray-100 text-gray-800"
                       }`}
                     >

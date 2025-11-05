@@ -18,8 +18,10 @@ function TaskModal({
   const [assigneeType, setAssigneeType] = useState("user"); // 'user' | 'client'
   const [projectId, setProjectId] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [assignedDate, setAssignedDate] = useState(new Date().toISOString().slice(0, 10));
   const [priority, setPriority] = useState("Medium");
   const [status, setStatus] = useState("To-Do");
+  const [completionComment, setCompletionComment] = useState("");
 
   useEffect(() => {
     if (taskToEdit) {
@@ -29,8 +31,10 @@ function TaskModal({
       setAssigneeType(taskToEdit.assigneeType || "user");
       setProjectId(taskToEdit.projectId || "");
       setDueDate(taskToEdit.dueDate || "");
+      setAssignedDate(taskToEdit.assignedDate || "");
       setPriority(taskToEdit.priority || "Medium");
       setStatus(taskToEdit.status || "To-Do");
+      setCompletionComment(taskToEdit.completionComment || "");
     }
   }, [taskToEdit]);
 
@@ -47,8 +51,10 @@ function TaskModal({
       assigneeType,
       projectId,
       dueDate,
+      assignedDate,
       priority,
       status,
+      completionComment,
     });
   };
 
@@ -73,6 +79,25 @@ function TaskModal({
               className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
             />
           </div>
+
+          {status === "Done" && (
+            <div>
+              <label className="block text-sm font-medium text-content-secondary">
+                Completion Comment
+              </label>
+              <textarea
+                value={completionComment}
+                onChange={(e) => setCompletionComment(e.target.value)}
+                rows={3}
+                placeholder="Add details about completion..."
+                className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
+                maxLength={300}
+              />
+              <div className="mt-1 text-xs text-content-tertiary text-right">
+                {(completionComment || "").length}/300
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-content-secondary">
@@ -154,6 +179,17 @@ function TaskModal({
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-content-secondary">
+                Assigned Date
+              </label>
+              <input
+                type="date"
+                value={assignedDate}
+                onChange={(e) => setAssignedDate(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-content-secondary">
                 Due Date
               </label>
               <input
@@ -190,7 +226,6 @@ function TaskModal({
               >
                 <option>To-Do</option>
                 <option>In Progress</option>
-                <option>In Review</option>
                 <option>Done</option>
               </select>
             </div>

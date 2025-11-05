@@ -10,8 +10,10 @@ import {
   onSnapshot,
   doc,
   updateDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import toast from "react-hot-toast";
+import CompletionCommentModal from "../components/CompletionCommentModal";
 import {
   FaTasks,
   FaSearch,
@@ -31,6 +33,8 @@ export default function ClientTasks() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterPriority, setFilterPriority] = useState("all");
   const [view, setView] = useState("board"); // 'board' or 'list'
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [completionTaskId, setCompletionTaskId] = useState(null);
 
   useEffect(() => {
     if (!uid) return;
@@ -42,7 +46,16 @@ export default function ClientTasks() {
     );
 
     const unsub = onSnapshot(q, (snap) => {
-      setTasks(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setTasks(
+        snap.docs.map((d) => {
+          const data = d.data() || {};
+          return {
+            id: d.id,
+            ...data,
+            status: data.status === "In Review" ? "In Progress" : (data.status || "To-Do"),
+          };
+        })
+      );
       setLoading(false);
     });
 
@@ -51,11 +64,39 @@ export default function ClientTasks() {
 
   const handleStatusChange = async (taskId, newStatus) => {
     try {
+      if (newStatus === "Done") {
+        setCompletionTaskId(taskId);
+        setShowCompletionModal(true);
+        return;
+      }
       await updateDoc(doc(db, "tasks", taskId), { status: newStatus });
       toast.success("Task status updated");
     } catch (error) {
       console.error("Error updating task:", error);
       toast.error("Failed to update task status");
+    }
+  };
+
+  const handleSubmitCompletion = async (comment) => {
+    if (!completionTaskId) {
+      setShowCompletionModal(false);
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "tasks", completionTaskId), {
+        status: "Done",
+        completedAt: serverTimestamp(),
+        completedBy: uid || "",
+        completedByType: "client",
+        ...(comment ? { completionComment: comment } : {}),
+      });
+      toast.success("Task marked as complete!");
+    } catch (error) {
+      console.error("Error completing task:", error);
+      toast.error("Failed to complete task");
+    } finally {
+      setShowCompletionModal(false);
+      setCompletionTaskId(null);
     }
   };
 
@@ -81,10 +122,7 @@ export default function ClientTasks() {
 
   // Group tasks by status
   const todoTasks = filteredTasks.filter((t) => t.status === "To-Do");
-  const inProgressTasks = filteredTasks.filter(
-    (t) => t.status === "In Progress"
-  );
-  const inReviewTasks = filteredTasks.filter((t) => t.status === "In Review");
+  const inProgressTasks = filteredTasks.filter((t) => t.status === "In Progress");
   const completedTasks = filteredTasks.filter((t) => t.status === "Done");
 
   if (loading) {
@@ -122,6 +160,11 @@ export default function ClientTasks() {
       <p className="text-sm text-gray-600 mb-3 line-clamp-2">
         {task.description || "No description"}
       </p>
+      {task.status === "Done" && task.completionComment && (
+        <p className="text-xs italic text-indigo-700 mb-2 line-clamp-1">
+          💬 {task.completionComment}
+        </p>
+      )}
 
       <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
         {task.dueDate && (
@@ -142,7 +185,6 @@ export default function ClientTasks() {
       >
         <option value="To-Do">To-Do</option>
         <option value="In Progress">In Progress</option>
-        <option value="In Review">In Review</option>
         <option value="Done">Done</option>
       </select>
     </div>
@@ -159,7 +201,7 @@ export default function ClientTasks() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-gray-50 border-gray-200">
           <div className="flex items-center">
             <FaTasks className="text-gray-600 text-2xl mr-3" />
@@ -178,17 +220,6 @@ export default function ClientTasks() {
               <p className="text-sm text-gray-600">In Progress</p>
               <p className="text-2xl font-bold text-gray-900">
                 {inProgressTasks.length}
-              </p>
-            </div>
-          </div>
-        </Card>
-        <Card className="bg-yellow-50 border-yellow-200">
-          <div className="flex items-center">
-            <FaExclamationCircle className="text-yellow-600 text-2xl mr-3" />
-            <div>
-              <p className="text-sm text-gray-600">In Review</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {inReviewTasks.length}
               </p>
             </div>
           </div>
@@ -229,7 +260,6 @@ export default function ClientTasks() {
               <option value="all">All Status</option>
               <option value="to-do">To-Do</option>
               <option value="in progress">In Progress</option>
-              <option value="in review">In Review</option>
               <option value="done">Done</option>
             </select>
 
@@ -292,7 +322,7 @@ export default function ClientTasks() {
         </Card>
       ) : view === "board" ? (
         // Kanban Board View
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* To-Do Column */}
           <div>
             <div className="bg-gray-100 px-4 py-2 rounded-t-lg">
@@ -326,26 +356,6 @@ export default function ClientTasks() {
                 <TaskCard key={task.id} task={task} />
               ))}
               {inProgressTasks.length === 0 && (
-                <p className="text-center text-gray-500 text-sm py-4">
-                  No tasks
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* In Review Column */}
-          <div>
-            <div className="bg-yellow-100 px-4 py-2 rounded-t-lg">
-              <h3 className="font-semibold text-gray-900 flex items-center">
-                <FaExclamationCircle className="mr-2 text-yellow-600" />
-                In Review ({inReviewTasks.length})
-              </h3>
-            </div>
-            <div className="space-y-3 mt-3">
-              {inReviewTasks.map((task) => (
-                <TaskCard key={task.id} task={task} />
-              ))}
-              {inReviewTasks.length === 0 && (
                 <p className="text-center text-gray-500 text-sm py-4">
                   No tasks
                 </p>
@@ -407,8 +417,6 @@ export default function ClientTasks() {
                             ? "bg-green-100 text-green-800"
                             : task.status === "In Progress"
                             ? "bg-blue-100 text-blue-800"
-                            : task.status === "In Review"
-                            ? "bg-yellow-100 text-yellow-800"
                             : "bg-gray-100 text-gray-800"
                         }`}
                       >
@@ -419,6 +427,11 @@ export default function ClientTasks() {
                     <p className="text-sm text-gray-600 mb-3">
                       {task.description || "No description"}
                     </p>
+                    {task.status === "Done" && task.completionComment && (
+                      <p className="text-xs italic text-indigo-700 mb-2 line-clamp-1">
+                        💬 {task.completionComment}
+                      </p>
+                    )}
 
                     <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
                       {task.dueDate && (
@@ -447,7 +460,6 @@ export default function ClientTasks() {
                       >
                         <option value="To-Do">To-Do</option>
                         <option value="In Progress">In Progress</option>
-                        <option value="In Review">In Review</option>
                         <option value="Done">Done</option>
                       </select>
                     </div>
@@ -458,6 +470,18 @@ export default function ClientTasks() {
           </div>
         </Card>
       )}
+      <CompletionCommentModal
+        open={showCompletionModal}
+        onClose={() => {
+          setShowCompletionModal(false);
+          setCompletionTaskId(null);
+        }}
+        onSubmit={handleSubmitCompletion}
+        title="Mark Task as Done"
+        confirmLabel="Mark Done"
+        minLength={5}
+        maxLength={300}
+      />
     </div>
   );
 }

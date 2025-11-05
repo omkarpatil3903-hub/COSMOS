@@ -11,10 +11,7 @@ import {
   FaFilter,
   FaTimes,
 } from "react-icons/fa";
-import {
-  HiOutlineArrowDownTray,
-  HiMiniArrowPath,
-} from "react-icons/hi2";
+import { HiOutlineArrowDownTray, HiMiniArrowPath } from "react-icons/hi2";
 // Excel export not used on this page currently
 import toast from "react-hot-toast";
 import { db } from "../firebase";
@@ -51,6 +48,7 @@ import ViewResourceModal from "../components/ViewResourceModal";
 
 const tableHeaders = [
   { key: "srNo", label: "Sr. No.", sortable: false },
+  { key: "image", label: "Avatar", sortable: false },
   { key: "fullName", label: "Full Name", sortable: true },
   { key: "email", label: "Email", sortable: true },
   { key: "mobile", label: "Mobile", sortable: true },
@@ -93,7 +91,12 @@ function ManageResources() {
     employmentType: "Full-time",
     resourceRole: "",
     status: "Active",
+    imageUrl: "",
   });
+
+  // State for image upload
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
   // Subscribe to Firestore users collection
   useEffect(() => {
@@ -113,6 +116,7 @@ function ManageResources() {
         skills: u.skills || "",
         employmentType: u.employmentType || "Full-time",
         resourceRole: u.resourceRole || "",
+        imageUrl: u.imageUrl || "",
       }));
       setResources(mapped);
       setLoading(false);
@@ -149,9 +153,7 @@ function ManageResources() {
 
     // Filter by status
     if (statusFilter !== "all") {
-      result = result.filter(
-        (resource) => resource.status === statusFilter
-      );
+      result = result.filter((resource) => resource.status === statusFilter);
     }
 
     // Sort results
@@ -172,11 +174,24 @@ function ManageResources() {
     }
 
     return result;
-  }, [resources, searchTerm, resourceTypeFilter, employmentTypeFilter, statusFilter, sortConfig]);
+  }, [
+    resources,
+    searchTerm,
+    resourceTypeFilter,
+    employmentTypeFilter,
+    statusFilter,
+    sortConfig,
+  ]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, resourceTypeFilter, employmentTypeFilter, statusFilter, sortConfig]);
+  }, [
+    searchTerm,
+    resourceTypeFilter,
+    employmentTypeFilter,
+    statusFilter,
+    sortConfig,
+  ]);
 
   const totalPages = Math.max(
     1,
@@ -216,6 +231,26 @@ function ManageResources() {
   //   setCurrentPage(1);
   // };
 
+  // Handle image file selection and convert to base64
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Check file size (limit to 1MB for Firestore)
+      if (file.size > 1024 * 1024) {
+        toast.error("Image size should be less than 1MB");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result;
+        setImagePreview(base64String);
+        setImageFile(base64String); // Store base64 string
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
 
@@ -253,6 +288,7 @@ function ManageResources() {
         role: "resource",
         resourceRole: formData.resourceRole,
         status: formData.status,
+        imageUrl: imageFile || "",
         joinDate: new Date().toISOString().slice(0, 10),
         createdAt: serverTimestamp(),
         // ⚠️ WARNING: Storing password in plain text - DEVELOPMENT ONLY!
@@ -272,7 +308,10 @@ function ManageResources() {
         employmentType: "Full-time",
         resourceRole: "",
         status: "Active",
+        imageUrl: "",
       });
+      setImageFile(null);
+      setImagePreview(null);
       setShowAddForm(false);
       toast.success("Resource added successfully!");
     } catch (err) {
@@ -293,7 +332,11 @@ function ManageResources() {
       employmentType: resource.employmentType || "Full-time",
       resourceRole: resource.resourceRole || "",
       status: resource.status || "Active",
+      imageUrl: resource.imageUrl || "",
     });
+    // Show existing image in preview
+    setImagePreview(resource.imageUrl || null);
+    setImageFile(null);
     setShowEditForm(true);
   };
 
@@ -314,6 +357,7 @@ function ManageResources() {
         employmentType: formData.employmentType,
         resourceRole: formData.resourceRole,
         status: formData.status,
+        imageUrl: imageFile || formData.imageUrl || "",
       });
       setFormData({
         fullName: "",
@@ -324,7 +368,10 @@ function ManageResources() {
         employmentType: "Full-time",
         resourceRole: "",
         status: "Active",
+        imageUrl: "",
       });
+      setImageFile(null);
+      setImagePreview(null);
       setShowEditForm(false);
       setSelectedResource(null);
       toast.success("Resource updated successfully!");
@@ -503,7 +550,10 @@ function ManageResources() {
             </div>
 
             {/* Active Filters Display */}
-            {(searchTerm || employmentTypeFilter !== "all" || resourceTypeFilter !== "all" || statusFilter !== "all") && (
+            {(searchTerm ||
+              employmentTypeFilter !== "all" ||
+              resourceTypeFilter !== "all" ||
+              statusFilter !== "all") && (
               <div className="flex items-center gap-2 flex-wrap pt-2 border-t mt-4">
                 <FaFilter className="text-indigo-600 h-4 w-4" />
                 <span className="text-sm font-medium text-gray-600">
@@ -641,7 +691,7 @@ function ManageResources() {
                           key={header.key}
                           scope="col"
                           aria-sort={ariaSort}
-                          className="group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200"
+                          className="group px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200"
                         >
                           {header.sortable ? (
                             <button
@@ -664,37 +714,50 @@ function ManageResources() {
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
                   {currentRows.map((resource, index) => (
-                    <tr key={resource.id} className="bg-white">
-                      <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-500">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
+                    <tr key={resource.id} className="bg-white hover:bg-gray-50">
+                      <td className="whitespace-nowrap px-3 py-3 text-sm font-medium text-gray-500">
+                        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-xs">
                           {indexOfFirstRow + index + 1}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                      <td className="whitespace-nowrap px-2 py-3">
+                        {resource.imageUrl ? (
+                          <img
+                            src={resource.imageUrl}
+                            alt={resource.fullName}
+                            className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold text-xs">
+                            {resource.fullName?.charAt(0)?.toUpperCase() || "R"}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-sm font-semibold text-gray-900">
                         <span>{resource.fullName}</span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-3 py-3 text-sm text-gray-600">
                         <div className="flex items-center">
                           <div className="w-2 h-2 rounded-full bg-green-400 mr-2 animate-pulse"></div>
                           {resource.email}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+                      <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-600">
                         <div className="flex items-center bg-gray-50 rounded-lg px-3 py-1">
                           <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mr-2"></div>
                           {resource.mobile}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm">
+                      <td className="whitespace-nowrap px-3 py-3 text-sm">
                         <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${
                             resource.employmentType === "Full-time"
                               ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300"
                               : "bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 border border-purple-300"
                           }`}
                         >
                           <div
-                            className={`w-2 h-2 rounded-full mr-2 ${
+                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
                               resource.employmentType === "Full-time"
                                 ? "bg-green-500"
                                 : "bg-purple-500"
@@ -703,16 +766,16 @@ function ManageResources() {
                           {resource.employmentType || "Full-time"}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm">
+                      <td className="whitespace-nowrap px-3 py-3 text-sm">
                         <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${
                             resource.resourceType === "In-house"
                               ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300"
                               : "bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 border border-orange-300"
                           }`}
                         >
                           <div
-                            className={`w-2 h-2 rounded-full mr-2 ${
+                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
                               resource.resourceType === "In-house"
                                 ? "bg-blue-500"
                                 : "bg-orange-500"
@@ -721,19 +784,19 @@ function ManageResources() {
                           {resource.resourceType}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-700">
+                      <td className="px-3 py-3 text-sm text-gray-700">
                         {resource.resourceRole || "-"}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm">
+                      <td className="whitespace-nowrap px-3 py-3 text-sm">
                         <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-sm ${
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${
                             resource.status === "Active"
                               ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300"
                               : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300"
                           }`}
                         >
                           <div
-                            className={`w-2 h-2 rounded-full mr-2 ${
+                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
                               resource.status === "Active"
                                 ? "bg-green-500"
                                 : "bg-gray-500"
@@ -742,7 +805,7 @@ function ManageResources() {
                           {resource.status || "Active"}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm">
+                      <td className="whitespace-nowrap px-3 py-3 text-sm">
                         <div className="flex items-center space-x-3">
                           <button
                             onClick={() => handleView(resource.id)}
@@ -804,6 +867,8 @@ function ManageResources() {
           setFormData={setFormData}
           onSubmit={handleFormSubmit}
           onClose={() => setShowAddForm(false)}
+          imagePreview={imagePreview}
+          onImageChange={handleImageChange}
         />
       )}
 
@@ -825,8 +890,13 @@ function ManageResources() {
               employmentType: "Full-time",
               resourceRole: "",
               status: "Active",
+              imageUrl: "",
             });
+            setImageFile(null);
+            setImagePreview(null);
           }}
+          imagePreview={imagePreview}
+          onImageChange={handleImageChange}
         />
       )}
 

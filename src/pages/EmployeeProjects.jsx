@@ -132,27 +132,41 @@ const EmployeeProjects = () => {
                     </p>
                   </div>
 
-                  {/* Project Objectives */}
-                  {project.objectives && (
+                  {/* OKRs (Objectives and Key Results) */}
+                  {project.okrs && project.okrs.length > 0 && (
                     <div className="pt-3 border-t border-gray-200">
-                      <p className="text-xs font-semibold text-gray-700 mb-1">
-                        Objectives
+                      <p className="text-xs font-semibold text-gray-700 mb-2">
+                        OKRs (Objectives & Key Results)
                       </p>
-                      <p className="text-sm text-gray-600 line-clamp-2">
-                        {project.objectives}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Project Goals */}
-                  {project.goals && (
-                    <div className="pt-3 border-t border-gray-200">
-                      <p className="text-xs font-semibold text-gray-700 mb-1">
-                        Goals
-                      </p>
-                      <p className="text-sm text-gray-600 line-clamp-2">
-                        {project.goals}
-                      </p>
+                      <div className="space-y-2">
+                        {project.okrs.slice(0, 2).map((okr, index) => (
+                          <div key={index} className="bg-gray-50 p-2 rounded">
+                            <p className="text-xs font-medium text-gray-900 mb-1">
+                              {index + 1}. {okr.objective || "No objective"}
+                            </p>
+                            {okr.keyResults && okr.keyResults.some((kr) => kr) && (
+                              <ul className="ml-3 space-y-0.5">
+                                {okr.keyResults.slice(0, 2).map((kr, krIndex) =>
+                                  kr ? (
+                                    <li
+                                      key={krIndex}
+                                      className="text-xs text-gray-600 flex items-start gap-1"
+                                    >
+                                      <span className="text-indigo-600">•</span>
+                                      <span className="line-clamp-1">{kr}</span>
+                                    </li>
+                                  ) : null
+                                )}
+                              </ul>
+                            )}
+                          </div>
+                        ))}
+                        {project.okrs.length > 2 && (
+                          <p className="text-xs text-gray-500 italic">
+                            +{project.okrs.length - 2} more objective(s)
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
 

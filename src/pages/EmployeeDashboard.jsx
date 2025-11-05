@@ -6,6 +6,7 @@ import {
   onSnapshot,
   updateDoc,
   doc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuthContext } from "../context/useAuthContext";
@@ -14,6 +15,7 @@ import PageHeader from "../components/PageHeader";
 import Card from "../components/Card";
 import StatCard from "../components/StatCard";
 import Button from "../components/Button";
+import CompletionCommentModal from "../components/CompletionCommentModal";
 import {
   FaTasks,
   FaCheckCircle,
@@ -30,6 +32,8 @@ const EmployeeDashboard = () => {
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [completionTaskId, setCompletionTaskId] = useState(null);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -54,6 +58,9 @@ const EmployeeDashboard = () => {
           .map((doc) => ({
             id: doc.id,
             ...doc.data(),
+            status:
+              (doc.data().status === "In Review" ? "In Progress" : doc.data().status) ||
+              "To-Do",
           }))
           // Filter by assigneeType in client-side
           .filter((task) => task.assigneeType === "user");
@@ -176,16 +183,32 @@ const EmployeeDashboard = () => {
   ).length;
 
   // Quick mark as done handler
-  const handleQuickComplete = async (taskId) => {
+  const handleQuickComplete = (taskId) => {
+    setCompletionTaskId(taskId);
+    setShowCompletionModal(true);
+  };
+
+  const handleSubmitCompletion = async (comment) => {
+    if (!completionTaskId) {
+      setShowCompletionModal(false);
+      return;
+    }
     try {
-      await updateDoc(doc(db, "tasks", taskId), {
+      await updateDoc(doc(db, "tasks", completionTaskId), {
         status: "Done",
-        completedAt: new Date(),
+        completedAt: serverTimestamp(),
+        completedBy: user?.uid || "",
+        completedByType: "user",
+        progressPercent: 100,
+        ...(comment ? { completionComment: comment } : {}),
       });
       toast.success("Task marked as complete!");
     } catch (error) {
       console.error("Error updating task:", error);
       toast.error("Failed to update task");
+    } finally {
+      setShowCompletionModal(false);
+      setCompletionTaskId(null);
     }
   };
 
@@ -371,7 +394,6 @@ const EmployeeDashboard = () => {
                 const statusColors = {
                   "To-Do": "bg-gray-100 text-gray-800",
                   "In Progress": "bg-blue-100 text-blue-800",
-                  "In Review": "bg-purple-100 text-purple-800",
                   Done: "bg-green-100 text-green-800",
                 };
 
@@ -534,6 +556,18 @@ const EmployeeDashboard = () => {
           )}
         </Card>
       )}
+      <CompletionCommentModal
+        open={showCompletionModal}
+        onClose={() => {
+          setShowCompletionModal(false);
+          setCompletionTaskId(null);
+        }}
+        onSubmit={handleSubmitCompletion}
+        title="Mark Task as Done"
+        confirmLabel="Mark Done"
+        minLength={5}
+        maxLength={300}
+      />
     </div>
   );
 };
