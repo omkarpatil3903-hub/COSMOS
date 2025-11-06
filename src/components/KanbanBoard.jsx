@@ -1,5 +1,5 @@
 import React from "react";
-import { FaFlag } from "react-icons/fa";
+import { FaFlag, FaCalendarAlt } from "react-icons/fa";
 import { getPriorityBadge } from "../utils/colorMaps";
 
 // Simple Kanban board with 4 default columns using HTML5 drag-and-drop
@@ -211,9 +211,28 @@ export default function KanbanBoard({
                           ? " (Client)"
                           : ""}
                       </span>
-                      {t.dueDate && (
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold ${
+                          t.dueDate &&
+                          t.status !== "Done" &&
+                          t.dueDate < new Date().toISOString().slice(0, 10)
+                            ? "bg-red-100 text-red-700"
+                            : "bg-blue-100 text-blue-700"
+                        }`}
+                      >
+                        <FaCalendarAlt className="text-current" />
+                        <span className="font-bold">Due:</span>
                         <span>
-                          Due: {new Date(t.dueDate).toLocaleDateString()}
+                          {t.dueDate
+                            ? new Date(t.dueDate).toLocaleDateString()
+                            : "No due"}
+                        </span>
+                      </span>
+                      {t.assignedDate && (
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-purple-100 px-2 py-1 text-[11px] font-semibold text-purple-700">
+                          <FaCalendarAlt className="text-purple-600" />
+                          <span className="font-bold">Assigned:</span>
+                          <span>{new Date(t.assignedDate).toLocaleDateString()}</span>
                         </span>
                       )}
                       {showReassignOnCard &&

@@ -473,7 +473,11 @@ function Calendar() {
       const eventDate = event.date;
       let typeMatch = filterType === "all" || event.type === filterType;
       let statusMatch = filterStatus === "all" || event.status === filterStatus;
-      let projectMatch = filterProject === "all" || (event.isTask && tasks.find(t => t.id === event.taskId)?.projectId === filterProject);
+      let projectMatch =
+        filterProject === "all" ||
+        (event.isTask &&
+          tasks.find((t) => t.id === event.taskId)?.projectId ===
+            filterProject);
       return eventDate === dateStr && typeMatch && statusMatch && projectMatch;
     });
   };

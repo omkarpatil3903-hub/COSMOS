@@ -22,6 +22,7 @@ import {
   FaExclamationCircle,
   FaTh,
   FaList,
+  FaCalendarAlt,
 } from "react-icons/fa";
 
 export default function ClientTasks() {
@@ -35,6 +36,9 @@ export default function ClientTasks() {
   const [view, setView] = useState("board"); // 'board' or 'list'
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [completionTaskId, setCompletionTaskId] = useState(null);
+  const [progressDrafts, setProgressDrafts] = useState({});
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [expandedCompleted, setExpandedCompleted] = useState({});
 
   useEffect(() => {
     if (!uid) return;
@@ -62,6 +66,24 @@ export default function ClientTasks() {
     return () => unsub();
   }, [uid]);
 
+  const commitProgress = async (taskId) => {
+    try {
+      const raw = progressDrafts[taskId];
+      const value = Math.max(0, Math.min(100, parseInt(raw ?? 0)));
+      const current = tasks.find((t) => t.id === taskId);
+      if (current && (current.progressPercent ?? 0) === value) return;
+      await updateDoc(doc(db, "tasks", taskId), { progressPercent: value });
+      toast.success("Progress updated");
+      setProgressDrafts((prev) => {
+        const { [taskId]: _omit, ...rest } = prev;
+        return rest;
+      });
+    } catch (error) {
+      console.error("Error updating progress:", error);
+      toast.error("Failed to update progress");
+    }
+  };
+
   const handleStatusChange = async (taskId, newStatus) => {
     try {
       if (newStatus === "Done") {
@@ -88,6 +110,7 @@ export default function ClientTasks() {
         completedAt: serverTimestamp(),
         completedBy: uid || "",
         completedByType: "client",
+        progressPercent: 100,
         ...(comment ? { completionComment: comment } : {}),
       });
       toast.success("Task marked as complete!");
@@ -124,6 +147,7 @@ export default function ClientTasks() {
   const todoTasks = filteredTasks.filter((t) => t.status === "To-Do");
   const inProgressTasks = filteredTasks.filter((t) => t.status === "In Progress");
   const completedTasks = filteredTasks.filter((t) => t.status === "Done");
+  const activeTasks = [...todoTasks, ...inProgressTasks];
 
   if (loading) {
     return (
@@ -166,17 +190,81 @@ export default function ClientTasks() {
         </p>
       )}
 
-      <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-        {task.dueDate && (
-          <span className="flex items-center">
-            <FaClock className="mr-1" />
-            Due: {new Date(task.dueDate).toLocaleDateString()}
-          </span>
-        )}
+      <div className="flex items-center justify-between text-xs mb-3">
         {task.projectName && (
           <span className="text-indigo-600">{task.projectName}</span>
         )}
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium ${
+              task.dueDate &&
+              task.status !== "Done" &&
+              task.dueDate < new Date().toISOString().slice(0, 10)
+                ? "bg-red-100 text-red-700"
+                : "bg-blue-100 text-blue-700"
+            }`}
+          >
+            <FaCalendarAlt className="text-current" />
+            <span className="font-medium">Due:</span>
+            <span>
+              {task.dueDate
+                ? new Date(task.dueDate).toLocaleDateString()
+                : "No due"}
+            </span>
+          </span>
+          {task.assignedDate && (
+            <span className="inline-flex items-center gap-1 rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700">
+              <FaCalendarAlt className="text-purple-600" />
+              <span className="font-medium">Assigned:</span>
+              <span>{new Date(task.assignedDate).toLocaleDateString()}</span>
+            </span>
+          )}
+          {task.dueDate &&
+            task.status !== "Done" &&
+            task.dueDate < new Date().toISOString().slice(0, 10) && (
+              <span className="inline-flex items-center gap-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+                ⚠️ Overdue
+              </span>
+            )}
+        </div>
       </div>
+
+      {task.status === "In Progress" && (
+        <>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-xs font-medium text-gray-600">Progress:</span>
+            <div className="flex-1 bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-indigo-600 h-2 rounded-full transition-all"
+                style={{ width: `${task.progressPercent || 0}%` }}
+              />
+            </div>
+            <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">
+              {task.progressPercent || 0}%
+            </span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              value={progressDrafts[task.id] ?? (task.progressPercent || 0)}
+              onChange={(e) =>
+                setProgressDrafts((prev) => ({ ...prev, [task.id]: e.target.value }))
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitProgress(task.id);
+              }}
+              className="w-16 px-2 py-1 text-xs border border-gray-300 rounded"
+            />
+            <button
+              onClick={() => commitProgress(task.id)}
+              className="ml-2 px-2 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-700"
+            >
+              Update
+            </button>
+          </div>
+        </>
+      )}
 
       <select
         value={task.status || "To-Do"}
@@ -384,89 +472,191 @@ export default function ClientTasks() {
           </div>
         </div>
       ) : (
-        // List View
         <Card>
-          <div className="space-y-3">
-            {filteredTasks.map((task) => (
-              <div
-                key={task.id}
-                className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:shadow-sm transition-all bg-white"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-start gap-3 mb-2">
-                      <h4 className="font-semibold text-gray-900 flex-1">
-                        {task.title || task.taskName || "Untitled Task"}
-                      </h4>
-                      {task.priority && (
-                        <span
-                          className={`px-2 py-1 text-xs font-medium rounded ${
-                            task.priority === "High"
-                              ? "bg-red-100 text-red-800"
-                              : task.priority === "Medium"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {task.priority}
-                        </span>
-                      )}
-                      <span
-                        className={`px-3 py-1 text-xs font-medium rounded-full ${
-                          task.status === "Done"
-                            ? "bg-green-100 text-green-800"
-                            : task.status === "In Progress"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {task.status || "To-Do"}
-                      </span>
-                    </div>
+          <div className="space-y-6">
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-800">Active Tasks ({activeTasks.length})</h3>
+              </div>
+              <div className="space-y-3">
+                {activeTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:shadow-sm transition-all bg-white"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-start gap-3 mb-2">
+                          <h4 className="font-semibold text-gray-900 flex-1">
+                            {task.title || task.taskName || "Untitled Task"}
+                          </h4>
+                          {task.priority && (
+                            <span
+                              className={`px-2 py-1 text-xs font-medium rounded ${
+                                task.priority === "High"
+                                  ? "bg-red-100 text-red-800"
+                                  : task.priority === "Medium"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-green-100 text-green-800"
+                              }`}
+                            >
+                              {task.priority}
+                            </span>
+                          )}
+                          <span
+                            className={`px-3 py-1 text-xs font-medium rounded-full ${
+                              task.status === "Done"
+                                ? "bg-green-100 text-green-800"
+                                : task.status === "In Progress"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {task.status || "To-Do"}
+                          </span>
+                        </div>
 
-                    <p className="text-sm text-gray-600 mb-3">
-                      {task.description || "No description"}
-                    </p>
-                    {task.status === "Done" && task.completionComment && (
-                      <p className="text-xs italic text-indigo-700 mb-2 line-clamp-1">
-                        💬 {task.completionComment}
-                      </p>
-                    )}
+                        <p className="text-sm text-gray-600 mb-3">
+                          {task.description || "No description"}
+                        </p>
 
-                    <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
-                      {task.dueDate && (
-                        <span className="flex items-center">
-                          <FaClock className="mr-1" />
-                          Due: {new Date(task.dueDate).toLocaleDateString()}
-                        </span>
-                      )}
-                      {task.projectName && (
-                        <span className="text-indigo-600">
-                          📁 {task.projectName}
-                        </span>
-                      )}
-                    </div>
+                        <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+                          {task.dueDate && (
+                            <span className="flex items-center">
+                              <FaClock className="mr-1" />
+                              Due: {new Date(task.dueDate).toLocaleDateString()}
+                            </span>
+                          )}
+                          {task.projectName && (
+                            <span className="text-indigo-600">📁 {task.projectName}</span>
+                          )}
+                        </div>
 
-                    <div className="flex items-center gap-2">
-                      <label className="text-xs font-medium text-gray-700">
-                        Status:
-                      </label>
-                      <select
-                        value={task.status || "To-Do"}
-                        onChange={(e) =>
-                          handleStatusChange(task.id, e.target.value)
-                        }
-                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="To-Do">To-Do</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Done">Done</option>
-                      </select>
+                        {task.status === "In Progress" && (
+                          <>
+                            <div className="mt-2 flex items-center gap-2">
+                              <span className="text-xs font-medium text-gray-600">Progress:</span>
+                              <div className="flex-1 max-w-xs bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-indigo-600 h-2 rounded-full transition-all"
+                                  style={{ width: `${task.progressPercent || 0}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">
+                                {task.progressPercent || 0}%
+                              </span>
+                            </div>
+                            <div className="mt-2 flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="1"
+                                value={progressDrafts[task.id] ?? (task.progressPercent || 0)}
+                                onChange={(e) =>
+                                  setProgressDrafts((prev) => ({
+                                    ...prev,
+                                    [task.id]: e.target.value,
+                                  }))
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") commitProgress(task.id);
+                                }}
+                                className="w-16 px-2 py-1 text-xs border border-gray-300 rounded"
+                              />
+                              <button
+                                onClick={() => commitProgress(task.id)}
+                                className="px-2 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                              >
+                                Update
+                              </button>
+                            </div>
+                          </>
+                        )}
+
+                        <div className="flex items-center gap-2 mt-2">
+                          <label className="text-xs font-medium text-gray-700">Status:</label>
+                          <select
+                            value={task.status || "To-Do"}
+                            onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="To-Do">To-Do</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Done">Done</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-800">Completed ({completedTasks.length})</h3>
+                <button onClick={() => setShowCompleted((s) => !s)} className="text-xs text-indigo-600 hover:text-indigo-700">
+                  {showCompleted ? "Hide" : "Show"}
+                </button>
+              </div>
+              {showCompleted && (
+                <div className="space-y-3">
+                  {completedTasks.map((task) => (
+                    <div key={task.id} className="p-4 border border-gray-200 rounded-lg bg-white">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-start gap-3 mb-2">
+                            <h4 className="font-semibold text-gray-900 flex-1">{task.title || task.taskName || "Untitled Task"}</h4>
+                            <span className="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Done</span>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-2">{task.description || "No description"}</p>
+                          {task.completionComment && (
+                            <p className="text-xs italic text-indigo-700 mb-1 line-clamp-1">💬 {task.completionComment}</p>
+                          )}
+                          <div className="text-xs text-gray-500">Completed on {(task.completedAt?.toDate?.() || new Date(task.completedAt)).toLocaleDateString()}</div>
+                          <div className="mt-2">
+                            <button
+                              onClick={() =>
+                                setExpandedCompleted((prev) => ({
+                                  ...prev,
+                                  [task.id]: !prev[task.id],
+                                }))
+                              }
+                              className="rounded-md bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-200"
+                            >
+                              {expandedCompleted[task.id] ? "Hide" : "View"}
+                            </button>
+                          </div>
+                          {expandedCompleted[task.id] && (
+                            <div className="mt-2 flex items-center gap-4 text-xs text-gray-600 flex-wrap">
+                              {task.dueDate && (
+                                <span className="flex items-center">
+                                  <FaClock className="mr-1" />
+                                  Due: {new Date(task.dueDate).toLocaleDateString()}
+                                </span>
+                              )}
+                              {task.assignedDate && (
+                                <span className="flex items-center">
+                                  <FaCalendarAlt className="mr-1" />
+                                  Assigned: {new Date(task.assignedDate).toLocaleDateString()}
+                                </span>
+                              )}
+                              {task.projectName && (
+                                <span className="flex items-center text-indigo-700">📁 {task.projectName}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {completedTasks.length === 0 && (
+                    <div className="text-center text-gray-500 text-sm py-4">No completed tasks</div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </Card>
       )}

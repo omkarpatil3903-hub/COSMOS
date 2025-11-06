@@ -25,7 +25,10 @@ import {
   FaExclamationTriangle,
   FaTimes,
   FaCalendar,
+  FaCalendarAlt,
   FaFlag,
+  FaClipboardList,
+  FaSpinner,
   FaSortAmountDown,
   FaTh,
   FaList,
@@ -44,6 +47,8 @@ const EmployeeTasks = () => {
   const [displayMode, setDisplayMode] = useState("list"); // list, kanban
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [completionTaskId, setCompletionTaskId] = useState(null);
+  const [progressDrafts, setProgressDrafts] = useState({});
+  const [showCompleted, setShowCompleted] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -120,13 +125,21 @@ const EmployeeTasks = () => {
     }
   };
 
-  const handleProgressUpdate = async (taskId, progressValue) => {
+  const commitProgress = async (taskId) => {
     try {
-      const clampedProgress = Math.max(0, Math.min(100, parseInt(progressValue) || 0));
-      await updateDoc(doc(db, "tasks", taskId), {
-        progressPercent: clampedProgress,
+      const raw = progressDrafts[taskId];
+      const value = Math.max(0, Math.min(100, parseInt(raw ?? 0)));
+      const current = tasks.find((t) => t.id === taskId);
+      if (current && (current.progressPercent ?? 0) === value) return;
+      await updateDoc(doc(db, "tasks", taskId), { progressPercent: value });
+      toast.success("Progress updated");
+      if (selectedTask?.id === taskId) {
+        setSelectedTask({ ...selectedTask, progressPercent: value });
+      }
+      setProgressDrafts((prev) => {
+        const { [taskId]: _omit, ...rest } = prev;
+        return rest;
       });
-      toast.success("Progress updated!");
     } catch (error) {
       console.error("Error updating progress:", error);
       toast.error("Failed to update progress");
@@ -203,6 +216,9 @@ const EmployeeTasks = () => {
       return 0;
     });
 
+  const activeTasks = filteredTasks.filter((t) => t.status !== "Done");
+  const completedTasks = filteredTasks.filter((t) => t.status === "Done");
+
   const priorityColors = {
     High: "bg-red-100 text-red-800 border-red-300",
     Medium: "bg-yellow-100 text-yellow-800 border-yellow-300",
@@ -213,6 +229,12 @@ const EmployeeTasks = () => {
     "To-Do": "bg-gray-100 text-gray-800",
     "In Progress": "bg-blue-100 text-blue-800",
     Done: "bg-green-100 text-green-800",
+  };
+
+  const statusIcons = {
+    "To-Do": <FaClipboardList />,
+    "In Progress": <FaSpinner className="animate-spin" />,
+    Done: <FaCheckCircle />,
   };
 
   if (loading) {
@@ -529,163 +551,152 @@ const EmployeeTasks = () => {
           )}
         </Card>
       ) : (
-        <div className="space-y-4">
-          {filteredTasks.length === 0 ? (
-            <Card>
-              <div className="text-center py-12">
-                <FaTasks className="text-gray-300 text-5xl mx-auto mb-4" />
-                <p className="text-gray-500 text-lg">
-                  No tasks found matching the filters.
-                </p>
-                <p className="text-gray-400 text-sm mt-2">
-                  Try adjusting your filters or search query
-                </p>
+        <Card>
+          <div className="space-y-6">
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-800">Active Tasks ({activeTasks.length})</h3>
               </div>
-            </Card>
-          ) : (
-            filteredTasks.map((task) => {
-              const dueDate =
-                task.dueDate?.toDate?.() || new Date(task.dueDate);
-              const isOverdue = dueDate < new Date() && task.status !== "Done";
-              const daysUntilDue = Math.ceil(
-                (dueDate - new Date()) / (1000 * 60 * 60 * 24)
-              );
-
-              return (
-                <Card
-                  key={task.id}
-                  className={`border-l-4 hover:shadow-lg transition-shadow ${
-                    priorityColors[task.priority]?.split(" ")[2] ||
-                    "border-gray-300"
-                  }`}
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start gap-3">
-                          <button
-                            onClick={() => setSelectedTask(task)}
-                            className="flex-1 text-left"
-                          >
-                            <h3 className="font-medium text-content-primary hover:text-indigo-600 transition-colors">
-                              {task.title}
-                            </h3>
-                          </button>
-                          <span
-                            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${
-                              statusColors[task.status] || statusColors["To-Do"]
-                            }`}
-                          >
-                            {task.status}
-                          </span>
-                        </div>
-                        {task.description && (
-                          <p className="mt-1 text-sm text-content-secondary line-clamp-2">
-                            {task.description}
-                          </p>
-                        )}
-                        {task.status === "Done" && task.completionComment && (
-                          <p className="mt-1 text-xs italic text-indigo-700 line-clamp-1">
-                            💬 {task.completionComment}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span
-                        className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${
-                          priorityColors[task.priority] || priorityColors.Medium
-                        }`}
+              <div className="space-y-3">
+                {activeTasks.length === 0 ? (
+                  <div className="text-center text-gray-500 text-sm py-4">No active tasks</div>
+                ) : (
+                  activeTasks.map((task) => {
+                    const dueDate = task.dueDate?.toDate?.() || new Date(task.dueDate);
+                    const isOverdue = dueDate < new Date() && task.status !== "Done";
+                    const daysUntilDue = Math.ceil((dueDate - new Date()) / (1000 * 60 * 60 * 24));
+                    return (
+                      <div
+                        key={task.id}
+                        className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:shadow-sm transition-all bg-white"
                       >
-                        <FaFlag className="text-xs" />
-                        {task.priority} Priority
-                      </span>
-                      <span
-                        className={`px-3 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${
-                          isOverdue
-                            ? "bg-red-100 text-red-800 border border-red-200"
-                            : daysUntilDue <= 3 && daysUntilDue >= 0
-                            ? "bg-orange-100 text-orange-800 border border-orange-200"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        <FaCalendar className="text-xs" />
-                        Due: {dueDate.toLocaleDateString()}
-                        {isOverdue
-                          ? " (Overdue!)"
-                          : daysUntilDue === 0
-                          ? " (Today)"
-                          : daysUntilDue === 1
-                          ? " (Tomorrow)"
-                          : daysUntilDue > 0 && daysUntilDue <= 7
-                          ? ` (${daysUntilDue} days)`
-                          : ""}
-                      </span>
-                      {task.projectName && (
-                        <span className="px-3 py-1 text-xs font-medium rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                          📁 {task.projectName}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Progress Bar and Input for In Progress tasks */}
-                    {task.status === "In Progress" && (
-                      <div className="mt-3 pt-3 border-t space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Progress:</span>
-                          <div className="flex-1 max-w-xs bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-indigo-600 h-2 rounded-full transition-all"
-                              style={{ width: `${task.progressPercent || 0}%` }}
-                            />
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start gap-3">
+                              <button onClick={() => setSelectedTask(task)} className="flex-1 text-left">
+                                <h3 className="font-medium text-content-primary hover:text-indigo-600 transition-colors">{task.title}</h3>
+                              </button>
+                              <span className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${statusColors[task.status] || statusColors["To-Do"]}`}>
+                                {statusIcons[task.status]}
+                                <span>{task.status}</span>
+                              </span>
+                            </div>
+                            {task.description && (
+                              <p className="mt-1 text-sm text-content-secondary line-clamp-2">{task.description}</p>
+                            )}
                           </div>
-                          <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">
-                            {task.progressPercent || 0}%
-                          </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={task.progressPercent || 0}
-                            onChange={(e) => handleProgressUpdate(task.id, e.target.value)}
-                            className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                            placeholder="%"
-                          />
-                          <span className="text-xs text-gray-500">Update progress</span>
+
+                        <div className="mt-2 flex items-center gap-2 flex-wrap">
+                          <span className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${priorityColors[task.priority] || priorityColors.Medium}`}>
+                            <FaFlag className="text-xs" />
+                            {task.priority} Priority
+                          </span>
+                          <span className={`px-3 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${isOverdue ? "bg-red-100 text-red-800 border border-red-200" : daysUntilDue <= 3 && daysUntilDue >= 0 ? "bg-orange-100 text-orange-800 border border-orange-200" : "bg-gray-100 text-gray-800"}`}>
+                            <FaCalendar className="text-xs" />
+                            Due: {dueDate.toLocaleDateString()}
+                            {isOverdue ? " (Overdue!)" : daysUntilDue === 0 ? " (Today)" : daysUntilDue === 1 ? " (Tomorrow)" : daysUntilDue > 0 && daysUntilDue <= 7 ? ` (${daysUntilDue} days)` : ""}
+                          </span>
+                          {task.assignedDate && (
+                            <span className="px-3 py-1 text-xs font-medium rounded-full flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-200">
+                              <FaCalendarAlt className="text-xs" />
+                              Assigned: {(task.assignedDate?.toDate?.() || new Date(task.assignedDate)).toLocaleDateString()}
+                            </span>
+                          )}
+                          {task.projectName && (
+                            <span className="px-3 py-1 text-xs font-medium rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">📁 {task.projectName}</span>
+                          )}
+                        </div>
+
+                        {task.status === "In Progress" && (
+                          <div className="mt-1 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Progress:</span>
+                              <div className="flex-1 max-w-xs bg-gray-200 rounded-full h-2">
+                                <div className="bg-indigo-600 h-2 rounded-full transition-all" style={{ width: `${task.progressPercent || 0}%` }} />
+                              </div>
+                              <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">{task.progressPercent || 0}%</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="1"
+                                value={progressDrafts[task.id] ?? (task.progressPercent || 0)}
+                                onChange={(e) => setProgressDrafts((prev) => ({ ...prev, [task.id]: e.target.value }))}
+                                onKeyDown={(e) => { if (e.key === "Enter") commitProgress(task.id); }}
+                                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                placeholder="%"
+                              />
+                              <button onClick={() => commitProgress(task.id)} className="px-2 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-700">Update</button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <button onClick={() => setSelectedTask(task)} className="rounded-md bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-200">View</button>
+                          <select
+                            value={task.status}
+                            onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                            className="rounded-md border border-subtle bg-surface px-2 py-1 text-xs"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <option value="To-Do">To-Do</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Done">Done</option>
+                          </select>
                         </div>
                       </div>
-                    )}
+                    );
+                  })
+                )}
+              </div>
+            </div>
 
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <button
-                        onClick={() => setSelectedTask(task)}
-                        className="rounded-md bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-200"
-                      >
-                        View
-                      </button>
-                      
-                      <select
-                        value={task.status}
-                        onChange={(e) =>
-                          handleStatusChange(task.id, e.target.value)
-                        }
-                        className="rounded-md border border-subtle bg-surface px-2 py-1 text-xs"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <option value="To-Do">To-Do</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Done">Done</option>
-                      </select>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })
-          )}
-        </div>
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-800">Completed ({completedTasks.length})</h3>
+                <button onClick={() => setShowCompleted((s) => !s)} className="text-xs text-indigo-600 hover:text-indigo-700">{showCompleted ? "Hide" : "Show"}</button>
+              </div>
+              {showCompleted && (
+                <div className="space-y-3">
+                  {completedTasks.length === 0 ? (
+                    <div className="text-center text-gray-500 text-sm py-4">No completed tasks</div>
+                  ) : (
+                    completedTasks.map((task) => (
+                      <div key={task.id} className="p-4 border border-gray-200 rounded-lg bg-white">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-start gap-3 mb-2">
+                              <h4 className="font-semibold text-gray-900 flex-1">{task.title}</h4>
+                              <span className="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Done</span>
+                            </div>
+                            {task.description && (
+                              <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                            )}
+                            {task.completionComment && (
+                              <p className="text-xs italic text-indigo-700 mb-1 line-clamp-1">💬 {task.completionComment}</p>
+                            )}
+                            <div className="text-xs text-gray-500">Completed on {(task.completedAt?.toDate?.() || new Date(task.completedAt)).toLocaleDateString()}</div>
+                            <div className="mt-2">
+                              <button
+                                onClick={() => setSelectedTask(task)}
+                                className="rounded-md bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-200"
+                              >
+                                View
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
       )}
 
       {/* Task Detail Modal */}
@@ -714,7 +725,8 @@ const EmployeeTasks = () => {
                       statusColors[selectedTask.status] || statusColors["To-Do"]
                     }`}
                   >
-                    {selectedTask.status}
+                    {statusIcons[selectedTask.status]}
+                    <span>{selectedTask.status}</span>
                   </span>
                   <span
                     className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${
@@ -792,19 +804,24 @@ const EmployeeTasks = () => {
                       type="number"
                       min="0"
                       max="100"
-                      value={selectedTask.progressPercent || 0}
+                      step="1"
+                      value={progressDrafts[selectedTask.id] ?? (selectedTask.progressPercent || 0)}
                       onChange={(e) => {
                         const val = e.target.value;
-                        handleProgressUpdate(selectedTask.id, val);
-                        setSelectedTask({
-                          ...selectedTask,
-                          progressPercent: Math.max(0, Math.min(100, parseInt(val) || 0)),
-                        });
+                        setProgressDrafts((prev) => ({ ...prev, [selectedTask.id]: val }));
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitProgress(selectedTask.id);
                       }}
                       className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       placeholder="%"
                     />
-                    <span className="text-xs text-gray-500">Update progress</span>
+                    <button
+                      onClick={() => commitProgress(selectedTask.id)}
+                      className="px-2 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                    >
+                      Update
+                    </button>
                   </div>
                 </div>
               )}

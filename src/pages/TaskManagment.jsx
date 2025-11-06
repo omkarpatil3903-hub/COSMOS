@@ -17,6 +17,7 @@ import {
   FaFlag,
   FaClipboardList,
   FaSpinner,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import { db } from "../firebase";
 import { updateProjectProgress } from "../utils/projectProgress";
@@ -99,6 +100,14 @@ function TasksManagement() {
             completionComment: data.completionComment || "",
             completedBy: data.completedBy || "",
             completedByType: data.completedByType || "",
+            weightage:
+              typeof data.weightage === "number"
+                ? data.weightage
+                : typeof data.weightage === "string" &&
+                  data.weightage.trim() !== "" &&
+                  !isNaN(Number(data.weightage))
+                ? Number(data.weightage)
+                : null,
             archived: !!data.archived,
           };
         });
@@ -214,13 +223,22 @@ function TasksManagement() {
       const MIN_COMMENT_LEN = 5;
       if (
         (taskData.status || "To-Do") === "Done" &&
-        (!taskData.completionComment || taskData.completionComment.trim().length < MIN_COMMENT_LEN)
+        (!taskData.completionComment ||
+          taskData.completionComment.trim().length < MIN_COMMENT_LEN)
       ) {
-        toast.error(`Completion comment must be at least ${MIN_COMMENT_LEN} characters`);
+        toast.error(
+          `Completion comment must be at least ${MIN_COMMENT_LEN} characters`
+        );
         return;
       }
       if (taskData.id) {
         const ref = doc(db, "tasks", taskData.id);
+        const wt =
+          taskData.weightage === "" ||
+          taskData.weightage === undefined ||
+          taskData.weightage === null
+            ? null
+            : Number(taskData.weightage);
         const update = {
           title: taskData.title,
           description: taskData.description || "",
@@ -231,8 +249,10 @@ function TasksManagement() {
           dueDate: taskData.dueDate || "",
           priority: taskData.priority || "Medium",
           status: taskData.status || "To-Do",
-          progressPercent: taskData.status === "Done" ? 100 : (taskData.progressPercent ?? 0),
+          progressPercent:
+            taskData.status === "Done" ? 100 : taskData.progressPercent ?? 0,
           completionComment: taskData.completionComment || "",
+          weightage: Number.isNaN(wt) ? null : wt,
         };
         const current = tasks.find((t) => t.id === taskData.id);
         // Enforce WIP on status change (only for active columns)
@@ -278,13 +298,20 @@ function TasksManagement() {
           );
           return;
         }
+        const wt =
+          taskData.weightage === "" ||
+          taskData.weightage === undefined ||
+          taskData.weightage === null
+            ? null
+            : Number(taskData.weightage);
         const payload = {
           title: taskData.title,
           description: taskData.description || "",
           assigneeId: taskData.assigneeId || "",
           assigneeType: taskData.assigneeType || "user",
           projectId: taskData.projectId || "",
-          assignedDate: taskData.assignedDate || new Date().toISOString().slice(0, 10),
+          assignedDate:
+            taskData.assignedDate || new Date().toISOString().slice(0, 10),
           dueDate: taskData.dueDate || "",
           priority: taskData.priority || "Medium",
           status: taskData.status || "To-Do",
@@ -293,6 +320,7 @@ function TasksManagement() {
           completedAt: taskData.status === "Done" ? serverTimestamp() : null,
           archived: false,
           completionComment: taskData.completionComment || "",
+          weightage: Number.isNaN(wt) ? null : wt,
         };
         await addDoc(collection(db, "tasks"), payload);
         toast.success("Task created successfully!");
@@ -487,7 +515,11 @@ function TasksManagement() {
       }
       await updateDoc(doc(db, "tasks", taskId), {
         status: newStatus,
-        progressPercent: willBeDone ? 100 : (wasDone ? 0 : t.progressPercent ?? 0),
+        progressPercent: willBeDone
+          ? 100
+          : wasDone
+          ? 0
+          : t.progressPercent ?? 0,
         completedAt: willBeDone
           ? serverTimestamp()
           : wasDone
@@ -650,6 +682,7 @@ function TasksManagement() {
         { header: "Due Date", key: "dueDate", width: 15 },
         { header: "Created At", key: "createdAt", width: 20 },
         { header: "Completed At", key: "completedAt", width: 20 },
+        { header: "Weightage", key: "weightage", width: 15 },
       ];
       filtered.forEach((t) => {
         const project = projects.find((p) => p.id === t.projectId);
@@ -671,6 +704,7 @@ function TasksManagement() {
           completedAt: t.completedAt
             ? new Date(t.completedAt).toLocaleString()
             : "",
+          weightage: t.weightage || "",
         });
       });
       worksheet.getRow(1).font = { color: { argb: "FFFFFFFF" }, bold: true };
@@ -1043,21 +1077,78 @@ function TasksManagement() {
                                     <span>{t.status}</span>
                                   </span>
                                 </div>
-                                <div className="mt-1">
-                                  {t.dueDate
-                                    ? new Date(t.dueDate).toLocaleDateString()
-                                    : "No due"}
+                                <div className="mt-1 flex flex-wrap items-center justify-end gap-2">
+                                  {t.assignedDate && (
+                                    <span className="inline-flex items-center gap-1.5 rounded-md bg-purple-100 px-2 py-1 text-[11px] font-semibold text-purple-700">
+                                      <FaCalendarAlt className="text-purple-600" />
+                                      <span className="font-bold">
+                                        Assigned:
+                                      </span>
+                                      <span>
+                                        {new Date(
+                                          t.assignedDate
+                                        ).toLocaleDateString()}
+                                      </span>
+                                    </span>
+                                  )}
+                                  <span
+                                    className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold ${
+                                      t.dueDate &&
+                                      t.status !== "Done" &&
+                                      t.dueDate <
+                                        new Date().toISOString().slice(0, 10)
+                                        ? "bg-red-100 text-red-700"
+                                        : "bg-blue-100 text-blue-700"
+                                    }`}
+                                  >
+                                    <FaCalendarAlt className="text-current" />
+                                    <span className="font-bold">Due:</span>
+                                    <span>
+                                      {t.dueDate
+                                        ? new Date(
+                                            t.dueDate
+                                          ).toLocaleDateString()
+                                        : "No due"}
+                                    </span>
+                                  </span>
+                                  {t.status === "Done" && t.completedAt && (
+                                    <span
+                                      className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold ${
+                                        t.dueDate &&
+                                        new Date(t.completedAt)
+                                          .toISOString()
+                                          .slice(0, 10) > t.dueDate
+                                          ? "bg-red-100 text-red-700"
+                                          : "bg-green-100 text-green-700"
+                                      }`}
+                                    >
+                                      <FaCalendarAlt className="text-current" />
+                                      <span className="font-bold">
+                                        {t.dueDate &&
+                                        new Date(t.completedAt)
+                                          .toISOString()
+                                          .slice(0, 10) > t.dueDate
+                                          ? "Delayed:"
+                                          : "Completed:"}
+                                      </span>
+                                      <span>
+                                        {new Date(
+                                          t.completedAt
+                                        ).toLocaleDateString()}
+                                      </span>
+                                    </span>
+                                  )}
                                   {t.dueDate &&
                                     t.status !== "Done" &&
                                     t.dueDate <
                                       new Date().toISOString().slice(0, 10) && (
-                                      <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
-                                        Overdue
+                                      <span className="inline-flex items-center gap-1.5 rounded-md bg-red-100 px-2 py-1 text-[10px] font-bold text-red-700">
+                                        ⚠️ Overdue
                                       </span>
                                     )}
                                   {t.archived && (
-                                    <span className="ml-2 rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700">
-                                      Archived
+                                    <span className="inline-flex items-center gap-1.5 rounded-md bg-gray-200 px-2 py-1 text-[10px] font-semibold text-gray-700">
+                                      📦 Archived
                                     </span>
                                   )}
                                 </div>
@@ -1088,11 +1179,15 @@ function TasksManagement() {
                             {/* Progress Bar */}
                             {t.status === "In Progress" && (
                               <div className="mt-2 flex items-center gap-2">
-                                <span className="text-xs font-medium text-gray-600">Progress:</span>
+                                <span className="text-xs font-medium text-gray-600">
+                                  Progress:
+                                </span>
                                 <div className="flex-1 max-w-xs bg-gray-200 rounded-full h-2">
                                   <div
                                     className="bg-indigo-600 h-2 rounded-full transition-all"
-                                    style={{ width: `${t.progressPercent || 0}%` }}
+                                    style={{
+                                      width: `${t.progressPercent || 0}%`,
+                                    }}
                                   />
                                 </div>
                                 <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">
@@ -1199,18 +1294,24 @@ function TasksManagement() {
               <div>
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-900">{viewingTask.title}</h3>
+                    <h3 className="text-xl font-semibold text-gray-900">
+                      {viewingTask.title}
+                    </h3>
                     <div className="mt-1 flex items-center gap-2">
-                      <span className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getStatusBadge(
-                        viewingTask.status
-                      )}`}>
+                      <span
+                        className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getStatusBadge(
+                          viewingTask.status
+                        )}`}
+                      >
                         {statusIcons[viewingTask.status]}
                         <span>{viewingTask.status}</span>
                       </span>
                       {viewingTask.priority && (
-                        <span className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getPriorityBadge(
-                          viewingTask.priority
-                        )}`}>
+                        <span
+                          className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getPriorityBadge(
+                            viewingTask.priority
+                          )}`}
+                        >
                           <FaFlag />
                           <span>{viewingTask.priority}</span>
                         </span>
@@ -1272,6 +1373,31 @@ function TasksManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
+                    Weightage
+                  </label>
+                  <p className="mt-1 text-gray-900">
+                    {viewingTask.weightage !== null &&
+                    viewingTask.weightage !== undefined
+                      ? viewingTask.weightage
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Assigned Date
+                  </label>
+                  <p className="mt-1 text-gray-900">
+                    {viewingTask.assignedDate
+                      ? new Date(viewingTask.assignedDate).toLocaleDateString()
+                      : "—"}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
                     Due Date
                   </label>
                   <p className="mt-1 text-gray-900">
@@ -1283,26 +1409,67 @@ function TasksManagement() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Created At
+                    {(() => {
+                      if (!viewingTask.completedAt) return "Completion Date";
+                      const due = viewingTask.dueDate
+                        ? new Date(viewingTask.dueDate)
+                        : null;
+                      const comp = new Date(viewingTask.completedAt);
+                      const compD = new Date(
+                        comp.getFullYear(),
+                        comp.getMonth(),
+                        comp.getDate()
+                      );
+                      const dueD = due
+                        ? new Date(
+                            due.getFullYear(),
+                            due.getMonth(),
+                            due.getDate()
+                          )
+                        : null;
+                      const late = dueD
+                        ? compD.getTime() > dueD.getTime()
+                        : false;
+                      return late ? "Delayed Completion" : "Completed At";
+                    })()}
                   </label>
                   <p className="mt-1 text-gray-900">
-                    {viewingTask.createdAt
-                      ? new Date(viewingTask.createdAt).toLocaleDateString()
+                    {viewingTask.completedAt
+                      ? new Date(viewingTask.completedAt).toLocaleDateString()
                       : "—"}
                   </p>
+                  {viewingTask.completedAt &&
+                    (() => {
+                      const due = viewingTask.dueDate
+                        ? new Date(viewingTask.dueDate)
+                        : null;
+                      const comp = new Date(viewingTask.completedAt);
+                      const compD = new Date(
+                        comp.getFullYear(),
+                        comp.getMonth(),
+                        comp.getDate()
+                      );
+                      const dueD = due
+                        ? new Date(
+                            due.getFullYear(),
+                            due.getMonth(),
+                            due.getDate()
+                          )
+                        : null;
+                      if (!dueD) return null;
+                      const diffDays = Math.max(
+                        0,
+                        Math.ceil((compD - dueD) / (1000 * 60 * 60 * 24))
+                      );
+                      if (diffDays <= 0) return null;
+                      return (
+                        <p className="mt-1 text-xs font-medium text-red-700">
+                          Late by {diffDays} day(s)
+                        </p>
+                      );
+                    })()}
                 </div>
               </div>
-
-              {viewingTask.completedAt && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Completed At
-                  </label>
-                  <p className="mt-1 text-gray-900">
-                    {new Date(viewingTask.completedAt).toLocaleDateString()}
-                  </p>
-                </div>
-              )}
 
               {(viewingTask.completionComment || viewingTask.completedBy) && (
                 <div className="rounded-md bg-indigo-50 p-3">
@@ -1316,14 +1483,24 @@ function TasksManagement() {
                   )}
                   {viewingTask.completedBy && (
                     <p className="mt-1 text-xs text-indigo-800">
-                      By: {(() => {
+                      By:{" "}
+                      {(() => {
                         const by =
                           (viewingTask.completedByType || "user") === "client"
-                            ? clients.find((c) => c.id === viewingTask.completedBy)
-                            : users.find((u) => u.id === viewingTask.completedBy);
+                            ? clients.find(
+                                (c) => c.id === viewingTask.completedBy
+                              )
+                            : users.find(
+                                (u) => u.id === viewingTask.completedBy
+                              );
                         return by?.name || by?.clientName || "—";
-                      })()} {viewingTask.completedByType
-                        ? `(${(viewingTask.completedByType === "client" ? "Client" : "Resource")})`
+                      })()}{" "}
+                      {viewingTask.completedByType
+                        ? `(${
+                            viewingTask.completedByType === "client"
+                              ? "Client"
+                              : "Resource"
+                          })`
                         : ""}
                     </p>
                   )}

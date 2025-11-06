@@ -18,9 +18,12 @@ function TaskModal({
   const [assigneeType, setAssigneeType] = useState("user"); // 'user' | 'client'
   const [projectId, setProjectId] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [assignedDate, setAssignedDate] = useState(new Date().toISOString().slice(0, 10));
+  const [assignedDate, setAssignedDate] = useState(
+    new Date().toISOString().slice(0, 10)
+  );
   const [priority, setPriority] = useState("Medium");
   const [status, setStatus] = useState("To-Do");
+  const [weightage, setWeightage] = useState("");
   const [completionComment, setCompletionComment] = useState("");
 
   useEffect(() => {
@@ -34,6 +37,11 @@ function TaskModal({
       setAssignedDate(taskToEdit.assignedDate || "");
       setPriority(taskToEdit.priority || "Medium");
       setStatus(taskToEdit.status || "To-Do");
+      setWeightage(
+        taskToEdit.weightage !== undefined && taskToEdit.weightage !== null
+          ? String(taskToEdit.weightage)
+          : ""
+      );
       setCompletionComment(taskToEdit.completionComment || "");
     }
   }, [taskToEdit]);
@@ -54,6 +62,7 @@ function TaskModal({
       assignedDate,
       priority,
       status,
+      weightage,
       completionComment,
     });
   };
@@ -202,6 +211,50 @@ function TaskModal({
 
             <div>
               <label className="block text-sm font-medium text-content-secondary">
+                {status === "Done" && taskToEdit?.completedAt
+                  ? (() => {
+                      const due = taskToEdit.dueDate
+                        ? new Date(taskToEdit.dueDate)
+                        : null;
+                      const comp = taskToEdit.completedAt
+                        ? new Date(taskToEdit.completedAt)
+                        : null;
+                      if (!comp) return "Completion Date";
+                      const compD = new Date(
+                        comp.getFullYear(),
+                        comp.getMonth(),
+                        comp.getDate()
+                      );
+                      const dueD = due
+                        ? new Date(
+                            due.getFullYear(),
+                            due.getMonth(),
+                            due.getDate()
+                          )
+                        : null;
+                      const late = dueD
+                        ? compD.getTime() > dueD.getTime()
+                        : false;
+                      return late ? "Delayed Completion" : "Completed At";
+                    })()
+                  : "Completion Date"}
+              </label>
+              <input
+                type="text"
+                value={
+                  status === "Done" && taskToEdit?.completedAt
+                    ? new Date(taskToEdit.completedAt).toLocaleDateString()
+                    : "—"
+                }
+                disabled
+                className="mt-1 block w-full rounded-md border border-subtle bg-gray-100 px-3 py-2 text-sm text-content-secondary cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-content-secondary">
                 Priority
               </label>
               <select
@@ -228,6 +281,21 @@ function TaskModal({
                 <option>In Progress</option>
                 <option>Done</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-content-secondary">
+                Weightage
+              </label>
+              <input
+                type="number"
+                value={weightage}
+                onChange={(e) => setWeightage(e.target.value)}
+                min="0"
+                step="1"
+                className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
+                placeholder="e.g., 5"
+              />
             </div>
           </div>
 
