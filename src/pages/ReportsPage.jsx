@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, lazy, Suspense } from "react";
 import {
   FaCalendarAlt,
   FaChartBar,
@@ -12,15 +12,39 @@ import {
   FaExclamationTriangle,
   FaProjectDiagram,
   FaFlag,
+  FaSort,
+  FaSortUp,
+  FaSortDown,
+  FaCalendarDay,
+  FaCalendarWeek,
+  FaCalendar,
+  FaSearchPlus,
+  FaSearchMinus,
+  FaUndo,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 import PageHeader from "../components/PageHeader";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import SkeletonRow from "../components/SkeletonRow";
+import GanttChart from "../components/GanttChart";
 import { db } from "../firebase";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
-import { getPriorityBadge, getStatusBadge } from "../utils/colorMaps";
+import {
+  getPriorityBadge,
+  getStatusBadge,
+  PRIORITY_HEX,
+  TYPE_HEX,
+} from "../utils/colorMaps";
+
+// UI Color Theme - using colorMaps for consistency
+const UI_COLORS = {
+  primary: TYPE_HEX.meeting, // blue-500 (#3b82f6)
+  secondary: TYPE_HEX.milestone, // violet-500 (#8b5cf6)
+  success: TYPE_HEX.task, // emerald-500 (#10b981)
+  warning: TYPE_HEX.call, // amber-500 (#f59e0b)
+  danger: PRIORITY_HEX.high, // red-500 (#ef4444)
+};
 import {
   ResponsiveContainer,
   PieChart,
@@ -35,6 +59,65 @@ import {
   Legend,
   Label,
 } from "recharts";
+
+// Lazy load charts for better performance
+const LazyPieChart = lazy(() =>
+  Promise.resolve({
+    default: ({ data, colors }) => (
+      <ResponsiveContainer width="100%" height={280}>
+        <PieChart>
+          <Pie
+            data={data}
+            dataKey="value"
+            nameKey="name"
+            cx="50%"
+            cy="50%"
+            outerRadius={90}
+            label={({ name, percent }) =>
+              `${name}: ${(percent * 100).toFixed(0)}%`
+            }
+          >
+            {data.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={colors[index % colors.length]}
+              />
+            ))}
+          </Pie>
+          <Tooltip />
+        </PieChart>
+      </ResponsiveContainer>
+    ),
+  })
+);
+
+const LazyLineChart = lazy(() =>
+  Promise.resolve({
+    default: ({ data }) => (
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="date" />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          <Line
+            type="monotone"
+            dataKey="completed"
+            stroke="#10b981"
+            strokeWidth={2}
+          />
+          <Line
+            type="monotone"
+            dataKey="created"
+            stroke="#3b82f6"
+            strokeWidth={2}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    ),
+  })
+);
 
 // Helpers for Firestore data
 const tsToDate = (v) => {
@@ -73,6 +156,7 @@ const timePeriods = [
   { id: "yesterday", label: "Yesterday", days: 1 },
   { id: "week", label: "This Week", days: 7 },
   { id: "last-week", label: "Last Week", days: 14, offset: 7 },
+  { id: "next-30", label: "Next 30 Days", days: 30, future: true },
   { id: "month", label: "This Month", days: 30 },
   { id: "last-month", label: "Last Month", days: 60, offset: 30 },
   { id: "quarter", label: "This Quarter (3 months)", days: 90 },
@@ -82,7 +166,7 @@ const timePeriods = [
 ];
 
 export default function ReportsPage() {
-  const [selectedPeriod, setSelectedPeriod] = useState("week");
+  const [selectedPeriod, setSelectedPeriod] = useState("next-30");
   const [selectedProject, setSelectedProject] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [employeeSearch, setEmployeeSearch] = useState("");
@@ -91,6 +175,32 @@ export default function ReportsPage() {
   const [clients, setClients] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showGantt, setShowGantt] = useState(true);
+  const [ganttScale, setGanttScale] = useState("day");
+  const [ganttZoom, setGanttZoom] = useState(1);
+  const [ganttShowLabels, setGanttShowLabels] = useState(false);
+  const [ganttStatuses, setGanttStatuses] = useState({
+    "To-Do": true,
+    "In Progress": true,
+    Done: true,
+  });
+  const [ganttGroupProjects, setGanttGroupProjects] = useState(true);
+  const [ganttLeftWidth, setGanttLeftWidth] = useState(280);
+
+  // Sorting state for Recent Tasks table
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+
+  // Pagination for Recent Tasks
+  const [recentTasksLimit, setRecentTasksLimit] = useState(10);
+
+  // Calculate active filter count
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (selectedProject) count++;
+    if (selectedEmployee) count++;
+    if (selectedPeriod !== "week") count++; // default is week
+    return count;
+  }, [selectedProject, selectedEmployee, selectedPeriod]);
 
   // Live data subscriptions
   useEffect(() => {
@@ -124,6 +234,8 @@ export default function ReportsPage() {
             const data = d.data() || {};
             const created = tsToDate(data.createdAt);
             const completed = tsToDate(data.completedAt);
+            const assigned = tsToDate(data.assignedDate);
+            const due = tsToDate(data.dueDate);
             return {
               id: d.id,
               title: data.title || "",
@@ -134,6 +246,9 @@ export default function ReportsPage() {
               priority: data.priority || "Medium",
               createdDate: created ? created.toISOString() : "",
               completedDate: completed ? completed.toISOString() : "",
+              assignedDate: assigned ? assigned.toISOString() : "",
+              dueDate: due ? due.toISOString() : "",
+              archived: !!data.archived,
             };
           })
         );
@@ -153,11 +268,18 @@ export default function ReportsPage() {
   const filteredData = useMemo(() => {
     const period = timePeriods.find((p) => p.id === selectedPeriod);
     const now = new Date();
-    const startDate = new Date();
-    startDate.setDate(now.getDate() - (period.days + (period.offset || 0)));
-    const endDate = new Date();
-    if (period.offset) {
-      endDate.setDate(now.getDate() - period.offset);
+    let startDate = new Date();
+    let endDate = new Date();
+
+    if (period.future) {
+      // For future periods (Next 30 Days)
+      endDate.setDate(now.getDate() + period.days);
+    } else {
+      // For past periods
+      startDate.setDate(now.getDate() - (period.days + (period.offset || 0)));
+      if (period.offset) {
+        endDate.setDate(now.getDate() - period.offset);
+      }
     }
 
     const filterByDate = (dateStr) => {
@@ -169,7 +291,9 @@ export default function ReportsPage() {
     let tasksInRange = tasks.filter((t) => {
       const matchesDate =
         filterByDate(t.createdDate) ||
-        (t.completedDate && filterByDate(t.completedDate));
+        (t.completedDate && filterByDate(t.completedDate)) ||
+        (t.dueDate && filterByDate(t.dueDate)) ||
+        (t.startDate && filterByDate(t.startDate));
       const matchesProject =
         !selectedProject || t.projectId === selectedProject;
       const matchesEmployee =
@@ -181,6 +305,29 @@ export default function ReportsPage() {
 
     return { tasks: tasksInRange };
   }, [selectedPeriod, selectedProject, selectedEmployee, tasks]);
+
+  // Derive chart range from selected period
+  const ganttRange = useMemo(() => {
+    const period = timePeriods.find((p) => p.id === selectedPeriod);
+    const now = new Date();
+    let startDate = new Date();
+    let endDate = new Date();
+
+    if (period.future) {
+      // For future periods - show from today to future
+      endDate.setDate(now.getDate() + period.days);
+      startDate.setDate(now.getDate() - 1); // Start from yesterday for context
+    } else {
+      // For past periods
+      startDate.setDate(now.getDate() - (period.days + (period.offset || 0)));
+      if (period.offset) endDate.setDate(now.getDate() - period.offset);
+      // pad a bit for visibility
+      startDate.setDate(startDate.getDate() - 1);
+      endDate.setDate(endDate.getDate() + 1);
+    }
+
+    return { startDate, endDate };
+  }, [selectedPeriod]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -256,6 +403,97 @@ export default function ReportsPage() {
 
     return resourceData;
   }, [filteredData, users]);
+
+  // Sorting handler for Recent Tasks table
+  const handleSort = (key) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  // Sorted tasks for Recent Tasks table
+  const sortedRecentTasks = useMemo(() => {
+    if (!sortConfig.key) return filteredData.tasks.slice(0, recentTasksLimit);
+
+    const sorted = [...filteredData.tasks].sort((a, b) => {
+      let aValue, bValue;
+
+      switch (sortConfig.key) {
+        case "task":
+          aValue = a.title?.toLowerCase() || "";
+          bValue = b.title?.toLowerCase() || "";
+          break;
+        case "assignee": {
+          const aUser = users.find((u) => u.id === a.assigneeId);
+          const aClient = clients.find((c) => c.id === a.assigneeId);
+          const bUser = users.find((u) => u.id === b.assigneeId);
+          const bClient = clients.find((c) => c.id === b.assigneeId);
+          aValue = (
+            aUser?.name ||
+            aClient?.clientName ||
+            "Unassigned"
+          ).toLowerCase();
+          bValue = (
+            bUser?.name ||
+            bClient?.clientName ||
+            "Unassigned"
+          ).toLowerCase();
+          break;
+        }
+        case "project": {
+          const aProject = projects.find((p) => p.id === a.projectId);
+          const bProject = projects.find((p) => p.id === b.projectId);
+          aValue = (aProject?.name || "").toLowerCase();
+          bValue = (bProject?.name || "").toLowerCase();
+          break;
+        }
+        case "status":
+          aValue = a.status?.toLowerCase() || "";
+          bValue = b.status?.toLowerCase() || "";
+          break;
+        case "priority": {
+          const priorityOrder = { High: 3, Medium: 2, Low: 1 };
+          aValue = priorityOrder[a.priority] || 0;
+          bValue = priorityOrder[b.priority] || 0;
+          break;
+        }
+        case "created":
+          aValue = a.createdDate ? new Date(a.createdDate).getTime() : 0;
+          bValue = b.createdDate ? new Date(b.createdDate).getTime() : 0;
+          break;
+        case "completed":
+          aValue = a.completedDate ? new Date(a.completedDate).getTime() : 0;
+          bValue = b.completedDate ? new Date(b.completedDate).getTime() : 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return sorted.slice(0, recentTasksLimit);
+  }, [
+    filteredData.tasks,
+    sortConfig,
+    users,
+    clients,
+    projects,
+    recentTasksLimit,
+  ]);
+
+  // Get sort icon for column
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return <FaSort className="text-gray-400" />;
+    return sortConfig.direction === "asc" ? (
+      <FaSortUp style={{ color: UI_COLORS.primary }} />
+    ) : (
+      <FaSortDown style={{ color: UI_COLORS.primary }} />
+    );
+  };
 
   const escapeCSV = (value) =>
     `"${(value ?? "").toString().replace(/"/g, '""')}"`;
@@ -447,10 +685,31 @@ export default function ReportsPage() {
     return seq;
   }, [filteredData, selectedPeriod]);
 
+  // Build Gantt items from filtered tasks
+  const ganttItems = useMemo(() => {
+    return filteredData.tasks
+      .filter((t) => !t.archived)
+      .map((t) => {
+        const start = t.assignedDate || t.createdDate || "";
+        const end = t.dueDate || t.completedDate || start || "";
+        return {
+          id: t.id,
+          title: t.title,
+          projectId: t.projectId,
+          assigneeId: t.assigneeId,
+          status: t.status,
+          priority: t.priority,
+          startDate: start,
+          endDate: end,
+        };
+      })
+      .filter((x) => x.startDate);
+  }, [filteredData]);
+
   // removed Top Projects dataset per request
 
   return (
-    <div>
+    <div className="max-w-full overflow-x-hidden">
       <PageHeader
         title="Analytics & Reports"
         actions={
@@ -467,60 +726,94 @@ export default function ReportsPage() {
         View comprehensive analytics and reports across different time periods
       </PageHeader>
 
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-full">
         {/* Filters */}
         <Card
-          title="Report Filters"
-          actions={
+          title={
             <div className="flex items-center gap-2">
-              <div className="hidden md:flex items-center gap-1 rounded-lg border border-subtle p-1">
+              <span>Report Filters</span>
+              {activeFilterCount > 0 && (
+                <span
+                  style={{ backgroundColor: UI_COLORS.primary }}
+                  className="inline-flex items-center justify-center h-5 w-5 rounded-full text-white text-xs font-bold"
+                >
+                  {activeFilterCount}
+                </span>
+              )}
+            </div>
+          }
+          actions={
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 shadow-sm">
                 {[
-                  { id: "today", label: "Today" },
-                  { id: "week", label: "Week" },
-                  { id: "month", label: "Month" },
-                  { id: "all", label: "All" },
+                  { id: "today", label: "Today", icon: <FaCalendarDay /> },
+                  { id: "next-30", label: "Next 30", icon: <FaCalendarAlt /> },
+                  { id: "month", label: "Month", icon: <FaCalendar /> },
                 ].map((p) => (
-                  <Button
+                  <button
                     key={p.id}
-                    variant={selectedPeriod === p.id ? "primary" : "secondary"}
-                    className="px-3 py-1.5"
                     onClick={() => setSelectedPeriod(p.id)}
+                    style={{
+                      backgroundColor:
+                        selectedPeriod === p.id ? UI_COLORS.primary : "white",
+                      color: selectedPeriod === p.id ? "white" : "#374151",
+                    }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
+                      selectedPeriod === p.id
+                        ? "shadow-sm"
+                        : "hover:bg-gray-100"
+                    }`}
                   >
+                    {p.icon}
                     {p.label}
-                  </Button>
+                  </button>
                 ))}
               </div>
               <Button
                 onClick={() => {
-                  setSelectedPeriod("week");
+                  setSelectedPeriod("next-30");
                   setSelectedProject("");
                   setSelectedEmployee("");
                   setEmployeeSearch("");
                 }}
                 variant="ghost"
+                className="text-xs"
               >
-                Reset Filters
+                🔄 Reset
               </Button>
             </div>
           }
         >
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
+          <div className="grid gap-4 md:grid-cols-3 overflow-hidden">
+            <div className="min-w-0">
               <label className="block">
-                <span className="text-sm font-medium mb-2 flex items-center gap-2">
-                  <FaCalendarAlt className="text-gray-500" /> Time Period
+                <span className="text-sm font-medium mb-2 flex items-center gap-2 text-gray-700">
+                  <FaCalendarAlt style={{ color: UI_COLORS.primary }} /> Time
+                  Period
                 </span>
                 <select
                   value={selectedPeriod}
                   onChange={(e) => setSelectedPeriod(e.target.value)}
-                  className="w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm"
+                  style={{
+                    "--tw-ring-color": UI_COLORS.primary + "33",
+                    borderColor: "#d1d5db",
+                  }}
+                  onFocus={(e) =>
+                    (e.target.style.borderColor = UI_COLORS.primary)
+                  }
+                  onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
+                  className="w-full rounded-lg border bg-white px-3 py-2.5 text-sm shadow-sm focus:ring-2 transition-all truncate max-w-full"
                 >
                   {timePeriods
                     .filter(
                       (p) => !["today", "week", "month", "all"].includes(p.id)
                     )
                     .map((period) => (
-                      <option key={period.id} value={period.id}>
+                      <option
+                        key={period.id}
+                        value={period.id}
+                        className="truncate"
+                      >
                         {period.label}
                       </option>
                     ))}
@@ -528,19 +821,43 @@ export default function ReportsPage() {
               </label>
             </div>
 
-            <div>
+            <div className="min-w-0">
               <label className="block">
-                <span className="text-sm font-medium mb-2 flex items-center gap-2">
-                  <FaProjectDiagram className="text-gray-500" /> Project Filter
+                <span className="text-sm font-medium mb-2 flex items-center gap-2 text-gray-700">
+                  <FaProjectDiagram style={{ color: UI_COLORS.secondary }} />{" "}
+                  Project Filter
+                  {selectedProject && (
+                    <span
+                      style={{
+                        backgroundColor: UI_COLORS.secondary + "1a",
+                        color: UI_COLORS.secondary,
+                      }}
+                      className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold"
+                    >
+                      Active
+                    </span>
+                  )}
                 </span>
                 <select
                   value={selectedProject}
                   onChange={(e) => setSelectedProject(e.target.value)}
-                  className="w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm"
+                  style={{
+                    "--tw-ring-color": UI_COLORS.secondary + "33",
+                    borderColor: "#d1d5db",
+                  }}
+                  onFocus={(e) =>
+                    (e.target.style.borderColor = UI_COLORS.secondary)
+                  }
+                  onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
+                  className="w-full rounded-lg border bg-white px-3 py-2.5 text-sm shadow-sm focus:ring-2 transition-all truncate max-w-full"
                 >
                   <option value="">All Projects</option>
                   {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
+                    <option
+                      key={project.id}
+                      value={project.id}
+                      className="truncate"
+                    >
                       {project.name}
                     </option>
                   ))}
@@ -548,39 +865,69 @@ export default function ReportsPage() {
               </label>
             </div>
 
-            <div>
+            <div className="min-w-0">
               <label className="block">
-                <span className="text-sm font-medium mb-2 flex items-center gap-2">
-                  <FaUsers className="text-gray-500" /> Employee Filter
+                <span className="text-sm font-medium mb-2 flex items-center gap-2 text-gray-700">
+                  <FaUsers style={{ color: UI_COLORS.success }} /> Employee
+                  Filter
+                  {selectedEmployee && (
+                    <span
+                      style={{
+                        backgroundColor: UI_COLORS.success + "1a",
+                        color: UI_COLORS.success,
+                      }}
+                      className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold"
+                    >
+                      Active
+                    </span>
+                  )}
                 </span>
-                <input
-                  value={employeeSearch}
-                  onChange={(e) => setEmployeeSearch(e.target.value)}
-                  placeholder="Search employee"
-                  className="mb-2 w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm"
-                />
-                <select
-                  value={selectedEmployee}
-                  onChange={(e) => setSelectedEmployee(e.target.value)}
-                  className="w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm"
-                >
-                  <option value="">All Employees</option>
-                  {users
-                    .filter(
-                      (u) => (u.role || "user").toLowerCase() !== "client"
-                    )
-                    .filter((u) =>
-                      (u.name || u.email || "")
-                        .toString()
-                        .toLowerCase()
-                        .includes(employeeSearch.toLowerCase())
-                    )
-                    .map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name || u.email}
-                      </option>
-                    ))}
-                </select>
+                <div className="relative">
+                  <input
+                    value={employeeSearch}
+                    onChange={(e) => setEmployeeSearch(e.target.value)}
+                    placeholder="🔍 Search employee..."
+                    style={{
+                      "--tw-ring-color": UI_COLORS.success + "33",
+                      borderColor: "#d1d5db",
+                    }}
+                    onFocus={(e) =>
+                      (e.target.style.borderColor = UI_COLORS.success)
+                    }
+                    onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
+                    className="mb-2 w-full rounded-lg border bg-white px-3 py-2.5 text-sm shadow-sm focus:ring-2 transition-all"
+                  />
+                  <select
+                    value={selectedEmployee}
+                    onChange={(e) => setSelectedEmployee(e.target.value)}
+                    style={{
+                      "--tw-ring-color": UI_COLORS.success + "33",
+                      borderColor: "#d1d5db",
+                    }}
+                    onFocus={(e) =>
+                      (e.target.style.borderColor = UI_COLORS.success)
+                    }
+                    onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
+                    className="w-full rounded-lg border bg-white px-3 py-2.5 text-sm shadow-sm focus:ring-2 transition-all truncate max-w-full"
+                  >
+                    <option value="">All Employees</option>
+                    {users
+                      .filter(
+                        (u) => (u.role || "user").toLowerCase() !== "client"
+                      )
+                      .filter((u) =>
+                        (u.name || u.email || "")
+                          .toString()
+                          .toLowerCase()
+                          .includes(employeeSearch.toLowerCase())
+                      )
+                      .map((u) => (
+                        <option key={u.id} value={u.id} className="truncate">
+                          {u.name || u.email}
+                        </option>
+                      ))}
+                  </select>
+                </div>
               </label>
             </div>
           </div>
@@ -588,51 +935,109 @@ export default function ReportsPage() {
 
         {/* Overview Statistics */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="border-l-4" style={{ borderLeftColor: "#4f46e5" }}>
+          <Card
+            style={{ borderTopColor: UI_COLORS.primary }}
+            className="border-t-4 bg-gradient-to-br from-blue-50 to-white hover:shadow-lg transition-all duration-300"
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-content-tertiary">Total Tasks</p>
-                <p className="text-3xl font-bold mt-1">
+                <p className="text-sm text-gray-600 font-medium">Total Tasks</p>
+                <p
+                  style={{ color: UI_COLORS.primary }}
+                  className="text-3xl font-bold mt-1 animate-[fadeIn_0.5s_ease-in]"
+                >
                   {stats.totalTasks.toLocaleString("en-US")}
                 </p>
               </div>
-              <FaTasks className="h-8 w-8 text-indigo-600 opacity-50" />
+              <div
+                style={{ backgroundColor: UI_COLORS.primary + "1a" }}
+                className="h-12 w-12 rounded-full flex items-center justify-center"
+              >
+                <FaTasks
+                  style={{ color: UI_COLORS.primary }}
+                  className="h-6 w-6"
+                />
+              </div>
             </div>
           </Card>
 
-          <Card className="border-l-4" style={{ borderLeftColor: "#059669" }}>
+          <Card
+            style={{ borderTopColor: UI_COLORS.success }}
+            className="border-t-4 bg-gradient-to-br from-green-50 to-white hover:shadow-lg transition-all duration-300"
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-content-tertiary">Completed</p>
-                <p className="text-3xl font-bold mt-1">
+                <p className="text-sm text-gray-600 font-medium">Completed</p>
+                <p
+                  style={{ color: UI_COLORS.success }}
+                  className="text-3xl font-bold mt-1 animate-[fadeIn_0.5s_ease-in]"
+                >
                   {stats.completedTasks.toLocaleString("en-US")}
                 </p>
+                <p
+                  style={{ color: UI_COLORS.success }}
+                  className="text-xs mt-1"
+                >
+                  {stats.completionRate}% completion rate
+                </p>
               </div>
-              <FaCheckCircle className="h-8 w-8 text-green-600 opacity-50" />
+              <div
+                style={{ backgroundColor: UI_COLORS.success + "1a" }}
+                className="h-12 w-12 rounded-full flex items-center justify-center"
+              >
+                <FaCheckCircle
+                  style={{ color: UI_COLORS.success }}
+                  className="h-6 w-6"
+                />
+              </div>
             </div>
           </Card>
 
-          <Card className="border-l-4" style={{ borderLeftColor: "#0891b2" }}>
+          <Card
+            style={{ borderTopColor: UI_COLORS.warning }}
+            className="border-t-4 bg-gradient-to-br from-amber-50 to-white hover:shadow-lg transition-all duration-300"
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-content-tertiary">In Progress</p>
-                <p className="text-3xl font-bold mt-1">
+                <p className="text-sm text-gray-600 font-medium">In Progress</p>
+                <p
+                  style={{ color: UI_COLORS.warning }}
+                  className="text-3xl font-bold mt-1 animate-[fadeIn_0.5s_ease-in]"
+                >
                   {stats.inProgressTasks.toLocaleString("en-US")}
                 </p>
               </div>
-              <FaClock className="h-8 w-8 text-cyan-600 opacity-50" />
+              <div
+                style={{ backgroundColor: UI_COLORS.warning + "1a" }}
+                className="h-12 w-12 rounded-full flex items-center justify-center animate-pulse"
+              >
+                <FaClock
+                  style={{ color: UI_COLORS.warning }}
+                  className="h-6 w-6"
+                />
+              </div>
             </div>
           </Card>
 
-          <Card className="border-l-4" style={{ borderLeftColor: "#7c3aed" }}>
+          <Card
+            style={{ borderTopColor: UI_COLORS.secondary }}
+            className="border-t-4 bg-gradient-to-br from-purple-50 to-white hover:shadow-lg transition-all duration-300"
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-content-tertiary">Completion Rate</p>
-                <p className="text-3xl font-bold mt-1">
+                <p className="text-sm text-gray-600 font-medium">
+                  Completion Rate
+                </p>
+                <p
+                  style={{ color: UI_COLORS.secondary }}
+                  className="text-3xl font-bold mt-1 animate-[fadeIn_0.5s_ease-in]"
+                >
                   {stats.completionRate}%
                 </p>
               </div>
-              <FaChartLine className="h-8 w-8 text-purple-600 opacity-50" />
+              <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
+                <FaChartLine className="h-6 w-6 text-purple-600" />
+              </div>
             </div>
           </Card>
         </div>
@@ -641,143 +1046,446 @@ export default function ReportsPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           <Card title="Status Distribution" icon={<FaChartPie />}>
             {loading ? (
-              <div className="h-72 animate-pulse rounded-lg bg-surface-strong" />
+              <div className="h-72 rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-pulse" />
             ) : stats.totalTasks === 0 ? (
-              <div className="py-14 flex flex-col items-center justify-center text-content-tertiary">
-                <FaChartBar className="h-6 w-6 mb-2" />
-                <div className="text-sm font-medium">No data</div>
-                <div className="text-xs">
-                  Try expanding the date range or clearing filters
+              <div className="py-16 flex flex-col items-center justify-center">
+                <div
+                  style={{ backgroundColor: UI_COLORS.primary + "1a" }}
+                  className="h-16 w-16 rounded-full flex items-center justify-center mb-4"
+                >
+                  <FaChartPie
+                    style={{ color: UI_COLORS.primary }}
+                    className="h-8 w-8"
+                  />
                 </div>
+                <div className="text-lg font-semibold text-gray-800 mb-2">
+                  No Task Data Available
+                </div>
+                <div className="text-sm text-gray-500 mb-4 text-center max-w-xs">
+                  Try expanding the date range or clearing filters to see your
+                  task distribution
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setSelectedPeriod("year");
+                    setSelectedProject("");
+                    setSelectedEmployee("");
+                  }}
+                  className="text-sm flex items-center gap-2"
+                >
+                  <FaChartBar />
+                  View This Year
+                </Button>
               </div>
             ) : (
-              <div style={{ width: "100%", height: 280 }}>
-                <ResponsiveContainer>
-                  <PieChart>
-                    <Pie
-                      data={statusChartData}
-                      dataKey="value"
-                      nameKey="name"
-                      innerRadius={50}
-                      outerRadius={90}
-                      labelLine={false}
-                      label={({ name, percent }) =>
-                        `${name} ${(percent * 100).toFixed(0)}%`
-                      }
-                    >
-                      {statusChartData.map((entry, idx) => (
-                        <Cell key={`s-${idx}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value, name) => [`${value} tasks`, name]}
-                    />
-                    <Legend verticalAlign="bottom" height={24} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              <Suspense
+                fallback={
+                  <div className="h-72 rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-pulse" />
+                }
+              >
+                <div style={{ width: "100%", height: 280 }}>
+                  <ResponsiveContainer>
+                    <PieChart>
+                      <Pie
+                        data={statusChartData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={50}
+                        outerRadius={90}
+                        labelLine={false}
+                        label={({ name, percent }) =>
+                          `${name} ${(percent * 100).toFixed(0)}%`
+                        }
+                      >
+                        {statusChartData.map((entry, idx) => (
+                          <Cell key={`s-${idx}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value, name) => [`${value} tasks`, name]}
+                      />
+                      <Legend verticalAlign="bottom" height={24} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </Suspense>
             )}
           </Card>
 
           <Card title="Tasks Over Time" icon={<FaChartLine />}>
             {loading ? (
-              <div className="h-72 animate-pulse rounded-lg bg-surface-strong" />
+              <div className="h-72 rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-pulse" />
             ) : (
-              <div style={{ width: "100%", height: 280 }}>
-                <ResponsiveContainer>
-                  <LineChart
-                    data={tasksOverTimeData}
-                    margin={{ top: 10, right: 20, bottom: 0, left: 0 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      tickFormatter={(v) => v.slice(5)}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+              <Suspense
+                fallback={
+                  <div className="h-72 rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-pulse" />
+                }
+              >
+                <div style={{ width: "100%", height: 280 }}>
+                  <ResponsiveContainer>
+                    <LineChart
+                      data={tasksOverTimeData}
+                      margin={{ top: 10, right: 20, bottom: 0, left: 0 }}
                     >
-                      <Label
-                        value="Tasks"
-                        angle={-90}
-                        position="insideLeft"
-                        style={{ fill: "#9ca3af" }}
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fill: "#9ca3af", fontSize: 12 }}
+                        tickFormatter={(v) => v.slice(5)}
                       />
-                    </YAxis>
-                    <Tooltip
-                      formatter={(value, name) => [`${value} tasks`, name]}
-                    />
-                    <Legend verticalAlign="bottom" height={24} />
-                    <Line
-                      type="monotone"
-                      dataKey="Created"
-                      stroke="#4f46e5"
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 3 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="Completed"
-                      stroke="#16a34a"
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 3 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+                      <YAxis
+                        allowDecimals={false}
+                        tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      >
+                        <Label
+                          value="Tasks"
+                          angle={-90}
+                          position="insideLeft"
+                          style={{ fill: "#9ca3af" }}
+                        />
+                      </YAxis>
+                      <Tooltip
+                        formatter={(value, name) => [`${value} tasks`, name]}
+                      />
+                      <Legend verticalAlign="bottom" height={24} />
+                      <Line
+                        type="monotone"
+                        dataKey="Created"
+                        stroke="#4f46e5"
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 3 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="Completed"
+                        stroke="#16a34a"
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 3 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Suspense>
             )}
           </Card>
         </div>
 
+        {/* Gantt Chart */}
+        <Card
+          title={
+            <div className="flex items-center gap-2">
+              <FaCalendarAlt style={{ color: UI_COLORS.primary }} />
+              <span>Timeline (Gantt)</span>
+            </div>
+          }
+          actions={
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Scale Selector */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-600 font-medium">
+                  Scale:
+                </span>
+                <div className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white p-0.5 shadow-sm">
+                  {[
+                    { value: "day", label: "Day", icon: <FaCalendarDay /> },
+                    { value: "week", label: "Week", icon: <FaCalendarWeek /> },
+                    { value: "month", label: "Month", icon: <FaCalendar /> },
+                  ].map((scale) => (
+                    <button
+                      key={scale.value}
+                      onClick={() => setGanttScale(scale.value)}
+                      style={{
+                        backgroundColor:
+                          ganttScale === scale.value
+                            ? UI_COLORS.primary
+                            : "transparent",
+                        color: ganttScale === scale.value ? "white" : "#374151",
+                      }}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
+                        ganttScale === scale.value
+                          ? "shadow-sm"
+                          : "hover:bg-gray-100"
+                      }`}
+                    >
+                      {scale.icon}
+                      {scale.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Zoom Controls */}
+              <div className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setGanttZoom((z) => Math.max(0.5, z - 0.25))}
+                  className="rounded px-2 py-1 text-xs hover:bg-gray-100 transition flex items-center gap-1"
+                  title="Zoom out"
+                >
+                  <FaSearchMinus />
+                </button>
+                <span className="text-xs font-medium w-14 text-center text-gray-700">
+                  {Math.round(ganttZoom * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setGanttZoom((z) => Math.min(3, z + 0.25))}
+                  className="rounded px-2 py-1 text-xs hover:bg-gray-100 transition flex items-center gap-1"
+                  title="Zoom in"
+                >
+                  <FaSearchPlus />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGanttZoom(1)}
+                  className="ml-1 rounded px-2 py-1 text-xs hover:bg-gray-100 transition text-gray-600 flex items-center gap-1"
+                  title="Reset zoom"
+                >
+                  <FaUndo className="text-[10px]" />
+                  Reset
+                </button>
+              </div>
+
+              {/* Options */}
+              <label className="flex items-center gap-2 text-xs cursor-pointer hover:bg-gray-50 rounded px-2 py-1 transition">
+                <input
+                  type="checkbox"
+                  checked={ganttShowLabels}
+                  onChange={(e) => setGanttShowLabels(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="font-medium text-gray-700">Show Labels</span>
+              </label>
+
+              <label className="flex items-center gap-2 text-xs cursor-pointer hover:bg-gray-50 rounded px-2 py-1 transition">
+                <input
+                  type="checkbox"
+                  checked={ganttGroupProjects}
+                  onChange={(e) => setGanttGroupProjects(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="font-medium text-gray-700">
+                  Group by Project
+                </span>
+              </label>
+
+              {/* Status Filters */}
+              <div className="hidden xl:flex items-center gap-1">
+                {Object.keys(ganttStatuses).map((s) => (
+                  <label
+                    key={s}
+                    className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg px-2.5 py-1.5 text-xs cursor-pointer transition"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={ganttStatuses[s]}
+                      onChange={(e) =>
+                        setGanttStatuses((prev) => ({
+                          ...prev,
+                          [s]: e.target.checked,
+                        }))
+                      }
+                      className="rounded"
+                    />
+                    <span className="font-medium text-gray-700">{s}</span>
+                  </label>
+                ))}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowGantt((v) => !v)}
+                  className="text-xs"
+                >
+                  {showGantt ? "👁️ Hide" : "👁️ Show"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    try {
+                      const html2canvas = (await import("html2canvas")).default;
+                      const el = document.querySelector(".gantt-export-target");
+                      if (!el) return toast.error("Gantt not found");
+                      const canvas = await html2canvas(el, {
+                        backgroundColor: "#ffffff",
+                        scale: 1.5,
+                      });
+                      const link = document.createElement("a");
+                      link.href = canvas.toDataURL("image/png");
+                      link.download = `gantt_export_${Date.now()}.png`;
+                      link.click();
+                      toast.success("Exported PNG");
+                    } catch (e) {
+                      console.error(e);
+                      toast.error("PNG export failed");
+                    }
+                  }}
+                  title="Export visible timeline to PNG"
+                  className="text-xs"
+                >
+                  📥 Export PNG
+                </Button>
+              </div>
+            </div>
+          }
+        >
+          {showGantt ? (
+            loading ? (
+              <div className="h-56 rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-pulse" />
+            ) : ganttItems.length === 0 ? (
+              <div className="py-16 flex flex-col items-center justify-center">
+                <div
+                  style={{ backgroundColor: UI_COLORS.primary + "1a" }}
+                  className="h-16 w-16 rounded-full flex items-center justify-center mb-4"
+                >
+                  <FaCalendarAlt
+                    style={{ color: UI_COLORS.primary }}
+                    className="h-8 w-8"
+                  />
+                </div>
+                <div className="text-lg font-semibold text-gray-800 mb-2">
+                  No Tasks in Timeline
+                </div>
+                <div className="text-sm text-gray-500 mb-4 text-center max-w-md">
+                  There are no tasks with assigned dates in the selected time
+                  period. Tasks need start and end dates to appear on the Gantt
+                  chart.
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setSelectedPeriod("year")}
+                    className="text-sm flex items-center gap-2"
+                  >
+                    <FaCalendarAlt />
+                    View This Year
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto gantt-export-target max-w-full">
+                <div className="min-w-[600px] max-w-full">
+                  <GanttChart
+                    items={ganttItems}
+                    projects={projects}
+                    users={users}
+                    clients={clients}
+                    start={ganttRange.startDate}
+                    end={ganttRange.endDate}
+                    scale={ganttScale}
+                    baseDayWidth={
+                      ganttScale === "day"
+                        ? 26 * ganttZoom
+                        : ganttScale === "week"
+                        ? 6 * ganttZoom
+                        : 2.2 * ganttZoom
+                    }
+                    showBarLabels={ganttShowLabels}
+                    leftWidth={ganttLeftWidth}
+                    visibleStatuses={Object.entries(ganttStatuses)
+                      .filter(([, v]) => v)
+                      .map(([k]) => k)}
+                    groupByProject={ganttGroupProjects}
+                    onLeftWidthChange={(w) => setGanttLeftWidth(w)}
+                  />
+                </div>
+              </div>
+            )
+          ) : null}
+        </Card>
+
         {/* Task Status Breakdown */}
         <Card title="Task Status Breakdown" icon={<FaChartBar />}>
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Completed</span>
-                <span className="text-sm text-content-tertiary">
-                  {stats.completedTasks} tasks
-                </span>
+                <div className="flex items-center gap-2">
+                  <FaCheckCircle className="text-green-600" />
+                  <span className="text-sm font-semibold text-gray-800">
+                    Completed
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-green-600">
+                    {stats.completedTasks}
+                  </span>
+                  <span className="text-xs text-gray-500">tasks</span>
+                </div>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
+              <div className="relative w-full bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
                 <div
-                  className="bg-green-600 h-3 rounded-full transition-all"
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-500 shadow-sm"
                   style={{ width: `${completedWidth}%` }}
-                ></div>
+                >
+                  {completedWidth > 10 && (
+                    <span className="absolute right-2 top-0 text-[10px] font-bold text-white">
+                      {Math.round(completedWidth)}%
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">In Progress</span>
-                <span className="text-sm text-content-tertiary">
-                  {stats.inProgressTasks} tasks
-                </span>
+                <div className="flex items-center gap-2">
+                  <FaClock className="text-cyan-600 animate-pulse" />
+                  <span className="text-sm font-semibold text-gray-800">
+                    In Progress
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-cyan-600">
+                    {stats.inProgressTasks}
+                  </span>
+                  <span className="text-xs text-gray-500">tasks</span>
+                </div>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
+              <div className="relative w-full bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
                 <div
-                  className="bg-cyan-600 h-3 rounded-full transition-all"
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-500 to-cyan-600 rounded-full transition-all duration-500 shadow-sm"
                   style={{ width: `${inProgressWidth}%` }}
-                ></div>
+                >
+                  {inProgressWidth > 10 && (
+                    <span className="absolute right-2 top-0 text-[10px] font-bold text-white">
+                      {Math.round(inProgressWidth)}%
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">To-Do</span>
-                <span className="text-sm text-content-tertiary">
-                  {stats.todoTasks} tasks
-                </span>
+                <div className="flex items-center gap-2">
+                  <FaTasks className="text-gray-600" />
+                  <span className="text-sm font-semibold text-gray-800">
+                    To-Do
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-gray-600">
+                    {stats.todoTasks}
+                  </span>
+                  <span className="text-xs text-gray-500">tasks</span>
+                </div>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
+              <div className="relative w-full bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
                 <div
-                  className="bg-gray-400 h-3 rounded-full transition-all"
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-gray-400 to-gray-500 rounded-full transition-all duration-500 shadow-sm"
                   style={{ width: `${todoWidth}%` }}
-                ></div>
+                >
+                  {todoWidth > 10 && (
+                    <span className="absolute right-2 top-0 text-[10px] font-bold text-white">
+                      {Math.round(todoWidth)}%
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -840,11 +1548,15 @@ export default function ReportsPage() {
             {loading ? (
               <div className="h-40 animate-pulse rounded-lg bg-surface-strong" />
             ) : Object.keys(stats.projectBreakdown).length === 0 ? (
-              <div className="py-14 flex flex-col items-center justify-center text-content-tertiary">
-                <FaChartBar className="h-6 w-6 mb-2" />
-                <div className="text-sm font-medium">No data</div>
-                <div className="text-xs">
-                  Try expanding the date range or clearing filters
+              <div className="py-14 flex flex-col items-center justify-center">
+                <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center mb-3">
+                  <FaProjectDiagram className="h-6 w-6 text-purple-500" />
+                </div>
+                <div className="text-sm font-semibold text-gray-800 mb-1">
+                  No Project Data
+                </div>
+                <div className="text-xs text-gray-500">
+                  Adjust filters to see task distribution
                 </div>
               </div>
             ) : (
@@ -1003,19 +1715,75 @@ export default function ReportsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-subtle">
-                    <th className="text-left py-2 px-3">Task</th>
-                    <th className="text-left py-2 px-3">Assignee</th>
-                    <th className="text-left py-2 px-3">Project</th>
-                    <th className="text-left py-2 px-3">Status</th>
-                    <th className="text-left py-2 px-3">Priority</th>
-                    <th className="text-left py-2 px-3">Created</th>
-                    <th className="text-left py-2 px-3">Completed</th>
+                    <th
+                      className="text-left py-2 px-3 cursor-pointer hover:bg-gray-50 transition-colors group"
+                      onClick={() => handleSort("task")}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Task</span>
+                        {getSortIcon("task")}
+                      </div>
+                    </th>
+                    <th
+                      className="text-left py-2 px-3 cursor-pointer hover:bg-gray-50 transition-colors group"
+                      onClick={() => handleSort("assignee")}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Assignee</span>
+                        {getSortIcon("assignee")}
+                      </div>
+                    </th>
+                    <th
+                      className="text-left py-2 px-3 cursor-pointer hover:bg-gray-50 transition-colors group"
+                      onClick={() => handleSort("project")}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Project</span>
+                        {getSortIcon("project")}
+                      </div>
+                    </th>
+                    <th
+                      className="text-left py-2 px-3 cursor-pointer hover:bg-gray-50 transition-colors group"
+                      onClick={() => handleSort("status")}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Status</span>
+                        {getSortIcon("status")}
+                      </div>
+                    </th>
+                    <th
+                      className="text-left py-2 px-3 cursor-pointer hover:bg-gray-50 transition-colors group"
+                      onClick={() => handleSort("priority")}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Priority</span>
+                        {getSortIcon("priority")}
+                      </div>
+                    </th>
+                    <th
+                      className="text-left py-2 px-3 cursor-pointer hover:bg-gray-50 transition-colors group"
+                      onClick={() => handleSort("created")}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Created</span>
+                        {getSortIcon("created")}
+                      </div>
+                    </th>
+                    <th
+                      className="text-left py-2 px-3 cursor-pointer hover:bg-gray-50 transition-colors group"
+                      onClick={() => handleSort("completed")}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>Completed</span>
+                        {getSortIcon("completed")}
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading && <SkeletonRow columns={7} />}
                   {!loading &&
-                    filteredData.tasks.slice(0, 10).map((task) => {
+                    sortedRecentTasks.map((task) => {
                       const project = projects.find(
                         (p) => p.id === task.projectId
                       );
@@ -1127,6 +1895,19 @@ export default function ReportsPage() {
                 </tbody>
               </table>
             </div>
+            {/* Load More Button */}
+            {!loading && filteredData.tasks.length > recentTasksLimit && (
+              <div className="flex justify-center pt-4 border-t border-gray-200">
+                <Button
+                  variant="secondary"
+                  onClick={() => setRecentTasksLimit((prev) => prev + 20)}
+                  className="text-sm"
+                >
+                  Load More Tasks (
+                  {filteredData.tasks.length - recentTasksLimit} remaining)
+                </Button>
+              </div>
+            )}
           </Card>
         )}
       </div>
