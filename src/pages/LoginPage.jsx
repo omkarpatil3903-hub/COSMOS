@@ -120,7 +120,7 @@ function LoginPage() {
             <div className="inline-block bg-indigo-600 p-4 rounded-full mb-4">
               <FaShieldAlt size={32} className="text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">Login</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Login Page </h2>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6" noValidate>
