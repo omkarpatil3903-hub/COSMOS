@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, lazy, Suspense } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   FaCalendarAlt,
   FaChartBar,
@@ -15,9 +15,6 @@ import {
   FaSort,
   FaSortUp,
   FaSortDown,
-  FaCalendarDay,
-  FaCalendarWeek,
-  FaCalendar,
   FaSearchPlus,
   FaSearchMinus,
   FaUndo,
@@ -60,94 +57,14 @@ import {
   Label,
 } from "recharts";
 
-// Lazy load charts for better performance
-const LazyPieChart = lazy(() =>
-  Promise.resolve({
-    default: ({ data, colors }) => (
-      <ResponsiveContainer width="100%" height={280}>
-        <PieChart>
-          <Pie
-            data={data}
-            dataKey="value"
-            nameKey="name"
-            cx="50%"
-            cy="50%"
-            outerRadius={90}
-            label={({ name, percent }) =>
-              `${name}: ${(percent * 100).toFixed(0)}%`
-            }
-          >
-            {data.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={colors[index % colors.length]}
-              />
-            ))}
-          </Pie>
-          <Tooltip />
-        </PieChart>
-      </ResponsiveContainer>
-    ),
-  })
-);
-
-const LazyLineChart = lazy(() =>
-  Promise.resolve({
-    default: ({ data }) => (
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" />
-          <YAxis />
-          <Tooltip />
-          <Legend />
-          <Line
-            type="monotone"
-            dataKey="completed"
-            stroke="#10b981"
-            strokeWidth={2}
-          />
-          <Line
-            type="monotone"
-            dataKey="created"
-            stroke="#3b82f6"
-            strokeWidth={2}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    ),
-  })
-);
-
-// Helpers for Firestore data
-const tsToDate = (v) => {
-  if (!v) return null;
-  if (typeof v?.toDate === "function") return v.toDate();
-  if (typeof v?.seconds === "number") return new Date(v.seconds * 1000);
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? null : d;
-};
-
-// date formatting helper removed if unused
+import { tsToDate } from "../utils/dateUtils";
 
 const normalizeStatus = (s) => {
-  const x = String(s || "")
-    .trim()
-    .toLowerCase();
-  if (x === "done" || x === "completed" || x === "complete") return "Done";
-  if (x === "in progress" || x === "in-progress" || x === "inprogress")
+  const lc = (s || "").toLowerCase();
+  if (lc.includes("in-progress") || lc.includes("in progress"))
     return "In Progress";
-  if (x === "in review" || x === "in-review" || x === "inreview")
-    return "In Progress";
-  if (
-    x === "to-do" ||
-    x === "to do" ||
-    x === "todo" ||
-    x === "" ||
-    x === "open"
-  )
-    return "To-Do";
-  return s || "To-Do";
+  if (lc.includes("done") || lc.includes("completed")) return "Done";
+  return "To-Do";
 };
 
 // Time period configurations
@@ -170,6 +87,7 @@ export default function ReportsPage() {
   const [selectedProject, setSelectedProject] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState("");
   const [employeeSearch, setEmployeeSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
@@ -193,17 +111,52 @@ export default function ReportsPage() {
   // Pagination for Recent Tasks
   const [recentTasksLimit, setRecentTasksLimit] = useState(10);
 
+  // Load persisted Gantt UI state
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("reports:gantt:ui");
+      if (raw) {
+        const prefs = JSON.parse(raw) || {};
+        if (prefs.scale) setGanttScale(prefs.scale);
+        if (Number.isFinite(prefs.leftWidth)) setGanttLeftWidth(prefs.leftWidth);
+      }
+    } catch (e) {
+      void e;
+    }
+  }, []);
+
+  // Persist Gantt UI state
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("reports:gantt:ui");
+      const prev = raw ? JSON.parse(raw) : {};
+      const next = { ...prev, scale: ganttScale, leftWidth: ganttLeftWidth };
+      localStorage.setItem("reports:gantt:ui", JSON.stringify(next));
+    } catch (e) {
+      void e;
+    }
+  }, [ganttScale, ganttLeftWidth]);
+
+  // Debounce employee search (500ms delay)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(employeeSearch);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [employeeSearch]);
+
   // Calculate active filter count
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (selectedProject) count++;
     if (selectedEmployee) count++;
-    if (selectedPeriod !== "week") count++; // default is week
     return count;
-  }, [selectedProject, selectedEmployee, selectedPeriod]);
+  }, [selectedProject, selectedEmployee]);
 
   // Live data subscriptions
   useEffect(() => {
+    setLoading(true); // Set loading at the start
+    
     const unsubProjects = onSnapshot(
       query(collection(db, "projects"), orderBy("projectName", "asc")),
       (snap) => {
@@ -218,14 +171,32 @@ export default function ReportsPage() {
             };
           })
         );
+      },
+      (error) => {
+        console.error("Error fetching projects:", error);
+        toast.error("Failed to load projects");
       }
     );
-    const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
-      setUsers(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
-    });
-    const unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
-      setClients(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
-    });
+    const unsubUsers = onSnapshot(
+      collection(db, "users"), 
+      (snap) => {
+        setUsers(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
+      },
+      (error) => {
+        console.error("Error fetching users:", error);
+        toast.error("Failed to load users");
+      }
+    );
+    const unsubClients = onSnapshot(
+      collection(db, "clients"), 
+      (snap) => {
+        setClients(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
+      },
+      (error) => {
+        console.error("Error fetching clients:", error);
+        toast.error("Failed to load clients");
+      }
+    );
     const unsubTasks = onSnapshot(
       query(collection(db, "tasks"), orderBy("createdAt", "desc")),
       (snap) => {
@@ -249,9 +220,17 @@ export default function ReportsPage() {
               assignedDate: assigned ? assigned.toISOString() : "",
               dueDate: due ? due.toISOString() : "",
               archived: !!data.archived,
+              dependsOn: Array.isArray(data.dependsOn)
+                ? data.dependsOn.filter(Boolean)
+                : [],
             };
           })
         );
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching tasks:", error);
+        toast.error("Failed to load tasks");
         setLoading(false);
       }
     );
@@ -264,51 +243,32 @@ export default function ReportsPage() {
     };
   }, []);
 
-  // Filter data based on selected period
+  // Filter data based on selected filters (NOT time period - that's only for Gantt)
   const filteredData = useMemo(() => {
-    const period = timePeriods.find((p) => p.id === selectedPeriod);
-    const now = new Date();
-    let startDate = new Date();
-    let endDate = new Date();
-
-    if (period.future) {
-      // For future periods (Next 30 Days)
-      endDate.setDate(now.getDate() + period.days);
-    } else {
-      // For past periods
-      startDate.setDate(now.getDate() - (period.days + (period.offset || 0)));
-      if (period.offset) {
-        endDate.setDate(now.getDate() - period.offset);
-      }
-    }
-
-    const filterByDate = (dateStr) => {
-      if (period.id === "all") return true;
-      const date = new Date(dateStr);
-      return date >= startDate && date <= endDate;
-    };
-
-    let tasksInRange = tasks.filter((t) => {
-      const matchesDate =
-        filterByDate(t.createdDate) ||
-        (t.completedDate && filterByDate(t.completedDate)) ||
-        (t.dueDate && filterByDate(t.dueDate)) ||
-        (t.startDate && filterByDate(t.startDate));
+    let filteredTasks = tasks.filter((t) => {
       const matchesProject =
         !selectedProject || t.projectId === selectedProject;
       const matchesEmployee =
         !selectedEmployee ||
         (t.assigneeId === selectedEmployee &&
           (t.assigneeType || "user") === "user");
-      return matchesDate && matchesProject && matchesEmployee;
+      return matchesProject && matchesEmployee;
     });
 
-    return { tasks: tasksInRange };
-  }, [selectedPeriod, selectedProject, selectedEmployee, tasks]);
+    return { tasks: filteredTasks };
+  }, [selectedProject, selectedEmployee, tasks]);
 
   // Derive chart range from selected period
   const ganttRange = useMemo(() => {
     const period = timePeriods.find((p) => p.id === selectedPeriod);
+    if (!period) {
+      const now = new Date();
+      return { 
+        startDate: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), 
+        endDate: now 
+      };
+    }
+    
     const now = new Date();
     let startDate = new Date();
     let endDate = new Date();
@@ -326,35 +286,46 @@ export default function ReportsPage() {
       endDate.setDate(endDate.getDate() + 1);
     }
 
+    // Validate date range - ensure endDate is after startDate
+    if (endDate <= startDate) {
+      console.warn("Invalid date range detected, adjusting...");
+      endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000); // Add 7 days
+    }
+
     return { startDate, endDate };
   }, [selectedPeriod]);
 
   // Calculate statistics
   const stats = useMemo(() => {
     const { tasks } = filteredData;
-
     const totalTasks = tasks.length;
-    const completedTasks = tasks.filter((t) => t.status === "Done").length;
-    const inProgressTasks = tasks.filter(
-      (t) => t.status === "In Progress"
-    ).length;
-    const todoTasks = tasks.filter((t) => t.status === "To-Do").length;
 
-    const completionRate =
-      totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-    const priorityBreakdown = {
-      High: tasks.filter((t) => t.priority === "High").length,
-      Medium: tasks.filter((t) => t.priority === "Medium").length,
-      Low: tasks.filter((t) => t.priority === "Low").length,
-    };
-
+    // Single pass through tasks for all stats
+    let completedTasks = 0;
+    let inProgressTasks = 0;
+    let todoTasks = 0;
+    const priorityBreakdown = { High: 0, Medium: 0, Low: 0 };
     const projectBreakdown = {};
+
     tasks.forEach((task) => {
+      // Count by status
+      if (task.status === "Done") completedTasks++;
+      else if (task.status === "In Progress") inProgressTasks++;
+      else if (task.status === "To-Do") todoTasks++;
+
+      // Count by priority
+      if (priorityBreakdown[task.priority] !== undefined) {
+        priorityBreakdown[task.priority]++;
+      }
+
+      // Count by project
       const project = projects.find((p) => p.id === task.projectId);
       const name = project?.name || "Unknown";
       projectBreakdown[name] = (projectBreakdown[name] || 0) + 1;
     });
+
+    const completionRate =
+      totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
     return {
       totalTasks,
@@ -485,13 +456,38 @@ export default function ReportsPage() {
     recentTasksLimit,
   ]);
 
+  // Memoize common inline styles for performance
+  const iconStyles = useMemo(
+    () => ({
+      primary: { color: UI_COLORS.primary },
+      secondary: { color: UI_COLORS.secondary },
+      success: { color: UI_COLORS.success },
+      warning: { color: UI_COLORS.warning },
+      danger: { color: UI_COLORS.danger },
+    }),
+    []
+  );
+
+  const cardStyles = useMemo(
+    () => ({
+      primaryBorder: { borderTopColor: UI_COLORS.primary },
+      successBorder: { borderTopColor: UI_COLORS.success },
+      warningBorder: { borderTopColor: UI_COLORS.warning },
+      dangerBorder: { borderTopColor: UI_COLORS.danger },
+      primaryBg: { backgroundColor: UI_COLORS.primary },
+      primaryBgLight: { backgroundColor: UI_COLORS.primary + "1a" },
+      successBgLight: { backgroundColor: UI_COLORS.success + "1a" },
+    }),
+    []
+  );
+
   // Get sort icon for column
   const getSortIcon = (key) => {
     if (sortConfig.key !== key) return <FaSort className="text-gray-400" />;
     return sortConfig.direction === "asc" ? (
-      <FaSortUp style={{ color: UI_COLORS.primary }} />
+      <FaSortUp style={iconStyles.primary} />
     ) : (
-      <FaSortDown style={{ color: UI_COLORS.primary }} />
+      <FaSortDown style={iconStyles.primary} />
     );
   };
 
@@ -500,13 +496,18 @@ export default function ReportsPage() {
 
   const exportReport = (format) => {
     const period = timePeriods.find((p) => p.id === selectedPeriod);
+    if (!period) {
+      console.error("Invalid time period selected");
+      return;
+    }
+    
     const projectName = selectedProject
       ? projects.find((p) => p.id === selectedProject)?.name
       : "All Projects";
 
     if (format === "csv") {
       // Generate CSV content (use template literals and escaping)
-      let csvContent = `Report: ${period.label} - ${projectName}\n\n`;
+      let csvContent = `Report: ${projectName}\n\n`;
       csvContent += `Summary Statistics\n`;
       csvContent += `Total Tasks,${stats.totalTasks}\n`;
       csvContent += `Completed Tasks,${stats.completedTasks}\n`;
@@ -538,7 +539,7 @@ export default function ReportsPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `analytics_report_${period.id}_${Date.now()}.csv`;
+      a.download = `analytics_report_${Date.now()}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -546,7 +547,6 @@ export default function ReportsPage() {
       toast.success("CSV report downloaded!");
     } else if (format === "json") {
       const reportData = {
-        period: period.label,
         project: projectName,
         generatedAt: new Date().toISOString(),
         statistics: stats,
@@ -559,7 +559,7 @@ export default function ReportsPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `analytics_report_${period.id}_${Date.now()}.json`;
+      a.download = `analytics_report_${Date.now()}.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -569,14 +569,12 @@ export default function ReportsPage() {
   };
 
   const exportResourceReport = () => {
-    const period = timePeriods.find((p) => p.id === selectedPeriod);
     const projectName = selectedProject
       ? projects.find((p) => p.id === selectedProject)?.name
       : "All Projects";
 
     // Generate CSV content for resource report using safe escaping
     let csvContent = `Resource Performance Report\n`;
-    csvContent += `Period: ${period.label}\n`;
     csvContent += `Project: ${projectName}\n`;
     csvContent += `Generated: ${new Date().toLocaleString()}\n\n`;
 
@@ -623,7 +621,7 @@ export default function ReportsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `resource_report_${period.id}_${Date.now()}.csv`;
+    a.download = `resource_report_${Date.now()}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -641,25 +639,20 @@ export default function ReportsPage() {
   // Chart datasets
   const statusChartData = useMemo(
     () => [
-      { name: "Completed", value: stats.completedTasks, color: "#16a34a" },
-      { name: "In Progress", value: stats.inProgressTasks, color: "#06b6d4" },
+      { name: "Completed", value: stats.completedTasks, color: UI_COLORS.success },
+      { name: "In Progress", value: stats.inProgressTasks, color: UI_COLORS.primary },
       { name: "To-Do", value: stats.todoTasks, color: "#9ca3af" },
     ],
     [stats]
   );
 
   const tasksOverTimeData = useMemo(() => {
-    const period = timePeriods.find((p) => p.id === selectedPeriod);
+    // Show last 30 days of task activity
     const now = new Date();
     let endDate = new Date(now);
     let startDate = new Date(now);
-    startDate.setDate(now.getDate() - (period.days + (period.offset || 0)));
-    if (period.offset) endDate.setDate(now.getDate() - period.offset);
-    if (period.id === "all") {
-      // Cap to last 60 days for readability
-      startDate = new Date(endDate);
-      startDate.setDate(endDate.getDate() - 60);
-    }
+    startDate.setDate(now.getDate() - 30);
+    
     const keyOf = (d) => d.toISOString().slice(0, 10);
     const map = {};
     const seq = [];
@@ -683,7 +676,7 @@ export default function ReportsPage() {
       }
     });
     return seq;
-  }, [filteredData, selectedPeriod]);
+  }, [filteredData]);
 
   // Build Gantt items from filtered tasks
   const ganttItems = useMemo(() => {
@@ -701,6 +694,7 @@ export default function ReportsPage() {
           priority: t.priority,
           startDate: start,
           endDate: end,
+          dependsOn: Array.isArray(t.dependsOn) ? t.dependsOn : [],
         };
       })
       .filter((x) => x.startDate);
@@ -734,7 +728,7 @@ export default function ReportsPage() {
               <span>Report Filters</span>
               {activeFilterCount > 0 && (
                 <span
-                  style={{ backgroundColor: UI_COLORS.primary }}
+                  style={cardStyles.primaryBg}
                   className="inline-flex items-center justify-center h-5 w-5 rounded-full text-white text-xs font-bold"
                 >
                   {activeFilterCount}
@@ -743,88 +737,25 @@ export default function ReportsPage() {
             </div>
           }
           actions={
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 shadow-sm">
-                {[
-                  { id: "today", label: "Today", icon: <FaCalendarDay /> },
-                  { id: "next-30", label: "Next 30", icon: <FaCalendarAlt /> },
-                  { id: "month", label: "Month", icon: <FaCalendar /> },
-                ].map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => setSelectedPeriod(p.id)}
-                    style={{
-                      backgroundColor:
-                        selectedPeriod === p.id ? UI_COLORS.primary : "white",
-                      color: selectedPeriod === p.id ? "white" : "#374151",
-                    }}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
-                      selectedPeriod === p.id
-                        ? "shadow-sm"
-                        : "hover:bg-gray-100"
-                    }`}
-                  >
-                    {p.icon}
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-              <Button
-                onClick={() => {
-                  setSelectedPeriod("next-30");
-                  setSelectedProject("");
-                  setSelectedEmployee("");
-                  setEmployeeSearch("");
-                }}
-                variant="ghost"
-                className="text-xs"
-              >
-                🔄 Reset
-              </Button>
-            </div>
+            <Button
+              onClick={() => {
+                setSelectedPeriod("next-30");
+                setSelectedProject("");
+                setSelectedEmployee("");
+                setEmployeeSearch("");
+              }}
+              variant="ghost"
+              className="text-xs"
+            >
+              🔄 Reset Filters
+            </Button>
           }
         >
-          <div className="grid gap-4 md:grid-cols-3 overflow-hidden">
+          <div className="grid gap-4 md:grid-cols-2 overflow-hidden">
             <div className="min-w-0">
               <label className="block">
                 <span className="text-sm font-medium mb-2 flex items-center gap-2 text-gray-700">
-                  <FaCalendarAlt style={{ color: UI_COLORS.primary }} /> Time
-                  Period
-                </span>
-                <select
-                  value={selectedPeriod}
-                  onChange={(e) => setSelectedPeriod(e.target.value)}
-                  style={{
-                    "--tw-ring-color": UI_COLORS.primary + "33",
-                    borderColor: "#d1d5db",
-                  }}
-                  onFocus={(e) =>
-                    (e.target.style.borderColor = UI_COLORS.primary)
-                  }
-                  onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                  className="w-full rounded-lg border bg-white px-3 py-2.5 text-sm shadow-sm focus:ring-2 transition-all truncate max-w-full"
-                >
-                  {timePeriods
-                    .filter(
-                      (p) => !["today", "week", "month", "all"].includes(p.id)
-                    )
-                    .map((period) => (
-                      <option
-                        key={period.id}
-                        value={period.id}
-                        className="truncate"
-                      >
-                        {period.label}
-                      </option>
-                    ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="min-w-0">
-              <label className="block">
-                <span className="text-sm font-medium mb-2 flex items-center gap-2 text-gray-700">
-                  <FaProjectDiagram style={{ color: UI_COLORS.secondary }} />{" "}
+                  <FaProjectDiagram style={iconStyles.secondary} />{" "}
                   Project Filter
                   {selectedProject && (
                     <span
@@ -841,6 +772,7 @@ export default function ReportsPage() {
                 <select
                   value={selectedProject}
                   onChange={(e) => setSelectedProject(e.target.value)}
+                  aria-label="Filter by project"
                   style={{
                     "--tw-ring-color": UI_COLORS.secondary + "33",
                     borderColor: "#d1d5db",
@@ -868,7 +800,7 @@ export default function ReportsPage() {
             <div className="min-w-0">
               <label className="block">
                 <span className="text-sm font-medium mb-2 flex items-center gap-2 text-gray-700">
-                  <FaUsers style={{ color: UI_COLORS.success }} /> Employee
+                  <FaUsers style={iconStyles.success} /> Employee
                   Filter
                   {selectedEmployee && (
                     <span
@@ -887,6 +819,7 @@ export default function ReportsPage() {
                     value={employeeSearch}
                     onChange={(e) => setEmployeeSearch(e.target.value)}
                     placeholder="🔍 Search employee..."
+                    aria-label="Search employees by name or email"
                     style={{
                       "--tw-ring-color": UI_COLORS.success + "33",
                       borderColor: "#d1d5db",
@@ -900,6 +833,7 @@ export default function ReportsPage() {
                   <select
                     value={selectedEmployee}
                     onChange={(e) => setSelectedEmployee(e.target.value)}
+                    aria-label="Filter by employee"
                     style={{
                       "--tw-ring-color": UI_COLORS.success + "33",
                       borderColor: "#d1d5db",
@@ -919,7 +853,7 @@ export default function ReportsPage() {
                         (u.name || u.email || "")
                           .toString()
                           .toLowerCase()
-                          .includes(employeeSearch.toLowerCase())
+                          .includes(debouncedSearch.toLowerCase())
                       )
                       .map((u) => (
                         <option key={u.id} value={u.id} className="truncate">
@@ -936,7 +870,7 @@ export default function ReportsPage() {
         {/* Overview Statistics */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card
-            style={{ borderTopColor: UI_COLORS.primary }}
+            style={cardStyles.primaryBorder}
             className="border-t-4 bg-gradient-to-br from-blue-50 to-white hover:shadow-lg transition-all duration-300"
           >
             <div className="flex items-center justify-between">
@@ -1079,37 +1013,31 @@ export default function ReportsPage() {
                 </Button>
               </div>
             ) : (
-              <Suspense
-                fallback={
-                  <div className="h-72 rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-pulse" />
-                }
-              >
-                <div style={{ width: "100%", height: 280 }}>
-                  <ResponsiveContainer>
-                    <PieChart>
-                      <Pie
-                        data={statusChartData}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius={50}
-                        outerRadius={90}
-                        labelLine={false}
-                        label={({ name, percent }) =>
-                          `${name} ${(percent * 100).toFixed(0)}%`
-                        }
-                      >
-                        {statusChartData.map((entry, idx) => (
-                          <Cell key={`s-${idx}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value, name) => [`${value} tasks`, name]}
-                      />
-                      <Legend verticalAlign="bottom" height={24} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </Suspense>
+              <div style={{ width: "100%", height: 280 }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={statusChartData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={50}
+                      outerRadius={90}
+                      labelLine={false}
+                      label={({ name, percent }) =>
+                        `${name} ${(percent * 100).toFixed(0)}%`
+                      }
+                    >
+                      {statusChartData.map((entry, idx) => (
+                        <Cell key={`s-${idx}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value, name) => [`${value} tasks`, name]}
+                    />
+                    <Legend verticalAlign="bottom" height={24} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </Card>
 
@@ -1117,58 +1045,52 @@ export default function ReportsPage() {
             {loading ? (
               <div className="h-72 rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-pulse" />
             ) : (
-              <Suspense
-                fallback={
-                  <div className="h-72 rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-pulse" />
-                }
-              >
-                <div style={{ width: "100%", height: 280 }}>
-                  <ResponsiveContainer>
-                    <LineChart
-                      data={tasksOverTimeData}
-                      margin={{ top: 10, right: 20, bottom: 0, left: 0 }}
+              <div style={{ width: "100%", height: 280 }}>
+                <ResponsiveContainer>
+                  <LineChart
+                    data={tasksOverTimeData}
+                    margin={{ top: 10, right: 20, bottom: 0, left: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      tickFormatter={(v) => v.slice(5)}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis
-                        dataKey="date"
-                        tick={{ fill: "#9ca3af", fontSize: 12 }}
-                        tickFormatter={(v) => v.slice(5)}
+                      <Label
+                        value="Tasks"
+                        angle={-90}
+                        position="insideLeft"
+                        style={{ fill: "#9ca3af" }}
                       />
-                      <YAxis
-                        allowDecimals={false}
-                        tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      >
-                        <Label
-                          value="Tasks"
-                          angle={-90}
-                          position="insideLeft"
-                          style={{ fill: "#9ca3af" }}
-                        />
-                      </YAxis>
-                      <Tooltip
-                        formatter={(value, name) => [`${value} tasks`, name]}
-                      />
-                      <Legend verticalAlign="bottom" height={24} />
-                      <Line
-                        type="monotone"
-                        dataKey="Created"
-                        stroke="#4f46e5"
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 3 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="Completed"
-                        stroke="#16a34a"
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 3 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </Suspense>
+                    </YAxis>
+                    <Tooltip
+                      formatter={(value, name) => [`${value} tasks`, name]}
+                    />
+                    <Legend verticalAlign="bottom" height={24} />
+                    <Line
+                      type="monotone"
+                      dataKey="Created"
+                      stroke={UI_COLORS.secondary}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 3 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="Completed"
+                      stroke={UI_COLORS.success}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 3 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             )}
           </Card>
         </div>
@@ -1190,9 +1112,9 @@ export default function ReportsPage() {
                 </span>
                 <div className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white p-0.5 shadow-sm">
                   {[
-                    { value: "day", label: "Day", icon: <FaCalendarDay /> },
-                    { value: "week", label: "Week", icon: <FaCalendarWeek /> },
-                    { value: "month", label: "Month", icon: <FaCalendar /> },
+                    { value: "day", label: "Day", icon: <FaCalendarAlt /> },
+                    { value: "week", label: "Week", icon: <FaCalendarAlt /> },
+                    { value: "month", label: "Month", icon: <FaCalendarAlt /> },
                   ].map((scale) => (
                     <button
                       key={scale.value}
@@ -1215,6 +1137,26 @@ export default function ReportsPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Time Period Filter */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                  <FaCalendarAlt className="text-[10px]" />
+                  Time Range
+                </label>
+                <select
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(e.target.value)}
+                  aria-label="Select time period for Gantt chart"
+                  className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                >
+                  {timePeriods.map((period) => (
+                    <option key={period.id} value={period.id}>
+                      {period.label}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Zoom Controls */}
@@ -1673,7 +1615,7 @@ export default function ReportsPage() {
                           </td>
                           <td className="py-3 px-4">
                             <span className="inline-block px-2 py-1 rounded text-xs bg-indigo-100 text-indigo-700">
-                              {resource?.resourceRole}
+                              {resource.role || resource.resourceRole || ""}
                             </span>
                           </td>
                           <td className="py-3 px-4 text-center font-semibold">
@@ -1839,11 +1781,11 @@ export default function ReportsPage() {
                             <span
                               className="inline-block px-2 py-1 rounded text-xs"
                               style={{
-                                backgroundColor: project?.color + "20",
-                                color: project?.color,
+                                backgroundColor: (project?.color || "#9ca3af") + "20",
+                                color: project?.color || "#6b7280",
                               }}
                             >
-                              {project?.name}
+                              {project?.name || "Unknown"}
                             </span>
                           </td>
                           <td className="py-2 px-3">
