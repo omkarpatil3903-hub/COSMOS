@@ -296,7 +296,7 @@ function DashboardPage() {
         (d) => (d[dataKey1] || 0) + (d[dataKey2] || 0) + (d[dataKey3] || 0)
       )
     );
-
+    console.log("userdata:", userData);
     return (
       <div>
         <h3 className="text-lg font-semibold text-content-primary mb-4">
