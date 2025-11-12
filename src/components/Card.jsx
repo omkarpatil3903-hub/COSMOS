@@ -5,13 +5,15 @@ function Card({ title, icon, children, actions, className = "", ...props }) {
   const iconEl =
     icon && React.isValidElement(icon)
       ? React.cloneElement(icon, {
-          className: `h-4 w-4 text-content-secondary ${icon.props.className || ""}`.trim(),
+          className: `h-4 w-4 text-content-secondary ${
+            icon.props.className || ""
+          }`.trim(),
         })
       : icon;
   return (
     <div
       {...props}
-      className={`bg-surface rounded-xl border border-subtle shadow-soft transition-colors duration-200 ${className}`}
+      className={`bg-surface rounded-xl border border-subtle shadow-soft transition-colors duration-200 max-w-full overflow-hidden ${className}`}
     >
       {/* Card Header */}
       {(title || icon || actions) && (
