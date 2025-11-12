@@ -181,7 +181,10 @@ export default function ClientCalendar() {
     // Empty cells for days before month starts
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(
-        <div key={`empty-${i}`} className="h-24 border border-gray-100"></div>
+        <div
+          key={`empty-${i}`}
+          className="h-28 border border-gray-100 bg-gray-50"
+        ></div>
       );
     }
 
@@ -200,30 +203,38 @@ export default function ClientCalendar() {
       days.push(
         <div
           key={day}
-          className={`h-24 border border-gray-100 p-1 cursor-pointer relative ${
+          className={`h-28 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 ${
             isPast
               ? "bg-gray-50 hover:bg-gray-100 opacity-60"
-              : "hover:bg-gray-50"
+              : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
           } ${
-            isToday ? "bg-blue-50 border-blue-200" : ""
-          } ${isSelected ? "bg-indigo-50 border-indigo-300" : ""}`}
+            isToday
+              ? "bg-gradient-to-br from-blue-100 to-blue-50 border-blue-400 border-2 opacity-100 ring-2 ring-blue-200"
+              : ""
+          } ${
+            isSelected
+              ? "bg-gradient-to-br from-indigo-100 to-indigo-50 border-indigo-400 border-2 opacity-100 ring-2 ring-indigo-200"
+              : ""
+          }`}
           onClick={() => setSelectedDate(date)}
         >
           <div
-            className={`text-sm font-medium ${
+            className={`text-sm font-bold mb-1 ${
               isPast && !isToday
                 ? "text-gray-400"
                 : isToday
-                ? "text-blue-600"
-                : "text-gray-900"
-            }`}
+                ? "text-blue-700 text-base"
+                : "text-gray-800"
+            } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
           >
             {day}
           </div>
 
-          <div className="mt-1 space-y-0.5">
+          <div className="mt-1 space-y-1">
             {dayEvents.slice(0, 2).map((event) => {
-              const typeKey = String(event.type || "").toLowerCase();
+              const typeKey = event.isRecurring
+                ? "recurring"
+                : String(event.type || "").toLowerCase();
               const priorityKey = String(
                 event.priority || "medium"
               ).toLowerCase();
@@ -235,29 +246,29 @@ export default function ClientCalendar() {
               return (
                 <div
                   key={event.id}
-                  className={`text-xs p-1 rounded ${
+                  className={`text-xs p-1.5 rounded-md ${
                     isPast ? "bg-gray-200 text-gray-500" : typeBadge
-                  } truncate relative`}
+                  } truncate relative shadow-sm hover:shadow-md transition-shadow cursor-pointer`}
                   title={event.title}
                 >
                   {/* Priority strip on the left -- hidden for meetings */}
                   {typeKey !== "meeting" && (
                     <span
-                      className={`absolute left-0 top-1 bottom-1 w-1 rounded-l ${priorityDot}`}
+                      className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-md ${priorityDot}`}
                       aria-hidden
                     />
                   )}
 
-                  <div className="flex items-center gap-2 pl-3">
-                    <span className="truncate">
-                      {event.time} - {event.title}
+                  <div className="flex items-center gap-1 pl-2">
+                    <span className="truncate font-medium">
+                      {event.time} {event.title}
                     </span>
                   </div>
                 </div>
               );
             })}
             {dayEvents.length > 2 && (
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-600 font-semibold bg-gray-100 rounded px-2 py-1 text-center hover:bg-gray-200 transition-colors cursor-pointer">
                 +{dayEvents.length - 2} more
               </div>
             )}
@@ -458,6 +469,12 @@ export default function ClientCalendar() {
                   <option value="completed">Completed</option>
                 </select>
 
+                <Button
+                  onClick={() => setShowRequestModal(true)}
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                >
+                  <FaPlus className="mr-2" /> Request Meeting
+                </Button>
               </div>
             </div>
           </Card>
@@ -589,31 +606,43 @@ export default function ClientCalendar() {
                 {dayNames.map((day) => (
                   <div
                     key={day}
-                    className="p-2 text-center font-medium text-gray-600 border-b"
+                    className="p-3 text-center font-semibold text-gray-700 border-b border-gray-200"
                   >
                     {day.slice(0, 3)}
                   </div>
                 ))}
               </div>
-              <div className="grid grid-cols-7 gap-0">
+              <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded overflow-hidden">
                 {renderCalendarDays()}
               </div>
             </Card>
 
             {/* Event Details Sidebar */}
             <Card className="p-4">
-              <h3 className="font-semibold text-lg mb-4">
+              <h3 className="font-semibold text-lg mb-4 border-b pb-2">
                 {selectedDate
-                  ? `Events for ${selectedDate.toLocaleDateString()}`
+                  ? selectedDate.toLocaleDateString("en-US", {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                    })
                   : "Select a date"}
               </h3>
 
               {selectedDate ? (
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[600px] overflow-y-auto">
                   {getEventsForDate(selectedDate).length === 0 ? (
-                    <p className="text-gray-500 text-sm">
-                      No events on this date
-                    </p>
+                    <div className="text-center py-8">
+                      <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
+                        <FaCalendarAlt className="text-gray-400 text-2xl" />
+                      </div>
+                      <p className="text-gray-500 text-sm font-medium">
+                        No events on this date
+                      </p>
+                      <p className="text-gray-400 text-xs mt-1">
+                        Request a meeting to schedule something
+                      </p>
+                    </div>
                   ) : (
                     getEventsForDate(selectedDate).map((event) => {
                       const statusStyles = {
@@ -625,13 +654,14 @@ export default function ClientCalendar() {
                       const statusClass =
                         statusStyles[event.status] ||
                         "bg-gray-100 text-gray-600";
-                      // Show "by admin" for admin-created events instead of status
                       const isAdminCreated = event.createdBy === "admin";
-                      const displayLabel = isAdminCreated 
-                        ? "by admin" 
-                        : (event.status
-                            ? event.status.replace(/\b\w/g, (ch) => ch.toUpperCase())
-                            : "Pending");
+                      const displayLabel = isAdminCreated
+                        ? "by admin"
+                        : event.status
+                        ? event.status.replace(/\b\w/g, (ch) =>
+                            ch.toUpperCase()
+                          )
+                        : "Pending";
                       const displayClass = isAdminCreated
                         ? "bg-blue-100 text-blue-700"
                         : statusClass;
@@ -639,7 +669,7 @@ export default function ClientCalendar() {
                       return (
                         <div
                           key={event.id}
-                          className="border rounded-lg p-3 space-y-2"
+                          className="border-2 rounded-lg p-3 space-y-2 hover:shadow-lg transition-all duration-200 bg-white hover:border-blue-300"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div>
@@ -682,8 +712,8 @@ export default function ClientCalendar() {
                               <div>Location: {event.location}</div>
                             )}
                             {event.description && (
-                              <div className="text-[11px] text-content-secondary">
-                                Notes: {event.description}
+                              <div className="text-[11px] text-content-secondary bg-gray-50 p-2 rounded">
+                                {event.description}
                               </div>
                             )}
                           </div>
@@ -910,12 +940,12 @@ export default function ClientCalendar() {
               </button>
             </div>
           )}
-          
+
           {/* Main Floating Button */}
           <button
             onClick={() => setShowFloatingMenu(!showFloatingMenu)}
             className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${
-              showFloatingMenu ? 'rotate-45' : ''
+              showFloatingMenu ? "rotate-45" : ""
             }`}
             title="Request Meeting"
           >
