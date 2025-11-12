@@ -75,6 +75,10 @@ export default function GanttChart({
   const startXRef = useRef(0);
   const startWRef = useRef(leftWidth);
   const gridRef = useRef(null);
+  const scrollRef = useRef(null);
+  const isPanningRef = useRef(false);
+  const panStartXRef = useRef(0);
+  const panStartScrollRef = useRef(0);
   const todayRef = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -285,6 +289,26 @@ export default function GanttChart({
     );
   }, [rows, groupByProject]);
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("reports:gantt:collapsed");
+      if (raw) {
+        const obj = JSON.parse(raw);
+        if (obj && typeof obj === "object") setCollapsed(obj);
+      }
+    } catch (e) {
+      void e;
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("reports:gantt:collapsed", JSON.stringify(collapsed));
+    } catch (e) {
+      void e;
+    }
+  }, [collapsed]);
+
   // Handle left panel resizing
   useEffect(() => {
     setLeftW(leftWidth);
@@ -321,7 +345,69 @@ export default function GanttChart({
     document.body.style.userSelect = "none";
   };
 
+  const onPanMouseDown = (e) => {
+    if (e.button !== 0) return;
+    if (!scrollRef.current) return;
+    isPanningRef.current = true;
+    panStartXRef.current = e.clientX;
+    panStartScrollRef.current = scrollRef.current.scrollLeft || 0;
+    document.body.style.cursor = "grabbing";
+    document.body.style.userSelect = "none";
+  };
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!isPanningRef.current || !scrollRef.current) return;
+      const dx = e.clientX - panStartXRef.current;
+      scrollRef.current.scrollLeft = panStartScrollRef.current - dx;
+    };
+    const onUp = () => {
+      if (!isPanningRef.current) return;
+      isPanningRef.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
   const totalWidthPx = Math.max(0, timeline.totalDays * pxPerDay);
+
+  useEffect(() => {
+    if (!scrollRef.current || !chartStart || !chartEnd) return;
+    const now = new Date();
+    const s = new Date(
+      chartStart.getFullYear(),
+      chartStart.getMonth(),
+      chartStart.getDate()
+    );
+    const e = new Date(
+      chartEnd.getFullYear(),
+      chartEnd.getMonth(),
+      chartEnd.getDate()
+    );
+    const within = now >= s && now <= e;
+    if (!within) return;
+    const daysFromStart = Math.floor(
+      (new Date(now.getFullYear(), now.getMonth(), now.getDate()) - s) / DAY_MS
+    );
+    const left = daysFromStart * pxPerDay;
+    requestAnimationFrame(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      const containerWidth = el.clientWidth || 0;
+      const maxScroll = Math.max(0, totalWidthPx - containerWidth);
+      const target = Math.min(
+        maxScroll,
+        Math.max(0, left - containerWidth / 2)
+      );
+      el.scrollTo({ left: target, behavior: "smooth" });
+    });
+  }, [chartStart, chartEnd, pxPerDay, totalWidthPx]);
 
   const currentWeekOverlay = useMemo(() => {
     if (!chartStart || !chartEnd || scale !== "day") return null;
@@ -347,16 +433,64 @@ export default function GanttChart({
 
   const legendEntries = useMemo(() => {
     const seen = new Map();
+    const counts = {};
     rows.forEach((r) => {
       const key = r.statusKey || "default";
       if (!seen.has(key)) seen.set(key, r.status || "Status");
+      counts[key] = (counts[key] || 0) + 1;
     });
     return Array.from(seen.entries()).map(([key, label]) => ({
       key,
       label,
       color: (STATUS_THEME[key] || STATUS_THEME.default).legend,
+      count: counts[key] || 0,
     }));
   }, [rows]);
+
+  const dependencyLines = useMemo(() => {
+    const headerH = 40;
+    let y = 0;
+    const pos = new Map();
+    sections.forEach((sec) => {
+      y += headerH;
+      const isCol = !!collapsed[sec.key];
+      if (!isCol) {
+        sec.rows.forEach((r, idx) => {
+          const top = y + idx * rowHeight;
+          const cy = top + rowHeight / 2;
+          pos.set(r.id, {
+            xStart: r.leftPx,
+            xEnd: r.leftPx + r.widthPx,
+            y: cy,
+          });
+        });
+        y += sec.rows.length * rowHeight;
+      }
+    });
+    const lines = [];
+    sections.forEach((sec) => {
+      const isCol = !!collapsed[sec.key];
+      if (isCol) return;
+      sec.rows.forEach((r) => {
+        const deps = Array.isArray(r.dependsOn) ? r.dependsOn : [];
+        const to = pos.get(r.id);
+        if (!to) return;
+        deps.forEach((pid) => {
+          const from = pos.get(pid);
+          if (!from) return;
+          const sx = from.xEnd + 6;
+          const sy = from.y;
+          const tx = to.xStart - 6;
+          const ty = to.y;
+          const c1x = sx + 16;
+          const c2x = tx - 8;
+          const d = `M ${sx} ${sy} L ${c1x} ${sy} L ${c1x} ${ty} L ${c2x} ${ty} L ${tx} ${ty}`;
+          lines.push({ d });
+        });
+      });
+    });
+    return lines;
+  }, [sections, collapsed, rowHeight]);
 
   return (
     <div className="w-full max-w-full overflow-hidden">
@@ -493,7 +627,11 @@ export default function GanttChart({
         />
 
         {/* Timeline */}
-        <div className="relative flex-1 overflow-x-auto bg-white max-w-full">
+        <div
+          ref={scrollRef}
+          onMouseDown={onPanMouseDown}
+          className="relative flex-1 overflow-x-auto bg-white max-w-full cursor-grab"
+        >
           {/* Header: Month row + sub-scale row */}
           <div className="sticky top-0 z-10 border-b border-gray-200 bg-white">
             <div
@@ -613,6 +751,26 @@ export default function GanttChart({
                   />
                 );
               })()}
+              <svg
+                className="absolute inset-0 pointer-events-none"
+                style={{ width: totalWidthPx, height: "100%" }}
+              >
+                <defs>
+                  <marker id="depArrow" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+                    <path d="M0,0 L8,4 L0,8 z" fill="#9ca3af" />
+                  </marker>
+                </defs>
+                {dependencyLines.map((ln, i) => (
+                  <path
+                    key={i}
+                    d={ln.d}
+                    fill="none"
+                    stroke="#9ca3af"
+                    strokeWidth="1.5"
+                    markerEnd="url(#depArrow)"
+                  />
+                ))}
+              </svg>
             </div>
 
             {/* Rows */}
@@ -697,6 +855,16 @@ export default function GanttChart({
                             >
                               {/* subtle gradient overlay */}
                               <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/20 to-transparent" />
+                              {r.durationDays === 1 && (
+                                <div
+                                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rotate-45"
+                                  style={{
+                                    backgroundColor: r.project?.color || "#9ca3af",
+                                    boxShadow: "0 0 0 1px rgba(0,0,0,0.08)",
+                                  }}
+                                  title="Milestone"
+                                />
+                              )}
                               {/* Truncated indicator */}
                               {r.isTruncated && (
                                 <div
@@ -799,6 +967,9 @@ export default function GanttChart({
               style={{ backgroundColor: entry.color }}
             />
             <span className="text-gray-700">{entry.label}</span>
+            <span className="ml-1 inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
+              {entry.count}
+            </span>
           </span>
         ))}
         <span className="inline-flex items-center gap-2 rounded border border-gray-200 bg-white px-2.5 py-1">
