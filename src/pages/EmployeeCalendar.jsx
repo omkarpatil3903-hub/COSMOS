@@ -1,5 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuthContext } from "../context/useAuthContext";
 import PageHeader from "../components/PageHeader";
@@ -16,6 +23,7 @@ import {
   FaTasks,
   FaPlus,
 } from "react-icons/fa";
+import { MdReplayCircleFilled } from "react-icons/md";
 import { TYPE_CLASSES, PRIORITY_CLASSES } from "../utils/colorMaps";
 import { occursOnDate } from "../utils/recurringTasks";
 
@@ -144,36 +152,42 @@ const EmployeeCalendar = () => {
   // Filtered tasks and events based on current filter settings
   const filteredItems = useMemo(() => {
     let items = [];
-    
+
     // Add tasks if type filter allows
     if (filterType === "all" || filterType === "tasks") {
       const filteredTasks = tasks.filter((task) => {
         if (filterStatus === "all") return true;
-        
+
         // Map task status to filter values
         const statusMap = {
-          "in_progress": ["In Progress", "To-Do"],
-          "done": ["Done", "Completed"]
+          in_progress: ["In Progress", "To-Do"],
+          done: ["Done", "Completed"],
         };
-        
+
         return statusMap[filterStatus]?.includes(task.status);
       });
-      
-      items = [...items, ...filteredTasks.map(task => ({ ...task, itemType: "task" }))];
+
+      items = [
+        ...items,
+        ...filteredTasks.map((task) => ({ ...task, itemType: "task" })),
+      ];
     }
-    
+
     // Add events/meetings if type filter allows
     if (filterType === "all" || filterType === "meetings") {
       const filteredEvents = events.filter((event) => {
         if (filterStatus === "all") return true;
-        
+
         // Map event status to filter values
         return event.status === filterStatus;
       });
-      
-      items = [...items, ...filteredEvents.map(event => ({ ...event, itemType: "meeting" }))];
+
+      items = [
+        ...items,
+        ...filteredEvents.map((event) => ({ ...event, itemType: "meeting" })),
+      ];
     }
-    
+
     return items;
   }, [tasks, events, filterType, filterStatus]);
 
@@ -188,7 +202,9 @@ const EmployeeCalendar = () => {
         const taskDateStr = `${dueDate.getFullYear()}-${String(
           dueDate.getMonth() + 1
         ).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
-        return item.isRecurring ? occursOnDate(item, date) : taskDateStr === dateStr;
+        return item.isRecurring
+          ? occursOnDate(item, date)
+          : taskDateStr === dateStr;
       } else if (item.itemType === "meeting") {
         // For meetings, check the date field
         return item.date === dateStr;
@@ -212,7 +228,10 @@ const EmployeeCalendar = () => {
     // Empty cells before month starts
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(
-        <div key={`empty-${i}`} className="h-24 border border-gray-100" />
+        <div
+          key={`empty-${i}`}
+          className="h-28 border border-gray-100 bg-gray-50"
+        />
       );
     }
 
@@ -231,32 +250,40 @@ const EmployeeCalendar = () => {
       days.push(
         <div
           key={day}
-          className={`h-24 border border-gray-100 p-1 cursor-pointer relative ${
+          className={`h-28 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 ${
             isPast
               ? "bg-gray-50 hover:bg-gray-100 opacity-60"
-              : "hover:bg-gray-50"
+              : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
           } ${
-            isToday ? "bg-blue-50 border-blue-200" : ""
-          } ${isSelected ? "bg-indigo-50 border-indigo-300" : ""}`}
+            isToday
+              ? "bg-gradient-to-br from-blue-100 to-blue-50 border-blue-400 border-2 opacity-100 ring-2 ring-blue-200"
+              : ""
+          } ${
+            isSelected
+              ? "bg-gradient-to-br from-indigo-100 to-indigo-50 border-indigo-400 border-2 opacity-100 ring-2 ring-indigo-200"
+              : ""
+          }`}
           onClick={() => setSelectedDate(date)}
         >
           <div
-            className={`text-sm font-medium ${
+            className={`text-sm font-bold mb-1 ${
               isPast && !isToday
                 ? "text-gray-400"
                 : isToday
-                ? "text-blue-600"
-                : "text-gray-900"
-            }`}
+                ? "text-blue-700 text-base"
+                : "text-gray-800"
+            } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
           >
             {day}
           </div>
 
-          <div className="mt-1 space-y-0.5">
+          <div className="mt-1 space-y-1">
             {dayItems.slice(0, 2).map((item) => {
               const isEvent = item.type === "meeting" || item.attendees;
               const typeKey = isEvent
                 ? String(item.type || "meeting").toLowerCase()
+                : item.isRecurring
+                ? "recurring"
                 : "task";
               const priorityKey = String(
                 item.priority || "medium"
@@ -269,33 +296,33 @@ const EmployeeCalendar = () => {
               return (
                 <div
                   key={item.id}
-                  className={`text-xs p-1 rounded ${
+                  className={`text-xs p-1.5 rounded-md ${
                     isPast ? "bg-gray-200 text-gray-500" : typeBadge
-                  } truncate relative`}
+                  } truncate relative shadow-sm hover:shadow-md transition-shadow cursor-pointer`}
                   title={item.title}
                 >
                   {/* Priority strip on the left -- hidden for meetings */}
                   {typeKey !== "meeting" && (
                     <span
-                      className={`absolute left-0 top-1 bottom-1 w-1 rounded-l ${priorityDot}`}
+                      className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-md ${priorityDot}`}
                       aria-hidden
                     />
                   )}
 
-                  <div className="flex items-center gap-2 pl-3">
-                    {isEvent ? (
-                      <span className="truncate">
-                        {item.time} - {item.title}
-                      </span>
-                    ) : (
-                      <span className="truncate">{item.title}</span>
+                  <div className="flex items-center gap-1 pl-2">
+                    <span className="truncate font-medium">
+                      {isEvent ? `${item.time} ${item.title}` : item.title}
+                    </span>
+                    {/* Recurring icon for events */}
+                    {isEvent && (item.isRecurring || item.recurringPattern) && (
+                      <MdReplayCircleFilled className="text-teal-600 text-sm ml-1 flex-shrink-0" />
                     )}
                   </div>
                 </div>
               );
             })}
             {dayItems.length > 2 && (
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-600 font-semibold bg-gray-100 rounded px-2 py-1 text-center hover:bg-gray-200 transition-colors cursor-pointer">
                 +{dayItems.length - 2} more
               </div>
             )}
@@ -327,7 +354,7 @@ const EmployeeCalendar = () => {
     try {
       // Convert dueDate string to Date object if needed
       const dueDate = taskData.dueDate ? new Date(taskData.dueDate) : null;
-      
+
       const newTask = {
         title: taskData.title,
         description: taskData.description || "",
@@ -337,7 +364,9 @@ const EmployeeCalendar = () => {
         status: taskData.status || "To-Do",
         priority: taskData.priority || "Medium",
         dueDate: dueDate,
-        assignedDate: taskData.assignedDate ? new Date(taskData.assignedDate) : new Date(),
+        assignedDate: taskData.assignedDate
+          ? new Date(taskData.assignedDate)
+          : new Date(),
         weightage: taskData.weightage ? Number(taskData.weightage) : 0,
         completionComment: taskData.completionComment || "",
         isRecurring: taskData.isRecurring || false,
@@ -497,9 +526,9 @@ const EmployeeCalendar = () => {
                 value={filterType}
                 onChange={(e) => {
                   setFilterType(e.target.value);
-                  setFilterStatus("all"); // Reset status filter when type changes
+                  setFilterStatus("all");
                 }}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-40"
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
               >
                 <option value="all">All Items</option>
                 <option value="meetings">Meetings</option>
@@ -509,7 +538,7 @@ const EmployeeCalendar = () => {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-40"
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
               >
                 <option value="all">All Status</option>
                 {filterType === "meetings" && (
@@ -526,6 +555,13 @@ const EmployeeCalendar = () => {
                   </>
                 )}
               </select>
+
+              <Button
+                onClick={() => openEventModal(null)}
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                <FaPlus className="mr-2" /> Add Event
+              </Button>
             </div>
           </div>
         </Card>
@@ -574,9 +610,6 @@ const EmployeeCalendar = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-content-tertiary">Pending Tasks</p>
-                <p className="text-3xl font-bold mt-1">
-                  {calendarStats.pendingTasks}
-                </p>
               </div>
               <FaTasks className="h-8 w-8 text-yellow-600 opacity-60" />
             </div>
@@ -599,7 +632,7 @@ const EmployeeCalendar = () => {
               ].map((day) => (
                 <div
                   key={day}
-                  className="p-2 text-center font-medium text-gray-600 border-b"
+                  className="p-3 text-center font-semibold text-gray-700 border-b border-gray-200"
                 >
                   {day.slice(0, 3)}
                 </div>
@@ -607,23 +640,37 @@ const EmployeeCalendar = () => {
             </div>
 
             {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-0">{renderCalendarDays()}</div>
+            <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded overflow-hidden">
+              {renderCalendarDays()}
+            </div>
           </Card>
 
           {/* Task Details Sidebar */}
           <Card className="p-4">
-            <h3 className="font-semibold text-lg mb-4">
+            <h3 className="font-semibold text-lg mb-4 border-b pb-2">
               {selectedDate
-                ? `Events for ${selectedDate.toLocaleDateString()}`
+                ? selectedDate.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                  })
                 : "Select a date"}
             </h3>
 
             {selectedDate ? (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[600px] overflow-y-auto">
                 {getItemsForDate(selectedDate).length === 0 ? (
-                  <p className="text-gray-500 text-sm">
-                    No items on this date
-                  </p>
+                  <div className="text-center py-8">
+                    <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
+                      <FaCalendarAlt className="text-gray-400 text-2xl" />
+                    </div>
+                    <p className="text-gray-500 text-sm font-medium">
+                      No items on this date
+                    </p>
+                    <p className="text-gray-400 text-xs mt-1">
+                      Click "Add Event" or "Add Task" to schedule something
+                    </p>
+                  </div>
                 ) : (
                   getItemsForDate(selectedDate).map((item) => {
                     // Check if it's a task or meeting based on itemType
@@ -639,13 +686,12 @@ const EmployeeCalendar = () => {
                       const statusClass =
                         statusStyles[item.status] ||
                         "bg-gray-100 text-gray-600";
-                      // Show "by admin" for admin-created events instead of status
                       const isAdminCreated = item.createdBy === "admin";
-                      const displayLabel = isAdminCreated 
-                        ? "by admin" 
-                        : (item.status
-                            ? item.status.replace(/\b\w/g, (ch) => ch.toUpperCase())
-                            : "Pending");
+                      const displayLabel = isAdminCreated
+                        ? "by admin"
+                        : item.status
+                        ? item.status.replace(/\b\w/g, (ch) => ch.toUpperCase())
+                        : "Pending";
                       const displayClass = isAdminCreated
                         ? "bg-blue-100 text-blue-700"
                         : statusClass;
@@ -653,7 +699,7 @@ const EmployeeCalendar = () => {
                       return (
                         <div
                           key={item.id}
-                          className="border rounded-lg p-3 space-y-2"
+                          className="border-2 rounded-lg p-3 space-y-2 hover:shadow-lg transition-all duration-200 bg-white hover:border-blue-300"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div>
@@ -666,6 +712,10 @@ const EmployeeCalendar = () => {
                                 {displayLabel}
                               </span>
                             </div>
+                            {/* Recurring icon for events in detail view */}
+                            {(item.isRecurring || item.recurringPattern) && (
+                              <MdReplayCircleFilled className="text-teal-600 text-lg flex-shrink-0" />
+                            )}
                           </div>
 
                           <div className="text-xs text-gray-600 space-y-1">
@@ -682,12 +732,36 @@ const EmployeeCalendar = () => {
                                 Notes: {item.description}
                               </div>
                             )}
+                            {item.attendees && item.attendees.length > 0 && (
+                              <div className="text-[11px]">
+                                <span className="font-medium">Attendees:</span>{" "}
+                                {item.attendees.length}
+                              </div>
+                            )}
                           </div>
+
+                          {item.objectives && item.objectives.length > 0 && (
+                            <div className="border-t pt-2">
+                              <p className="text-[11px] font-semibold text-content-secondary mb-1">
+                                Objectives
+                              </p>
+                              <ul className="space-y-1">
+                                {item.objectives.map((objective) => (
+                                  <li
+                                    key={objective.id}
+                                    className="text-[11px] text-content-secondary"
+                                  >
+                                    • {objective.text}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
                       );
                     }
 
-                    // Task rendering
+                    // Task rendering with enhanced styling
                     const statusStyles = {
                       Done: "bg-green-100 text-green-700",
                       "In Progress": "bg-blue-100 text-blue-700",
@@ -695,10 +769,11 @@ const EmployeeCalendar = () => {
                     };
                     const statusClass =
                       statusStyles[item.status] || "bg-gray-100 text-gray-600";
-                    
-                    // Show "by admin" for admin-created tasks instead of status
+
                     const isAdminCreatedTask = item.createdBy === "admin";
-                    const taskDisplayLabel = isAdminCreatedTask ? "by admin" : item.status;
+                    const taskDisplayLabel = isAdminCreatedTask
+                      ? "by admin"
+                      : item.status;
                     const taskDisplayClass = isAdminCreatedTask
                       ? "bg-blue-100 text-blue-700"
                       : statusClass;
@@ -706,13 +781,18 @@ const EmployeeCalendar = () => {
                     return (
                       <div
                         key={item.id}
-                        className="border rounded-lg p-3 space-y-2"
+                        className="border-2 rounded-lg p-3 space-y-2 hover:shadow-lg transition-all duration-200 bg-white hover:border-blue-300"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <h4 className="font-medium text-sm">
-                              {item.title}
-                            </h4>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium text-sm">
+                                {item.title}
+                              </h4>
+                              {item.isRecurring && (
+                                <MdReplayCircleFilled className="text-teal-600 text-sm" />
+                              )}
+                            </div>
                             <span
                               className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${taskDisplayClass}`}
                             >
@@ -722,27 +802,68 @@ const EmployeeCalendar = () => {
                         </div>
 
                         <div className="text-xs text-gray-600 space-y-1">
-                          {(() => {
-                            const pk = String(
-                              item.priority || ""
-                            ).toLowerCase();
-                            const borderClass =
-                              PRIORITY_CLASSES[pk]?.border || "border-gray-400";
-                            const badgeClass =
-                              PRIORITY_CLASSES[pk]?.badge ||
-                              "bg-gray-100 text-gray-700";
-                            return (
-                              <div
-                                className={`inline-block px-2 py-0.5 border-l-4 ${borderClass}`}
+                          <div>
+                            Due Date:{" "}
+                            {item.dueDate
+                              ? new Date(
+                                  item.dueDate?.toDate?.() || item.dueDate
+                                ).toLocaleDateString()
+                              : "No due date"}
+                          </div>
+                          {item.priority && (
+                            <div>
+                              Priority:{" "}
+                              <span
+                                className={`inline-block ml-1 px-2 py-0.5 rounded ${
+                                  PRIORITY_CLASSES[
+                                    String(item.priority).toLowerCase()
+                                  ]?.badge || "bg-gray-100 text-gray-700"
+                                }`}
                               >
-                                <span
-                                  className={`px-2 py-0.5 rounded ${badgeClass}`}
-                                >
-                                  {item.priority} Priority
-                                </span>
+                                {item.priority}
+                              </span>
+                            </div>
+                          )}
+                          {item.weightage && (
+                            <div>Weight: {item.weightage}%</div>
+                          )}
+                          {item.projectId && (
+                            <div>
+                              Project:{" "}
+                              {projects.find((p) => p.id === item.projectId)
+                                ?.name || item.projectId}
+                            </div>
+                          )}
+                          {item.description && (
+                            <div className="text-[11px] text-content-secondary">
+                              Notes: {item.description}
+                            </div>
+                          )}
+                          {item.isRecurring && (
+                            <div className="text-[11px] text-teal-600">
+                              Recurs: {item.recurringPattern} • Every{" "}
+                              {item.recurringInterval}
+                            </div>
+                          )}
+                          {item.completionComment && item.status === "Done" && (
+                            <div className="text-[11px] text-green-700 bg-green-50 p-2 rounded border border-green-200">
+                              <span className="font-medium">
+                                ✅ Completion note:
+                              </span>
+                              <div className="mt-1">
+                                {item.completionComment}
                               </div>
-                            );
-                          })()}
+                            </div>
+                          )}
+                          {item.assignedDate && (
+                            <div className="text-[10px] text-gray-400">
+                              Assigned:{" "}
+                              {new Date(
+                                item.assignedDate?.toDate?.() ||
+                                  item.assignedDate
+                              ).toLocaleDateString()}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -787,12 +908,12 @@ const EmployeeCalendar = () => {
               </button>
             </div>
           )}
-          
+
           {/* Main Floating Button */}
           <button
             onClick={() => setShowFloatingMenu(!showFloatingMenu)}
             className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${
-              showFloatingMenu ? 'rotate-45' : ''
+              showFloatingMenu ? "rotate-45" : ""
             }`}
             title="Add Task"
           >
@@ -830,22 +951,27 @@ const EmployeeCalendar = () => {
               </button>
             </div>
 
-            <form className="space-y-4" onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target);
-              const eventData = {
-                title: formData.get('title'),
-                date: formData.get('date'),
-                time: formData.get('time'),
-                duration: formData.get('duration'),
-                description: formData.get('description'),
-                location: formData.get('location'),
-                clientId: formData.get('clientId'),
-                clientName: clients.find(c => c.id === formData.get('clientId'))?.clientName || '',
-                priority: formData.get('priority'),
-              };
-              handleEventSave(eventData);
-            }}>
+            <form
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const eventData = {
+                  title: formData.get("title"),
+                  date: formData.get("date"),
+                  time: formData.get("time"),
+                  duration: formData.get("duration"),
+                  description: formData.get("description"),
+                  location: formData.get("location"),
+                  clientId: formData.get("clientId"),
+                  clientName:
+                    clients.find((c) => c.id === formData.get("clientId"))
+                      ?.clientName || "",
+                  priority: formData.get("priority"),
+                };
+                handleEventSave(eventData);
+              }}
+            >
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-1 text-sm md:col-span-2">
                   <span className="font-medium text-content-secondary">
@@ -867,7 +993,11 @@ const EmployeeCalendar = () => {
                     name="date"
                     type="date"
                     className="w-full rounded-md border border-subtle bg-surface px-3 py-2 date-input-blue"
-                    defaultValue={selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                    defaultValue={
+                      selectedDate
+                        ? selectedDate.toISOString().split("T")[0]
+                        : new Date().toISOString().split("T")[0]
+                    }
                     required
                   />
                 </label>
@@ -894,7 +1024,9 @@ const EmployeeCalendar = () => {
                     className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
                   >
                     <option value="30">30 minutes</option>
-                    <option value="60" selected>1 hour</option>
+                    <option value="60" selected>
+                      1 hour
+                    </option>
                     <option value="90">1.5 hours</option>
                     <option value="120">2 hours</option>
                   </select>
@@ -911,7 +1043,9 @@ const EmployeeCalendar = () => {
                     <option value="">Select Client</option>
                     {clients.map((client) => (
                       <option key={client.id} value={client.id}>
-                        {client.clientName || client.companyName || client.email}
+                        {client.clientName ||
+                          client.companyName ||
+                          client.email}
                       </option>
                     ))}
                   </select>
@@ -926,7 +1060,9 @@ const EmployeeCalendar = () => {
                     className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
                   >
                     <option value="low">Low</option>
-                    <option value="medium" selected>Medium</option>
+                    <option value="medium" selected>
+                      Medium
+                    </option>
                     <option value="high">High</option>
                   </select>
                 </label>

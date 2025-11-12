@@ -13,6 +13,7 @@ export const TYPE_HEX = {
   task: "#10b981", // emerald-500
   milestone: "#8b5cf6", // violet-500
   call: "#f59e0b", // amber-500 (kept for consistency)
+  recurring: "#181c1bff", // teal-500
 };
 
 // Badge/bg/text class bundles
@@ -54,6 +55,11 @@ export const TYPE_CLASSES = {
     badge: "bg-yellow-100 text-yellow-700",
     dot: "bg-yellow-500",
     border: "border-yellow-500",
+  },
+  recurring: {
+    badge: "bg-teal-100 text-teal-700",
+    dot: "bg-teal-500",
+    border: "border-teal-500",
   },
 };
 
