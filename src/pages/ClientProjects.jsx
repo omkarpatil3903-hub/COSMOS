@@ -1,22 +1,55 @@
 // src/pages/ClientProjects.jsx
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import Card from "../components/Card";
+import PageHeader from "../components/PageHeader";
 import { useAuthContext } from "../context/useAuthContext";
 import { db } from "../firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
-import {
-  FaProjectDiagram,
-  FaCalendar,
-  FaTasks,
-  FaSearch,
+import { 
+  FaProjectDiagram, 
+  FaCalendarAlt, 
+  FaCalendarPlus, 
+  FaSearch, 
+  FaSortAmountDown, 
+  FaSortAmountUp, 
+  FaEye, 
+  FaEyeSlash, 
+  FaCalendarCheck, 
+  FaClock, 
+  FaFlag, 
+  FaCheckCircle 
 } from "react-icons/fa";
 
 export default function ClientProjects() {
   const { user, userData } = useAuthContext();
+  const location = useLocation();
   const uid = user?.uid || userData?.uid;
+  // Utility function to format dates in dd/mm/yyyy format
+  const formatDateToDDMMYYYY = (date) => {
+    if (!date) return '';
+    const d = date instanceof Date ? date : (date?.toDate?.() || new Date(date));
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("none"); // none, name, progress, dueDate
+  const [sortOrder, setSortOrder] = useState("asc"); // asc, desc
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [hoveredProject, setHoveredProject] = useState(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+  // Handle navigation state from dashboard
+  useEffect(() => {
+    if (location.state?.showCompleted) {
+      setShowCompleted(true);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (!uid) return;
@@ -26,16 +59,9 @@ export default function ClientProjects() {
       setProjects(
         snap.docs.map((d) => {
           const data = d.data();
-          console.log("client project data ", data);
           return {
             id: d.id,
             ...data,
-            startDate: data.startDate?.toDate
-              ? data.startDate.toDate().toISOString().slice(0, 10)
-              : data.startDate || "",
-            endDate: data.endDate?.toDate
-              ? data.endDate.toDate().toISOString().slice(0, 10)
-              : data.endDate || "",
           };
         })
       );
@@ -45,22 +71,75 @@ export default function ClientProjects() {
     return () => unsub();
   }, [uid]);
 
-  // Filter projects by search term (client requested)
-  const filteredProjects = projects.filter((project) => {
-    if (!searchTerm) return true;
-    const s = searchTerm.trim().toLowerCase();
-    return (
-      (project.name || project.projectName || "").toLowerCase().includes(s) ||
-      (project.description || "").toLowerCase().includes(s)
-    );
-  });
+  const getProjectProgress = (project) => {
+    return project.progress || 0;
+  };
+
+  // Filter and sort projects
+  const filteredAndSortedProjects = projects
+    .filter(project => {
+      const progress = getProjectProgress(project);
+      
+      // Filter by search term
+      const matchesSearch = project.projectName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           project.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Filter by completion status
+      const isCompleted = progress === 100;
+      const shouldShow = showCompleted ? isCompleted : !isCompleted;
+      
+      return matchesSearch && shouldShow;
+    })
+    .sort((a, b) => {
+      // If sortBy is 'none', maintain original order (no sorting)
+      if (sortBy === "none") {
+        return 0;
+      }
+      
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case "name":
+          aValue = a.projectName?.toLowerCase() || '';
+          bValue = b.projectName?.toLowerCase() || '';
+          break;
+        case "progress":
+          aValue = getProjectProgress(a);
+          bValue = getProjectProgress(b);
+          break;
+        case "dueDate":
+          // Use endDate as the due date for sorting
+          aValue = a.endDate?.toDate?.() || new Date(a.endDate) || new Date(0);
+          bValue = b.endDate?.toDate?.() || new Date(b.endDate) || new Date(0);
+          break;
+        default:
+          return 0;
+      }
+      
+      if (sortOrder === "asc") {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+
+  // Count completed projects
+  const completedProjectsCount = projects.filter(project => {
+    const progress = getProjectProgress(project);
+    return progress === 100;
+  }).length;
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
-          <p className="mt-2 text-gray-600">Loading projects...</p>
+      <div className="space-y-6">
+        <PageHeader title="My Projects" description="Your assigned projects" />
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-40 bg-gray-200 animate-pulse rounded-lg"
+            />
+          ))}
         </div>
       </div>
     );
@@ -68,196 +147,244 @@ export default function ClientProjects() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">My Projects</h1>
-        <p className="text-gray-600 mt-1">
-          View and manage all your assigned projects
-        </p>
+      <style jsx>{`
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
+      <PageHeader
+        title="My Projects"
+        description="View and manage all your assigned projects"
+        icon={<FaProjectDiagram />}
+      />
+
+      {/* Search and Filter Controls */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+        {/* Search Bar - Full Width */}
+        <div className="relative w-full mb-4">
+          <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <input
+            type="text"
+            placeholder="Search projects..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+          />
+        </div>
+
+        {/* Sort and Filter Controls Row */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* Left Side - Sort Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            {/* Sort Controls */}
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-700 whitespace-nowrap">Sort by:</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-w-[120px]"
+              >
+                <option value="none">None</option>
+                <option value="name">Name</option>
+                <option value="progress">Progress</option>
+                <option value="dueDate">Due Date</option>
+              </select>
+              <button
+                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                className="p-2 text-gray-500 hover:text-gray-700 transition-colors border border-gray-300 rounded-lg"
+                title={`Sort ${sortOrder === "asc" ? "Descending" : "Ascending"}`}
+              >
+                {sortOrder === "asc" ? <FaSortAmountUp className="h-4 w-4" /> : <FaSortAmountDown className="h-4 w-4" />}
+              </button>
+            </div>
+
+            {/* Results Count */}
+            <div className="text-sm text-gray-500 whitespace-nowrap">
+              {filteredAndSortedProjects.length} of {projects.length} projects
+            </div>
+          </div>
+
+          {/* Right Side - Show Completed Projects Button */}
+          <button
+            onClick={() => setShowCompleted(!showCompleted)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              showCompleted 
+                ? 'bg-green-100 text-green-800 border border-green-300 hover:bg-green-200' 
+                : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+            }`}
+            title={showCompleted ? 'Hide completed projects' : 'Show completed projects'}
+          >
+            <FaEye className="h-4 w-4" />
+            {showCompleted ? 'Hide Completed' : `View Completed (${completedProjectsCount})`}
+          </button>
+        </div>
       </div>
 
-      {/* Search (client requested) */}
-      <Card>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Search */}
-          <div className="relative">
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search projects..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-        </div>
-      </Card>
-
-      {/* Projects List */}
-      {filteredProjects.length === 0 ? (
+      {filteredAndSortedProjects.length === 0 ? (
         <Card>
           <div className="text-center py-12">
-            <FaProjectDiagram className="mx-auto text-6xl text-gray-300 mb-4" />
+            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              {showCompleted ? (
+                <FaCheckCircle className="h-8 w-8 text-gray-400" />
+              ) : (
+                <FaProjectDiagram className="h-8 w-8 text-gray-400" />
+              )}
+            </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No projects found
+              {searchTerm ? 'No Projects Found' : 
+               showCompleted ? 'No Completed Projects' : 'No Active Projects'}
             </h3>
-            <p className="text-gray-600">
-              No projects have been assigned to you yet
+            <p className="text-gray-500 max-w-md mx-auto">
+              {searchTerm ? `No projects match your search "${searchTerm}". Try adjusting your search terms.` : 
+               showCompleted ? 'You don\'t have any completed projects yet. Keep working on your current projects to see them here once completed.' : 
+               'You don\'t have any active projects assigned at the moment. New projects will appear here when assigned to you.'}
             </p>
           </div>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredProjects.map((project) => (
-            <Card
-              key={project.id}
-              className="hover:shadow-lg transition-shadow"
-            >
-              <div className="space-y-4">
-                {/* Project Header */}
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-semibold text-gray-900">
-                      {project.name ||
-                        project.projectName ||
-                        "Untitled Project"}
-                    </h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Project ID: {project.id.slice(0, 8)}
-                    </p>
-                  </div>
-                  <span
-                    className={`px-3 py-1 text-sm font-medium rounded-full ${
-                      project.status === "Completed"
-                        ? "bg-green-100 text-green-800"
-                        : project.status === "In Progress"
-                        ? "bg-blue-100 text-blue-800"
-                        : project.status === "On Hold"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {project.status || "Active"}
-                  </span>
-                </div>
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+          {filteredAndSortedProjects.map((project) => {
+            const progress = getProjectProgress(project);
+            const startDate =
+              project.startDate?.toDate?.() || new Date(project.startDate);
+            const endDate =
+              project.endDate?.toDate?.() || new Date(project.endDate);
 
-                {/* Progress Bar */}
-                {project.progress !== undefined && (
-                  <div>
-                    <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="text-gray-600">Progress</span>
-                      <span className="font-medium text-gray-900">
-                        {project.progress}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-indigo-600 h-2 rounded-full transition-all"
-                        style={{ width: `${project.progress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
+            return (
+              <div key={project.id} className="w-full min-w-0">
+                <Card
+                  className="hover:shadow-lg transition-shadow h-full w-full flex-shrink-0"
+                  style={{ minWidth: '280px', width: '100%', minHeight: '420px' }}
+                >
+                  <div className="flex flex-col h-full">
+                    {/* Top Content - Project Name and OKRs */}
+                    <div className="flex-1 min-h-0">
+                      <div className="mb-4">
+                        <h3 
+                          className="text-lg font-semibold text-gray-900 truncate min-w-0 flex-shrink-0"
+                          style={{ minHeight: '1.75rem', width: '100%' }}
+                          onMouseEnter={(e) => {
+                            setHoveredProject(project);
+                            setMousePosition({ x: e.clientX, y: e.clientY });
+                          }}
+                          onMouseLeave={() => setHoveredProject(null)}
+                          onMouseMove={(e) => {
+                            if (hoveredProject) {
+                              setMousePosition({ x: e.clientX, y: e.clientY });
+                            }
+                          }}
+                        >
+                          {project.projectName || project.name || "Untitled Project"}
+                        </h3>
+                      </div>
 
-                {/* OKRs (Objectives and Key Results) */}
-                {project.okrs && project.okrs.length > 0 && (
-                  <div className="pt-4 border-t border-gray-200">
-                    <p className="text-sm font-medium text-gray-700 mb-3">
-                      OKRs (Objectives & Key Results)
-                    </p>
-                    <div className="space-y-3">
-                      {project.okrs.map((okr, index) => (
-                        <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                          <div className="mb-2">
-                            <p className="text-xs font-medium text-gray-500 mb-1">
-                              Objective {index + 1}
-                            </p>
-                            <p className="text-sm text-gray-900 font-semibold">
-                              {okr.objective || "No objective specified"}
-                            </p>
-                          </div>
-                          {okr.keyResults && okr.keyResults.some((kr) => kr) && (
-                            <div>
-                              <p className="text-xs font-medium text-gray-500 mb-1">
-                                Key Results
-                              </p>
-                              <ul className="space-y-1">
-                                {okr.keyResults.map((kr, krIndex) =>
-                                  kr ? (
-                                    <li
-                                      key={krIndex}
-                                      className="flex items-start gap-2 text-sm text-gray-700"
-                                    >
-                                      <span className="text-indigo-600 font-semibold">
-                                        {krIndex + 1}.
-                                      </span>
-                                      <span>{kr}</span>
-                                    </li>
-                                  ) : null
-                                )}
-                              </ul>
+                      {/* OKRs (Objectives and Key Results) - Scrollable */}
+                      {project.okrs && project.okrs.length > 0 && (
+                        <div className="pt-3 border-t border-gray-200">
+                          <p className="text-xs font-semibold text-gray-700 mb-2">
+                            OKRs (Objectives & Key Results)
+                          </p>
+                          <div className="max-h-32 overflow-y-auto scrollbar-hide">
+                            <div className="space-y-2">
+                              {project.okrs.map((okr, index) => (
+                                <div key={index} className="bg-gray-50 p-2 rounded">
+                                  <p className="text-xs font-medium text-gray-900 mb-1">
+                                    {index + 1}. {okr.objective || "No objective"}
+                                  </p>
+                                  {okr.keyResults && okr.keyResults.length > 0 && (
+                                    <ul className="list-disc list-inside text-xs text-gray-600 space-y-0.5 ml-2">
+                                      {okr.keyResults.map((kr, krIndex) => (
+                                        <li key={krIndex}>{kr}</li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </div>
+                              ))}
                             </div>
-                          )}
+                          </div>
                         </div>
-                      ))}
+                      )}
                     </div>
-                  </div>
-                )}
 
-                {/* Project Details */}
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
-                  {project.startDate && (
-                    <div className="flex items-center text-sm text-gray-600">
-                      <FaCalendar className="mr-2 text-gray-400" />
-                      <div>
-                        <p className="text-xs text-gray-500">Start Date</p>
-                        <p className="font-medium">
-                          {project.startDate
-                            ? new Date(project.startDate).toLocaleDateString()
-                            : "N/A"}
-                        </p>
+                    {/* Bottom Content - Fixed at bottom */}
+                    <div className="mt-auto">
+                      {/* Progress Section */}
+                      <div className="pt-4 border-t border-gray-200 mb-3">
+                        <div className="flex items-center justify-between text-sm mb-2">
+                          <span className="text-gray-600">Progress</span>
+                          <span className="font-semibold text-gray-900">
+                            {progress}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-1">
+                          <div
+                            className="bg-indigo-600 h-1 rounded-full transition-all"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Status Badge */}
+                      <div className="pt-3 border-t border-gray-200 mb-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-500 text-xs">Status</span>
+                          <span
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              project.status === "Completed"
+                                ? "bg-green-100 text-green-800"
+                                : project.status === "In Progress"
+                                ? "bg-blue-100 text-blue-800"
+                                : project.status === "On Hold"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {project.status || "Active"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Project Dates */}
+                      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-200 text-xs text-gray-600">
+                        <div className="flex items-center justify-center gap-1">
+                          <FaCalendarPlus className="h-3 w-3 text-blue-600" />
+                          <span className="font-medium">Start:</span>
+                          <span>{formatDateToDDMMYYYY(startDate)}</span>
+                        </div>
+                        <div className="flex items-center justify-center gap-1">
+                          <FaClock className="h-3 w-3 text-red-600" />
+                          <span className="font-medium">Due:</span>
+                          <span>{formatDateToDDMMYYYY(endDate)}</span>
+                        </div>
                       </div>
                     </div>
-                  )}
-                  {project.endDate && (
-                    <div className="flex items-center text-sm text-gray-600">
-                      <FaCalendar className="mr-2 text-gray-400" />
-                      <div>
-                        <p className="text-xs text-gray-500">End Date</p>
-                        <p className="font-medium">
-                          {project.endDate
-                            ? new Date(project.endDate).toLocaleDateString()
-                            : "N/A"}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Budget/Cost (if available) */}
-                {project.budget && (
-                  <div className="pt-3 border-t border-gray-200">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Budget</span>
-                      <span className="font-semibold text-gray-900">
-                        ${project.budget.toLocaleString()}
-                      </span>
-                    </div>
                   </div>
-                )}
-
-                {/* Project Manager/Contact */}
-                {project.manager && (
-                  <div className="pt-3 border-t border-gray-200">
-                    <p className="text-xs text-gray-500">Project Manager</p>
-                    <p className="text-sm font-medium text-gray-900 mt-1">
-                      {project.manager}
-                    </p>
-                  </div>
-                )}
+                </Card>
               </div>
-            </Card>
-          ))}
+            );
+          })}
+        </div>
+      )}
+
+      {/* Simple Tooltip for Project Name */}
+      {hoveredProject && (
+        <div
+          className="fixed z-[9999] pointer-events-none"
+          style={{
+            left: Math.min(mousePosition.x + 15, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 250),
+            top: mousePosition.y - 45,
+            transform: 'translateZ(0)', // Force hardware acceleration
+          }}
+        >
+          <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl max-w-xs border border-gray-700">
+            <p className="text-sm font-medium break-words whitespace-nowrap overflow-hidden text-ellipsis">
+              {hoveredProject.projectName || hoveredProject.name || "Untitled Project"}
+            </p>
+          </div>
         </div>
       )}
     </div>

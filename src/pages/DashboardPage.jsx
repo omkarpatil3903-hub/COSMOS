@@ -1,5 +1,6 @@
 // src/pages/DashboardPage.jsx
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../context/useAuthContext"; // To get the user's name
 import {
   FaUsers,
@@ -18,6 +19,7 @@ import StatCard from "../components/StatCard"; // The new external component
 import DashboardSkeleton from "../components/DashboardSkeleton"; // The new skeleton loader
 
 function DashboardPage() {
+  const navigate = useNavigate();
   const { userData } = useAuthContext(); // Get user data for personalization
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
@@ -25,6 +27,7 @@ function DashboardPage() {
   const [events, setEvents] = useState([]);
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(""); // Project filter
 
   // Realtime subscriptions
   useEffect(() => {
@@ -90,6 +93,14 @@ function DashboardPage() {
     };
   }, []);
 
+  // Filter tasks and events by selected project
+  const filteredTasks = useMemo(() => {
+    if (!selectedProject) return tasks;
+    return tasks.filter((t) => t.projectId === selectedProject);
+  }, [tasks, selectedProject]);
+
+  // Note: Events filtering can be added later if needed
+
   // Derived stats
   const normalizeStatus = (s) => {
     const x = String(s || "")
@@ -113,16 +124,22 @@ function DashboardPage() {
   };
 
   const stats = useMemo(() => {
-    const tasksCompleted = tasks.filter(
+    const tasksCompleted = filteredTasks.filter(
       (t) => normalizeStatus(t.status) === "Done"
     ).length;
     return {
       totalResources: String(users.length),
       totalClients: String(clients.length),
-      totalProjects: String(projects.length),
+      totalProjects: selectedProject ? "1" : String(projects.length),
       tasksCompleted: String(tasksCompleted),
     };
-  }, [users.length, clients.length, projects.length, tasks]);
+  }, [
+    users.length,
+    clients.length,
+    projects.length,
+    filteredTasks,
+    selectedProject,
+  ]);
 
   // Monthly Project Status (last 12 months) derived from tasks.createdAt
   const monthlyStatus = useMemo(() => {
@@ -171,7 +188,7 @@ function DashboardPage() {
       return isNaN(d.getTime()) ? null : d;
     };
 
-    for (const t of tasks) {
+    for (const t of filteredTasks) {
       const d = toDate(t.createdAt);
       if (!d) continue;
       const idx = findBucketIndex(d);
@@ -188,25 +205,25 @@ function DashboardPage() {
       inProgress,
       pending,
     }));
-  }, [tasks]);
+  }, [filteredTasks]);
 
   // Project Health and Status Distribution
   const statusSummary = useMemo(() => {
     const counts = { done: 0, inProgress: 0, todo: 0 };
-    for (const t of tasks) {
+    for (const t of filteredTasks) {
       const st = normalizeStatus(t.status);
       if (st === "Done") counts.done++;
       else if (st === "In Progress") counts.inProgress++;
       else counts.todo++;
     }
-    const total = tasks.length || 1; // avoid div by zero
+    const total = filteredTasks.length || 1; // avoid div by zero
     const pct = {
       done: Math.round((counts.done / total) * 100),
       inProgress: Math.round((counts.inProgress / total) * 100),
       todo: Math.round((counts.todo / total) * 100),
     };
-    return { counts, pct, total: tasks.length };
-  }, [tasks]);
+    return { counts, pct, total: filteredTasks.length };
+  }, [filteredTasks]);
 
   const projectHealth = useMemo(() => {
     // Helper: parse to Date
@@ -219,8 +236,11 @@ function DashboardPage() {
     };
 
     const today = new Date();
-    const items = projects.map((p) => {
-      const projTasks = tasks.filter((t) => t.projectId === p.id);
+    const filteredProjects = selectedProject
+      ? projects.filter((p) => p.id === selectedProject)
+      : projects;
+    const items = filteredProjects.map((p) => {
+      const projTasks = filteredTasks.filter((t) => t.projectId === p.id);
       const total = projTasks.length;
       const done = projTasks.filter(
         (t) => normalizeStatus(t.status) === "Done"
@@ -255,7 +275,7 @@ function DashboardPage() {
       .slice(0, 3);
 
     return { items, counts, topAtRisk };
-  }, [projects, tasks]);
+  }, [projects, filteredTasks, selectedProject]);
 
   // Enhanced bar chart component with better styling
   const BarChart = ({
@@ -416,8 +436,12 @@ function DashboardPage() {
 
   // Projects Progress Card (replaces Resource Allocation)
   const ProjectsProgress = () => {
-    const list = projects.map((p) => {
-      const projTasks = tasks.filter((t) => t.projectId === p.id);
+    const filteredProjects = selectedProject
+      ? projects.filter((p) => p.id === selectedProject)
+      : projects;
+
+    const list = filteredProjects.map((p) => {
+      const projTasks = filteredTasks.filter((t) => t.projectId === p.id);
       const total = projTasks.length;
       const done = projTasks.filter(
         (t) => normalizeStatus(t.status) === "Done"
@@ -674,37 +698,84 @@ function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title={welcomeTitle}>
+      <PageHeader
+        title={welcomeTitle}
+        actions={
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2">
+              <span className="text-sm font-medium text-content-secondary">
+                Filter by Project:
+              </span>
+              <select
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">All Projects</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.projectName || project.name || "Untitled"}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        }
+      >
         Monitor project performance, client engagement, and manage resources
         from a single control center.
       </PageHeader>
 
       {/* --- Stat Cards Section --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          icon={<FaProjectDiagram className="h-5 w-5" />}
-          label="Total Projects"
-          value={stats.totalProjects}
-          color="indigo"
-        />
-        <StatCard
-          icon={<FaUsers className="h-5 w-5" />}
-          label="Total Resources"
-          value={stats.totalResources}
-          color="blue"
-        />
-        <StatCard
-          icon={<FaUserTie className="h-5 w-5" />}
-          label="Total Clients"
-          value={stats.totalClients}
-          color="red"
-        />
-        <StatCard
-          icon={<FaCalendarCheck className="h-5 w-5" />}
-          label="Tasks Completed"
-          value={stats.tasksCompleted}
-          color="green"
-        />
+        <div
+          onClick={() => navigate("/manage-projects")}
+          className="cursor-pointer transform transition-transform hover:scale-105"
+          title="Click to view Projects page"
+        >
+          <StatCard
+            icon={<FaProjectDiagram className="h-5 w-5" />}
+            label="Total Projects"
+            value={stats.totalProjects}
+            color="indigo"
+          />
+        </div>
+        <div
+          onClick={() => navigate("/manage-resources")}
+          className="cursor-pointer transform transition-transform hover:scale-105"
+          title="Click to view Resources page"
+        >
+          <StatCard
+            icon={<FaUsers className="h-5 w-5" />}
+            label="Total Resources"
+            value={stats.totalResources}
+            color="blue"
+          />
+        </div>
+        <div
+          onClick={() => navigate("/manage-clients")}
+          className="cursor-pointer transform transition-transform hover:scale-105"
+          title="Click to view Clients page"
+        >
+          <StatCard
+            icon={<FaUserTie className="h-5 w-5" />}
+            label="Total Clients"
+            value={stats.totalClients}
+            color="red"
+          />
+        </div>
+        <div
+          onClick={() => navigate("/task-management")}
+          className="cursor-pointer transform transition-transform hover:scale-105"
+          title="Click to view Tasks page"
+        >
+          <StatCard
+            icon={<FaCalendarCheck className="h-5 w-5" />}
+            label="Tasks Completed"
+            value={stats.tasksCompleted}
+            color="green"
+          />
+        </div>
       </div>
 
       {/* --- Analytical Graphs Section --- */}

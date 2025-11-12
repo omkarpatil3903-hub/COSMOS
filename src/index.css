@@ -229,3 +229,100 @@
 .kanban-card {
   min-height: 150px;
 }
+
+/* Custom styles for date and time inputs */
+input[type="date"], input[type="time"] {
+  color-scheme: light;
+  accent-color: #4f46e5 !important; /* Brand blue color */
+}
+
+/* Style the calendar icon and time picker */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  color: #4f46e5 !important;
+  cursor: pointer;
+  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(230deg) brightness(104%) contrast(97%) !important;
+  background-color: transparent;
+}
+
+/* Force blue theme for calendar popup */
+input[type="date"] {
+  color-scheme: light !important;
+}
+
+/* Additional styling for better blue theme */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%234f46e5'%3e%3cpath fill-rule='evenodd' d='M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z' clip-rule='evenodd'/%3e%3c/svg%3e") !important;
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  width: 20px;
+  height: 20px;
+}
+
+/* Style the date input text */
+input[type="date"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit {
+  color: #111827; /* Primary text color */
+}
+
+/* Style individual date/time segments */
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+  color: #111827;
+}
+
+input[type="date"]::-webkit-datetime-edit-text,
+input[type="time"]::-webkit-datetime-edit-text {
+  color: #6b7280; /* Tertiary text color for separators */
+}
+
+input[type="date"]::-webkit-datetime-edit-month-field,
+input[type="date"]::-webkit-datetime-edit-day-field,
+input[type="date"]::-webkit-datetime-edit-year-field,
+input[type="time"]::-webkit-datetime-edit-hour-field,
+input[type="time"]::-webkit-datetime-edit-minute-field,
+input[type="time"]::-webkit-datetime-edit-ampm-field {
+  color: #111827;
+  background: transparent;
+}
+
+/* Focus states for date/time inputs */
+input[type="date"]:focus,
+input[type="time"]:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* Hover states */
+input[type="date"]:hover::-webkit-calendar-picker-indicator,
+input[type="time"]:hover::-webkit-calendar-picker-indicator {
+  opacity: 0.8;
+}
+
+/* Additional CSS for calendar popup styling */
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  background-color: rgba(79, 70, 229, 0.1);
+  border-radius: 4px;
+}
+
+/* Try to influence the calendar popup colors */
+input[type="date"]:focus::-webkit-calendar-picker-indicator {
+  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(230deg) brightness(104%) contrast(97%) !important;
+}
+
+/* Additional browser-specific styling */
+input[type="date"]::-webkit-inner-spin-button,
+input[type="date"]::-webkit-clear-button {
+  display: none;
+}
+
+/* Custom class for blue-themed date inputs */
+.date-input-blue {
+  accent-color: #4f46e5 !important;
+  color-scheme: light !important;
+}
+
+.date-input-blue::-webkit-calendar-picker-indicator {
+  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(230deg) brightness(104%) contrast(97%) !important;
+}

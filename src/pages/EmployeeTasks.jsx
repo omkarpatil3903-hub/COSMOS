@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useSearchParams, useLocation } from "react-router-dom";
 import {
   collection,
   query,
@@ -7,6 +8,8 @@ import {
   updateDoc,
   doc,
   serverTimestamp,
+  addDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuthContext } from "../context/useAuthContext";
@@ -32,23 +35,91 @@ import {
   FaSortAmountDown,
   FaTh,
   FaList,
+  FaPlus,
 } from "react-icons/fa";
+import StatCard from "../components/StatCard";
 
 const EmployeeTasks = () => {
   const { user } = useAuthContext();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+
+  // Utility function to format dates in dd/mm/yyyy format
+  const formatDateToDDMMYYYY = (date) => {
+    if (!date) return '';
+    const d = date instanceof Date ? date : (date?.toDate?.() || new Date(date));
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
   const [tasks, setTasks] = useState([]);
+  const [selfTasks, setSelfTasks] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [projectFilter, setProjectFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("dueDate");
   const [selectedTask, setSelectedTask] = useState(null);
-  const [viewMode, setViewMode] = useState("all"); // all, overdue, today, week
+  const [viewMode, setViewMode] = useState(searchParams.get("view") || "all"); // all, overdue, today, week
   const [displayMode, setDisplayMode] = useState("list"); // list, kanban
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [completionTaskId, setCompletionTaskId] = useState(null);
   const [progressDrafts, setProgressDrafts] = useState({});
   const [showCompleted, setShowCompleted] = useState(false);
+  const [taskSource, setTaskSource] = useState("admin"); // 'admin' or 'self'
+  const [showAddSelfTaskModal, setShowAddSelfTaskModal] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskDesc, setNewTaskDesc] = useState("");
+  const [newTaskPriority, setNewTaskPriority] = useState("Medium");
+  const [newTaskDueDate, setNewTaskDueDate] = useState("");
+  const [newTaskAssignedDate, setNewTaskAssignedDate] = useState(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  });
+  const [newTaskStatus, setNewTaskStatus] = useState("To-Do");
+  const [newTaskProjectId, setNewTaskProjectId] = useState("");
+  const [savingSelfTask, setSavingSelfTask] = useState(false);
+  const [selectedSelfTaskIds, setSelectedSelfTaskIds] = useState(new Set());
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+
+  // Handle navigation state for scrolling to tasks from notifications (no highlighting)
+  useEffect(() => {
+    if (location.state?.highlightTaskId) {
+      const taskId = location.state.highlightTaskId;
+      
+      // Find and scroll to the task after tasks are loaded
+      const scrollToTask = () => {
+        const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+        if (taskElement) {
+          // Scroll the task into view smoothly
+          taskElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'nearest'
+          });
+        }
+      };
+      
+      // Delay to ensure tasks are loaded and rendered
+      setTimeout(scrollToTask, 500);
+      
+      // Clear the navigation state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, tasks, selfTasks]);
+
+  // Clear selections when not viewing self tasks
+  useEffect(() => {
+    if (taskSource !== "self" && selectedSelfTaskIds.size) {
+      setSelectedSelfTaskIds(new Set());
+    }
+  }, [taskSource]);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -68,6 +139,8 @@ const EmployeeTasks = () => {
               ? "In Progress"
               : doc.data().status || "To-Do",
           progressPercent: doc.data().progressPercent ?? 0,
+          source: "admin",
+          collectionName: "tasks",
         }))
         .filter((task) => task.assigneeType === "user")
         .sort((a, b) => {
@@ -75,12 +148,94 @@ const EmployeeTasks = () => {
           const dateB = b.dueDate?.toDate?.() || new Date(b.dueDate || 0);
           return dateA - dateB;
         });
+      console.log('🔍 Tasks loaded:', taskData.length, 'tasks');
+      console.log('🔍 Sample task with projectId:', taskData.find(t => t.projectId) || 'No tasks with projectId found');
+      console.log('🔍 All projectIds in tasks:', [...new Set(taskData.map(t => t.projectId).filter(Boolean))]);
       setTasks(taskData);
+    });
+
+    // Self tasks subscription
+    const qSelf = query(
+      collection(db, "selfTasks"),
+      where("userId", "==", user.uid)
+    );
+    const unsubscribeSelf = onSnapshot(qSelf, (snapshot) => {
+      const taskData = snapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          status:
+            doc.data().status === "In Review"
+              ? "In Progress"
+              : doc.data().status || "To-Do",
+          progressPercent: doc.data().progressPercent ?? 0,
+          assigneeType: "user",
+          source: "self",
+          collectionName: "selfTasks",
+        }))
+        .sort((a, b) => {
+          const dateA = a.dueDate?.toDate?.() || new Date(a.dueDate || 0);
+          const dateB = b.dueDate?.toDate?.() || new Date(b.dueDate || 0);
+          return dateA - dateB;
+        });
+      setSelfTasks(taskData);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    // Projects subscription (for Project dropdown)
+    const unsubscribeProjects = onSnapshot(collection(db, "projects"), (snapshot) => {
+      const projectsData = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      console.log('🔍 Projects loaded from Firestore:', projectsData);
+      setProjects(projectsData);
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeSelf();
+      unsubscribeProjects();
+    };
   }, [user]);
+
+  // Only show projects that have admin-assigned tasks for this employee
+  const adminProjectIds = useMemo(() => {
+    const ids = new Set();
+    tasks.forEach((t) => {
+      if (t.projectId) ids.add(t.projectId);
+    });
+    return ids;
+  }, [tasks]);
+
+  const projectOptions = useMemo(() => {
+    const eligible = projects.filter((p) => adminProjectIds.has(p.id));
+    return eligible.map((p) => ({ id: p.id, name: p.projectName || p.name || "Untitled Project" }));
+  }, [projects, adminProjectIds]);
+
+  // Self-task selection helpers
+  const toggleSelectSelfTask = (taskId) => {
+    setSelectedSelfTaskIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  };
+
+  const clearSelectedSelfTasks = () => setSelectedSelfTaskIds(new Set());
+
+  const deleteSelectedSelfTasks = async () => {
+    const count = selectedSelfTaskIds.size;
+    if (count === 0) return;
+    try {
+      const ids = Array.from(selectedSelfTaskIds);
+      await Promise.all(ids.map((id) => deleteDoc(doc(db, "selfTasks", id))));
+      toast.success(`Deleted ${ids.length} self task${ids.length > 1 ? "s" : ""}`);
+      clearSelectedSelfTasks();
+      setShowDeleteConfirmModal(false);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to delete selected tasks");
+    }
+  };
 
   const handleStatusChange = async (taskId, newStatus) => {
     try {
@@ -91,12 +246,22 @@ const EmployeeTasks = () => {
       }
       let updates = { status: newStatus };
       if (newStatus === "In Progress") {
-        updates = { status: newStatus, progressPercent: 0 };
+        updates.progressPercent = 0;
       }
-      await updateDoc(doc(db, "tasks", taskId), updates);
+      // If reverting from Done status, remove completion data
+      if (newStatus !== "Done") {
+        updates.completedAt = null;
+        updates.completedBy = null;
+        updates.completedByType = null;
+        updates.completionComment = null;
+        updates.progressPercent = newStatus === "In Progress" ? 0 : null;
+      }
+      const current = tasks.find((t) => t.id === taskId) || selfTasks.find((t) => t.id === taskId);
+      const col = current?.collectionName || "tasks";
+      await updateDoc(doc(db, col, taskId), updates);
       toast.success("Task status updated!");
     } catch (error) {
-      console.error("Error updating task:", error);
+      console.error("Error updating task status:", error);
       toast.error("Failed to update task status");
     }
   };
@@ -107,7 +272,9 @@ const EmployeeTasks = () => {
       return;
     }
     try {
-      await updateDoc(doc(db, "tasks", completionTaskId), {
+      const current = tasks.find((t) => t.id === completionTaskId) || selfTasks.find((t) => t.id === completionTaskId);
+      const col = current?.collectionName || "tasks";
+      await updateDoc(doc(db, col, completionTaskId), {
         status: "Done",
         completedAt: serverTimestamp(),
         progressPercent: 100,
@@ -129,12 +296,35 @@ const EmployeeTasks = () => {
     try {
       const raw = progressDrafts[taskId];
       const value = Math.max(0, Math.min(100, parseInt(raw ?? 0)));
-      const current = tasks.find((t) => t.id === taskId);
+      const current = tasks.find((t) => t.id === taskId) || selfTasks.find((t) => t.id === taskId);
       if (current && (current.progressPercent ?? 0) === value) return;
-      await updateDoc(doc(db, "tasks", taskId), { progressPercent: value });
-      toast.success("Progress updated");
+      const col = current?.collectionName || "tasks";
+      
+      // Prepare update object
+      let updateData = { progressPercent: value };
+      
+      // If progress is 100%, automatically set status to Done
+      if (value === 100) {
+        updateData.status = "Done";
+        updateData.completedAt = serverTimestamp();
+        updateData.completedBy = user?.uid || "";
+        updateData.completedByType = "user";
+      }
+      
+      await updateDoc(doc(db, col, taskId), updateData);
+      
+      if (value === 100) {
+        toast.success("Task completed automatically!");
+      } else {
+        toast.success("Progress updated");
+      }
+      
       if (selectedTask?.id === taskId) {
-        setSelectedTask({ ...selectedTask, progressPercent: value });
+        setSelectedTask({ 
+          ...selectedTask, 
+          progressPercent: value,
+          ...(value === 100 ? { status: "Done", completedAt: new Date() } : {})
+        });
       }
       setProgressDrafts((prev) => {
         const { [taskId]: _omit, ...rest } = prev;
@@ -146,12 +336,38 @@ const EmployeeTasks = () => {
     }
   };
 
+  // Choose base tasks by source
+  // Enhance tasks with project names
+  const enhancedTasks = useMemo(() => {
+    const tasksToEnhance = taskSource === "admin" ? tasks : selfTasks;
+    return tasksToEnhance.map(task => {
+      if (task.projectId && !task.projectName) {
+        const project = projects.find(p => p.id === task.projectId);
+        return {
+          ...task,
+          projectName: project?.projectName || project?.name || null
+        };
+      }
+      return task;
+    });
+  }, [taskSource, tasks, selfTasks, projects]);
+
+  const baseTasks = enhancedTasks;
+
+  // Debug: Log available projects for dropdown
+  const availableProjects = [...new Set(baseTasks.map(task => task.projectName).filter(Boolean))];
+  console.log('🔍 Available projects for dropdown:', availableProjects);
+  console.log('🔍 BaseTasks sample:', baseTasks.slice(0, 2));
+  console.log('🔍 Total baseTasks:', baseTasks.length);
+  console.log('🔍 Tasks with projectName:', baseTasks.filter(t => t.projectName).length);
+  console.log('🔍 Tasks with projectId but no projectName:', baseTasks.filter(t => t.projectId && !t.projectName).length);
+
   // Calculate task statistics
   const stats = {
-    total: tasks.length,
-    completed: tasks.filter((t) => t.status === "Done").length,
-    inProgress: tasks.filter((t) => t.status === "In Progress").length,
-    overdue: tasks.filter((t) => {
+    total: baseTasks.length,
+    completed: baseTasks.filter((t) => t.status === "Done").length,
+    inProgress: baseTasks.filter((t) => t.status === "In Progress").length,
+    overdue: baseTasks.filter((t) => {
       if (t.status === "Done") return false;
       const dueDate = t.dueDate?.toDate?.() || new Date(t.dueDate);
       return dueDate < new Date();
@@ -159,15 +375,25 @@ const EmployeeTasks = () => {
   };
 
   // Advanced filtering
-  const filteredTasks = tasks
+  const filteredTasks = baseTasks
     .filter((task) => {
       // Status filter
-      const statusMatch =
-        statusFilter === "all" || task.status === statusFilter;
+      let statusMatch = true;
+      if (statusFilter === "all") {
+        statusMatch = true;
+      } else if (statusFilter === "pending") {
+        statusMatch = task.status !== "Done";
+      } else {
+        statusMatch = task.status === statusFilter;
+      }
 
       // Priority filter
       const priorityMatch =
         priorityFilter === "all" || task.priority === priorityFilter;
+      
+      const projectMatch =
+        projectFilter === "all" || 
+        (projectFilter === "no-project" ? !task.projectName : task.projectName === projectFilter);
 
       // Search filter
       const searchMatch =
@@ -191,7 +417,7 @@ const EmployeeTasks = () => {
           dueDate >= today && dueDate <= weekFromNow && task.status !== "Done";
       }
 
-      return statusMatch && priorityMatch && searchMatch && viewModeMatch;
+      return statusMatch && priorityMatch && projectMatch && searchMatch && viewModeMatch;
     })
     .sort((a, b) => {
       if (sortBy === "dueDate") {
@@ -262,54 +488,31 @@ const EmployeeTasks = () => {
       />
 
       {/* Statistics Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-600">Total Tasks</p>
-              <p className="text-3xl font-bold text-blue-900 mt-1">
-                {stats.total}
-              </p>
-            </div>
-            <FaTasks className="text-blue-600 text-3xl" />
-          </div>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-green-50 to-green-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-600">Completed</p>
-              <p className="text-3xl font-bold text-green-900 mt-1">
-                {stats.completed}
-              </p>
-            </div>
-            <FaCheckCircle className="text-green-600 text-3xl" />
-          </div>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-yellow-600">In Progress</p>
-              <p className="text-3xl font-bold text-yellow-900 mt-1">
-                {stats.inProgress}
-              </p>
-            </div>
-            <FaClock className="text-yellow-600 text-3xl" />
-          </div>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-red-50 to-red-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-red-600">Overdue</p>
-              <p className="text-3xl font-bold text-red-900 mt-1">
-                {stats.overdue}
-              </p>
-            </div>
-            <FaExclamationTriangle className="text-red-600 text-3xl" />
-          </div>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          icon={<FaTasks className="h-5 w-5" />}
+          label="Total Tasks"
+          value={String(stats.total)}
+          color="indigo"
+        />
+        <StatCard
+          icon={<FaCheckCircle className="h-5 w-5" />}
+          label="Completed"
+          value={String(stats.completed)}
+          color="green"
+        />
+        <StatCard
+          icon={<FaClock className="h-5 w-5" />}
+          label="In Progress"
+          value={String(stats.inProgress)}
+          color="sky"
+        />
+        <StatCard
+          icon={<FaExclamationTriangle className="h-5 w-5" />}
+          label="Overdue"
+          value={String(stats.overdue)}
+          color="amber"
+        />
       </div>
 
       {/* View Mode Tabs */}
@@ -391,6 +594,31 @@ const EmployeeTasks = () => {
       {/* Search and Filters */}
       <Card>
         <div className="space-y-4">
+          {/* Toolbar: selected count + actions */}
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              {taskSource === "self" && selectedSelfTaskIds.size > 0 && (
+                <span>{selectedSelfTaskIds.size} selected</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {taskSource === "self" && selectedSelfTaskIds.size > 0 && (
+                <button
+                  onClick={() => setShowDeleteConfirmModal(true)}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-red-600 text-white text-sm hover:bg-red-700"
+                >
+                  Delete Selected
+                </button>
+              )}
+              <button
+                onClick={() => setShowAddSelfTaskModal(true)}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700"
+              >
+                <FaPlus className="w-4 h-4" />
+                Add Self Task
+              </button>
+            </div>
+          </div>
           {/* Search Bar */}
           <div className="relative">
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -410,6 +638,173 @@ const EmployeeTasks = () => {
               </button>
             )}
 
+      {/* Add Self Task Modal (UI matched to provided screenshot) */}
+      {showAddSelfTaskModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setShowAddSelfTaskModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-5">
+              <h3 className="text-xl font-semibold text-gray-900">Create Task</h3>
+            </div>
+            <div className="p-6 space-y-5">
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900">
+                  Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  placeholder=""
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900">Description</label>
+                <textarea
+                  value={newTaskDesc}
+                  onChange={(e) => setNewTaskDesc(e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm h-28 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Project */}
+              <div>
+                <label className="block text-sm font-medium text-gray-900">Project</label>
+                <select
+                  value={newTaskProjectId}
+                  onChange={(e) => setNewTaskProjectId(e.target.value)}
+                  className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="">Select Project</option>
+                  {projectOptions.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Assigned Date, Due Date, Priority */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-900">Assigned Date</label>
+                  <input
+                    type="date"
+                    value={newTaskAssignedDate}
+                    onChange={(e) => setNewTaskAssignedDate(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900">Due Date</label>
+                  <input
+                    type="date"
+                    value={newTaskDueDate}
+                    onChange={(e) => setNewTaskDueDate(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-900">Priority</label>
+                  <select
+                    value={newTaskPriority}
+                    onChange={(e) => setNewTaskPriority(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option>High</option>
+                    <option>Medium</option>
+                    <option>Low</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-900">Status</label>
+                  <select
+                    value={newTaskStatus}
+                    onChange={(e) => setNewTaskStatus(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option>To-Do</option>
+                    <option>In Progress</option>
+                    <option>Done</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-5 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowAddSelfTaskModal(false)}
+                className="px-5 py-2 rounded-full text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!newTaskTitle.trim()) {
+                    toast.error("Title is required");
+                    return;
+                  }
+                  try {
+                    setSavingSelfTask(true);
+                    const due = newTaskDueDate ? new Date(newTaskDueDate) : null;
+                    const assigned = newTaskAssignedDate ? new Date(newTaskAssignedDate) : null;
+                    const selectedProject = projectOptions.find((p) => p.id === newTaskProjectId);
+                    await addDoc(collection(db, "selfTasks"), {
+                      userId: user?.uid,
+                      assigneeId: user?.uid,
+                      assigneeType: "user",
+                      title: newTaskTitle.trim(),
+                      description: newTaskDesc.trim() || "",
+                      priority: newTaskPriority,
+                      status: newTaskStatus,
+                      progressPercent: newTaskStatus === "Done" ? 100 : 0,
+                      ...(newTaskProjectId ? { projectId: newTaskProjectId } : {}),
+                      ...(selectedProject ? { projectName: selectedProject.name } : {}),
+                      ...(due ? { dueDate: due } : {}),
+                      ...(assigned ? { assignedDate: assigned } : {}),
+                      createdAt: serverTimestamp(),
+                    });
+                    toast.success("Self task added");
+                    setShowAddSelfTaskModal(false);
+                    setNewTaskTitle("");
+                    setNewTaskDesc("");
+                    setNewTaskPriority("Medium");
+                    setNewTaskDueDate("");
+                    setNewTaskAssignedDate(() => {
+                      const d = new Date();
+                      const y = d.getFullYear();
+                      const m = String(d.getMonth() + 1).padStart(2, "0");
+                      const day = String(d.getDate()).padStart(2, "0");
+                      return `${y}-${m}-${day}`;
+                    });
+                    setNewTaskStatus("To-Do");
+                    setNewTaskProjectId("");
+                  } catch (e) {
+                    console.error(e);
+                    toast.error("Failed to add task");
+                  } finally {
+                    setSavingSelfTask(false);
+                  }
+                }}
+                className="px-6 py-2 rounded-full text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
+                disabled={savingSelfTask}
+              >
+                {savingSelfTask ? "Saving..." : "Save Task"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <CompletionCommentModal
         open={showCompletionModal}
         onClose={() => {
@@ -422,6 +817,59 @@ const EmployeeTasks = () => {
         minLength={5}
         maxLength={300}
       />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirmModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setShowDeleteConfirmModal(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <FaTimes className="h-5 w-5 text-red-600" />
+                Delete Self Tasks
+              </h3>
+              <button
+                onClick={() => setShowDeleteConfirmModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-gray-600">
+                Are you sure you want to delete {selectedSelfTaskIds.size} self task{selectedSelfTaskIds.size > 1 ? 's' : ''}?
+              </p>
+              <p className="text-sm text-red-600 mt-2">
+                This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirmModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteSelectedSelfTasks}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+              >
+                <FaTimes className="h-4 w-4" />
+                Delete {selectedSelfTaskIds.size} Task{selectedSelfTaskIds.size > 1 ? 's' : ''}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
           </div>
 
           {/* Filter Row */}
@@ -453,6 +901,21 @@ const EmployeeTasks = () => {
               <option value="Low">Low</option>
             </select>
 
+            <select
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="all">All Projects</option>
+              {[...new Set(baseTasks.map(task => task.projectName).filter(Boolean))]
+                .sort()
+                .map(projectName => (
+                  <option key={projectName} value={projectName}>
+                    {projectName}
+                  </option>
+                ))}
+            </select>
+
             <div className="flex items-center gap-2">
               <FaSortAmountDown className="text-gray-500" />
               <select
@@ -468,7 +931,7 @@ const EmployeeTasks = () => {
             </div>
 
             <div className="ml-auto text-sm text-gray-600 font-medium">
-              Showing {filteredTasks.length} of {tasks.length} tasks
+              Showing {filteredTasks.length} of {baseTasks.length} tasks
             </div>
           </div>
 
@@ -476,6 +939,7 @@ const EmployeeTasks = () => {
           {(searchQuery ||
             statusFilter !== "all" ||
             priorityFilter !== "all" ||
+            projectFilter !== "all" ||
             viewMode !== "all") && (
             <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
               <span className="text-sm text-gray-600">Active filters:</span>
@@ -496,9 +960,17 @@ const EmployeeTasks = () => {
                 </span>
               )}
               {priorityFilter !== "all" && (
-                <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full flex items-center gap-1">
+                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
                   Priority: {priorityFilter}
                   <button onClick={() => setPriorityFilter("all")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              {projectFilter !== "all" && (
+                <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full flex items-center gap-1">
+                  Project: {projectFilter === "no-project" ? "No Project" : projectFilter}
+                  <button onClick={() => setProjectFilter("all")}>
                     <FaTimes className="text-xs" />
                   </button>
                 </span>
@@ -554,8 +1026,26 @@ const EmployeeTasks = () => {
         <Card>
           <div className="space-y-6">
             <div>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex items-center gap-2">
                 <h3 className="text-sm font-semibold text-gray-800">Active Tasks ({activeTasks.length})</h3>
+                {taskSource === "self" && selectedSelfTaskIds.size > 0 && (
+                  <span className="text-xs text-gray-600 font-medium">{selectedSelfTaskIds.size} selected</span>
+                )}
+                {/* Source Toggle */}
+                <div className="ml-auto flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={() => setTaskSource("admin")}
+                    className={`px-3 py-1 text-xs rounded ${taskSource === "admin" ? "bg-white text-indigo-600 shadow" : "text-gray-700 hover:text-gray-900"}`}
+                  >
+                    Admin Tasks
+                  </button>
+                  <button
+                    onClick={() => setTaskSource("self")}
+                    className={`px-3 py-1 text-xs rounded ${taskSource === "self" ? "bg-white text-indigo-600 shadow" : "text-gray-700 hover:text-gray-900"}`}
+                  >
+                    My Self Tasks
+                  </button>
+                </div>
               </div>
               <div className="space-y-3">
                 {activeTasks.length === 0 ? (
@@ -568,78 +1058,111 @@ const EmployeeTasks = () => {
                     return (
                       <div
                         key={task.id}
-                        className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:shadow-sm transition-all bg-white"
+                        data-task-id={task.id}
+                        className="p-3 sm:p-4 border border-gray-200 rounded-xl hover:border-indigo-300 hover:shadow-sm transition-all bg-white"
                       >
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start justify-between gap-3 sm:gap-4">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-start gap-3">
-                              <button onClick={() => setSelectedTask(task)} className="flex-1 text-left">
-                                <h3 className="font-medium text-content-primary hover:text-indigo-600 transition-colors">{task.title}</h3>
+                            <div className="flex items-start gap-2">
+                              {task.collectionName === "selfTasks" && (
+                                <input
+                                  type="checkbox"
+                                  checked={selectedSelfTaskIds.has(task.id)}
+                                  onChange={(e) => { e.stopPropagation(); toggleSelectSelfTask(task.id); }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                              )}
+                              <button onClick={() => setSelectedTask(task)} className="text-left">
+                                <h3 className="font-medium text-content-primary hover:text-indigo-600 transition-colors line-clamp-1">{task.title}</h3>
                               </button>
-                              <span className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${statusColors[task.status] || statusColors["To-Do"]}`}>
+                            </div>
+                            {task.description && (
+                              <p className="mt-1 text-xs sm:text-sm text-content-secondary line-clamp-2">{task.description}</p>
+                            )}
+                            <div className="mt-2 text-[11px] sm:text-xs text-gray-500 flex flex-wrap gap-x-4 gap-y-1">
+                              {task.projectName && <span>Project: {task.projectName}</span>}
+                              {task.collectionName === "selfTasks" && <span>Assigned to: You</span>}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2 shrink-0">
+                            <div className="flex items-center gap-2">
+                              <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] sm:text-xs font-semibold ${priorityColors[task.priority] || priorityColors.Medium}`}>
+                                <FaFlag className="text-xs" />
+                                {task.priority}
+                              </span>
+                              <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] sm:text-xs font-semibold ${statusColors[task.status] || statusColors["To-Do"]}`}>
                                 {statusIcons[task.status]}
                                 <span>{task.status}</span>
                               </span>
                             </div>
-                            {task.description && (
-                              <p className="mt-1 text-sm text-content-secondary line-clamp-2">{task.description}</p>
-                            )}
+                            <div className="flex flex-wrap justify-end gap-2">
+                              <span className={`px-2.5 py-1 text-[11px] sm:text-xs font-medium rounded-full flex items-center gap-1 ${isOverdue ? "bg-red-100 text-red-800 border border-red-200" : daysUntilDue <= 3 && daysUntilDue >= 0 ? "bg-orange-100 text-orange-800 border border-orange-200" : "bg-gray-100 text-gray-800"}`}>
+                                <FaCalendar className="text-xs" />
+                                Due: {formatDateToDDMMYYYY(dueDate)}
+                              </span>
+                              {task.assignedDate && (
+                                <span className="px-2.5 py-1 text-[11px] sm:text-xs font-medium rounded-full flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-200">
+                                  <FaCalendarAlt className="text-xs" />
+                                  Assigned: {formatDateToDDMMYYYY(task.assignedDate?.toDate?.() || new Date(task.assignedDate))}
+                                </span>
+                              )}
+                              {isOverdue && (
+                                <span className="px-2.5 py-1 text-[11px] sm:text-xs font-semibold rounded-full bg-red-100 text-red-700 border border-red-200">Overdue</span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
-                        <div className="mt-2 flex items-center gap-2 flex-wrap">
-                          <span className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${priorityColors[task.priority] || priorityColors.Medium}`}>
-                            <FaFlag className="text-xs" />
-                            {task.priority} Priority
-                          </span>
-                          <span className={`px-3 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${isOverdue ? "bg-red-100 text-red-800 border border-red-200" : daysUntilDue <= 3 && daysUntilDue >= 0 ? "bg-orange-100 text-orange-800 border border-orange-200" : "bg-gray-100 text-gray-800"}`}>
-                            <FaCalendar className="text-xs" />
-                            Due: {dueDate.toLocaleDateString()}
-                            {isOverdue ? " (Overdue!)" : daysUntilDue === 0 ? " (Today)" : daysUntilDue === 1 ? " (Tomorrow)" : daysUntilDue > 0 && daysUntilDue <= 7 ? ` (${daysUntilDue} days)` : ""}
-                          </span>
-                          {task.assignedDate && (
-                            <span className="px-3 py-1 text-xs font-medium rounded-full flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-200">
-                              <FaCalendarAlt className="text-xs" />
-                              Assigned: {(task.assignedDate?.toDate?.() || new Date(task.assignedDate)).toLocaleDateString()}
-                            </span>
-                          )}
-                          {task.projectName && (
-                            <span className="px-3 py-1 text-xs font-medium rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">📁 {task.projectName}</span>
-                          )}
-                        </div>
-
-                        {task.status === "In Progress" && (
-                          <div className="mt-1 space-y-1">
+                        {/* Progress Bar Section - Only show for In Progress or Done tasks */}
+                        {(task.status === "In Progress" || task.status === "Done") && (
+                          <div className="mt-3 pt-3 border-t border-gray-100">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-medium text-gray-600 whitespace-nowrap">Progress:</span>
-                              <div className="flex-1 max-w-xs bg-gray-200 rounded-full h-2">
-                                <div className="bg-indigo-600 h-2 rounded-full transition-all" style={{ width: `${task.progressPercent || 0}%` }} />
+                              <div className="bg-gray-200 rounded-full h-2" style={{ width: '30%' }}>
+                                <div
+                                  className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                                  style={{ width: `${task.progressPercent || 0}%` }}
+                                />
                               </div>
-                              <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">{task.progressPercent || 0}%</span>
+                              <span className="text-xs font-semibold text-indigo-600">
+                                {task.progressPercent || 0}%
+                              </span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="1"
-                                value={progressDrafts[task.id] ?? (task.progressPercent || 0)}
-                                onChange={(e) => setProgressDrafts((prev) => ({ ...prev, [task.id]: e.target.value }))}
-                                onKeyDown={(e) => { if (e.key === "Enter") commitProgress(task.id); }}
-                                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                placeholder="%"
-                              />
-                              <button onClick={() => commitProgress(task.id)} className="px-2 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-700">Update</button>
-                            </div>
+                            {task.status === "In Progress" && (
+                              <div className="flex items-center gap-2 mt-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="1"
+                                  value={progressDrafts[task.id] ?? (task.progressPercent || 0)}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setProgressDrafts((prev) => ({ ...prev, [task.id]: val }));
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") commitProgress(task.id);
+                                  }}
+                                  className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                  placeholder="%"
+                                />
+                                <button
+                                  onClick={() => commitProgress(task.id)}
+                                  className="px-3 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-medium"
+                                >
+                                  Update
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
 
                         <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <button onClick={() => setSelectedTask(task)} className="rounded-md bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-200">View</button>
+                          <button onClick={() => setSelectedTask(task)} className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-200">View</button>
                           <select
                             value={task.status}
                             onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                            className="rounded-md border border-subtle bg-surface px-2 py-1 text-xs"
+                            className="rounded-full border border-subtle bg-surface px-2 py-1 text-xs"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <option value="To-Do">To-Do</option>
@@ -678,7 +1201,7 @@ const EmployeeTasks = () => {
                             {task.completionComment && (
                               <p className="text-xs italic text-indigo-700 mb-1 line-clamp-1">💬 {task.completionComment}</p>
                             )}
-                            <div className="text-xs text-gray-500">Completed on {(task.completedAt?.toDate?.() || new Date(task.completedAt)).toLocaleDateString()}</div>
+                            <div className="text-xs text-gray-500">Completed on {formatDateToDDMMYYYY(task.completedAt?.toDate?.() || new Date(task.completedAt))}</div>
                             <div className="mt-2">
                               <button
                                 onClick={() => setSelectedTask(task)}
@@ -759,15 +1282,10 @@ const EmployeeTasks = () => {
                   </h4>
                   <p className="text-gray-900">
                     <FaCalendar className="inline mr-2 text-indigo-600" />
-                    {(
+                    {formatDateToDDMMYYYY(
                       selectedTask.dueDate?.toDate?.() ||
                       new Date(selectedTask.dueDate)
-                    ).toLocaleDateString("en-US", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
+                    )}
                   </p>
                 </div>
 
@@ -826,23 +1344,18 @@ const EmployeeTasks = () => {
                 </div>
               )}
 
-              {/* Completion Date */}
-              {selectedTask.completedAt && (
+              {/* Completion Date - Only show if task is actually Done */}
+              {selectedTask.completedAt && selectedTask.status === "Done" && (
                 <div>
                   <h4 className="text-sm font-semibold text-gray-700 mb-2">
                     Completed On
                   </h4>
                   <p className="text-gray-900">
                     <FaCheckCircle className="inline mr-2 text-green-600" />
-                    {(
+                    {formatDateToDDMMYYYY(
                       selectedTask.completedAt?.toDate?.() ||
                       new Date(selectedTask.completedAt)
-                    ).toLocaleDateString("en-US", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
+                    )}
                   </p>
                 </div>
               )}
@@ -855,10 +1368,19 @@ const EmployeeTasks = () => {
                 <select
                   value={selectedTask.status}
                   onChange={(e) => {
-                    handleStatusChange(selectedTask.id, e.target.value);
+                    const newStatus = e.target.value;
+                    handleStatusChange(selectedTask.id, newStatus);
+                    // Update selected task state and clear completion data if not Done
                     setSelectedTask({
                       ...selectedTask,
-                      status: e.target.value,
+                      status: newStatus,
+                      ...(newStatus !== "Done" ? {
+                        completedAt: null,
+                        completedBy: null,
+                        completedByType: null,
+                        completionComment: null,
+                        progressPercent: newStatus === "In Progress" ? 0 : null
+                      } : {})
                     });
                   }}
                   className="rounded-md border border-subtle bg-surface px-2 py-1 text-xs"

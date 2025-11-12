@@ -11,13 +11,30 @@ import {
   FaClock,
   FaExclamationTriangle,
   FaProjectDiagram,
+  FaFlag,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 import PageHeader from "../components/PageHeader";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import SkeletonRow from "../components/SkeletonRow";
 import { db } from "../firebase";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { getPriorityBadge, getStatusBadge } from "../utils/colorMaps";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+  Label,
+} from "recharts";
 
 // Helpers for Firestore data
 const tsToDate = (v) => {
@@ -67,10 +84,13 @@ const timePeriods = [
 export default function ReportsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState("week");
   const [selectedProject, setSelectedProject] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState("");
+  const [employeeSearch, setEmployeeSearch] = useState("");
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Live data subscriptions
   useEffect(() => {
@@ -117,6 +137,7 @@ export default function ReportsPage() {
             };
           })
         );
+        setLoading(false);
       }
     );
 
@@ -151,11 +172,15 @@ export default function ReportsPage() {
         (t.completedDate && filterByDate(t.completedDate));
       const matchesProject =
         !selectedProject || t.projectId === selectedProject;
-      return matchesDate && matchesProject;
+      const matchesEmployee =
+        !selectedEmployee ||
+        (t.assigneeId === selectedEmployee &&
+          (t.assigneeType || "user") === "user");
+      return matchesDate && matchesProject && matchesEmployee;
     });
 
     return { tasks: tasksInRange };
-  }, [selectedPeriod, selectedProject, tasks]);
+  }, [selectedPeriod, selectedProject, selectedEmployee, tasks]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -375,39 +400,138 @@ export default function ReportsPage() {
   const inProgressWidth = pct(stats.inProgressTasks);
   const todoWidth = pct(stats.todoTasks);
 
+  // Chart datasets
+  const statusChartData = useMemo(
+    () => [
+      { name: "Completed", value: stats.completedTasks, color: "#16a34a" },
+      { name: "In Progress", value: stats.inProgressTasks, color: "#06b6d4" },
+      { name: "To-Do", value: stats.todoTasks, color: "#9ca3af" },
+    ],
+    [stats]
+  );
+
+  const tasksOverTimeData = useMemo(() => {
+    const period = timePeriods.find((p) => p.id === selectedPeriod);
+    const now = new Date();
+    let endDate = new Date(now);
+    let startDate = new Date(now);
+    startDate.setDate(now.getDate() - (period.days + (period.offset || 0)));
+    if (period.offset) endDate.setDate(now.getDate() - period.offset);
+    if (period.id === "all") {
+      // Cap to last 60 days for readability
+      startDate = new Date(endDate);
+      startDate.setDate(endDate.getDate() - 60);
+    }
+    const keyOf = (d) => d.toISOString().slice(0, 10);
+    const map = {};
+    const seq = [];
+    for (
+      let d = new Date(startDate);
+      d <= endDate;
+      d.setDate(d.getDate() + 1)
+    ) {
+      const k = keyOf(d);
+      map[k] = { date: k, Created: 0, Completed: 0 };
+      seq.push(map[k]);
+    }
+    filteredData.tasks.forEach((t) => {
+      if (t.createdDate) {
+        const k = keyOf(new Date(t.createdDate));
+        if (map[k]) map[k].Created += 1;
+      }
+      if (t.completedDate) {
+        const k2 = keyOf(new Date(t.completedDate));
+        if (map[k2]) map[k2].Completed += 1;
+      }
+    });
+    return seq;
+  }, [filteredData, selectedPeriod]);
+
+  // removed Top Projects dataset per request
+
   return (
     <div>
-      <PageHeader title="Analytics & Reports">
+      <PageHeader
+        title="Analytics & Reports"
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={() => exportReport("csv")} variant="secondary">
+              <FaDownload /> Export CSV
+            </Button>
+            <Button onClick={() => exportReport("json")} variant="ghost">
+              <FaDownload /> Export JSON
+            </Button>
+          </div>
+        }
+      >
         View comprehensive analytics and reports across different time periods
       </PageHeader>
 
       <div className="space-y-6">
         {/* Filters */}
-        <Card title="Report Filters">
-          <div className="grid gap-4 md:grid-cols-2">
+        <Card
+          title="Report Filters"
+          actions={
+            <div className="flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-1 rounded-lg border border-subtle p-1">
+                {[
+                  { id: "today", label: "Today" },
+                  { id: "week", label: "Week" },
+                  { id: "month", label: "Month" },
+                  { id: "all", label: "All" },
+                ].map((p) => (
+                  <Button
+                    key={p.id}
+                    variant={selectedPeriod === p.id ? "primary" : "secondary"}
+                    className="px-3 py-1.5"
+                    onClick={() => setSelectedPeriod(p.id)}
+                  >
+                    {p.label}
+                  </Button>
+                ))}
+              </div>
+              <Button
+                onClick={() => {
+                  setSelectedPeriod("week");
+                  setSelectedProject("");
+                  setSelectedEmployee("");
+                  setEmployeeSearch("");
+                }}
+                variant="ghost"
+              >
+                Reset Filters
+              </Button>
+            </div>
+          }
+        >
+          <div className="grid gap-4 md:grid-cols-3">
             <div>
               <label className="block">
-                <span className="text-sm font-medium mb-2 block">
-                  Time Period
+                <span className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <FaCalendarAlt className="text-gray-500" /> Time Period
                 </span>
                 <select
                   value={selectedPeriod}
                   onChange={(e) => setSelectedPeriod(e.target.value)}
                   className="w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm"
                 >
-                  {timePeriods.map((period) => (
-                    <option key={period.id} value={period.id}>
-                      {period.label}
-                    </option>
-                  ))}
+                  {timePeriods
+                    .filter(
+                      (p) => !["today", "week", "month", "all"].includes(p.id)
+                    )
+                    .map((period) => (
+                      <option key={period.id} value={period.id}>
+                        {period.label}
+                      </option>
+                    ))}
                 </select>
               </label>
             </div>
 
             <div>
               <label className="block">
-                <span className="text-sm font-medium mb-2 block">
-                  Project Filter
+                <span className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <FaProjectDiagram className="text-gray-500" /> Project Filter
                 </span>
                 <select
                   value={selectedProject}
@@ -423,12 +547,42 @@ export default function ReportsPage() {
                 </select>
               </label>
             </div>
-          </div>
 
-          <div className="mt-4 flex items-center gap-3">
-            <Button onClick={() => exportReport("csv")} variant="secondary">
-              <FaDownload /> Export Excel
-            </Button>
+            <div>
+              <label className="block">
+                <span className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <FaUsers className="text-gray-500" /> Employee Filter
+                </span>
+                <input
+                  value={employeeSearch}
+                  onChange={(e) => setEmployeeSearch(e.target.value)}
+                  placeholder="Search employee"
+                  className="mb-2 w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm"
+                />
+                <select
+                  value={selectedEmployee}
+                  onChange={(e) => setSelectedEmployee(e.target.value)}
+                  className="w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm"
+                >
+                  <option value="">All Employees</option>
+                  {users
+                    .filter(
+                      (u) => (u.role || "user").toLowerCase() !== "client"
+                    )
+                    .filter((u) =>
+                      (u.name || u.email || "")
+                        .toString()
+                        .toLowerCase()
+                        .includes(employeeSearch.toLowerCase())
+                    )
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name || u.email}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </div>
           </div>
         </Card>
 
@@ -438,7 +592,9 @@ export default function ReportsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-content-tertiary">Total Tasks</p>
-                <p className="text-3xl font-bold mt-1">{stats.totalTasks}</p>
+                <p className="text-3xl font-bold mt-1">
+                  {stats.totalTasks.toLocaleString("en-US")}
+                </p>
               </div>
               <FaTasks className="h-8 w-8 text-indigo-600 opacity-50" />
             </div>
@@ -449,7 +605,7 @@ export default function ReportsPage() {
               <div>
                 <p className="text-sm text-content-tertiary">Completed</p>
                 <p className="text-3xl font-bold mt-1">
-                  {stats.completedTasks}
+                  {stats.completedTasks.toLocaleString("en-US")}
                 </p>
               </div>
               <FaCheckCircle className="h-8 w-8 text-green-600 opacity-50" />
@@ -461,7 +617,7 @@ export default function ReportsPage() {
               <div>
                 <p className="text-sm text-content-tertiary">In Progress</p>
                 <p className="text-3xl font-bold mt-1">
-                  {stats.inProgressTasks}
+                  {stats.inProgressTasks.toLocaleString("en-US")}
                 </p>
               </div>
               <FaClock className="h-8 w-8 text-cyan-600 opacity-50" />
@@ -478,6 +634,102 @@ export default function ReportsPage() {
               </div>
               <FaChartLine className="h-8 w-8 text-purple-600 opacity-50" />
             </div>
+          </Card>
+        </div>
+
+        {/* Charts */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card title="Status Distribution" icon={<FaChartPie />}>
+            {loading ? (
+              <div className="h-72 animate-pulse rounded-lg bg-surface-strong" />
+            ) : stats.totalTasks === 0 ? (
+              <div className="py-14 flex flex-col items-center justify-center text-content-tertiary">
+                <FaChartBar className="h-6 w-6 mb-2" />
+                <div className="text-sm font-medium">No data</div>
+                <div className="text-xs">
+                  Try expanding the date range or clearing filters
+                </div>
+              </div>
+            ) : (
+              <div style={{ width: "100%", height: 280 }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={statusChartData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={50}
+                      outerRadius={90}
+                      labelLine={false}
+                      label={({ name, percent }) =>
+                        `${name} ${(percent * 100).toFixed(0)}%`
+                      }
+                    >
+                      {statusChartData.map((entry, idx) => (
+                        <Cell key={`s-${idx}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value, name) => [`${value} tasks`, name]}
+                    />
+                    <Legend verticalAlign="bottom" height={24} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </Card>
+
+          <Card title="Tasks Over Time" icon={<FaChartLine />}>
+            {loading ? (
+              <div className="h-72 animate-pulse rounded-lg bg-surface-strong" />
+            ) : (
+              <div style={{ width: "100%", height: 280 }}>
+                <ResponsiveContainer>
+                  <LineChart
+                    data={tasksOverTimeData}
+                    margin={{ top: 10, right: 20, bottom: 0, left: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      tickFormatter={(v) => v.slice(5)}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                    >
+                      <Label
+                        value="Tasks"
+                        angle={-90}
+                        position="insideLeft"
+                        style={{ fill: "#9ca3af" }}
+                      />
+                    </YAxis>
+                    <Tooltip
+                      formatter={(value, name) => [`${value} tasks`, name]}
+                    />
+                    <Legend verticalAlign="bottom" height={24} />
+                    <Line
+                      type="monotone"
+                      dataKey="Created"
+                      stroke="#4f46e5"
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 3 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="Completed"
+                      stroke="#16a34a"
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 3 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </Card>
         </div>
 
@@ -513,8 +765,6 @@ export default function ReportsPage() {
                 ></div>
               </div>
             </div>
-
-
 
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -587,9 +837,15 @@ export default function ReportsPage() {
 
           {/* Project Breakdown */}
           <Card title="Tasks by Project" icon={<FaProjectDiagram />}>
-            {Object.keys(stats.projectBreakdown).length === 0 ? (
-              <div className="py-8 text-center text-content-tertiary">
-                No tasks found for selected period
+            {loading ? (
+              <div className="h-40 animate-pulse rounded-lg bg-surface-strong" />
+            ) : Object.keys(stats.projectBreakdown).length === 0 ? (
+              <div className="py-14 flex flex-col items-center justify-center text-content-tertiary">
+                <FaChartBar className="h-6 w-6 mb-2" />
+                <div className="text-sm font-medium">No data</div>
+                <div className="text-xs">
+                  Try expanding the date range or clearing filters
+                </div>
               </div>
             ) : (
               <div className="space-y-3">
@@ -629,7 +885,18 @@ export default function ReportsPage() {
 
         {/* Resource-Based Reports */}
         {Object.keys(resourceStats).length > 0 && (
-          <Card title="Resource Performance" icon={<FaUsers />}>
+          <Card
+            title="Resource Performance"
+            icon={<FaUsers />}
+            actions={
+              <Button
+                onClick={() => exportResourceReport()}
+                variant="secondary"
+              >
+                <FaDownload /> Export CSV
+              </Button>
+            }
+          >
             <div className="mb-4">
               <p className="text-sm text-content-tertiary">
                 Performance breakdown by team member for the selected period
@@ -665,16 +932,36 @@ export default function ReportsPage() {
                           className="border-b border-subtle hover:bg-surface-subtle"
                         >
                           <td className="py-3 px-4">
-                            <div>
-                              <div className="font-medium">{resource.name}</div>
-                              <div className="text-xs text-content-tertiary">
-                                {resource.email}
+                            <div className="flex items-center gap-2">
+                              <span className="h-7 w-7 overflow-hidden rounded-full ring-1 ring-indigo-500/20">
+                                {resource.imageUrl ? (
+                                  <img
+                                    src={resource.imageUrl}
+                                    alt="Avatar"
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="h-full w-full rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-[10px] font-semibold text-white">
+                                    {(resource.name || resource.email || "U")
+                                      .toString()
+                                      .charAt(0)
+                                      .toUpperCase()}
+                                  </div>
+                                )}
+                              </span>
+                              <div>
+                                <div className="font-medium">
+                                  {resource.name}
+                                </div>
+                                <div className="text-xs text-content-tertiary">
+                                  {resource.email}
+                                </div>
                               </div>
                             </div>
                           </td>
                           <td className="py-3 px-4">
                             <span className="inline-block px-2 py-1 rounded text-xs bg-indigo-100 text-indigo-700">
-                              {resource.role}
+                              {resource?.resourceRole}
                             </span>
                           </td>
                           <td className="py-3 px-4 text-center font-semibold">
@@ -706,22 +993,11 @@ export default function ReportsPage() {
                 </tbody>
               </table>
             </div>
-
-            {/* Export Resource Report */}
-            <div className="mt-4 flex justify-end">
-              <Button
-                onClick={() => exportResourceReport()}
-                variant="secondary"
-                icon={<FaDownload />}
-              >
-                Export Resource Report
-              </Button>
-            </div>
           </Card>
         )}
 
         {/* Recent Tasks */}
-        {filteredData.tasks.length > 0 && (
+        {(loading || filteredData.tasks.length > 0) && (
           <Card title="Recent Tasks" icon={<FaChartPie />}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -737,98 +1013,117 @@ export default function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredData.tasks.slice(0, 10).map((task) => {
-                    const project = projects.find(
-                      (p) => p.id === task.projectId
-                    );
-                    const assigneeUser = users.find(
-                      (r) => r.id === task.assigneeId
-                    );
-                    const assigneeClient = clients.find(
-                      (c) => c.id === task.assigneeId
-                    );
-                    const assigneeName =
-                      assigneeUser?.name ||
-                      assigneeClient?.clientName ||
-                      "Unassigned";
-                    const assigneeRole =
-                      assigneeUser?.role || (assigneeClient ? "Client" : "");
-                    const statusColors = {
-                      Done: "bg-green-100 text-green-700",
-                      "In Progress": "bg-cyan-100 text-cyan-700",
-                      "To-Do": "bg-gray-100 text-gray-700",
-                    };
-                    const priorityColors = {
-                      High: "text-red-600",
-                      Medium: "text-yellow-600",
-                      Low: "text-green-600",
-                    };
+                  {loading && <SkeletonRow columns={7} />}
+                  {!loading &&
+                    filteredData.tasks.slice(0, 10).map((task) => {
+                      const project = projects.find(
+                        (p) => p.id === task.projectId
+                      );
+                      const assigneeUser = users.find(
+                        (r) => r.id === task.assigneeId
+                      );
+                      const assigneeClient = clients.find(
+                        (c) => c.id === task.assigneeId
+                      );
+                      const assigneeName =
+                        assigneeUser?.name ||
+                        assigneeClient?.clientName ||
+                        "Unassigned";
+                      const assigneeRole =
+                        assigneeUser?.role || (assigneeClient ? "Client" : "");
 
-                    return (
-                      <tr key={task.id} className="border-b border-subtle">
-                        <td className="py-2 px-3">{task.title}</td>
-                        <td className="py-2 px-3">
-                          <div className="text-xs">
-                            <div className="font-medium">{assigneeName}</div>
-                            <div className="text-content-tertiary">
-                              {assigneeRole}
+                      return (
+                        <tr key={task.id} className="border-b border-subtle">
+                          <td className="py-2 px-3">{task.title}</td>
+                          <td className="py-2 px-3">
+                            <div className="flex items-center gap-2">
+                              <span className="h-6 w-6 overflow-hidden rounded-full ring-1 ring-indigo-500/20">
+                                {assigneeUser?.imageUrl ||
+                                assigneeClient?.imageUrl ? (
+                                  <img
+                                    src={
+                                      assigneeUser?.imageUrl ||
+                                      assigneeClient?.imageUrl
+                                    }
+                                    alt="Avatar"
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="h-full w-full rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-[9px] font-semibold text-white">
+                                    {(assigneeName || "U")
+                                      .toString()
+                                      .charAt(0)
+                                      .toUpperCase()}
+                                  </div>
+                                )}
+                              </span>
+                              <div className="text-xs">
+                                <div className="font-medium">
+                                  {assigneeName}
+                                </div>
+                                <div className="text-content-tertiary">
+                                  {assigneeRole}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="py-2 px-3">
-                          <span
-                            className="inline-block px-2 py-1 rounded text-xs"
-                            style={{
-                              backgroundColor: project?.color + "20",
-                              color: project?.color,
-                            }}
-                          >
-                            {project?.name}
-                          </span>
-                        </td>
-                        <td className="py-2 px-3">
-                          <span
-                            className={`inline-block px-2 py-1 rounded text-xs ${
-                              statusColors[task.status] || ""
-                            }`}
-                          >
-                            {task.status}
-                          </span>
-                        </td>
-                        <td
-                          className={`py-2 px-3 font-semibold ${
-                            priorityColors[task.priority] || ""
-                          }`}
-                        >
-                          {task.priority}
-                        </td>
-                        <td className="py-2 px-3 text-content-tertiary">
-                          {task.createdDate
-                            ? new Date(task.createdDate).toLocaleDateString(
-                                "en-US",
-                                {
-                                  year: "numeric",
-                                  month: "short",
-                                  day: "numeric",
-                                }
-                              )
-                            : "-"}
-                        </td>
-                        <td className="py-2 px-3 text-content-tertiary">
-                          {task.completedDate
-                            ? new Date(task.completedDate).toLocaleDateString(
-                                "en-US",
-                                {
-                                  year: "numeric",
-                                  month: "short",
-                                  day: "numeric",
-                                }
-                              )
-                            : "-"}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+                          <td className="py-2 px-3">
+                            <span
+                              className="inline-block px-2 py-1 rounded text-xs"
+                              style={{
+                                backgroundColor: project?.color + "20",
+                                color: project?.color,
+                              }}
+                            >
+                              {project?.name}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3">
+                            <span
+                              className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getStatusBadge(
+                                task.status
+                              )}`}
+                            >
+                              {task.status}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3">
+                            <span
+                              className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getPriorityBadge(
+                                task.priority
+                              )}`}
+                            >
+                              <FaFlag />
+                              <span>{task.priority}</span>
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 text-content-tertiary">
+                            {task.createdDate
+                              ? new Date(task.createdDate).toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  }
+                                )
+                              : "-"}
+                          </td>
+                          <td className="py-2 px-3 text-content-tertiary">
+                            {task.completedDate
+                              ? new Date(task.completedDate).toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  }
+                                )
+                              : "-"}
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>

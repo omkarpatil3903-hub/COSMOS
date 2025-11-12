@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import PageHeader from "../components/PageHeader";
 import Card from "../components/Card";
 import Button from "../components/Button";
-import TaskModal from "../components/TaskModal";
 import toast from "react-hot-toast";
 import {
   FaCalendarAlt,
@@ -46,19 +45,22 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
-// Refactored: Import utilities and services
-import {
-  tsToDate,
-  dateToInputValue,
-  DAY_NAMES,
-  MONTH_NAMES,
-} from "../utils/dateUtils";
-import { calculateCalendarStats } from "../utils/calendarUtils";
-import StatsCards from "../components/calendar/StatsCards";
-import CalendarHeader from "../components/calendar/CalendarHeader";
-import { expandRecurringOccurrences } from "../utils/recurringTasks";
+const tsToDate = (value) => {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate();
+  if (typeof value.seconds === "number") return new Date(value.seconds * 1000);
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
 
-// Refactored: Utility functions moved to utils/dateUtils.js and utils/calendarUtils.js
+const dateToInputValue = (date) => {
+  if (!date) return "";
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 const buildDefaultEventForm = (baseDate = new Date()) => ({
   title: "",
   type: "meeting",
@@ -73,7 +75,16 @@ const buildDefaultEventForm = (baseDate = new Date()) => ({
   attendeesText: "",
 });
 
-// Removed unused buildDefaultTaskForm
+const buildDefaultTaskForm = (baseDate = new Date()) => ({
+  title: "",
+  description: "",
+  projectId: "",
+  assigneeId: "",
+  assigneeType: "user",
+  status: "To-Do",
+  priority: "Medium",
+  dueDate: dateToInputValue(baseDate),
+});
 
 // Add meeting requests data
 // Removed sample data
@@ -107,7 +118,7 @@ function Calendar() {
   const [rejectReason, setRejectReason] = useState("");
   const [selectedAttendees, setSelectedAttendees] = useState([]);
   const [showTaskModal, setShowTaskModal] = useState(false);
-  const [showFloatingMenu, setShowFloatingMenu] = useState(false);
+  const [taskForm, setTaskForm] = useState(() => buildDefaultTaskForm());
 
   const clientsById = useMemo(() => {
     const map = new Map();
@@ -228,7 +239,6 @@ function Calendar() {
               };
             })
           );
-          console.log("📋 Tasks loaded:", snap.docs.length, "tasks");
           setLoading(false);
         }
       );
@@ -278,42 +288,34 @@ function Calendar() {
     };
   }, []);
 
-  // Combine events and tasks with dueDate, expanding recurring tasks within the visible month
+  // Combine events and tasks with dueDate
   const allEvents = useMemo(() => {
     const eventList = [...events];
 
     // Add tasks with dueDate as events
     tasks.forEach((task) => {
-      if (!task.dueDate || task.archived) return;
+      if (task.dueDate && !task.archived) {
+        const dueDate =
+          task.dueDate instanceof Date ? task.dueDate : tsToDate(task.dueDate);
 
-      // Determine the visible month range based on currentDate
-      const monthStart = new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth(),
-        1
-      );
-      const monthEnd = new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth() + 1,
-        0
-      );
+        // Use local date string to avoid timezone issues
+        const year = dueDate.getFullYear();
+        const month = String(dueDate.getMonth() + 1).padStart(2, "0");
+        const day = String(dueDate.getDate()).padStart(2, "0");
+        const dateStr = `${year}-${month}-${day}`;
+        const timeStr = "23:59"; // Default to end of day for tasks
 
-      // Resolve base due date for non-recurring fallback
-      const dueDate =
-        task.dueDate instanceof Date ? task.dueDate : tsToDate(task.dueDate);
+        // Find assignee name (client or user)
+        let assigneeName = "";
+        if (task.assigneeType === "client") {
+          const client = clients.find((c) => c.id === task.assigneeId);
+          assigneeName = client?.clientName || client?.companyName || "Client";
+        } else {
+          assigneeName = "Team Member";
+        }
 
-      // Find assignee name (client or user)
-      let assigneeName = "";
-      if (task.assigneeType === "client") {
-        const client = clients.find((c) => c.id === task.assigneeId);
-        assigneeName = client?.clientName || client?.companyName || "Client";
-      } else {
-        assigneeName = "Team Member";
-      }
-
-      const pushTaskEvent = (dateStr) => {
         eventList.push({
-          id: `task_${task.id}_${dateStr}`,
+          id: `task_${task.id}`,
           title: `Task: ${task.title}`,
           type: "task",
           status:
@@ -323,12 +325,12 @@ function Calendar() {
               ? "pending"
               : "pending",
           date: dateStr,
-          time: "23:59",
+          time: timeStr,
           duration: 0,
           clientId: task.assigneeType === "client" ? task.assigneeId : "",
           clientName: assigneeName,
           description: `Task assigned to ${assigneeName}`,
-          priority: String(task.priority || "Medium").toLowerCase(),
+          priority: task.priority.toLowerCase(),
           location: "",
           attendees: [assigneeName],
           createdBy: "",
@@ -340,39 +342,14 @@ function Calendar() {
               : task.status === "In Progress"
               ? 50
               : 0,
-          isTask: true,
+          isTask: true, // Mark as task event
           taskId: task.id,
         });
-      };
-
-      if (task.isRecurring && !task.parentRecurringTaskId) {
-        const occurrenceDates = expandRecurringOccurrences(
-          task,
-          monthStart,
-          monthEnd
-        );
-        occurrenceDates.forEach((dateStr) => pushTaskEvent(dateStr));
-      } else {
-        // Non-recurring: push single event on its due date
-        const y = dueDate.getFullYear();
-        const m = String(dueDate.getMonth() + 1).padStart(2, "0");
-        const d = String(dueDate.getDate()).padStart(2, "0");
-        const dateStr = `${y}-${m}-${d}`;
-        pushTaskEvent(dateStr);
       }
     });
 
-    console.log(
-      "📅 Combined events:",
-      eventList.length,
-      "total events (",
-      events.length,
-      "events +",
-      eventList.length - events.length,
-      "tasks)"
-    );
     return eventList;
-  }, [events, tasks, clients, currentDate]);
+  }, [events, tasks, clients]);
 
   const upcomingEvents = useMemo(() => {
     const now = new Date();
@@ -469,7 +446,7 @@ function Calendar() {
     const payload = {
       title: eventForm.title.trim(),
       type: eventForm.type,
-      status: "approved", // Admin-created events are automatically approved
+      status: eventForm.status,
       date: eventForm.date,
       time: eventForm.time,
       duration,
@@ -492,8 +469,6 @@ function Calendar() {
           ...payload,
           createdAt: serverTimestamp(),
           createdBy: "admin",
-          approvedBy: "admin", // Admin-created events are automatically approved
-          approvedAt: serverTimestamp(),
         });
         toast.success("Event created successfully!");
       }
@@ -529,29 +504,21 @@ function Calendar() {
         (event.isTask &&
           tasks.find((t) => t.id === event.taskId)?.projectId ===
             filterProject);
-
+      
       // Employee filter: check if employee is assigned to task or is attendee of event
       let employeeMatch = filterEmployee === "all";
       if (!employeeMatch && filterEmployee !== "all") {
         if (event.isTask) {
           // For tasks, check if the employee is the assignee
           const task = tasks.find((t) => t.id === event.taskId);
-          employeeMatch =
-            task?.assigneeId === filterEmployee &&
-            task?.assigneeType === "user";
+          employeeMatch = task?.assigneeId === filterEmployee && task?.assigneeType === "user";
         } else {
           // For events, check if employee is in attendeeIds
           employeeMatch = event.attendeeIds?.includes(filterEmployee) || false;
         }
       }
-
-      return (
-        eventDate === dateStr &&
-        typeMatch &&
-        statusMatch &&
-        projectMatch &&
-        employeeMatch
-      );
+      
+      return eventDate === dateStr && typeMatch && statusMatch && projectMatch && employeeMatch;
     });
   };
 
@@ -697,26 +664,53 @@ function Calendar() {
 
   // Task modal handlers
   const openTaskModal = () => {
+    const base = selectedDate || new Date();
+    setTaskForm(buildDefaultTaskForm(base));
     setShowTaskModal(true);
   };
 
   const closeTaskModal = () => {
     setShowTaskModal(false);
+    setTaskForm(buildDefaultTaskForm());
   };
 
-  const handleSaveTask = async (taskData) => {
+  const handleTaskFormChange = (field, value) => {
+    setTaskForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSaveTask = async (e) => {
+    e.preventDefault();
+    if (!taskForm.title.trim()) {
+      toast.error("Task title is required");
+      return;
+    }
+    if (!taskForm.dueDate) {
+      toast.error("Due date is required");
+      return;
+    }
+    if (!taskForm.projectId) {
+      toast.error("Please select a project");
+      return;
+    }
+
     try {
-      // Add admin-specific fields to the task data
-      const adminTaskData = {
-        ...taskData,
+      // Convert dueDate string to Firestore timestamp
+      const dueDateObj = new Date(taskForm.dueDate + "T23:59:59");
+      
+      const taskData = {
+        title: taskForm.title.trim(),
+        description: taskForm.description,
+        projectId: taskForm.projectId,
+        assigneeId: taskForm.assigneeId || "",
+        assigneeType: taskForm.assigneeType,
+        status: taskForm.status,
+        priority: taskForm.priority,
+        dueDate: dueDateObj,
         createdAt: serverTimestamp(),
-        createdBy: "admin",
-        approvedBy: "admin", // Admin-created tasks are automatically approved
-        approvedAt: serverTimestamp(),
         archived: false,
       };
 
-      await addDoc(collection(db, "tasks"), adminTaskData);
+      await addDoc(collection(db, "tasks"), taskData);
       toast.success("Task created successfully!");
       closeTaskModal();
     } catch (error) {
@@ -747,10 +741,26 @@ function Calendar() {
     }
   }, [requestsForModal, showRequestModal, activeRequestDate]);
 
-  // Refactored: Use utility function for stats calculation
-  const calendarStats = useMemo(() => {
-    return calculateCalendarStats(events, meetingRequests, tasks);
-  }, [events, meetingRequests, tasks]);
+  // Calculate stats including meeting requests
+  const calendarStats = {
+    totalEvents: allEvents.length,
+    pendingApprovals: allEvents.filter((e) => e.status === "pending").length,
+    approvedMeetings: allEvents.filter(
+      (e) => e.type === "meeting" && e.status === "approved"
+    ).length,
+    cancelledEvents: allEvents.filter((e) => e.status === "cancelled").length,
+    completedTasks: allEvents.filter((e) => e.status === "completed").length,
+    upcomingDeadlines: allEvents.filter((e) => {
+      const eventDate = new Date(e.date);
+      const today = new Date();
+      const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+      return (
+        eventDate >= today && eventDate <= nextWeek && e.status !== "completed"
+      );
+    }).length,
+    pendingRequests: meetingRequests.filter((req) => req.status === "pending")
+      .length,
+  };
 
   // Calendar rendering
   const renderCalendarDays = () => {
@@ -766,10 +776,7 @@ function Calendar() {
     // Empty cells for days before month starts
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(
-        <div
-          key={`empty-${i}`}
-          className="h-28 border border-gray-100 bg-gray-50"
-        ></div>
+        <div key={`empty-${i}`} className="h-28 border border-gray-100 bg-gray-50"></div>
       );
     }
 
@@ -790,26 +797,20 @@ function Calendar() {
         <div
           key={day}
           className={`h-28 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 ${
-            isPast
-              ? "bg-gray-50 hover:bg-gray-100 opacity-60"
+            isPast 
+              ? "bg-gray-50 hover:bg-gray-100 opacity-60" 
               : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
           } ${
-            isToday
-              ? "bg-gradient-to-br from-blue-100 to-blue-50 border-blue-400 border-2 opacity-100 ring-2 ring-blue-200"
-              : ""
-          } ${
-            isSelected
-              ? "bg-gradient-to-br from-indigo-100 to-indigo-50 border-indigo-400 border-2 opacity-100 ring-2 ring-indigo-200"
-              : ""
-          }`}
+            isToday ? "bg-gradient-to-br from-blue-100 to-blue-50 border-blue-400 border-2 opacity-100 ring-2 ring-blue-200" : ""
+          } ${isSelected ? "bg-gradient-to-br from-indigo-100 to-indigo-50 border-indigo-400 border-2 opacity-100 ring-2 ring-indigo-200" : ""}`}
           onClick={() => setSelectedDate(date)}
         >
           <div
             className={`text-sm font-bold mb-1 ${
-              isPast && !isToday
-                ? "text-gray-400"
-                : isToday
-                ? "text-blue-700 text-base"
+              isPast && !isToday 
+                ? "text-gray-400" 
+                : isToday 
+                ? "text-blue-700 text-base" 
                 : "text-gray-800"
             } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
           >
@@ -876,7 +877,30 @@ function Calendar() {
     return days;
   };
 
-  // Refactored: monthNames and dayNames imported from dateUtils
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const dayNames = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ];
 
   return (
     <div>
@@ -933,43 +957,177 @@ function Calendar() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Refactored: Calendar Header Component */}
-          <CalendarHeader
-            currentDate={currentDate}
-            onNavigateMonth={navigateMonth}
-            onToday={() => setCurrentDate(new Date())}
-            filterType={filterType}
-            onFilterTypeChange={setFilterType}
-            filterStatus={filterStatus}
-            onFilterStatusChange={setFilterStatus}
-            filterProject={filterProject}
-            onFilterProjectChange={setFilterProject}
-            filterEmployee={filterEmployee}
-            onFilterEmployeeChange={setFilterEmployee}
-            projects={projects}
-            resources={resources}
-            onAddEvent={() => openEventModal(null)}
-            onAddTask={openTaskModal}
-            employeeScheduleInfo={
-              filterEmployee !== "all"
-                ? {
-                    name:
-                      resources.find((r) => r.id === filterEmployee)?.name ||
-                      "Unknown Employee",
-                  }
-                : null
-            }
-            onClearEmployeeFilter={() => setFilterEmployee("all")}
-          />
+          {/* Calendar Controls */}
+          <Card className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigateMonth(-1)}
+                    className="p-2 hover:bg-gray-100 rounded transition-colors"
+                    title="Previous month"
+                  >
+                    <FaChevronLeft />
+                  </button>
+                  <h2 className="text-lg font-bold min-w-[200px] text-center">
+                    {monthNames[currentDate.getMonth()]}{" "}
+                    {currentDate.getFullYear()}
+                  </h2>
+                  <button
+                    onClick={() => navigateMonth(1)}
+                    className="p-2 hover:bg-gray-100 rounded transition-colors"
+                    title="Next month"
+                  >
+                    <FaChevronRight />
+                  </button>
+                </div>
 
-          {/* Refactored: Stats Cards Component */}
-          <StatsCards stats={calendarStats} />
+                <Button
+                  variant="secondary"
+                  onClick={() => setCurrentDate(new Date())}
+                >
+                  <FaCalendarAlt /> Today
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+                  <option value="all">All Types</option>
+                  <option value="meeting">Meetings</option>
+                  <option value="task">Tasks</option>
+                </select>
+
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+                  <option value="all">All Status</option>
+                  <option value="approved">Approved</option>
+                  <option value="pending">Pending</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="completed">Completed</option>
+                </select>
+
+                <select
+                  value={filterProject}
+                  onChange={(e) => setFilterProject(e.target.value)}
+                  className="border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+                  <option value="all">All Projects</option>
+                  {projects.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={filterEmployee}
+                  onChange={(e) => setFilterEmployee(e.target.value)}
+                  className="border border-gray-300 rounded px-3 py-2 text-sm"
+                  title="View employee schedule"
+                >
+                  <option value="all">All Employees</option>
+                  {resources
+                    .filter((r) => (r.role || "").toLowerCase() !== "client")
+                    .map((resource) => (
+                      <option key={resource.id} value={resource.id}>
+                        {resource.name}
+                      </option>
+                    ))}
+                </select>
+
+                <Button onClick={() => openEventModal(null)}>
+                  <FaPlus /> Add Event
+                </Button>
+                <Button onClick={openTaskModal} variant="secondary">
+                  <FaTasks /> Add Task
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* Employee Schedule Indicator */}
+          {filterEmployee !== "all" && (
+            <Card className="border-l-4 border-blue-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-sm">Employee Schedule View</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Showing: {resources.find((r) => r.id === filterEmployee)?.name || "Unknown Employee"}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={() => setFilterEmployee("all")}
+                >
+                  <FaTimes /> Clear
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {/* Calendar Stats */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-l-4" style={{ borderLeftColor: "#4f46e5" }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-content-tertiary">Total Scheduled</p>
+                  <p className="text-3xl font-bold mt-1">
+                    {calendarStats.totalEvents}
+                  </p>
+                </div>
+                <FaCalendarAlt className="h-8 w-8 text-indigo-600 opacity-50" />
+              </div>
+            </Card>
+
+            <Card className="border-l-4" style={{ borderLeftColor: "#10b981" }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-content-tertiary">Approved Meetings</p>
+                  <p className="text-3xl font-bold mt-1">
+                    {calendarStats.approvedMeetings}
+                  </p>
+                </div>
+                <FaCheckCircle className="h-8 w-8 text-green-600 opacity-50" />
+              </div>
+            </Card>
+
+            <Card className="border-l-4" style={{ borderLeftColor: "#f97316" }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-content-tertiary">Upcoming Deadlines</p>
+                  <p className="text-3xl font-bold mt-1">
+                    {calendarStats.upcomingDeadlines}
+                  </p>
+                </div>
+                <FaClock className="h-8 w-8 text-orange-600 opacity-50" />
+              </div>
+            </Card>
+
+            <Card className="border-l-4" style={{ borderLeftColor: "#ef4444" }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-content-tertiary">Pending Requests</p>
+                  <p className="text-3xl font-bold mt-1">
+                    {calendarStats.pendingRequests}
+                  </p>
+                </div>
+                <FaHourglassHalf className="h-8 w-8 text-red-600 opacity-50" />
+              </div>
+            </Card>
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Calendar Grid */}
             <Card className="lg:col-span-3 p-4">
               <div className="grid grid-cols-7 gap-0 mb-4">
-                {DAY_NAMES.map((day) => (
+                {dayNames.map((day) => (
                   <div
                     key={day}
                     className="p-3 text-center font-semibold text-gray-700 border-b border-gray-200"
@@ -987,11 +1145,7 @@ function Calendar() {
             <Card className="p-4">
               <h3 className="font-semibold text-lg mb-4 border-b pb-2">
                 {selectedDate
-                  ? selectedDate.toLocaleDateString("en-US", {
-                      weekday: "long",
-                      month: "long",
-                      day: "numeric",
-                    })
+                  ? selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
                   : "Select a date"}
               </h3>
 
@@ -1031,18 +1185,11 @@ function Calendar() {
                       const statusClass =
                         statusStyles[event.status] ||
                         "bg-gray-100 text-gray-600";
-                      // Show "by admin" for admin-created events instead of status
-                      const isAdminCreated = event.createdBy === "admin";
-                      const displayLabel = isAdminCreated
-                        ? "by admin"
-                        : event.status
+                      const statusLabel = event.status
                         ? event.status.replace(/\b\w/g, (ch) =>
                             ch.toUpperCase()
                           )
                         : "Pending";
-                      const displayClass = isAdminCreated
-                        ? "bg-blue-100 text-blue-700"
-                        : statusClass;
 
                       return (
                         <div
@@ -1055,9 +1202,9 @@ function Calendar() {
                                 {event.title}
                               </h4>
                               <span
-                                className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${displayClass}`}
+                                className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${statusClass}`}
                               >
-                                {displayLabel}
+                                {statusLabel}
                               </span>
                             </div>
                             {!isTaskEvent && (
@@ -1135,29 +1282,27 @@ function Calendar() {
                           )}
 
                           <div className="flex gap-2 mt-2">
-                            {event.status === "pending" &&
-                              !isTaskEvent &&
-                              !isAdminCreated && (
-                                <>
-                                  <button
-                                    onClick={() => handleApproveEvent(event.id)}
-                                    className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200"
-                                  >
-                                    <FaCheck size={10} /> Approve
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      handleCancelEvent(
-                                        event.id,
-                                        "Cancelled by admin"
-                                      )
-                                    }
-                                    className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
-                                  >
-                                    <FaTimes size={10} /> Cancel
-                                  </button>
-                                </>
-                              )}
+                            {event.status === "pending" && !isTaskEvent && (
+                              <>
+                                <button
+                                  onClick={() => handleApproveEvent(event.id)}
+                                  className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200"
+                                >
+                                  <FaCheck size={10} /> Approve
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    handleCancelEvent(
+                                      event.id,
+                                      "Cancelled by admin"
+                                    )
+                                  }
+                                  className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
+                                >
+                                  <FaTimes size={10} /> Cancel
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
                       );
@@ -1412,14 +1557,182 @@ function Calendar() {
 
           {/* Task Creation Modal */}
           {showTaskModal && (
-            <TaskModal
-              onClose={closeTaskModal}
-              onSave={handleSaveTask}
-              taskToEdit={null}
-              projects={projects.map((p) => ({ id: p.id, name: p.name }))}
-              assignees={resources}
-              clients={clients}
-            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div
+                className="absolute inset-0 bg-black/50"
+                onClick={closeTaskModal}
+              />
+              <Card className="z-10 w-full max-w-2xl max-h-[90vh] overflow-auto">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">Create Task</h2>
+                  <button
+                    onClick={closeTaskModal}
+                    className="rounded-lg p-2 text-content-secondary hover:bg-surface-subtle"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form className="space-y-4" onSubmit={handleSaveTask}>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <label className="space-y-1 text-sm md:col-span-2">
+                      <span className="font-medium text-content-secondary">
+                        Task Title *
+                      </span>
+                      <input
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={taskForm.title}
+                        onChange={(e) =>
+                          handleTaskFormChange("title", e.target.value)
+                        }
+                        placeholder="Enter task title"
+                        required
+                      />
+                    </label>
+
+                    <label className="space-y-1 text-sm md:col-span-2">
+                      <span className="font-medium text-content-secondary">
+                        Description
+                      </span>
+                      <textarea
+                        rows={3}
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={taskForm.description}
+                        onChange={(e) =>
+                          handleTaskFormChange("description", e.target.value)
+                        }
+                        placeholder="Enter task description"
+                      />
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-content-secondary">
+                        Project *
+                      </span>
+                      <select
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={taskForm.projectId}
+                        onChange={(e) =>
+                          handleTaskFormChange("projectId", e.target.value)
+                        }
+                        required
+                      >
+                        <option value="">Select Project</option>
+                        {projects.map((project) => (
+                          <option key={project.id} value={project.id}>
+                            {project.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-content-secondary">
+                        Due Date *
+                      </span>
+                      <input
+                        type="date"
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={taskForm.dueDate}
+                        onChange={(e) =>
+                          handleTaskFormChange("dueDate", e.target.value)
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-content-secondary">
+                        Assignee Type
+                      </span>
+                      <select
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={taskForm.assigneeType}
+                        onChange={(e) =>
+                          handleTaskFormChange("assigneeType", e.target.value)
+                        }
+                      >
+                        <option value="user">User/Employee</option>
+                        <option value="client">Client</option>
+                      </select>
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-content-secondary">
+                        Assignee
+                      </span>
+                      <select
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={taskForm.assigneeId}
+                        onChange={(e) =>
+                          handleTaskFormChange("assigneeId", e.target.value)
+                        }
+                      >
+                        <option value="">Unassigned</option>
+                        {taskForm.assigneeType === "user"
+                          ? resources.map((resource) => (
+                              <option key={resource.id} value={resource.id}>
+                                {resource.name}
+                              </option>
+                            ))
+                          : clients.map((client) => (
+                              <option key={client.id} value={client.id}>
+                                {client.companyName || client.clientName || client.email}
+                              </option>
+                            ))}
+                      </select>
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-content-secondary">
+                        Status
+                      </span>
+                      <select
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={taskForm.status}
+                        onChange={(e) =>
+                          handleTaskFormChange("status", e.target.value)
+                        }
+                      >
+                        <option value="To-Do">To-Do</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Done">Done</option>
+                      </select>
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-content-secondary">
+                        Priority
+                      </span>
+                      <select
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        value={taskForm.priority}
+                        onChange={(e) =>
+                          handleTaskFormChange("priority", e.target.value)
+                        }
+                      >
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={closeTaskModal}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit">
+                      Create Task
+                    </Button>
+                  </div>
+                </form>
+              </Card>
+            </div>
           )}
 
           {/* Meeting Requests Modal */}
@@ -1652,48 +1965,6 @@ function Calendar() {
           )}
         </div>
       )}
-
-      {/* Floating Add Button with Dropdown */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <div className="relative">
-          {/* Dropdown Menu */}
-          {showFloatingMenu && (
-            <div className="absolute bottom-16 right-0 bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-[160px] animate-in slide-in-from-bottom-2">
-              <button
-                onClick={() => {
-                  openEventModal(null);
-                  setShowFloatingMenu(false);
-                }}
-                className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-gray-700 transition-colors"
-              >
-                <FaCalendarAlt className="text-indigo-600" />
-                <span className="font-medium">Add Event</span>
-              </button>
-              <button
-                onClick={() => {
-                  openTaskModal();
-                  setShowFloatingMenu(false);
-                }}
-                className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-gray-700 transition-colors"
-              >
-                <FaTasks className="text-emerald-600" />
-                <span className="font-medium">Add Task</span>
-              </button>
-            </div>
-          )}
-
-          {/* Main Floating Button */}
-          <button
-            onClick={() => setShowFloatingMenu(!showFloatingMenu)}
-            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${
-              showFloatingMenu ? "rotate-45" : ""
-            }`}
-            title="Add Event or Task"
-          >
-            <FaPlus className="text-xl group-hover:scale-110 transition-transform" />
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

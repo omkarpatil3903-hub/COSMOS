@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   collection,
   query,
@@ -23,17 +23,43 @@ import {
   FaExclamationTriangle,
   FaChartLine,
   FaCalendarAlt,
+  FaFileAlt,
+  FaBell,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 
 const EmployeeDashboard = () => {
   const { user, userData } = useAuthContext();
   const navigate = useNavigate();
+
+  // Utility function to format dates in dd/mm/yyyy format
+  const formatDateToDDMMYYYY = (date) => {
+    if (!date) return '';
+    const d = date instanceof Date ? date : (date?.toDate?.() || new Date(date));
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [completionTaskId, setCompletionTaskId] = useState(null);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportData, setReportData] = useState({
+    employeeName: "",
+    reportDate: "",
+    reportTime: "",
+    reportContent: ""
+  });
+  const [isEditingReport, setIsEditingReport] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [savingReport, setSavingReport] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [dismissedNotifications, setDismissedNotifications] = useState(new Set());
+  const notificationRef = useRef(null);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -130,6 +156,7 @@ const EmployeeDashboard = () => {
     totalTasks: tasks.length,
     completedTasks: tasks.filter((t) => t.status === "Done").length,
     inProgressTasks: tasks.filter((t) => t.status === "In Progress").length,
+    pendingTasks: tasks.filter((t) => t.status !== "Done").length,
     overdueTasks: tasks.filter((t) => {
       if (t.status === "Done") return false;
       const dueDate = t.dueDate?.toDate?.() || new Date(t.dueDate);
@@ -212,6 +239,207 @@ const EmployeeDashboard = () => {
     }
   };
 
+  // Initialize report data when modal opens
+  useEffect(() => {
+    if (showReportModal) {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      const hh = String(now.getHours()).padStart(2, "0");
+      const min = String(now.getMinutes()).padStart(2, "0");
+      
+      setReportData({
+        employeeName: userData?.name || "Employee",
+        reportDate: `${dd}/${mm}/${yyyy}`,
+        reportTime: `${hh}:${min}`,
+        reportContent: ""
+      });
+      setIsEditingReport(false);
+    }
+  }, [showReportModal, userData]);
+
+  // Generate real-time notifications based on task data
+  useEffect(() => {
+    if (tasks.length === 0) return;
+
+    const newNotifications = [];
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    // Check for overdue tasks
+    const overdueTasks = tasks.filter((task) => {
+      if (task.status === "Done") return false;
+      const dueDate = task.dueDate?.toDate?.() || new Date(task.dueDate);
+      return dueDate < now;
+    });
+
+    overdueTasks.forEach((task) => {
+      const dueDate = task.dueDate?.toDate?.() || new Date(task.dueDate);
+      const daysOverdue = Math.ceil((now - dueDate) / (1000 * 60 * 60 * 24));
+      
+      newNotifications.push({
+        id: `overdue-${task.id}`,
+        type: 'overdue',
+        title: 'Overdue Task',
+        message: `"${task.title}" is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue`,
+        taskId: task.id,
+        redirectTo: '/employee/tasks?view=overdue'
+      });
+    });
+
+    // Check for newly assigned tasks (assigned in last 24 hours)
+    const newlyAssignedTasks = tasks.filter((task) => {
+      if (!task.assignedDate) return false;
+      const assignedDate = task.assignedDate?.toDate?.() || new Date(task.assignedDate);
+      return assignedDate >= oneDayAgo && task.status !== "Done";
+    });
+
+    newlyAssignedTasks.forEach((task) => {
+      newNotifications.push({
+        id: `new-${task.id}`,
+        type: 'task',
+        title: 'New Task Assigned',
+        message: `"${task.title}" has been assigned to you`,
+        taskId: task.id,
+        redirectTo: '/employee/tasks'
+      });
+    });
+
+    // Filter out dismissed notifications
+    const filteredNotifications = newNotifications.filter(
+      notification => !dismissedNotifications.has(notification.id)
+    );
+
+    // Sort notifications by priority (overdue first, then new tasks)
+    filteredNotifications.sort((a, b) => {
+      const priority = { overdue: 0, task: 1 };
+      return priority[a.type] - priority[b.type];
+    });
+
+    setNotifications(filteredNotifications);
+  }, [tasks, dismissedNotifications]);
+
+  // Close notifications when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+
+    if (showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotifications]);
+
+  // Handle notification click
+  const handleNotificationClick = (notification) => {
+    if (notification.type === 'overdue' || notification.type === 'task') {
+      // For overdue and newly assigned tasks, redirect to task management with scroll to task
+      navigate('/employee/tasks', { 
+        state: { 
+          highlightTaskId: notification.taskId
+        }
+      });
+    } else {
+      // For other notifications, use the original redirect
+      navigate(notification.redirectTo);
+    }
+    setShowNotifications(false);
+  };
+
+  // Remove individual notification
+  const removeNotification = (notificationId, event) => {
+    event.stopPropagation(); // Prevent notification click
+    setDismissedNotifications(prev => new Set([...prev, notificationId]));
+    setNotifications(prev => prev.filter(notification => notification.id !== notificationId));
+    toast.success("Notification removed");
+  };
+
+  // Clear all notifications
+  const clearAllNotifications = () => {
+    // Add all current notification IDs to dismissed notifications
+    const currentNotificationIds = notifications.map(n => n.id);
+    setDismissedNotifications(prev => new Set([...prev, ...currentNotificationIds]));
+    setNotifications([]);
+    toast.success("All notifications cleared");
+  };
+
+  // Generate Report handler - now opens modal
+  const handleGenerateReport = () => {
+    setShowReportModal(true);
+  };
+
+  // Generate report content
+  const generateReportContent = () => {
+    setGeneratingReport(true);
+    try {
+      const content = `# Employee Performance Report
+
+*Employee:* ${reportData.employeeName}
+*Date:* ${reportData.reportDate}
+*Time:* ${reportData.reportTime}
+
+## Task Summary
+- *Total Tasks:* ${stats.totalTasks}
+- *Completed Tasks:* ${stats.completedTasks}
+- *Pending Tasks:* ${stats.pendingTasks}
+- *Today's Tasks:* ${todayTasks.length}
+- *Overdue Tasks:* ${stats.overdueTasks}
+- *High Priority Tasks:* ${highPriorityTasks}
+
+## Performance Metrics
+- *Completion Rate:* ${completionRate}%
+- *Active Projects:* ${projects.length}
+
+## Recent Activity
+${recentCompletedTasks.length > 0 ? recentCompletedTasks.map(task => `- ${task.title}`).join('\n') : '- No recent completed tasks'}
+
+## Today's Focus
+${todayTasks.length > 0 ? todayTasks.map(task => `- ${task.title} (${task.priority} Priority)`).join('\n') : '- No tasks due today'}
+
+---
+*Generated on: ${formatDateToDDMMYYYY(new Date())} at ${new Date().toLocaleTimeString()}*`;
+      
+      setReportData(prev => ({ ...prev, reportContent: content }));
+      toast.success("Report generated successfully!");
+    } catch (error) {
+      console.error("Error generating report:", error);
+      toast.error("Failed to generate report");
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
+  // Save report
+  const saveReport = () => {
+    setSavingReport(true);
+    try {
+      const blob = new Blob([reportData.reportContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `employee-report-${reportData.reportDate}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success("Report saved and downloaded!");
+      setShowReportModal(false);
+    } catch (error) {
+      console.error("Error saving report:", error);
+      toast.error("Failed to save report");
+    } finally {
+      setSavingReport(false);
+    }
+  };
+
   console.log("Render state:", {
     loading,
     tasksCount: tasks.length,
@@ -250,60 +478,130 @@ const EmployeeDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={`Welcome, ${userData?.name || "Employee"}!`}
-        description="Overview of your tasks and activities"
-      />
+      {/* Custom Header with Notification Bell */}
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <PageHeader
+            title={`Welcome, ${userData?.name || "Employee"}!`}
+            description="Overview of your tasks and activities"
+          />
+        </div>
+        <div className="relative" ref={notificationRef}>
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <FaBell className="h-6 w-6" />
+            {/* Notification Badge */}
+            {notifications.length > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {notifications.length > 9 ? "9+" : notifications.length}
+              </span>
+            )}
+          </button>
 
-      {/* Stats Cards */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-600">Total Tasks</p>
-              <p className="text-3xl font-bold text-blue-900 mt-1">
-                {stats.totalTasks}
-              </p>
+          {/* Notifications Dropdown */}
+          {showNotifications && (
+            <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+              </div>
+              <div className="max-h-96 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    <FaBell className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                    <p>No new notifications</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {notifications.map((notification) => (
+                      <div 
+                        key={notification.id} 
+                        className="p-4 hover:bg-gray-50 transition-colors cursor-pointer relative group"
+                        onClick={() => handleNotificationClick(notification)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0">
+                            {notification.type === "task" && (
+                              <FaTasks className="h-4 w-4 text-blue-500 mt-1" />
+                            )}
+                            {notification.type === "overdue" && (
+                              <FaExclamationTriangle className="h-4 w-4 text-red-500 mt-1" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0 pr-8">
+                            <p className="text-sm font-medium text-gray-900 hover:text-indigo-600 transition-colors">
+                              {notification.title}
+                            </p>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {notification.message}
+                            </p>
+                          </div>
+                          {/* Individual Remove Button - For all notifications */}
+                          <button
+                            onClick={(e) => removeNotification(notification.id, e)}
+                            className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Remove notification"
+                          >
+                            <svg className="w-4 h-4 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {notifications.length > 0 && (
+                <div className="p-3 border-t border-gray-200">
+                  <button
+                    onClick={clearAllNotifications}
+                    className="w-full text-sm text-indigo-600 hover:text-indigo-800 font-medium hover:bg-indigo-50 py-2 px-3 rounded-md transition-colors"
+                  >
+                    Clear All Notifications
+                  </button>
+                </div>
+              )}
             </div>
-            <FaTasks className="text-blue-600 text-3xl" />
-          </div>
-        </Card>
+          )}
+        </div>
+      </div>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-600">Completed</p>
-              <p className="text-3xl font-bold text-green-900 mt-1">
-                {stats.completedTasks}
-              </p>
-            </div>
-            <FaCheckCircle className="text-green-600 text-3xl" />
-          </div>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-yellow-600">In Progress</p>
-              <p className="text-3xl font-bold text-yellow-900 mt-1">
-                {stats.inProgressTasks}
-              </p>
-            </div>
-            <FaClock className="text-yellow-600 text-3xl" />
-          </div>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-red-50 to-red-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-red-600">Overdue</p>
-              <p className="text-3xl font-bold text-red-900 mt-1">
-                {stats.overdueTasks}
-              </p>
-            </div>
-            <FaExclamationTriangle className="text-red-600 text-3xl" />
-          </div>
-        </Card>
+      {/* Stats Cards - Reordered: Today's Tasks, Pending Tasks, Completed Tasks, Generate Report */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="cursor-pointer" onClick={() => navigate("/employee/tasks?view=today")}>
+          <StatCard
+            icon={<FaCalendarAlt className="h-5 w-5" />}
+            label="Today's Tasks"
+            value={String(todayTasks.length)}
+            color="indigo"
+          />
+        </div>
+        <div className="cursor-pointer" onClick={() => navigate("/employee/tasks?status=pending")}>
+          <StatCard
+            icon={<FaClock className="h-5 w-5" />}
+            label="Pending Tasks"
+            value={String(stats.pendingTasks)}
+            color="amber"
+          />
+        </div>
+        <div className="cursor-pointer" onClick={() => navigate("/employee/tasks?status=Done")}>
+          <StatCard
+            icon={<FaCheckCircle className="h-5 w-5" />}
+            label="Completed Tasks"
+            value={String(stats.completedTasks)}
+            color="green"
+          />
+        </div>
+        <div className="cursor-pointer hover:transform hover:scale-105 transition-transform duration-200" onClick={handleGenerateReport}>
+          <StatCard
+            icon={<FaFileAlt className="h-5 w-5" />}
+            label="Generate Report"
+            value="📋"
+            color="sky"
+          />
+        </div>
       </div>
 
       {/* Performance Metrics */}
@@ -439,7 +737,7 @@ const EmployeeDashboard = () => {
                                 : "text-gray-500"
                             }`}
                           >
-                            {dueDate.toLocaleDateString()}
+                            {formatDateToDDMMYYYY(dueDate)}
                             {isOverdue && " (Overdue!)"}
                           </span>
                         </div>
@@ -480,7 +778,7 @@ const EmployeeDashboard = () => {
                       </h4>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <span className="text-xs text-gray-500">
-                          Completed {completedDate.toLocaleDateString()}
+                          Completed {formatDateToDDMMYYYY(completedDate)}
                         </span>
                         {task.priority && (
                           <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-white text-gray-700 border border-gray-200">
@@ -563,11 +861,132 @@ const EmployeeDashboard = () => {
           setCompletionTaskId(null);
         }}
         onSubmit={handleSubmitCompletion}
-        title="Mark Task as Done"
-        confirmLabel="Mark Done"
-        minLength={5}
-        maxLength={300}
+        title="Add Completion Comment"
+        confirmLabel="Complete Task"
       />
+
+      {/* Report Generation Modal */}
+      {showReportModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={() => setShowReportModal(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 mb-6">
+              <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <FaFileAlt className="h-5 w-5 text-indigo-600" />
+                Generate Performance Report
+              </h3>
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Form Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Employee Name
+                </label>
+                <input
+                  type="text"
+                  value={reportData.employeeName}
+                  onChange={(e) => setReportData(prev => ({ ...prev, employeeName: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Report Date
+                </label>
+                <input
+                  type="date"
+                  value={reportData.reportDate}
+                  onChange={(e) => setReportData(prev => ({ ...prev, reportDate: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Report Time
+                </label>
+                <input
+                  type="time"
+                  value={reportData.reportTime}
+                  onChange={(e) => setReportData(prev => ({ ...prev, reportTime: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 mb-6">
+              <Button
+                onClick={generateReportContent}
+                disabled={generatingReport}
+                className="flex items-center gap-2"
+              >
+                {generatingReport ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <FaFileAlt className="h-4 w-4" />
+                    Generate Report
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setIsEditingReport(!isEditingReport)}
+                disabled={!reportData.reportContent}
+              >
+                {isEditingReport ? "Stop Editing" : "Edit"}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={saveReport}
+                disabled={!reportData.reportContent || savingReport}
+              >
+                {savingReport ? "Saving..." : "Save"}
+              </Button>
+            </div>
+
+            {/* Report Preview */}
+            {reportData.reportContent && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Report Preview
+                </label>
+                {isEditingReport ? (
+                  <textarea
+                    value={reportData.reportContent}
+                    onChange={(e) => setReportData(prev => ({ ...prev, reportContent: e.target.value }))}
+                    className="w-full h-96 rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                    placeholder="Report content will appear here..."
+                  />
+                ) : (
+                  <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 h-96 overflow-y-auto">
+                    <div className="prose prose-sm max-w-none" style={{ whiteSpace: "pre-wrap" }}>
+                      {reportData.reportContent}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

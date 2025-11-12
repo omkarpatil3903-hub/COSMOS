@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Card from "../components/Card";
 import PageHeader from "../components/PageHeader";
 import StatCard from "../components/StatCard";
@@ -17,6 +17,7 @@ import {
 
 export default function ClientDashboard() {
   const { user, userData, loading } = useAuthContext();
+  const navigate = useNavigate();
   const uid = user?.uid || userData?.uid;
   const [tasks, setTasks] = useState([]);
   const [events, setEvents] = useState([]);
@@ -80,10 +81,30 @@ export default function ClientDashboard() {
     (t) => t.status === "To-Do" || t.status === "In Progress"
   ).length;
   const totalProjects = projects.length;
+  const completedProjects = projects.filter((p) => p.progress === 100 || p.status === "Completed").length;
   const upcomingEvents = events.filter((e) => {
     const eventDate = new Date(e.date || e.startDate || e.dueDate);
     return eventDate >= new Date();
   }).length;
+
+  // Navigation handlers for KPI cards
+  const handleProjectsClick = () => {
+    navigate('/client/projects');
+  };
+
+  const handleTasksClick = () => {
+    navigate('/client/tasks');
+  };
+
+  const handleCompletedClick = () => {
+    // Navigate to projects page with completed filter
+    navigate('/client/projects', { state: { showCompleted: true } });
+  };
+
+  const handlePendingClick = () => {
+    // Navigate to tasks page with pending filter
+    navigate('/client/tasks', { state: { filterStatus: 'pending' } });
+  };
 
   if (loading || loadingData) {
     return (
@@ -106,30 +127,42 @@ export default function ClientDashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          icon={<FaProjectDiagram className="h-5 w-5" />}
-          label="Total Projects"
-          value={String(totalProjects)}
-          color="blue"
-        />
-        <StatCard
-          icon={<FaTasks className="h-5 w-5" />}
-          label="Total Tasks"
-          value={String(totalTasks)}
-          color="indigo"
-        />
-        <StatCard
-          icon={<FaCheckCircle className="h-5 w-5" />}
-          label="Completed"
-          value={String(completedTasks)}
-          color="green"
-        />
-        <StatCard
-          icon={<FaClock className="h-5 w-5" />}
-          label="Pending"
-          value={String(pendingTasks)}
-          color="amber"
-        />
+        <div onClick={handleProjectsClick} className="cursor-pointer">
+          <StatCard
+            icon={<FaProjectDiagram className="h-5 w-5" />}
+            label="Total Projects"
+            value={String(totalProjects)}
+            color="blue"
+            className="hover:shadow-lg transition-shadow"
+          />
+        </div>
+        <div onClick={handleTasksClick} className="cursor-pointer">
+          <StatCard
+            icon={<FaTasks className="h-5 w-5" />}
+            label="Total Tasks"
+            value={String(totalTasks)}
+            color="indigo"
+            className="hover:shadow-lg transition-shadow"
+          />
+        </div>
+        <div onClick={handleCompletedClick} className="cursor-pointer">
+          <StatCard
+            icon={<FaCheckCircle className="h-5 w-5" />}
+            label="Completed Projects"
+            value={String(completedProjects)}
+            color="green"
+            className="hover:shadow-lg transition-shadow"
+          />
+        </div>
+        <div onClick={handlePendingClick} className="cursor-pointer">
+          <StatCard
+            icon={<FaClock className="h-5 w-5" />}
+            label="Pending Tasks"
+            value={String(pendingTasks)}
+            color="amber"
+            className="hover:shadow-lg transition-shadow"
+          />
+        </div>
       </div>
 
       {/* Recent Tasks and Upcoming Events */}

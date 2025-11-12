@@ -1,6 +1,7 @@
 import React from "react";
-import { FaFlag, FaCalendarAlt } from "react-icons/fa";
+import { FaFlag, FaCalendarAlt, FaDownload } from "react-icons/fa";
 import { getPriorityBadge } from "../utils/colorMaps";
+import toast from "react-hot-toast";
 
 // Simple Kanban board with 4 default columns using HTML5 drag-and-drop
 // Props:
@@ -23,6 +24,30 @@ export default function KanbanBoard({
   users = [], // resources only
   onReassign, // function(taskId, encodedValue)
 }) {
+  
+  // Function to download all images for a task
+  const handleDownloadImages = (task, e) => {
+    e.stopPropagation(); // Prevent task edit modal from opening
+    
+    if (!task.images || task.images.length === 0) {
+      toast.error("No images available for download");
+      return;
+    }
+    
+    toast.success(`📥 Downloading ${task.images.length} image(s) from "${task.title}"`);
+    
+    task.images.forEach((img, index) => {
+      setTimeout(() => {
+        const link = document.createElement('a');
+        link.href = img.url;
+        link.download = img.name || `${task.title}_image_${index + 1}`;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }, index * 500); // Stagger downloads by 500ms to avoid browser blocking
+    });
+  };
   const columns = [
     { key: "To-Do", title: "To-Do" },
     { key: "In Progress", title: "In Progress" },
@@ -145,8 +170,25 @@ export default function KanbanBoard({
                           {t.title}
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1">
-                        {t.priority && (
+                      <div className="flex items-center gap-2">
+                        {/* Download button - only show if task has images uploaded by client */}
+                        {t.images && t.images.length > 0 && (
+                          <div className="relative">
+                            <button
+                              onClick={(e) => handleDownloadImages(t, e)}
+                              className="p-1.5 rounded-full bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                              title={`Download ${t.images.length} image(s) uploaded by client`}
+                            >
+                              <FaDownload className="text-xs" />
+                            </button>
+                            {/* Badge showing number of images */}
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                              {t.images.length}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex flex-col items-end gap-1">
+                          {t.priority && (
                           <span
                             className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getPriorityBadge(
                               t.priority
@@ -166,6 +208,7 @@ export default function KanbanBoard({
                             Archived
                           </span>
                         )}
+                        </div>
                       </div>
                     </div>
 

@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuthContext } from "../context/useAuthContext";
 import PageHeader from "../components/PageHeader";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import TaskModal from "../components/TaskModal";
+import toast from "react-hot-toast";
 import {
   FaCalendarAlt,
   FaChevronLeft,
@@ -12,8 +14,10 @@ import {
   FaCheck,
   FaClock,
   FaTasks,
+  FaPlus,
 } from "react-icons/fa";
 import { TYPE_CLASSES, PRIORITY_CLASSES } from "../utils/colorMaps";
+import { occursOnDate } from "../utils/recurringTasks";
 
 const EmployeeCalendar = () => {
   const { user } = useAuthContext();
@@ -22,6 +26,15 @@ const EmployeeCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [showFloatingMenu, setShowFloatingMenu] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [filterType, setFilterType] = useState("all"); // all, meetings, tasks
+  const [filterStatus, setFilterStatus] = useState("all"); // all, approved, request, pending (for meetings) | in_progress, done (for tasks)
+  const [projects, setProjects] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [resources, setResources] = useState([]);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -62,9 +75,42 @@ const EmployeeCalendar = () => {
       setEvents(eventData);
     });
 
+    // Load projects
+    const unsubProjects = onSnapshot(collection(db, "projects"), (snapshot) => {
+      const projectData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data().projectName || doc.data().name || "",
+        ...doc.data(),
+      }));
+      setProjects(projectData);
+    });
+
+    // Load clients
+    const unsubClients = onSnapshot(collection(db, "clients"), (snapshot) => {
+      const clientData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setClients(clientData);
+    });
+
+    // Load resources (other employees)
+    const unsubResources = onSnapshot(collection(db, "users"), (snapshot) => {
+      const resourceData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data().name || doc.data().email || "Unknown",
+        email: doc.data().email || "",
+        role: doc.data().role || "resource",
+      }));
+      setResources(resourceData);
+    });
+
     return () => {
       unsubTasks();
       unsubEvents();
+      unsubProjects();
+      unsubClients();
+      unsubResources();
     };
   }, [user]);
 
@@ -95,22 +141,62 @@ const EmployeeCalendar = () => {
     };
   }, [tasks, events]);
 
-  const getTasksForDate = (date) => {
+  // Filtered tasks and events based on current filter settings
+  const filteredItems = useMemo(() => {
+    let items = [];
+    
+    // Add tasks if type filter allows
+    if (filterType === "all" || filterType === "tasks") {
+      const filteredTasks = tasks.filter((task) => {
+        if (filterStatus === "all") return true;
+        
+        // Map task status to filter values
+        const statusMap = {
+          "in_progress": ["In Progress", "To-Do"],
+          "done": ["Done", "Completed"]
+        };
+        
+        return statusMap[filterStatus]?.includes(task.status);
+      });
+      
+      items = [...items, ...filteredTasks.map(task => ({ ...task, itemType: "task" }))];
+    }
+    
+    // Add events/meetings if type filter allows
+    if (filterType === "all" || filterType === "meetings") {
+      const filteredEvents = events.filter((event) => {
+        if (filterStatus === "all") return true;
+        
+        // Map event status to filter values
+        return event.status === filterStatus;
+      });
+      
+      items = [...items, ...filteredEvents.map(event => ({ ...event, itemType: "meeting" }))];
+    }
+    
+    return items;
+  }, [tasks, events, filterType, filterStatus]);
+
+  const getItemsForDate = (date) => {
     const dateStr = `${date.getFullYear()}-${String(
       date.getMonth() + 1
     ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-    const dayTasks = tasks.filter((task) => {
-      const dueDate = task.dueDate?.toDate?.() || new Date(task.dueDate);
-      const taskDateStr = `${dueDate.getFullYear()}-${String(
-        dueDate.getMonth() + 1
-      ).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
-      return taskDateStr === dateStr;
+    const dayItems = filteredItems.filter((item) => {
+      if (item.itemType === "task") {
+        const dueDate = item.dueDate?.toDate?.() || new Date(item.dueDate);
+        const taskDateStr = `${dueDate.getFullYear()}-${String(
+          dueDate.getMonth() + 1
+        ).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
+        return item.isRecurring ? occursOnDate(item, date) : taskDateStr === dateStr;
+      } else if (item.itemType === "meeting") {
+        // For meetings, check the date field
+        return item.date === dateStr;
+      }
+      return false;
     });
 
-    const dayEvents = events.filter((event) => event.date === dateStr);
-
-    return [...dayTasks, ...dayEvents];
+    return dayItems;
   };
 
   const renderCalendarDays = () => {
@@ -133,21 +219,34 @@ const EmployeeCalendar = () => {
     // Days of month
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
-      const dayItems = getTasksForDate(date);
+      const dayItems = getItemsForDate(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const currentDate = new Date(date);
+      currentDate.setHours(0, 0, 0, 0);
+      const isPast = currentDate < today;
       const isToday = date.toDateString() === new Date().toDateString();
       const isSelected = selectedDate?.toDateString() === date.toDateString();
 
       days.push(
         <div
           key={day}
-          className={`h-24 border border-gray-100 p-1 cursor-pointer hover:bg-gray-50 relative ${
+          className={`h-24 border border-gray-100 p-1 cursor-pointer relative ${
+            isPast
+              ? "bg-gray-50 hover:bg-gray-100 opacity-60"
+              : "hover:bg-gray-50"
+          } ${
             isToday ? "bg-blue-50 border-blue-200" : ""
           } ${isSelected ? "bg-indigo-50 border-indigo-300" : ""}`}
           onClick={() => setSelectedDate(date)}
         >
           <div
             className={`text-sm font-medium ${
-              isToday ? "text-blue-600" : "text-gray-900"
+              isPast && !isToday
+                ? "text-gray-400"
+                : isToday
+                ? "text-blue-600"
+                : "text-gray-900"
             }`}
           >
             {day}
@@ -170,7 +269,9 @@ const EmployeeCalendar = () => {
               return (
                 <div
                   key={item.id}
-                  className={`text-xs p-1 rounded ${typeBadge} truncate relative`}
+                  className={`text-xs p-1 rounded ${
+                    isPast ? "bg-gray-200 text-gray-500" : typeBadge
+                  } truncate relative`}
                   title={item.title}
                 >
                   {/* Priority strip on the left -- hidden for meetings */}
@@ -220,6 +321,88 @@ const EmployeeCalendar = () => {
     "November",
     "December",
   ];
+
+  // Task creation handlers
+  const handleTaskSave = async (taskData) => {
+    try {
+      // Convert dueDate string to Date object if needed
+      const dueDate = taskData.dueDate ? new Date(taskData.dueDate) : null;
+      
+      const newTask = {
+        title: taskData.title,
+        description: taskData.description || "",
+        projectId: taskData.projectId || "",
+        assigneeId: user.uid, // Always assign to current user for employee calendar
+        assigneeType: "user",
+        status: taskData.status || "To-Do",
+        priority: taskData.priority || "Medium",
+        dueDate: dueDate,
+        assignedDate: taskData.assignedDate ? new Date(taskData.assignedDate) : new Date(),
+        weightage: taskData.weightage ? Number(taskData.weightage) : 0,
+        completionComment: taskData.completionComment || "",
+        isRecurring: taskData.isRecurring || false,
+        recurringPattern: taskData.recurringPattern || "daily",
+        recurringInterval: taskData.recurringInterval || 1,
+        recurringEndDate: taskData.recurringEndDate || "",
+        recurringEndAfter: taskData.recurringEndAfter || "",
+        recurringEndType: taskData.recurringEndType || "never",
+        createdAt: serverTimestamp(),
+        archived: false,
+      };
+
+      await addDoc(collection(db, "tasks"), newTask);
+      toast.success("Task created successfully!");
+      setShowTaskModal(false);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      toast.error("Failed to create task");
+    }
+  };
+
+  // Event creation handlers
+  const openEventModal = (event) => {
+    if (event) {
+      setEditingEvent(event);
+    } else {
+      setEditingEvent(null);
+    }
+    setShowEventModal(true);
+  };
+
+  const closeEventModal = () => {
+    setShowEventModal(false);
+    setEditingEvent(null);
+  };
+
+  const handleEventSave = async (eventData) => {
+    try {
+      const newEvent = {
+        title: eventData.title,
+        type: eventData.type || "meeting",
+        status: eventData.status || "pending",
+        date: eventData.date,
+        time: eventData.time || "09:00",
+        duration: Number(eventData.duration) || 60,
+        clientId: eventData.clientId || "",
+        clientName: eventData.clientName || "",
+        description: eventData.description || "",
+        priority: eventData.priority || "medium",
+        location: eventData.location || "",
+        attendees: eventData.attendees || [],
+        attendeeIds: [user.uid], // Include current user as attendee
+        createdBy: user.uid,
+        objectives: eventData.objectives || [],
+        createdAt: serverTimestamp(),
+      };
+
+      await addDoc(collection(db, "events"), newEvent);
+      toast.success("Meeting created successfully!");
+      closeEventModal();
+    } catch (error) {
+      console.error("Error creating event:", error);
+      toast.error("Failed to create meeting");
+    }
+  };
 
   if (loading) {
     return (
@@ -307,6 +490,42 @@ const EmployeeCalendar = () => {
               >
                 Today
               </Button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <select
+                value={filterType}
+                onChange={(e) => {
+                  setFilterType(e.target.value);
+                  setFilterStatus("all"); // Reset status filter when type changes
+                }}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-40"
+              >
+                <option value="all">All Items</option>
+                <option value="meetings">Meetings</option>
+                <option value="tasks">Tasks</option>
+              </select>
+
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-40"
+              >
+                <option value="all">All Status</option>
+                {filterType === "meetings" && (
+                  <>
+                    <option value="approved">Approved</option>
+                    <option value="request">Request</option>
+                    <option value="pending">Pending</option>
+                  </>
+                )}
+                {filterType === "tasks" && (
+                  <>
+                    <option value="in_progress">In Progress</option>
+                    <option value="done">Done</option>
+                  </>
+                )}
+              </select>
             </div>
           </div>
         </Card>
@@ -401,14 +620,14 @@ const EmployeeCalendar = () => {
 
             {selectedDate ? (
               <div className="space-y-3">
-                {getTasksForDate(selectedDate).length === 0 ? (
+                {getItemsForDate(selectedDate).length === 0 ? (
                   <p className="text-gray-500 text-sm">
-                    No events on this date
+                    No items on this date
                   </p>
                 ) : (
-                  getTasksForDate(selectedDate).map((item) => {
-                    // Check if it's a task or event
-                    const isEvent = item.type === "meeting" || item.attendees;
+                  getItemsForDate(selectedDate).map((item) => {
+                    // Check if it's a task or meeting based on itemType
+                    const isEvent = item.itemType === "meeting";
 
                     if (isEvent) {
                       const statusStyles = {
@@ -420,9 +639,16 @@ const EmployeeCalendar = () => {
                       const statusClass =
                         statusStyles[item.status] ||
                         "bg-gray-100 text-gray-600";
-                      const statusLabel = item.status
-                        ? item.status.replace(/\b\w/g, (ch) => ch.toUpperCase())
-                        : "Pending";
+                      // Show "by admin" for admin-created events instead of status
+                      const isAdminCreated = item.createdBy === "admin";
+                      const displayLabel = isAdminCreated 
+                        ? "by admin" 
+                        : (item.status
+                            ? item.status.replace(/\b\w/g, (ch) => ch.toUpperCase())
+                            : "Pending");
+                      const displayClass = isAdminCreated
+                        ? "bg-blue-100 text-blue-700"
+                        : statusClass;
 
                       return (
                         <div
@@ -435,9 +661,9 @@ const EmployeeCalendar = () => {
                                 {item.title}
                               </h4>
                               <span
-                                className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${statusClass}`}
+                                className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${displayClass}`}
                               >
-                                {statusLabel}
+                                {displayLabel}
                               </span>
                             </div>
                           </div>
@@ -469,6 +695,13 @@ const EmployeeCalendar = () => {
                     };
                     const statusClass =
                       statusStyles[item.status] || "bg-gray-100 text-gray-600";
+                    
+                    // Show "by admin" for admin-created tasks instead of status
+                    const isAdminCreatedTask = item.createdBy === "admin";
+                    const taskDisplayLabel = isAdminCreatedTask ? "by admin" : item.status;
+                    const taskDisplayClass = isAdminCreatedTask
+                      ? "bg-blue-100 text-blue-700"
+                      : statusClass;
 
                     return (
                       <div
@@ -481,9 +714,9 @@ const EmployeeCalendar = () => {
                               {item.title}
                             </h4>
                             <span
-                              className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${statusClass}`}
+                              className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${taskDisplayClass}`}
                             >
-                              {item.status}
+                              {taskDisplayLabel}
                             </span>
                           </div>
                         </div>
@@ -525,6 +758,217 @@ const EmployeeCalendar = () => {
           </Card>
         </div>
       </div>
+
+      {/* Floating Add Button with Dropdown */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <div className="relative">
+          {/* Dropdown Menu */}
+          {showFloatingMenu && (
+            <div className="absolute bottom-16 right-0 bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-[160px] animate-in slide-in-from-bottom-2">
+              <button
+                onClick={() => {
+                  openEventModal(null);
+                  setShowFloatingMenu(false);
+                }}
+                className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-gray-700 transition-colors"
+              >
+                <FaCalendarAlt className="text-indigo-600" />
+                <span className="font-medium">Add Meeting</span>
+              </button>
+              <button
+                onClick={() => {
+                  setShowTaskModal(true);
+                  setShowFloatingMenu(false);
+                }}
+                className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-gray-700 transition-colors"
+              >
+                <FaTasks className="text-emerald-600" />
+                <span className="font-medium">Add Task</span>
+              </button>
+            </div>
+          )}
+          
+          {/* Main Floating Button */}
+          <button
+            onClick={() => setShowFloatingMenu(!showFloatingMenu)}
+            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${
+              showFloatingMenu ? 'rotate-45' : ''
+            }`}
+            title="Add Task"
+          >
+            <FaPlus className="text-xl group-hover:scale-110 transition-transform" />
+          </button>
+        </div>
+      </div>
+
+      {/* Task Modal */}
+      {showTaskModal && (
+        <TaskModal
+          onClose={() => setShowTaskModal(false)}
+          onSave={handleTaskSave}
+          projects={projects}
+          assignees={resources}
+          clients={clients}
+        />
+      )}
+
+      {/* Event Modal */}
+      {showEventModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={closeEventModal}
+          />
+          <Card className="z-10 w-full max-w-2xl max-h-[90vh] overflow-auto">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Create Meeting</h2>
+              <button
+                onClick={closeEventModal}
+                className="rounded-lg p-2 text-content-secondary hover:bg-surface-subtle"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form className="space-y-4" onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target);
+              const eventData = {
+                title: formData.get('title'),
+                date: formData.get('date'),
+                time: formData.get('time'),
+                duration: formData.get('duration'),
+                description: formData.get('description'),
+                location: formData.get('location'),
+                clientId: formData.get('clientId'),
+                clientName: clients.find(c => c.id === formData.get('clientId'))?.clientName || '',
+                priority: formData.get('priority'),
+              };
+              handleEventSave(eventData);
+            }}>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="space-y-1 text-sm md:col-span-2">
+                  <span className="font-medium text-content-secondary">
+                    Meeting Title *
+                  </span>
+                  <input
+                    name="title"
+                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                    placeholder="Team sync meeting"
+                    required
+                  />
+                </label>
+
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium text-content-secondary">
+                    Date *
+                  </span>
+                  <input
+                    name="date"
+                    type="date"
+                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2 date-input-blue"
+                    defaultValue={selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
+                    required
+                  />
+                </label>
+
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium text-content-secondary">
+                    Time *
+                  </span>
+                  <input
+                    name="time"
+                    type="time"
+                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2 date-input-blue"
+                    defaultValue="09:00"
+                    required
+                  />
+                </label>
+
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium text-content-secondary">
+                    Duration (minutes)
+                  </span>
+                  <select
+                    name="duration"
+                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                  >
+                    <option value="30">30 minutes</option>
+                    <option value="60" selected>1 hour</option>
+                    <option value="90">1.5 hours</option>
+                    <option value="120">2 hours</option>
+                  </select>
+                </label>
+
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium text-content-secondary">
+                    Client (Optional)
+                  </span>
+                  <select
+                    name="clientId"
+                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                  >
+                    <option value="">Select Client</option>
+                    {clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.clientName || client.companyName || client.email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium text-content-secondary">
+                    Priority
+                  </span>
+                  <select
+                    name="priority"
+                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </label>
+
+                <label className="space-y-1 text-sm md:col-span-2">
+                  <span className="font-medium text-content-secondary">
+                    Location
+                  </span>
+                  <input
+                    name="location"
+                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                    placeholder="Conference Room A / Zoom Link"
+                  />
+                </label>
+
+                <label className="space-y-1 text-sm md:col-span-2">
+                  <span className="font-medium text-content-secondary">
+                    Description
+                  </span>
+                  <textarea
+                    name="description"
+                    rows={3}
+                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                    placeholder="Meeting agenda and objectives..."
+                  />
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={closeEventModal}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit">Create Meeting</Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

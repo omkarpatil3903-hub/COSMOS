@@ -50,6 +50,7 @@ export default function ClientCalendar() {
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showFloatingMenu, setShowFloatingMenu] = useState(false);
   const [requestForm, setRequestForm] = useState({
     requestedDate: "",
     requestedTime: "09:00",
@@ -188,20 +189,33 @@ export default function ClientCalendar() {
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
       const dayEvents = getEventsForDate(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const currentDate = new Date(date);
+      currentDate.setHours(0, 0, 0, 0);
+      const isPast = currentDate < today;
       const isToday = date.toDateString() === new Date().toDateString();
       const isSelected = selectedDate?.toDateString() === date.toDateString();
 
       days.push(
         <div
           key={day}
-          className={`h-24 border border-gray-100 p-1 cursor-pointer hover:bg-gray-50 relative ${
+          className={`h-24 border border-gray-100 p-1 cursor-pointer relative ${
+            isPast
+              ? "bg-gray-50 hover:bg-gray-100 opacity-60"
+              : "hover:bg-gray-50"
+          } ${
             isToday ? "bg-blue-50 border-blue-200" : ""
           } ${isSelected ? "bg-indigo-50 border-indigo-300" : ""}`}
           onClick={() => setSelectedDate(date)}
         >
           <div
             className={`text-sm font-medium ${
-              isToday ? "text-blue-600" : "text-gray-900"
+              isPast && !isToday
+                ? "text-gray-400"
+                : isToday
+                ? "text-blue-600"
+                : "text-gray-900"
             }`}
           >
             {day}
@@ -221,7 +235,9 @@ export default function ClientCalendar() {
               return (
                 <div
                   key={event.id}
-                  className={`text-xs p-1 rounded ${typeBadge} truncate relative`}
+                  className={`text-xs p-1 rounded ${
+                    isPast ? "bg-gray-200 text-gray-500" : typeBadge
+                  } truncate relative`}
                   title={event.title}
                 >
                   {/* Priority strip on the left -- hidden for meetings */}
@@ -442,9 +458,6 @@ export default function ClientCalendar() {
                   <option value="completed">Completed</option>
                 </select>
 
-                <Button onClick={() => setShowRequestModal(true)}>
-                  <FaPlus /> Request Meeting
-                </Button>
               </div>
             </div>
           </Card>
@@ -612,11 +625,16 @@ export default function ClientCalendar() {
                       const statusClass =
                         statusStyles[event.status] ||
                         "bg-gray-100 text-gray-600";
-                      const statusLabel = event.status
-                        ? event.status.replace(/\b\w/g, (ch) =>
-                            ch.toUpperCase()
-                          )
-                        : "Pending";
+                      // Show "by admin" for admin-created events instead of status
+                      const isAdminCreated = event.createdBy === "admin";
+                      const displayLabel = isAdminCreated 
+                        ? "by admin" 
+                        : (event.status
+                            ? event.status.replace(/\b\w/g, (ch) => ch.toUpperCase())
+                            : "Pending");
+                      const displayClass = isAdminCreated
+                        ? "bg-blue-100 text-blue-700"
+                        : statusClass;
 
                       return (
                         <div
@@ -629,9 +647,9 @@ export default function ClientCalendar() {
                                 {event.title}
                               </h4>
                               <span
-                                className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${statusClass}`}
+                                className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${displayClass}`}
                               >
-                                {statusLabel}
+                                {displayLabel}
                               </span>
                             </div>
                           </div>
@@ -804,7 +822,11 @@ export default function ClientCalendar() {
                   <span className="font-medium text-content-secondary">
                     Duration (minutes) *
                   </span>
-                  <select
+                  <input
+                    type="number"
+                    min="15"
+                    max="480"
+                    step="15"
                     className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
                     value={requestForm.duration}
                     onChange={(e) =>
@@ -813,12 +835,9 @@ export default function ClientCalendar() {
                         duration: e.target.value,
                       })
                     }
-                  >
-                    <option value={30}>30 minutes</option>
-                    <option value={60}>1 hour</option>
-                    <option value={90}>1.5 hours</option>
-                    <option value={120}>2 hours</option>
-                  </select>
+                    placeholder="60"
+                    required
+                  />
                 </label>
 
                 <label className="space-y-1 text-sm">
@@ -872,6 +891,38 @@ export default function ClientCalendar() {
           </Card>
         </div>
       )}
+
+      {/* Floating Add Button with Dropdown */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <div className="relative">
+          {/* Dropdown Menu */}
+          {showFloatingMenu && (
+            <div className="absolute bottom-16 right-0 bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-[180px] animate-in slide-in-from-bottom-2">
+              <button
+                onClick={() => {
+                  setShowRequestModal(true);
+                  setShowFloatingMenu(false);
+                }}
+                className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-gray-700 transition-colors"
+              >
+                <FaCalendarAlt className="text-indigo-600" />
+                <span className="font-medium">Request Meeting</span>
+              </button>
+            </div>
+          )}
+          
+          {/* Main Floating Button */}
+          <button
+            onClick={() => setShowFloatingMenu(!showFloatingMenu)}
+            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${
+              showFloatingMenu ? 'rotate-45' : ''
+            }`}
+            title="Request Meeting"
+          >
+            <FaPlus className="text-xl group-hover:scale-110 transition-transform" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,11 +1,16 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import toast from "react-hot-toast";
 import PageHeader from "../components/PageHeader";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import KanbanBoard from "../components/KanbanBoard";
 import TaskModal from "../components/TaskModal";
+import {
+  shouldCreateNextInstanceAsync,
+  createNextRecurringInstance,
+} from "../utils/recurringTasks";
 import CompletionCommentModal from "../components/CompletionCommentModal";
+import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import {
   FaDownload,
   FaExclamationTriangle,
@@ -19,6 +24,8 @@ import {
   FaSpinner,
   FaCalendarAlt,
 } from "react-icons/fa";
+import { IoIosWarning } from "react-icons/io";
+import { MdReplayCircleFilled } from "react-icons/md";
 import { db } from "../firebase";
 import { updateProjectProgress } from "../utils/projectProgress";
 import { getPriorityBadge, getStatusBadge } from "../utils/colorMaps";
@@ -33,6 +40,25 @@ import {
   serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
+
+// Determine if a user/resource is active based on common fields
+const isUserActive = (u) => {
+  if (!u) return false;
+  const status = (u.status || u.Status || "").toString().toLowerCase();
+  const explicitlyInactive =
+    u.active === false ||
+    u.isActive === false ||
+    u.disabled === true ||
+    u.isDisabled === true ||
+    ["inactive", "disabled", "blocked", "deactivated", "archived"].includes(
+      status
+    );
+  if (explicitlyInactive) return false;
+  // If any explicit true flags are set, treat as active
+  if (u.active === true || u.isActive === true) return true;
+  // Default to active when no explicit inactive indicators are present
+  return true;
+};
 
 const statusIcons = {
   "To-Do": <FaClipboardList />,
@@ -58,6 +84,8 @@ function TasksManagement() {
   const [viewingTask, setViewingTask] = useState(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [completionTaskId, setCompletionTaskId] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState(null);
 
   const [filterProject, setFilterProject] = useState("");
   const [filterAssignee, setFilterAssignee] = useState("");
@@ -68,6 +96,43 @@ function TasksManagement() {
   const [view, setView] = useState("list");
 
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [onlyOverdue, setOnlyOverdue] = useState(false);
+  const tasksListRef = useRef(null);
+
+  const scrollToTasksList = useCallback(() => {
+    if (tasksListRef.current) {
+      tasksListRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
+
+  const applyStatusQuickFilter = useCallback(
+    (status) => {
+      setOnlyOverdue(false);
+      setSearch("");
+      setFilterProject("");
+      setFilterAssignee("");
+      setFilterAssigneeType("");
+      setFilterPriority("");
+      setFilterStatus(status);
+      setShowArchived(false);
+      setView("list");
+      setTimeout(scrollToTasksList, 0);
+    },
+    [scrollToTasksList]
+  );
+
+  const applyOverdueQuickFilter = useCallback(() => {
+    setOnlyOverdue(true);
+    setSearch("");
+    setFilterProject("");
+    setFilterAssignee("");
+    setFilterAssigneeType("");
+    setFilterPriority("");
+    setFilterStatus("");
+    setShowArchived(false);
+    setView("list");
+    setTimeout(scrollToTasksList, 0);
+  }, [scrollToTasksList]);
 
   const wipLimits = useMemo(() => ({}), []);
 
@@ -109,6 +174,14 @@ function TasksManagement() {
                 ? Number(data.weightage)
                 : null,
             archived: !!data.archived,
+            isRecurring: data.isRecurring || false,
+            recurringPattern: data.recurringPattern || "daily",
+            recurringInterval: data.recurringInterval || 1,
+            recurringEndDate: data.recurringEndDate || "",
+            recurringEndAfter: data.recurringEndAfter || "",
+            recurringEndType: data.recurringEndType || "never",
+            parentRecurringTaskId: data.parentRecurringTaskId || null,
+            recurringOccurrenceCount: data.recurringOccurrenceCount || 0,
           };
         });
         setTasks(list);
@@ -253,6 +326,12 @@ function TasksManagement() {
             taskData.status === "Done" ? 100 : taskData.progressPercent ?? 0,
           completionComment: taskData.completionComment || "",
           weightage: Number.isNaN(wt) ? null : wt,
+          isRecurring: taskData.isRecurring || false,
+          recurringPattern: taskData.recurringPattern || "daily",
+          recurringInterval: taskData.recurringInterval || 1,
+          recurringEndDate: taskData.recurringEndDate || "",
+          recurringEndAfter: taskData.recurringEndAfter || "",
+          recurringEndType: taskData.recurringEndType || "never",
         };
         const current = tasks.find((t) => t.id === taskData.id);
         // Enforce WIP on status change (only for active columns)
@@ -274,6 +353,36 @@ function TasksManagement() {
         else if (update.status !== "Done" && current?.status === "Done")
           update.completedAt = null;
         await updateDoc(ref, update);
+        // If task just transitioned to Done and is recurring, create next instance immediately
+        try {
+          const becameDone =
+            update.status === "Done" && current?.status !== "Done";
+          if (becameDone && (current?.isRecurring || update.isRecurring)) {
+            const taskForCheck = {
+              ...(current || {}),
+              ...update,
+              id: taskData.id,
+              // Ensure fields required by shouldCreateNextInstance
+              completedAt: new Date(),
+            };
+            if (await shouldCreateNextInstanceAsync(taskForCheck)) {
+              const newId = await createNextRecurringInstance(taskForCheck);
+              if (newId && (update.projectId || current?.projectId)) {
+                const pid = update.projectId || current?.projectId;
+                try {
+                  await updateProjectProgress(pid);
+                } catch (err) {
+                  console.warn(
+                    "Failed to refresh project progress for new recurring instance",
+                    err
+                  );
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Recurring continuation failed (update)", e);
+        }
         // Update project progress for previous and possibly new project
         const prevProjectId = current?.projectId;
         const nextProjectId = update.projectId || prevProjectId;
@@ -321,8 +430,16 @@ function TasksManagement() {
           archived: false,
           completionComment: taskData.completionComment || "",
           weightage: Number.isNaN(wt) ? null : wt,
+          isRecurring: taskData.isRecurring || false,
+          recurringPattern: taskData.recurringPattern || "daily",
+          recurringInterval: taskData.recurringInterval || 1,
+          recurringEndDate: taskData.recurringEndDate || "",
+          recurringEndAfter: taskData.recurringEndAfter || "",
+          recurringEndType: taskData.recurringEndType || "never",
+          parentRecurringTaskId: null, // For future instances
+          recurringOccurrenceCount: 0, // Track how many instances created
         };
-        await addDoc(collection(db, "tasks"), payload);
+        const newRef = await addDoc(collection(db, "tasks"), payload);
         toast.success("Task created successfully!");
         // Update project progress for created task's project
         if (payload.projectId) {
@@ -336,6 +453,31 @@ function TasksManagement() {
         const cli = clients.find((c) => c.id === payload.assigneeId);
         const name = res?.name || cli?.clientName;
         if (name) toast(`📌 New task assigned to ${name}`, { duration: 4000 });
+        // If created directly as Done and recurring, create next instance
+        try {
+          if (payload.isRecurring && payload.status === "Done") {
+            const taskForCheck = {
+              ...payload,
+              id: newRef.id,
+              completedAt: new Date(),
+            };
+            if (await shouldCreateNextInstanceAsync(taskForCheck)) {
+              const newId = await createNextRecurringInstance(taskForCheck);
+              if (newId && payload.projectId) {
+                try {
+                  await updateProjectProgress(payload.projectId);
+                } catch (err) {
+                  console.warn(
+                    "Failed to refresh project progress for new recurring instance",
+                    err
+                  );
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Recurring continuation failed (create)", e);
+        }
       }
       setShowModal(false);
     } catch (err) {
@@ -354,23 +496,28 @@ function TasksManagement() {
     setShowViewModal(true);
   };
 
-  const handleDelete = async (id) => {
-    const task = tasks.find((t) => t.id === id);
-    if (!task) return;
-    if (!window.confirm(`Delete task "${task.title}"?`)) return;
+  const handleDelete = (task) => {
+    setTaskToDelete(task);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!taskToDelete) return;
     try {
-      await deleteDoc(doc(db, "tasks", id));
+      await deleteDoc(doc(db, "tasks", taskToDelete.id));
       toast.success("Task deleted!");
-      if (task.projectId) {
+      if (taskToDelete.projectId) {
         try {
-          await updateProjectProgress(task.projectId);
+          await updateProjectProgress(taskToDelete.projectId);
         } catch {
           /* ignore */
         }
       }
+      setShowDeleteModal(false);
+      setTaskToDelete(null);
     } catch (err) {
-      console.error("Delete failed", err);
-      toast.error("Failed to delete");
+      console.error("Failed to delete task", err);
+      toast.error("Failed to delete task");
     }
   };
 
@@ -552,6 +699,27 @@ function TasksManagement() {
         progressPercent: 100,
         completionComment: comment,
       });
+      // Create next recurring instance if applicable
+      try {
+        if (t?.isRecurring) {
+          const checkTask = { ...t, status: "Done", completedAt: new Date() };
+          if (await shouldCreateNextInstanceAsync(checkTask)) {
+            const newId = await createNextRecurringInstance(checkTask);
+            if (newId && t.projectId) {
+              try {
+                await updateProjectProgress(t.projectId);
+              } catch (err) {
+                console.warn(
+                  "Failed to refresh project progress for new recurring instance",
+                  err
+                );
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Recurring continuation failed (admin completion)", e);
+      }
       if (t?.projectId) {
         try {
           await updateProjectProgress(t.projectId);
@@ -570,6 +738,7 @@ function TasksManagement() {
   };
 
   const filtered = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
     return tasks.filter((t) => {
       if (!showArchived && t.archived) return false;
       if (filterProject && t.projectId !== filterProject) return false;
@@ -584,6 +753,9 @@ function TasksManagement() {
       }
       if (filterPriority && t.priority !== filterPriority) return false;
       if (filterStatus && t.status !== filterStatus) return false;
+      if (onlyOverdue) {
+        if (!(t.dueDate && t.status !== "Done" && t.dueDate < today)) return false;
+      }
       if (search) {
         const s = search.toLowerCase();
         const project = projects.find((p) => p.id === t.projectId);
@@ -605,6 +777,7 @@ function TasksManagement() {
     filterAssigneeType,
     filterPriority,
     filterStatus,
+    onlyOverdue,
     search,
     projects,
     users,
@@ -664,6 +837,9 @@ function TasksManagement() {
       (t) => t.dueDate && t.dueDate < today && t.status !== "Done"
     );
   }, [filtered]);
+
+  // Active users list for assignment/reassignment UIs
+  const activeUsers = useMemo(() => users.filter(isUserActive), [users]);
 
   const handleExportExcel = async () => {
     try {
@@ -738,7 +914,7 @@ function TasksManagement() {
 
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
+          <Card onClick={() => applyStatusQuickFilter("To-Do")} className="cursor-pointer hover:bg-surface-subtle">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-content-secondary">To-Do</div>
@@ -749,7 +925,7 @@ function TasksManagement() {
               <FaListAlt className="h-8 w-8 text-gray-400" />
             </div>
           </Card>
-          <Card>
+          <Card onClick={() => applyStatusQuickFilter("In Progress")} className="cursor-pointer hover:bg-surface-subtle">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-content-secondary">
@@ -762,7 +938,7 @@ function TasksManagement() {
               <FaClock className="h-8 w-8 text-blue-500" />
             </div>
           </Card>
-          <Card>
+          <Card onClick={() => applyStatusQuickFilter("Done")} className="cursor-pointer hover:bg-surface-subtle">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-content-secondary">Completed</div>
@@ -771,7 +947,7 @@ function TasksManagement() {
               <FaCheckCircle className="h-8 w-8 text-green-500" />
             </div>
           </Card>
-          <Card>
+          <Card onClick={applyOverdueQuickFilter} className="cursor-pointer hover:bg-surface-subtle">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-content-secondary">Overdue</div>
@@ -980,6 +1156,7 @@ function TasksManagement() {
           </div>
         </Card>
 
+        <div ref={tasksListRef}></div>
         <Card>
           {view === "board" ? (
             <div className="space-y-3">
@@ -995,7 +1172,7 @@ function TasksManagement() {
                   getProject={projectById}
                   getAssignee={assigneeById}
                   showReassignOnCard
-                  users={users}
+                  users={activeUsers}
                   onReassign={(taskId, value) => reassignTask(taskId, value)}
                 />
               )}
@@ -1143,12 +1320,25 @@ function TasksManagement() {
                                     t.dueDate <
                                       new Date().toISOString().slice(0, 10) && (
                                       <span className="inline-flex items-center gap-1.5 rounded-md bg-red-100 px-2 py-1 text-[10px] font-bold text-red-700">
-                                        ⚠️ Overdue
+                                        <IoIosWarning
+                                          className="text-current"
+                                          size={14}
+                                        />
+                                        Overdue
                                       </span>
                                     )}
                                   {t.archived && (
                                     <span className="inline-flex items-center gap-1.5 rounded-md bg-gray-200 px-2 py-1 text-[10px] font-semibold text-gray-700">
                                       📦 Archived
+                                    </span>
+                                  )}
+                                  {t.isRecurring && (
+                                    <span className="inline-flex items-center gap-1.5 rounded-md bg-purple-100 px-2 py-1 text-[10px] font-semibold text-purple-700">
+                                      <MdReplayCircleFilled
+                                        className="text-current"
+                                        size={15}
+                                      />{" "}
+                                      Recurring
                                     </span>
                                   )}
                                 </div>
@@ -1204,9 +1394,16 @@ function TasksManagement() {
                               </button>
                               {(t.assigneeType || "user") !== "client" && (
                                 <select
-                                  value={`${t.assigneeType || "user"}:${
-                                    t.assigneeId || ""
-                                  }`}
+                                  value={(() => {
+                                    const isActive = activeUsers.some(
+                                      (u) => u.id === t.assigneeId
+                                    );
+                                    return isActive
+                                      ? `${t.assigneeType || "user"}:${
+                                          t.assigneeId || ""
+                                        }`
+                                      : ":";
+                                  })()}
                                   onChange={(e) =>
                                     reassignTask(t.id, e.target.value)
                                   }
@@ -1215,7 +1412,7 @@ function TasksManagement() {
                                 >
                                   <option value=":">Reassign...</option>
                                   <optgroup label="Resources">
-                                    {users.map((u) => (
+                                    {activeUsers.map((u) => (
                                       <option key={u.id} value={`user:${u.id}`}>
                                         {u.name}
                                       </option>
@@ -1230,7 +1427,7 @@ function TasksManagement() {
                                 Edit
                               </button>
                               <button
-                                onClick={() => handleDelete(t.id)}
+                                onClick={() => handleDelete(t)}
                                 className="rounded-md bg-red-100 px-3 py-1 text-xs font-medium text-red-700 transition hover:bg-red-200"
                               >
                                 Delete
@@ -1254,7 +1451,7 @@ function TasksManagement() {
           onSave={handleSave}
           taskToEdit={editing}
           projects={projects}
-          assignees={users}
+          assignees={activeUsers}
           clients={clients}
         />
       )}
@@ -1549,6 +1746,27 @@ function TasksManagement() {
         minLength={5}
         maxLength={300}
       />
+
+      {showDeleteModal && taskToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => {
+            setShowDeleteModal(false);
+            setTaskToDelete(null);
+          }}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <DeleteConfirmationModal
+              onClose={() => {
+                setShowDeleteModal(false);
+                setTaskToDelete(null);
+              }}
+              onConfirm={confirmDelete}
+              itemType={`task "${taskToDelete.title}"`}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

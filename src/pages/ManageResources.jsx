@@ -112,8 +112,6 @@ function ManageResources() {
         resourceType: u.resourceType || "In-house",
         joinDate: u.joinDate || "",
         status: u.status || "Active",
-        department: u.department || "",
-        skills: u.skills || "",
         employmentType: u.employmentType || "Full-time",
         resourceRole: u.resourceRole || "",
         imageUrl: u.imageUrl || "",
@@ -466,7 +464,7 @@ function ManageResources() {
       </div>
     );
   }
-
+  console.log("Resource data : ", resources);
   return (
     <>
       <div>

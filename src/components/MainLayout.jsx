@@ -104,11 +104,17 @@ function MainLayout() {
       icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
     },
 
+    // {
+    //   to: "/mom",
+    //   text: "Minutes of Meeting",
+    //   icon: <FaListAlt className="h-4 w-4" aria-hidden="true" />,
+    // },
     {
-      to: "/mom",
-      text: "Minutes of Meeting",
+      to: "/mom-pro",
+      text: "Minutes of Meeting ",
       icon: <FaListAlt className="h-4 w-4" aria-hidden="true" />,
     },
+
     {
       to: "/calendar",
       text: "Calendar",

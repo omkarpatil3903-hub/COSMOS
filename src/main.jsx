@@ -29,6 +29,8 @@ import ManageResources from "./pages/ManageResources.jsx";
 import ManageClients from "./pages/ManageClients.jsx";
 import ManageProjects from "./pages/ManageProjects.jsx";
 import Mom from "./pages/Mom.jsx";
+import MomNew from "./pages/MomNew.jsx";
+import MomGeneratorPro from "./pages/MomGeneratorPro.jsx";
 import TaskManagment from "./pages/TaskManagment.jsx";
 import Calendar from "./pages/Calendar.jsx";
 
@@ -83,7 +85,8 @@ const router = createBrowserRouter([
       { path: "/manage-resources", element: <ManageResources /> },
       { path: "/manage-clients", element: <ManageClients /> },
       { path: "/manage-projects", element: <ManageProjects /> },
-      { path: "/mom", element: <Mom /> },
+      { path: "/mom", element: <MomNew /> },
+      { path: "/mom-pro", element: <MomGeneratorPro /> },
       { path: "/task-management", element: <TaskManagment /> },
       { path: "/reports", element: <ReportsPage /> },
       { path: "/calendar", element: <Calendar /> },

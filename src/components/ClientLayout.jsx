@@ -137,16 +137,29 @@ export default function ClientLayout() {
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft">
+            {userData?.imageUrl ? (
+              <img
+                src={userData.imageUrl}
+                alt={userData?.clientName || userData?.companyName || "Client"}
+                className="h-10 w-10 rounded-xl object-cover shadow-soft"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <span 
+              className={`flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft ${userData?.imageUrl ? 'hidden' : ''}`}
+            >
               <FaUserCircle className="h-5 w-5" aria-hidden="true" />
             </span>
             {!isCollapsed && (
               <div>
                 <p className="text-sm font-medium text-content-tertiary">
-                  {userData?.name || "Client User"}
+                  {userData?.clientName || userData?.companyName || "Client User"}
                 </p>
-                <h2 className="text-lg font-semibold text-content-primary">
-                  Client Portal
+<h2 className="text-lg font-semibold text-content-primary">
+                                   Client Portal
                 </h2>
               </div>
             )}
