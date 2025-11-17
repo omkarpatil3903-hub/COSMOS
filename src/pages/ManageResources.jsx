@@ -52,7 +52,6 @@ const tableHeaders = [
   { key: "fullName", label: "Full Name", sortable: true },
   { key: "email", label: "Email", sortable: true },
   { key: "mobile", label: "Mobile", sortable: true },
-  { key: "employmentType", label: "Employment Type", sortable: true },
   { key: "resourceType", label: "Resource Type", sortable: true },
   { key: "resourceRole", label: "Resource Role", sortable: true },
   { key: "status", label: "Status", sortable: true },
@@ -115,6 +114,7 @@ function ManageResources() {
         employmentType: u.employmentType || "Full-time",
         resourceRole: u.resourceRole || "",
         imageUrl: u.imageUrl || "",
+        devPassword: u.devPassword || "",
       }));
       setResources(mapped);
       setLoading(false);
@@ -467,12 +467,12 @@ function ManageResources() {
   console.log("Resource data : ", resources);
   return (
     <>
-      <div>
+      <div className="w-full max-w-full overflow-hidden">
         <PageHeader title="Manage Resources">
           Search and manage all company resources and team members.
         </PageHeader>
         {/* Remove blur effect from main content */}
-        <div className="space-y-6">
+        <div className="space-y-6 w-full">
           <Card
             title="Search & Actions"
             actions={
@@ -667,8 +667,8 @@ function ManageResources() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
-              <table className="min-w-full divide-y divide-gray-200 bg-white">
+            <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+              <table className="w-full divide-y divide-gray-200 bg-white">
                 <caption className="sr-only">
                   Filtered resource records with search and pagination controls
                 </caption>
@@ -689,16 +689,16 @@ function ManageResources() {
                           key={header.key}
                           scope="col"
                           aria-sort={ariaSort}
-                          className="group px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200"
+                          className="group px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 whitespace-nowrap align-middle"
                         >
                           {header.sortable ? (
                             <button
                               type="button"
                               onClick={() => handleSort(header.key)}
-                              className="flex items-center gap-2 text-left hover:text-indigo-600 transition-colors duration-200 transform hover:scale-105"
+                              className="flex items-center gap-2 text-left hover:text-indigo-600 transition-colors duration-200"
                             >
                               <span>{header.label}</span>
-                              <span className="transition-transform duration-200">
+                              <span className="transition-colors duration-200">
                                 {sortIndicator(header.key)}
                               </span>
                             </button>
@@ -745,24 +745,6 @@ function ManageResources() {
                           <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mr-2"></div>
                           {resource.mobile}
                         </div>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-3 text-sm">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${
-                            resource.employmentType === "Full-time"
-                              ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300"
-                              : "bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 border border-purple-300"
-                          }`}
-                        >
-                          <div
-                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                              resource.employmentType === "Full-time"
-                                ? "bg-green-500"
-                                : "bg-purple-500"
-                            }`}
-                          ></div>
-                          {resource.employmentType || "Full-time"}
-                        </span>
                       </td>
                       <td className="whitespace-nowrap px-3 py-3 text-sm">
                         <span

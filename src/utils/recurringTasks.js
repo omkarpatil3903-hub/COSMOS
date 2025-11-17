@@ -191,30 +191,31 @@ export async function createNextRecurringInstance(task) {
     }
 
     // Create new task instance
+    const { id, ...restOfTask } = task; // Destructure id to exclude it
     const newTaskData = {
-      title: task.title,
-      description: task.description,
-      assigneeId: task.assigneeId,
-      assigneeType: task.assigneeType,
-      projectId: task.projectId,
+      title: restOfTask.title,
+      description: restOfTask.description,
+      assigneeId: restOfTask.assigneeId,
+      assigneeType: restOfTask.assigneeType,
+      projectId: restOfTask.projectId,
       assignedDate: new Date().toISOString().slice(0, 10),
       dueDate: nextDueDate,
-      priority: task.priority,
+      priority: restOfTask.priority,
       status: "To-Do",
       progressPercent: 0,
       createdAt: new Date(),
       completedAt: null,
       archived: false,
       completionComment: "",
-      weightage: task.weightage,
-      isRecurring: task.isRecurring,
-      recurringPattern: task.recurringPattern,
-      recurringInterval: task.recurringInterval,
-      recurringEndDate: task.recurringEndDate,
-      recurringEndAfter: task.recurringEndAfter,
-      recurringEndType: task.recurringEndType,
-      parentRecurringTaskId: task.parentRecurringTaskId || task.id,
-      recurringOccurrenceCount: (task.recurringOccurrenceCount || 0) + 1,
+      weightage: restOfTask.weightage,
+      isRecurring: restOfTask.isRecurring,
+      recurringPattern: restOfTask.recurringPattern,
+      recurringInterval: restOfTask.recurringInterval,
+      recurringEndDate: restOfTask.recurringEndDate,
+      recurringEndAfter: restOfTask.recurringEndAfter,
+      recurringEndType: restOfTask.recurringEndType,
+      parentRecurringTaskId: restOfTask.parentRecurringTaskId || id, // Use the destructured id here
+      recurringOccurrenceCount: (restOfTask.recurringOccurrenceCount || 0) + 1,
     };
 
     const docRef = await addDoc(collection(db, "tasks"), newTaskData);

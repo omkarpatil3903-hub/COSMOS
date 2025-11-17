@@ -17,7 +17,7 @@ function Card({ title, icon, children, actions, className = "", ...props }) {
     >
       {/* Card Header */}
       {(title || icon || actions) && (
-        <div className="flex flex-col gap-3 border-b border-subtle px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-b border-subtle px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           {(title || icon) && (
             <div className="flex items-center gap-2">
               {iconEl}
@@ -33,7 +33,7 @@ function Card({ title, icon, children, actions, className = "", ...props }) {
       )}
 
       {/* Card Body */}
-      <div className="px-6 py-5">{children}</div>
+      <div className="px-4 py-4">{children}</div>
     </div>
   );
 }

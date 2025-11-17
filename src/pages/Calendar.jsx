@@ -706,9 +706,12 @@ function Calendar() {
 
   const handleSaveTask = async (taskData) => {
     try {
+      // Ensure id is not present for new tasks to let Firestore generate one
+      const { id, ...dataWithoutId } = taskData;
+
       // Add admin-specific fields to the task data
       const adminTaskData = {
-        ...taskData,
+        ...dataWithoutId,
         createdAt: serverTimestamp(),
         createdBy: "admin",
         approvedBy: "admin", // Admin-created tasks are automatically approved
@@ -1228,7 +1231,7 @@ function Calendar() {
                 className="absolute inset-0 bg-black/50"
                 onClick={closeEventModal}
               />
-              <Card className="z-10 w-full max-w-3xl max-h-[90vh] overflow-auto">
+              <Card className="z-10 w-full max-w-xl md:max-w-2xl max-h-[90vh] overflow-auto">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-xl font-semibold">
                     {editingEvent ? "Edit Event" : "Create Event"}
@@ -1432,7 +1435,7 @@ function Calendar() {
                   setActiveRequestDate(null);
                 }}
               />
-              <Card className="z-10 w-full max-w-4xl max-h-[90vh] overflow-auto">
+              <Card className="z-10 max-w-4xl max-h-[90vh] overflow-auto">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-xl font-semibold">
                     Meeting Requests -{" "}

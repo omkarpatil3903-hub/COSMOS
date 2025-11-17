@@ -1,187 +1,188 @@
 @import "tailwindcss";
 
+
 @layer base {
-    :root {
-        color-scheme: light;
-        --font-sans: "Inter", "Segoe UI", system-ui, -apple-system,
-            BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-        --font-heading: "Inter", "Segoe UI", system-ui, -apple-system,
-            BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-        --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas,
-            "Liberation Mono", "Courier New", monospace;
+  :root {
+    color-scheme: light;
+    --font-sans: "Inter", "Segoe UI", system-ui, -apple-system,
+      BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    --font-heading: "Inter", "Segoe UI", system-ui, -apple-system,
+      BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace;
 
-        --color-canvas: #f1f5f9;
-        --color-surface: #ffffff;
-        --color-surface-subtle: #f8fafc;
-        --color-surface-strong: #edf2f7;
-        --color-overlay: rgba(15, 23, 42, 0.6);
+    --color-canvas: #f1f5f9;
+    --color-surface: #ffffff;
+    --color-surface-subtle: #f8fafc;
+    --color-surface-strong: #edf2f7;
+    --color-overlay: rgba(15, 23, 42, 0.6);
 
-        --color-brand-50: #eef2ff;
-        --color-brand-100: #e0e7ff;
-        --color-brand-200: #c7d2fe;
-        --color-brand-300: #a5b4fc;
-        --color-brand-400: #818cf8;
-        --color-brand-500: #6366f1;
-        --color-brand-600: #4f46e5;
-        --color-brand-700: #4338ca;
-        --color-brand-800: #3730a3;
-        --color-brand-900: #312e81;
+    --color-brand-50: #eef2ff;
+    --color-brand-100: #e0e7ff;
+    --color-brand-200: #c7d2fe;
+    --color-brand-300: #a5b4fc;
+    --color-brand-400: #818cf8;
+    --color-brand-500: #6366f1;
+    --color-brand-600: #4f46e5;
+    --color-brand-700: #4338ca;
+    --color-brand-800: #3730a3;
+    --color-brand-900: #312e81;
 
-        --color-content-primary: #111827;
-        --color-content-secondary: #475467;
-        --color-content-tertiary: #6b7280;
-        --color-border-subtle: #e2e8f0;
-        --color-border-strong: #cbd5f5;
-        --color-muted: #f1f5f9;
+    --color-content-primary: #111827;
+    --color-content-secondary: #475467;
+    --color-content-tertiary: #6b7280;
+    --color-border-subtle: #e2e8f0;
+    --color-border-strong: #cbd5f5;
+    --color-muted: #f1f5f9;
 
-        --color-success-100: #dcfce7;
-        --color-success-500: #22c55e;
-        --color-success-600: #16a34a;
-        --color-warning-100: #fef3c7;
-        --color-warning-500: #f59e0b;
-        --color-danger-100: #fee2e2;
-        --color-danger-500: #ef4444;
-        --color-danger-600: #dc2626;
+    --color-success-100: #dcfce7;
+    --color-success-500: #22c55e;
+    --color-success-600: #16a34a;
+    --color-warning-100: #fef3c7;
+    --color-warning-500: #f59e0b;
+    --color-danger-100: #fee2e2;
+    --color-danger-500: #ef4444;
+    --color-danger-600: #dc2626;
 
-        --radius-xs: 0.25rem;
-        --radius-sm: 0.5rem;
-        --radius-md: 0.75rem;
-        --radius-lg: 1rem;
-        --radius-xl: 1.5rem;
+    --radius-xs: 0.25rem;
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
 
-        --shadow-soft: 0 20px 45px -24px rgba(15, 23, 42, 0.45);
-        --shadow-card: 0 18px 36px -18px rgba(79, 70, 229, 0.18);
+    --shadow-soft: 0 20px 45px -24px rgba(15, 23, 42, 0.45);
+    --shadow-card: 0 18px 36px -18px rgba(79, 70, 229, 0.18);
 
-        --spacing-4-5: 1.125rem;
-        --spacing-18: 4.5rem;
-    }
+    --spacing-4-5: 1.125rem;
+    --spacing-18: 4.5rem;
+  }
 
-    *,
-    ::before,
-    ::after {
-        box-sizing: border-box;
-    }
+  *,
+  ::before,
+  ::after {
+    box-sizing: border-box;
+  }
 
-    body {
-        font-family: var(--font-sans);
-        background-color: var(--color-canvas);
-        color: var(--color-content-primary);
-        margin: 0;
-        min-height: 100vh;
-        -webkit-font-smoothing: antialiased;
-        text-rendering: optimizeLegibility;
-    }
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-canvas);
+    color: var(--color-content-primary);
+    margin: 0;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
 
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6 {
-        font-family: var(--font-heading);
-        font-weight: 600;
-        color: var(--color-content-primary);
-        letter-spacing: -0.015em;
-    }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    color: var(--color-content-primary);
+    letter-spacing: -0.015em;
+  }
 
-    p,
-    span,
-    label,
-    input,
-    button {
-        font-family: inherit;
-    }
+  p,
+  span,
+  label,
+  input,
+  button {
+    font-family: inherit;
+  }
 
-    a {
-        color: var(--color-brand-600);
-        text-decoration: none;
-        transition: color 150ms ease, box-shadow 150ms ease;
-    }
+  a {
+    color: var(--color-brand-600);
+    text-decoration: none;
+    transition: color 150ms ease, box-shadow 150ms ease;
+  }
 
-    a:hover,
-    a:focus-visible {
-        color: var(--color-brand-700);
-    }
+  a:hover,
+  a:focus-visible {
+    color: var(--color-brand-700);
+  }
 
-    button:focus-visible,
-    input:focus-visible,
-    select:focus-visible,
-    textarea:focus-visible {
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
-    }
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+  }
 
-    ::selection {
-        background-color: rgba(79, 70, 229, 0.18);
-        color: var(--color-content-primary);
-    }
+  ::selection {
+    background-color: rgba(79, 70, 229, 0.18);
+    color: var(--color-content-primary);
+  }
 }
 
 @layer utilities {
-    .sr-only-focusable {
-        position: absolute;
-        left: -10000px;
-        top: auto;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-    }
+  .sr-only-focusable {
+    position: absolute;
+    left: -10000px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
 
-    .sr-only-focusable:focus {
-        left: 1rem;
-        top: 1rem;
-        width: auto;
-        height: auto;
-        padding: 0.75rem 1rem;
-        border-radius: var(--radius-sm);
-        background-color: var(--color-surface);
-        box-shadow: var(--shadow-soft);
-        z-index: 50;
-    }
+  .sr-only-focusable:focus {
+    left: 1rem;
+    top: 1rem;
+    width: auto;
+    height: auto;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-soft);
+    z-index: 50;
+  }
 
-    .bg-canvas {
-        background-color: var(--color-canvas);
-    }
+  .bg-canvas {
+    background-color: var(--color-canvas);
+  }
 
-    .bg-surface {
-        background-color: var(--color-surface);
-    }
+  .bg-surface {
+    background-color: var(--color-surface);
+  }
 
-    .bg-surface-subtle {
-        background-color: var(--color-surface-subtle);
-    }
+  .bg-surface-subtle {
+    background-color: var(--color-surface-subtle);
+  }
 
-    .bg-surface-strong {
-        background-color: var(--color-surface-strong);
-    }
+  .bg-surface-strong {
+    background-color: var(--color-surface-strong);
+  }
 
-    .text-content-primary {
-        color: var(--color-content-primary);
-    }
+  .text-content-primary {
+    color: var(--color-content-primary);
+  }
 
-    .text-content-secondary {
-        color: var(--color-content-secondary);
-    }
+  .text-content-secondary {
+    color: var(--color-content-secondary);
+  }
 
-    .text-content-tertiary {
-        color: var(--color-content-tertiary);
-    }
+  .text-content-tertiary {
+    color: var(--color-content-tertiary);
+  }
 
-    .border-subtle {
-        border-color: var(--color-border-subtle);
-    }
+  .border-subtle {
+    border-color: var(--color-border-subtle);
+  }
 
-    .border-strong {
-        border-color: var(--color-border-strong);
-    }
+  .border-strong {
+    border-color: var(--color-border-strong);
+  }
 
-    .shadow-soft {
-        box-shadow: var(--shadow-soft);
-    }
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
 
-    .shadow-card {
-        box-shadow: var(--shadow-card);
-    }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
 }
 
 /* Custom scrollbar styles for Kanban columns */
@@ -231,9 +232,11 @@
 }
 
 /* Custom styles for date and time inputs */
-input[type="date"], input[type="time"] {
+input[type="date"],
+input[type="time"] {
   color-scheme: light;
-  accent-color: #4f46e5 !important; /* Brand blue color */
+  accent-color: #4f46e5 !important;
+  /* Brand blue color */
 }
 
 /* Style the calendar icon and time picker */
@@ -263,7 +266,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 /* Style the date input text */
 input[type="date"]::-webkit-datetime-edit,
 input[type="time"]::-webkit-datetime-edit {
-  color: #111827; /* Primary text color */
+  color: #111827;
+  /* Primary text color */
 }
 
 /* Style individual date/time segments */
@@ -274,7 +278,8 @@ input[type="time"]::-webkit-datetime-edit-fields-wrapper {
 
 input[type="date"]::-webkit-datetime-edit-text,
 input[type="time"]::-webkit-datetime-edit-text {
-  color: #6b7280; /* Tertiary text color for separators */
+  color: #6b7280;
+  /* Tertiary text color for separators */
 }
 
 input[type="date"]::-webkit-datetime-edit-month-field,

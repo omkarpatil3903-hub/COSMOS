@@ -236,11 +236,11 @@ function MainLayout() {
       )}
 
       <div
-        className={`flex min-h-screen flex-1 flex-col transition-all duration-300 ${contentPadding}`}
+        className={`flex min-h-screen flex-1 flex-col transition-all duration-300 w-full ${contentPadding}`}
       >
         <main
           id="main-content"
-          className="flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8"
+          className="flex-1 px-4 py-6 sm:px-6 lg:px-6 lg:py-8 w-full max-w-full overflow-x-hidden"
         >
           <div className="mb-6 flex items-center justify-between lg:hidden">
             <button

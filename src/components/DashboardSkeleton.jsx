@@ -83,10 +83,34 @@ const SkeletonProgressBars = () => (
   </div>
 );
 
+const SkeletonProjectsProgress = () => (
+  <div className="animate-pulse space-y-4">
+    {[...Array(5)].map((_, i) => (
+      <div key={i} className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="h-4 w-40 rounded bg-surface-strong" />
+          <div className="h-3 w-24 rounded bg-surface-strong" />
+        </div>
+        <div className="h-2 w-full rounded-full bg-surface-strong" />
+      </div>
+    ))}
+  </div>
+);
+
 function DashboardSkeleton() {
   return (
     <div>
-      <PageHeader title="Welcome, MASH Tech Solutions!">
+      <PageHeader
+        title="Welcome, MASH Tech Solutions!"
+        actions={
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-28 rounded bg-surface-strong" />
+              <div className="h-9 w-44 rounded-md bg-surface-strong" />
+            </div>
+          </div>
+        }
+      >
         Monitor project performance, client engagement, and manage resources
         from a single control center.
       </PageHeader>
@@ -127,7 +151,7 @@ function DashboardSkeleton() {
           <Card className="p-6">
             <div className="space-y-4">
               <div className="h-6 w-48 rounded bg-surface-strong animate-pulse" />
-              <SkeletonPieChart />
+              <SkeletonProjectsProgress />
             </div>
           </Card>
 
