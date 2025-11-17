@@ -1,32 +1,33 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  FaCalendarAlt,
-  FaChartBar,
-  FaChartLine,
-  FaChartPie,
-  FaDownload,
   FaUsers,
   FaTasks,
   FaCheckCircle,
   FaClock,
   FaExclamationTriangle,
   FaProjectDiagram,
-  FaFlag,
   FaSort,
   FaSortUp,
   FaSortDown,
-  FaSearchPlus,
-  FaSearchMinus,
-  FaUndo,
+  FaFlag,
+  FaDownload,
+  FaChartPie,
+  FaChartLine,
+  FaClipboardList,
+  FaSpinner,
 } from "react-icons/fa";
+import { FaArrowsRotate } from "react-icons/fa6";
+
 import toast from "react-hot-toast";
+
 import PageHeader from "../components/PageHeader";
 import Card from "../components/Card";
 import Button from "../components/Button";
 import SkeletonRow from "../components/SkeletonRow";
-import GanttChart from "../components/GanttChart";
+
 import { db } from "../firebase";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+
 import {
   getPriorityBadge,
   getStatusBadge,
@@ -34,14 +35,6 @@ import {
   TYPE_HEX,
 } from "../utils/colorMaps";
 
-// UI Color Theme - using colorMaps for consistency
-const UI_COLORS = {
-  primary: TYPE_HEX.meeting, // blue-500 (#3b82f6)
-  secondary: TYPE_HEX.milestone, // violet-500 (#8b5cf6)
-  success: TYPE_HEX.task, // emerald-500 (#10b981)
-  warning: TYPE_HEX.call, // amber-500 (#f59e0b)
-  danger: PRIORITY_HEX.high, // red-500 (#ef4444)
-};
 import {
   ResponsiveContainer,
   PieChart,
@@ -57,7 +50,38 @@ import {
   Label,
 } from "recharts";
 
-import { tsToDate } from "../utils/dateUtils";
+import TaskModal from "../components/TaskModal";
+import { updateTask } from "../services/taskService";
+
+// ---------------------------------------------------
+// UI THEME CONSTANTS
+// ---------------------------------------------------
+const UI_COLORS = {
+  primary: TYPE_HEX.meeting, // blue
+  secondary: TYPE_HEX.milestone, // violet
+  success: TYPE_HEX.task, // green
+  warning: TYPE_HEX.call, // amber
+  danger: PRIORITY_HEX.high, // red
+};
+
+const statusIcons = {
+  "To-Do": <FaClipboardList />,
+  "In Progress": <FaSpinner className="animate-spin" />,
+  Done: <FaCheckCircle />,
+};
+
+// ---------------------------------------------------
+// UTILITY FUNCTIONS
+// ---------------------------------------------------
+const tsToDate = (ts) => {
+  if (!ts) return null;
+  try {
+    const d = ts?.toDate ? ts.toDate() : new Date(ts);
+    return isNaN(d?.getTime?.()) ? null : d;
+  } catch {
+    return null;
+  }
+};
 
 const normalizeStatus = (s) => {
   const lc = (s || "").toLowerCase();
@@ -67,85 +91,33 @@ const normalizeStatus = (s) => {
   return "To-Do";
 };
 
-// Time period configurations
-const timePeriods = [
-  { id: "today", label: "Today", days: 0 },
-  { id: "yesterday", label: "Yesterday", days: 1 },
-  { id: "week", label: "This Week", days: 7 },
-  { id: "last-week", label: "Last Week", days: 14, offset: 7 },
-  { id: "next-30", label: "Next 30 Days", days: 30, future: true },
-  { id: "month", label: "This Month", days: 30 },
-  { id: "last-month", label: "Last Month", days: 60, offset: 30 },
-  { id: "quarter", label: "This Quarter (3 months)", days: 90 },
-  { id: "last-quarter", label: "Last Quarter", days: 180, offset: 90 },
-  { id: "year", label: "This Year", days: 365 },
-  { id: "all", label: "All Time", days: 9999 },
-];
-
 export default function ReportsPage() {
-  const [selectedPeriod, setSelectedPeriod] = useState("next-30");
+  // ---------------------------------------------------
+  // FILTER STATES
+  // ---------------------------------------------------
   const [selectedProject, setSelectedProject] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState("");
-  const [employeeSearch, setEmployeeSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // ---------------------------------------------------
+  // DATA STATES
+  // ---------------------------------------------------
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
   const [tasks, setTasks] = useState([]);
+
+  // ---------------------------------------------------
+  // UI STATES
+  // ---------------------------------------------------
   const [loading, setLoading] = useState(true);
-  const [showGantt, setShowGantt] = useState(true);
-  const [ganttScale, setGanttScale] = useState("day");
-  const [ganttZoom, setGanttZoom] = useState(1);
-  const [ganttShowLabels, setGanttShowLabels] = useState(false);
-  const [ganttStatuses, setGanttStatuses] = useState({
-    "To-Do": true,
-    "In Progress": true,
-    Done: true,
-  });
-  const [ganttGroupProjects, setGanttGroupProjects] = useState(true);
-  const [ganttLeftWidth, setGanttLeftWidth] = useState(280);
-
-  // Sorting state for Recent Tasks table
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
-
-  // Pagination for Recent Tasks
   const [recentTasksLimit, setRecentTasksLimit] = useState(10);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
 
-  // Load persisted Gantt UI state
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("reports:gantt:ui");
-      if (raw) {
-        const prefs = JSON.parse(raw) || {};
-        if (prefs.scale) setGanttScale(prefs.scale);
-        if (Number.isFinite(prefs.leftWidth)) setGanttLeftWidth(prefs.leftWidth);
-      }
-    } catch (e) {
-      void e;
-    }
-  }, []);
-
-  // Persist Gantt UI state
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("reports:gantt:ui");
-      const prev = raw ? JSON.parse(raw) : {};
-      const next = { ...prev, scale: ganttScale, leftWidth: ganttLeftWidth };
-      localStorage.setItem("reports:gantt:ui", JSON.stringify(next));
-    } catch (e) {
-      void e;
-    }
-  }, [ganttScale, ganttLeftWidth]);
-
-  // Debounce employee search (500ms delay)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(employeeSearch);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [employeeSearch]);
-
-  // Calculate active filter count
+  // ---------------------------------------------------
+  // ACTIVE FILTER COUNT
+  // ---------------------------------------------------
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (selectedProject) count++;
@@ -153,10 +125,12 @@ export default function ReportsPage() {
     return count;
   }, [selectedProject, selectedEmployee]);
 
-  // Live data subscriptions
+  // ---------------------------------------------------
+  // FIREBASE LIVE SUBSCRIPTIONS
+  // ---------------------------------------------------
   useEffect(() => {
-    setLoading(true); // Set loading at the start
-    
+    setLoading(true);
+
     const unsubProjects = onSnapshot(
       query(collection(db, "projects"), orderBy("projectName", "asc")),
       (snap) => {
@@ -172,41 +146,41 @@ export default function ReportsPage() {
           })
         );
       },
-      (error) => {
-        console.error("Error fetching projects:", error);
+      (err) => {
+        console.error("Error fetching projects:", err);
         toast.error("Failed to load projects");
       }
     );
+
     const unsubUsers = onSnapshot(
-      collection(db, "users"), 
+      collection(db, "users"),
       (snap) => {
         setUsers(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
       },
-      (error) => {
-        console.error("Error fetching users:", error);
+      (err) => {
+        console.error("Error fetching users:", err);
         toast.error("Failed to load users");
       }
     );
+
     const unsubClients = onSnapshot(
-      collection(db, "clients"), 
+      collection(db, "clients"),
       (snap) => {
         setClients(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
       },
-      (error) => {
-        console.error("Error fetching clients:", error);
+      (err) => {
+        console.error("Error fetching clients:", err);
         toast.error("Failed to load clients");
       }
     );
+
     const unsubTasks = onSnapshot(
       query(collection(db, "tasks"), orderBy("createdAt", "desc")),
       (snap) => {
         setTasks(
           snap.docs.map((d) => {
             const data = d.data() || {};
-            const created = tsToDate(data.createdAt);
-            const completed = tsToDate(data.completedAt);
-            const assigned = tsToDate(data.assignedDate);
-            const due = tsToDate(data.dueDate);
+
             return {
               id: d.id,
               title: data.title || "",
@@ -214,22 +188,22 @@ export default function ReportsPage() {
               assigneeId: data.assigneeId || "",
               assigneeType: data.assigneeType || "user",
               status: normalizeStatus(data.status || "To-Do"),
+
               priority: data.priority || "Medium",
-              createdDate: created ? created.toISOString() : "",
-              completedDate: completed ? completed.toISOString() : "",
-              assignedDate: assigned ? assigned.toISOString() : "",
-              dueDate: due ? due.toISOString() : "",
+
+              createdDate: tsToDate(data.createdAt)?.toISOString() || "",
+              completedDate: tsToDate(data.completedAt)?.toISOString() || "",
+              assignedDate: tsToDate(data.assignedDate)?.toISOString() || "",
+              dueDate: tsToDate(data.dueDate)?.toISOString() || "",
+
               archived: !!data.archived,
-              dependsOn: Array.isArray(data.dependsOn)
-                ? data.dependsOn.filter(Boolean)
-                : [],
             };
           })
         );
         setLoading(false);
       },
-      (error) => {
-        console.error("Error fetching tasks:", error);
+      (err) => {
+        console.error("Error fetching tasks:", err);
         toast.error("Failed to load tasks");
         setLoading(false);
       }
@@ -243,147 +217,141 @@ export default function ReportsPage() {
     };
   }, []);
 
-  // Filter data based on selected filters (NOT time period - that's only for Gantt)
+  // ---------------------------------------------------
+  // FILTERED TASKS
+  // ---------------------------------------------------
   const filteredData = useMemo(() => {
-    let filteredTasks = tasks.filter((t) => {
-      const matchesProject =
-        !selectedProject || t.projectId === selectedProject;
-      const matchesEmployee =
+    const filteredTasks = tasks.filter((t) => {
+      const matchProject = !selectedProject || t.projectId === selectedProject;
+      const matchEmployee =
         !selectedEmployee ||
         (t.assigneeId === selectedEmployee &&
           (t.assigneeType || "user") === "user");
-      return matchesProject && matchesEmployee;
+
+      return matchProject && matchEmployee;
     });
 
     return { tasks: filteredTasks };
-  }, [selectedProject, selectedEmployee, tasks]);
+  }, [tasks, selectedProject, selectedEmployee]);
 
-  // Derive chart range from selected period
-  const ganttRange = useMemo(() => {
-    const period = timePeriods.find((p) => p.id === selectedPeriod);
-    if (!period) {
-      const now = new Date();
-      return { 
-        startDate: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), 
-        endDate: now 
-      };
+  // ---------------------------------------------------
+  // GANTT CHART DATA
+  // ---------------------------------------------------
+
+  const handleSaveTask = async (payload) => {
+    try {
+      await updateTask(payload.id, {
+        title: payload.title,
+        description: payload.description,
+        assigneeId: payload.assigneeId,
+        assigneeType: payload.assigneeType,
+        projectId: payload.projectId,
+        priority: payload.priority,
+        status: payload.status,
+        assignedDate: payload.assignedDate
+          ? new Date(payload.assignedDate)
+          : null,
+        dueDate: payload.dueDate ? new Date(payload.dueDate) : null,
+        completionComment: payload.completionComment || "",
+      });
+      toast.success("Task updated");
+      setShowTaskModal(false);
+      setSelectedTask(null);
+    } catch (err) {
+      console.error("Failed to update task", err);
+      toast.error("Failed to update task");
     }
-    
-    const now = new Date();
-    let startDate = new Date();
-    let endDate = new Date();
+  };
 
-    if (period.future) {
-      // For future periods - show from today to future
-      endDate.setDate(now.getDate() + period.days);
-      startDate.setDate(now.getDate() - 1); // Start from yesterday for context
-    } else {
-      // For past periods
-      startDate.setDate(now.getDate() - (period.days + (period.offset || 0)));
-      if (period.offset) endDate.setDate(now.getDate() - period.offset);
-      // pad a bit for visibility
-      startDate.setDate(startDate.getDate() - 1);
-      endDate.setDate(endDate.getDate() + 1);
-    }
-
-    // Validate date range - ensure endDate is after startDate
-    if (endDate <= startDate) {
-      console.warn("Invalid date range detected, adjusting...");
-      endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000); // Add 7 days
-    }
-
-    return { startDate, endDate };
-  }, [selectedPeriod]);
-
-  // Calculate statistics
+  // ---------------------------------------------------
+  // STATS CALCULATIONS
+  // ---------------------------------------------------
   const stats = useMemo(() => {
     const { tasks } = filteredData;
-    const totalTasks = tasks.length;
+    const total = tasks.length;
 
-    // Single pass through tasks for all stats
-    let completedTasks = 0;
-    let inProgressTasks = 0;
-    let todoTasks = 0;
-    const priorityBreakdown = { High: 0, Medium: 0, Low: 0 };
-    const projectBreakdown = {};
+    let completed = 0;
+    let inProgress = 0;
+    let todo = 0;
 
-    tasks.forEach((task) => {
-      // Count by status
-      if (task.status === "Done") completedTasks++;
-      else if (task.status === "In Progress") inProgressTasks++;
-      else if (task.status === "To-Do") todoTasks++;
+    const priorityCount = { High: 0, Medium: 0, Low: 0 };
+    const projectCount = {};
 
-      // Count by priority
-      if (priorityBreakdown[task.priority] !== undefined) {
-        priorityBreakdown[task.priority]++;
+    tasks.forEach((t) => {
+      // Status
+      if (t.status === "Done") completed++;
+      else if (t.status === "In Progress") inProgress++;
+      else todo++;
+
+      // Priority
+      if (priorityCount[t.priority] !== undefined) {
+        priorityCount[t.priority]++;
       }
 
-      // Count by project
-      const project = projects.find((p) => p.id === task.projectId);
-      const name = project?.name || "Unknown";
-      projectBreakdown[name] = (projectBreakdown[name] || 0) + 1;
+      // Project
+      const p = projects.find((x) => x.id === t.projectId);
+      const name = p?.name || "Unknown";
+      projectCount[name] = (projectCount[name] || 0) + 1;
     });
 
-    const completionRate =
-      totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
     return {
-      totalTasks,
-      completedTasks,
-      inProgressTasks,
-      todoTasks,
-      completionRate,
-      priorityBreakdown,
-      projectBreakdown,
+      totalTasks: total,
+      completedTasks: completed,
+      inProgressTasks: inProgress,
+      todoTasks: todo,
+      completionRate: total ? Math.round((completed / total) * 100) : 0,
+      priorityBreakdown: priorityCount,
+      projectBreakdown: projectCount,
     };
   }, [filteredData, projects]);
 
-  // Calculate resource-based statistics
+  // ---------------------------------------------------
+  // RESOURCE-BASED STATS
+  // ---------------------------------------------------
   const resourceStats = useMemo(() => {
     const { tasks } = filteredData;
+    const map = {};
 
-    // Group tasks by resource
-    const resourceData = {};
-
-    users.forEach((resource) => {
-      const resourceTasks = tasks.filter(
-        (t) =>
-          t.assigneeId === resource.id && (t.assigneeType || "user") === "user"
+    users.forEach((user) => {
+      const assigned = tasks.filter(
+        (t) => t.assigneeId === user.id && (t.assigneeType || "user") === "user"
       );
-      const completed = resourceTasks.filter((t) => t.status === "Done").length;
-      const inProgress = resourceTasks.filter(
-        (t) => t.status === "In Progress"
-      ).length;
-      const todo = resourceTasks.filter((t) => t.status === "To-Do").length;
-      const total = resourceTasks.length;
-      const completionRate =
-        total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      const completed = assigned.filter((t) => t.status === "Done").length;
+      const inPr = assigned.filter((t) => t.status === "In Progress").length;
+      const todo = assigned.filter((t) => t.status === "To-Do").length;
+
+      const total = assigned.length;
+      const rate = total ? Math.round((completed / total) * 100) : 0;
 
       if (total > 0) {
-        resourceData[resource.id] = {
-          ...resource,
+        map[user.id] = {
+          ...user,
           total,
           completed,
-          inProgress,
+          inProgress: inPr,
           todo,
-          completionRate,
-          tasks: resourceTasks,
+          completionRate: rate,
+          tasks: assigned,
         };
       }
     });
 
-    return resourceData;
+    return map;
   }, [filteredData, users]);
 
-  // Sorting handler for Recent Tasks table
+  // ---------------------------------------------------
+  // SORT HANDLER
+  // ---------------------------------------------------
   const handleSort = (key) => {
     setSortConfig((prev) => ({
       key,
       direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
     }));
   };
-
-  // Sorted tasks for Recent Tasks table
+  // ---------------------------------------------------
+  // SORTED RECENT TASKS
+  // ---------------------------------------------------
   const sortedRecentTasks = useMemo(() => {
     if (!sortConfig.key) return filteredData.tasks.slice(0, recentTasksLimit);
 
@@ -395,16 +363,20 @@ export default function ReportsPage() {
           aValue = a.title?.toLowerCase() || "";
           bValue = b.title?.toLowerCase() || "";
           break;
+
         case "assignee": {
           const aUser = users.find((u) => u.id === a.assigneeId);
           const aClient = clients.find((c) => c.id === a.assigneeId);
+
           const bUser = users.find((u) => u.id === b.assigneeId);
           const bClient = clients.find((c) => c.id === b.assigneeId);
+
           aValue = (
             aUser?.name ||
             aClient?.clientName ||
             "Unassigned"
           ).toLowerCase();
+
           bValue = (
             bUser?.name ||
             bClient?.clientName ||
@@ -412,31 +384,38 @@ export default function ReportsPage() {
           ).toLowerCase();
           break;
         }
+
         case "project": {
-          const aProject = projects.find((p) => p.id === a.projectId);
-          const bProject = projects.find((p) => p.id === b.projectId);
-          aValue = (aProject?.name || "").toLowerCase();
-          bValue = (bProject?.name || "").toLowerCase();
+          const aProj = projects.find((p) => p.id === a.projectId);
+          const bProj = projects.find((p) => p.id === b.projectId);
+
+          aValue = (aProj?.name || "").toLowerCase();
+          bValue = (bProj?.name || "").toLowerCase();
           break;
         }
+
         case "status":
           aValue = a.status?.toLowerCase() || "";
           bValue = b.status?.toLowerCase() || "";
           break;
+
         case "priority": {
-          const priorityOrder = { High: 3, Medium: 2, Low: 1 };
-          aValue = priorityOrder[a.priority] || 0;
-          bValue = priorityOrder[b.priority] || 0;
+          const order = { High: 3, Medium: 2, Low: 1 };
+          aValue = order[a.priority] || 0;
+          bValue = order[b.priority] || 0;
           break;
         }
+
         case "created":
           aValue = a.createdDate ? new Date(a.createdDate).getTime() : 0;
           bValue = b.createdDate ? new Date(b.createdDate).getTime() : 0;
           break;
+
         case "completed":
           aValue = a.completedDate ? new Date(a.completedDate).getTime() : 0;
           bValue = b.completedDate ? new Date(b.completedDate).getTime() : 0;
           break;
+
         default:
           return 0;
       }
@@ -456,7 +435,9 @@ export default function ReportsPage() {
     recentTasksLimit,
   ]);
 
-  // Memoize common inline styles for performance
+  // ---------------------------------------------------
+  // ICON + CARD STYLE MEMOS
+  // ---------------------------------------------------
   const iconStyles = useMemo(
     () => ({
       primary: { color: UI_COLORS.primary },
@@ -474,6 +455,7 @@ export default function ReportsPage() {
       successBorder: { borderTopColor: UI_COLORS.success },
       warningBorder: { borderTopColor: UI_COLORS.warning },
       dangerBorder: { borderTopColor: UI_COLORS.danger },
+
       primaryBg: { backgroundColor: UI_COLORS.primary },
       primaryBgLight: { backgroundColor: UI_COLORS.primary + "1a" },
       successBgLight: { backgroundColor: UI_COLORS.success + "1a" },
@@ -481,7 +463,6 @@ export default function ReportsPage() {
     []
   );
 
-  // Get sort icon for column
   const getSortIcon = (key) => {
     if (sortConfig.key !== key) return <FaSort className="text-gray-400" />;
     return sortConfig.direction === "asc" ? (
@@ -491,137 +472,181 @@ export default function ReportsPage() {
     );
   };
 
-  const escapeCSV = (value) =>
-    `"${(value ?? "").toString().replace(/"/g, '""')}"`;
+  const exportReport = async () => {
+    const ExcelJS = (await import("exceljs")).default;
+    const workbook = new ExcelJS.Workbook();
 
-  const exportReport = (format) => {
-    const period = timePeriods.find((p) => p.id === selectedPeriod);
-    if (!period) {
-      console.error("Invalid time period selected");
-      return;
-    }
-    
     const projectName = selectedProject
       ? projects.find((p) => p.id === selectedProject)?.name
       : "All Projects";
 
-    if (format === "csv") {
-      // Generate CSV content (use template literals and escaping)
-      let csvContent = `Report: ${projectName}\n\n`;
-      csvContent += `Summary Statistics\n`;
-      csvContent += `Total Tasks,${stats.totalTasks}\n`;
-      csvContent += `Completed Tasks,${stats.completedTasks}\n`;
-      csvContent += `In Progress,${stats.inProgressTasks}\n`;
-      csvContent += `To-Do,${stats.todoTasks}\n`;
-      csvContent += `Completion Rate,${stats.completionRate}%\n\n`;
+    // Create Summary Sheet
+    const summarySheet = workbook.addWorksheet("Summary");
 
-      csvContent += `Task Details\n`;
-      csvContent += `Title,Assignee,Project,Status,Priority,Created Date,Completed Date\n`;
-      filteredData.tasks.forEach((task) => {
-        const project = projects.find((p) => p.id === task.projectId);
-        const assigneeUser = users.find((r) => r.id === task.assigneeId);
-        const assigneeClient = clients.find((c) => c.id === task.assigneeId);
-        const assigneeName =
-          assigneeUser?.name || assigneeClient?.clientName || "Unassigned";
-        csvContent +=
-          [
-            escapeCSV(task.title),
-            escapeCSV(assigneeName),
-            escapeCSV(project?.name || "N/A"),
-            escapeCSV(task.status),
-            escapeCSV(task.priority),
-            escapeCSV(task.createdDate || ""),
-            escapeCSV(task.completedDate || "N/A"),
-          ].join(",") + "\n";
+    // Add title
+    summarySheet.mergeCells("A1:D1");
+    summarySheet.getCell("A1").value = `Analytics Report - ${projectName}`;
+    summarySheet.getCell("A1").font = { bold: true, size: 16 };
+    summarySheet.getCell("A1").alignment = { horizontal: "center" };
+
+    // Add generated date
+    summarySheet.mergeCells("A2:D2");
+    summarySheet.getCell(
+      "A2"
+    ).value = `Generated: ${new Date().toLocaleString()}`;
+    summarySheet.getCell("A2").font = { italic: true };
+    summarySheet.getCell("A2").alignment = { horizontal: "center" };
+
+    // Add statistics
+    summarySheet.addRow([]);
+    summarySheet.addRow(["Summary Statistics"]);
+    summarySheet.getCell("A4").font = { bold: true, size: 14 };
+
+    summarySheet.addRow(["Total Tasks", stats.totalTasks]);
+    summarySheet.addRow(["Completed Tasks", stats.completedTasks]);
+    summarySheet.addRow(["In Progress", stats.inProgressTasks]);
+    summarySheet.addRow(["To-Do", stats.todoTasks]);
+    summarySheet.addRow(["Completion Rate", `${stats.completionRate}%`]);
+
+    // Style statistics section
+    summarySheet.getColumn(1).width = 25;
+    summarySheet.getColumn(2).width = 15;
+
+    // Create Tasks Sheet
+    const tasksSheet = workbook.addWorksheet("Tasks");
+
+    // Add headers
+    tasksSheet.columns = [
+      { header: "Task Title", key: "title", width: 30 },
+      { header: "Assignee", key: "assignee", width: 20 },
+      { header: "Project", key: "project", width: 20 },
+      { header: "Status", key: "status", width: 15 },
+      { header: "Priority", key: "priority", width: 12 },
+      { header: "Created Date", key: "created", width: 18 },
+      { header: "Completed Date", key: "completed", width: 18 },
+    ];
+
+    // Style headers
+    tasksSheet.getRow(1).font = { bold: true };
+    tasksSheet.getRow(1).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF3B82F6" },
+    };
+    tasksSheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+
+    // Add task data
+    filteredData.tasks.forEach((task) => {
+      const project = projects.find((p) => p.id === task.projectId);
+      const assigneeUser = users.find((r) => r.id === task.assigneeId);
+      const assigneeClient = clients.find((c) => c.id === task.assigneeId);
+      const assigneeName =
+        assigneeUser?.name || assigneeClient?.clientName || "Unassigned";
+
+      tasksSheet.addRow({
+        title: task.title,
+        assignee: assigneeName,
+        project: project?.name || "N/A",
+        status: task.status,
+        priority: task.priority,
+        created: task.createdDate
+          ? new Date(task.createdDate).toLocaleDateString()
+          : "",
+        completed: task.completedDate
+          ? new Date(task.completedDate).toLocaleDateString()
+          : "N/A",
       });
+    });
 
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `analytics_report_${Date.now()}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      toast.success("CSV report downloaded!");
-    } else if (format === "json") {
-      const reportData = {
-        project: projectName,
-        generatedAt: new Date().toISOString(),
-        statistics: stats,
-        tasks: filteredData.tasks,
-      };
-
-      const blob = new Blob([JSON.stringify(reportData, null, 2)], {
-        type: "application/json;charset=utf-8;",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `analytics_report_${Date.now()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      toast.success("JSON report downloaded!");
-    }
-  };
-
-  const exportResourceReport = () => {
-    const projectName = selectedProject
-      ? projects.find((p) => p.id === selectedProject)?.name
-      : "All Projects";
-
-    // Generate CSV content for resource report using safe escaping
-    let csvContent = `Resource Performance Report\n`;
-    csvContent += `Project: ${projectName}\n`;
-    csvContent += `Generated: ${new Date().toLocaleString()}\n\n`;
-
-    csvContent += `Resource Name,Email,Role,Total Tasks,Completed,In Progress,To-Do,Completion Rate\n`;
-
-    Object.values(resourceStats)
-      .sort((a, b) => b.completionRate - a.completionRate)
-      .forEach((resource) => {
-        csvContent +=
-          [
-            escapeCSV(resource.name),
-            escapeCSV(resource.email || ""),
-            escapeCSV(resource.role || ""),
-            resource.total,
-            resource.completed,
-            resource.inProgress,
-            resource.todo,
-            `${resource.completionRate}%`,
-          ].join(",") + "\n";
-      });
-
-    csvContent += `\n\nDetailed Task Breakdown by Resource\n\n`;
-
-    Object.values(resourceStats)
-      .sort((a, b) => b.completionRate - a.completionRate)
-      .forEach((resource) => {
-        csvContent += `\n${resource.name} - Tasks\n`;
-        csvContent += `Task Title,Project,Status,Priority,Created Date,Completed Date\n`;
-        resource.tasks.forEach((task) => {
-          const project = projects.find((p) => p.id === task.projectId);
-          csvContent +=
-            [
-              escapeCSV(task.title),
-              escapeCSV(project?.name || "N/A"),
-              escapeCSV(task.status),
-              escapeCSV(task.priority),
-              escapeCSV(task.createdDate || ""),
-              escapeCSV(task.completedDate || "N/A"),
-            ].join(",") + "\n";
-        });
-      });
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    // Generate and download
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `resource_report_${Date.now()}.csv`;
+    a.download = `analytics_report_${Date.now()}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast.success("Excel report downloaded!");
+  };
+
+  const exportResourceReport = async () => {
+    const ExcelJS = (await import("exceljs")).default;
+    const workbook = new ExcelJS.Workbook();
+
+    const projectName = selectedProject
+      ? projects.find((p) => p.id === selectedProject)?.name
+      : "All Projects";
+
+    // Create Resource Performance Sheet
+    const sheet = workbook.addWorksheet("Resource Performance");
+
+    // Add title
+    sheet.mergeCells("A1:H1");
+    sheet.getCell("A1").value = "Resource Performance Report";
+    sheet.getCell("A1").font = { bold: true, size: 16 };
+    sheet.getCell("A1").alignment = { horizontal: "center" };
+
+    // Add metadata
+    sheet.mergeCells("A2:H2");
+    sheet.getCell("A2").value = `Project: ${projectName}`;
+    sheet.getCell("A2").alignment = { horizontal: "center" };
+
+    sheet.mergeCells("A3:H3");
+    sheet.getCell("A3").value = `Generated: ${new Date().toLocaleString()}`;
+    sheet.getCell("A3").alignment = { horizontal: "center" };
+
+    // Add headers
+    sheet.addRow([]);
+    sheet.columns = [
+      { header: "Resource Name", key: "name", width: 25 },
+      { header: "Email", key: "email", width: 30 },
+      { header: "Role", key: "role", width: 15 },
+      { header: "Total Tasks", key: "total", width: 12 },
+      { header: "Completed", key: "completed", width: 12 },
+      { header: "In Progress", key: "inProgress", width: 12 },
+      { header: "To-Do", key: "todo", width: 12 },
+      { header: "Completion %", key: "rate", width: 15 },
+    ];
+
+    // Style headers (row 5)
+    sheet.getRow(5).font = { bold: true };
+    sheet.getRow(5).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF10B981" },
+    };
+    sheet.getRow(5).font = { bold: true, color: { argb: "FFFFFFFF" } };
+
+    // Add resource data
+    Object.values(resourceStats)
+      .sort((a, b) => b.completionRate - a.completionRate)
+      .forEach((resource) => {
+        sheet.addRow({
+          name: resource.name,
+          email: resource.email || "",
+          role: resource.role || "",
+          total: resource.total,
+          completed: resource.completed,
+          inProgress: resource.inProgress,
+          todo: resource.todo,
+          rate: `${resource.completionRate}%`,
+        });
+      });
+
+    // Generate and download
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `resource_report_${Date.now()}.xlsx`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -629,18 +654,18 @@ export default function ReportsPage() {
     toast.success("Resource report downloaded!");
   };
 
-  // compute widths for progress bars before JSX
-  const pct = (count) =>
-    stats.totalTasks > 0 ? (count / stats.totalTasks) * 100 : 0;
-  const completedWidth = pct(stats.completedTasks);
-  const inProgressWidth = pct(stats.inProgressTasks);
-  const todoWidth = pct(stats.todoTasks);
-
-  // Chart datasets
   const statusChartData = useMemo(
     () => [
-      { name: "Completed", value: stats.completedTasks, color: UI_COLORS.success },
-      { name: "In Progress", value: stats.inProgressTasks, color: UI_COLORS.primary },
+      {
+        name: "Completed",
+        value: stats.completedTasks,
+        color: UI_COLORS.success,
+      },
+      {
+        name: "In Progress",
+        value: stats.inProgressTasks,
+        color: UI_COLORS.primary,
+      },
       { name: "To-Do", value: stats.todoTasks, color: "#9ca3af" },
     ],
     [stats]
@@ -652,7 +677,7 @@ export default function ReportsPage() {
     let endDate = new Date(now);
     let startDate = new Date(now);
     startDate.setDate(now.getDate() - 30);
-    
+
     const keyOf = (d) => d.toISOString().slice(0, 10);
     const map = {};
     const seq = [];
@@ -678,58 +703,42 @@ export default function ReportsPage() {
     return seq;
   }, [filteredData]);
 
-  // Build Gantt items from filtered tasks
-  const ganttItems = useMemo(() => {
-    return filteredData.tasks
-      .filter((t) => !t.archived)
-      .map((t) => {
-        const start = t.assignedDate || t.createdDate || "";
-        const end = t.dueDate || t.completedDate || start || "";
-        return {
-          id: t.id,
-          title: t.title,
-          projectId: t.projectId,
-          assigneeId: t.assigneeId,
-          status: t.status,
-          priority: t.priority,
-          startDate: start,
-          endDate: end,
-          dependsOn: Array.isArray(t.dependsOn) ? t.dependsOn : [],
-        };
-      })
-      .filter((x) => x.startDate);
-  }, [filteredData]);
+  const completedWidth =
+    stats.totalTasks > 0 ? (stats.completedTasks / stats.totalTasks) * 100 : 0;
+  const inProgressWidth =
+    stats.totalTasks > 0 ? (stats.inProgressTasks / stats.totalTasks) * 100 : 0;
+  const todoWidth =
+    stats.totalTasks > 0 ? (stats.todoTasks / stats.totalTasks) * 100 : 0;
 
-  // removed Top Projects dataset per request
-
+  // ---------------------------------------------------
+  // MAIN RETURN START
+  // ---------------------------------------------------
   return (
     <div className="max-w-full overflow-x-hidden">
       <PageHeader
         title="Analytics & Reports"
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={() => exportReport("csv")} variant="secondary">
-              <FaDownload /> Export CSV
+            <Button variant="secondary" onClick={exportReport}>
+              <FaDownload /> Export Excel
             </Button>
-            <Button onClick={() => exportReport("json")} variant="ghost">
-              <FaDownload /> Export JSON
-            </Button>
-          </div>
         }
       >
         View comprehensive analytics and reports across different time periods
       </PageHeader>
 
-      <div className="space-y-6 max-w-full">
-        {/* Filters */}
+      <div className="max-w-full space-y-6">
+        {/* ---------------------------------------------------
+            FILTERS 
+        --------------------------------------------------- */}
         <Card
           title={
             <div className="flex items-center gap-2">
               <span>Report Filters</span>
+
               {activeFilterCount > 0 && (
                 <span
+                  className="flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white"
                   style={cardStyles.primaryBg}
-                  className="inline-flex items-center justify-center h-5 w-5 rounded-full text-white text-xs font-bold"
                 >
                   {activeFilterCount}
                 </span>
@@ -738,154 +747,116 @@ export default function ReportsPage() {
           }
           actions={
             <Button
-              onClick={() => {
-                setSelectedPeriod("next-30");
-                setSelectedProject("");
-                setSelectedEmployee("");
-                setEmployeeSearch("");
-              }}
               variant="ghost"
               className="text-xs"
+              onClick={() => {
+                setSelectedProject("");
+                setSelectedEmployee("");
+              }}
             >
-              🔄 Reset Filters
+              <FaArrowsRotate />
+              Reset Filters
             </Button>
           }
         >
-          <div className="grid gap-4 md:grid-cols-2 overflow-hidden">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {/* -------------------------------
+                PROJECT FILTER (Column 2)
+            ------------------------------- */}
             <div className="min-w-0">
               <label className="block">
-                <span className="text-sm font-medium mb-2 flex items-center gap-2 text-gray-700">
-                  <FaProjectDiagram style={iconStyles.secondary} />{" "}
+                <span className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <FaProjectDiagram style={iconStyles.secondary} />
                   Project Filter
-                  {selectedProject && (
-                    <span
-                      style={{
-                        backgroundColor: UI_COLORS.secondary + "1a",
-                        color: UI_COLORS.secondary,
-                      }}
-                      className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold"
-                    >
-                      Active
-                    </span>
-                  )}
                 </span>
-                <select
-                  value={selectedProject}
-                  onChange={(e) => setSelectedProject(e.target.value)}
-                  aria-label="Filter by project"
-                  style={{
-                    "--tw-ring-color": UI_COLORS.secondary + "33",
-                    borderColor: "#d1d5db",
-                  }}
-                  onFocus={(e) =>
-                    (e.target.style.borderColor = UI_COLORS.secondary)
-                  }
-                  onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                  className="w-full rounded-lg border bg-white px-3 py-2.5 text-sm shadow-sm focus:ring-2 transition-all truncate max-w-full"
-                >
-                  <option value="">All Projects</option>
-                  {projects.map((project) => (
-                    <option
-                      key={project.id}
-                      value={project.id}
-                      className="truncate"
-                    >
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
               </label>
+
+              <select
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                aria-label="Filter by project"
+                style={{
+                  "--tw-ring-color": UI_COLORS.secondary + "33",
+                  borderColor: "#d1d5db",
+                }}
+                onFocus={(e) =>
+                  (e.target.style.borderColor = UI_COLORS.secondary)
+                }
+                onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
+                className="max-w-full w-full truncate rounded-lg border bg-white px-3 py-2.5 text-sm shadow-sm transition-all focus:ring-2"
+              >
+                <option value="">All Projects</option>
+
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id} className="truncate">
+                    {p.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
+            {/* -------------------------------
+                EMPLOYEE FILTER (Column 3)
+            ------------------------------- */}
             <div className="min-w-0">
               <label className="block">
-                <span className="text-sm font-medium mb-2 flex items-center gap-2 text-gray-700">
-                  <FaUsers style={iconStyles.success} /> Employee
-                  Filter
-                  {selectedEmployee && (
-                    <span
-                      style={{
-                        backgroundColor: UI_COLORS.success + "1a",
-                        color: UI_COLORS.success,
-                      }}
-                      className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold"
-                    >
-                      Active
-                    </span>
-                  )}
+                <span className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <FaUsers style={iconStyles.success} />
+                  Employee Filter
                 </span>
-                <div className="relative">
-                  <input
-                    value={employeeSearch}
-                    onChange={(e) => setEmployeeSearch(e.target.value)}
-                    placeholder="🔍 Search employee..."
-                    aria-label="Search employees by name or email"
-                    style={{
-                      "--tw-ring-color": UI_COLORS.success + "33",
-                      borderColor: "#d1d5db",
-                    }}
-                    onFocus={(e) =>
-                      (e.target.style.borderColor = UI_COLORS.success)
-                    }
-                    onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                    className="mb-2 w-full rounded-lg border bg-white px-3 py-2.5 text-sm shadow-sm focus:ring-2 transition-all"
-                  />
-                  <select
-                    value={selectedEmployee}
-                    onChange={(e) => setSelectedEmployee(e.target.value)}
-                    aria-label="Filter by employee"
-                    style={{
-                      "--tw-ring-color": UI_COLORS.success + "33",
-                      borderColor: "#d1d5db",
-                    }}
-                    onFocus={(e) =>
-                      (e.target.style.borderColor = UI_COLORS.success)
-                    }
-                    onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                    className="w-full rounded-lg border bg-white px-3 py-2.5 text-sm shadow-sm focus:ring-2 transition-all truncate max-w-full"
-                  >
-                    <option value="">All Employees</option>
-                    {users
-                      .filter(
-                        (u) => (u.role || "user").toLowerCase() !== "client"
-                      )
-                      .filter((u) =>
-                        (u.name || u.email || "")
-                          .toString()
-                          .toLowerCase()
-                          .includes(debouncedSearch.toLowerCase())
-                      )
-                      .map((u) => (
-                        <option key={u.id} value={u.id} className="truncate">
-                          {u.name || u.email}
-                        </option>
-                      ))}
-                  </select>
-                </div>
               </label>
+
+              <select
+                value={selectedEmployee}
+                onChange={(e) => setSelectedEmployee(e.target.value)}
+                aria-label="Filter by employee"
+                style={{
+                  "--tw-ring-color": UI_COLORS.success + "33",
+                  borderColor: "#d1d5db",
+                }}
+                onFocus={(e) =>
+                  (e.target.style.borderColor = UI_COLORS.success)
+                }
+                onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
+                className="max-w-full w-full truncate rounded-lg border bg-white px-3 py-2.5 text-sm shadow-sm transition-all focus:ring-2"
+              >
+                <option value="">All Employees</option>
+
+                {users
+                  .filter((u) => (u.role || "user").toLowerCase() !== "client")
+                  .map((u) => (
+                    <option key={u.id} value={u.id} className="truncate">
+                      {u.name || u.email}
+                    </option>
+                  ))}
+              </select>
             </div>
           </div>
         </Card>
 
-        {/* Overview Statistics */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* ---------------------------------------------------
+            OVERVIEW STATISTICS
+        --------------------------------------------------- */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Total Tasks */}
           <Card
             style={cardStyles.primaryBorder}
-            className="border-t-4 bg-gradient-to-br from-blue-50 to-white hover:shadow-lg transition-all duration-300"
+            className="border-t-4 bg-gradient-to-br from-blue-50 to-white transition-all duration-300 hover:shadow-lg"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 font-medium">Total Tasks</p>
+                <p className="text-sm font-medium text-gray-600">Total Tasks</p>
                 <p
+                  className="mt-1 animate-[fadeIn_0.5s_ease-in] text-3xl font-bold"
                   style={{ color: UI_COLORS.primary }}
-                  className="text-3xl font-bold mt-1 animate-[fadeIn_0.5s_ease-in]"
                 >
                   {stats.totalTasks.toLocaleString("en-US")}
                 </p>
               </div>
+
               <div
+                className="flex h-12 w-12 items-center justify-center rounded-full"
                 style={{ backgroundColor: UI_COLORS.primary + "1a" }}
-                className="h-12 w-12 rounded-full flex items-center justify-center"
               >
                 <FaTasks
                   style={{ color: UI_COLORS.primary }}
@@ -895,29 +866,25 @@ export default function ReportsPage() {
             </div>
           </Card>
 
+          {/* Completed */}
           <Card
             style={{ borderTopColor: UI_COLORS.success }}
-            className="border-t-4 bg-gradient-to-br from-green-50 to-white hover:shadow-lg transition-all duration-300"
+            className="border-t-4 bg-gradient-to-br from-green-50 to-white transition-all duration-300 hover:shadow-lg"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 font-medium">Completed</p>
+                <p className="text-sm font-medium text-gray-600">Completed</p>
                 <p
+                  className="mt-1 animate-[fadeIn_0.5s_ease-in] text-3xl font-bold"
                   style={{ color: UI_COLORS.success }}
-                  className="text-3xl font-bold mt-1 animate-[fadeIn_0.5s_ease-in]"
                 >
                   {stats.completedTasks.toLocaleString("en-US")}
                 </p>
-                <p
-                  style={{ color: UI_COLORS.success }}
-                  className="text-xs mt-1"
-                >
-                  {stats.completionRate}% completion rate
-                </p>
               </div>
+
               <div
+                className="flex h-12 w-12 items-center justify-center rounded-full"
                 style={{ backgroundColor: UI_COLORS.success + "1a" }}
-                className="h-12 w-12 rounded-full flex items-center justify-center"
               >
                 <FaCheckCircle
                   style={{ color: UI_COLORS.success }}
@@ -927,23 +894,25 @@ export default function ReportsPage() {
             </div>
           </Card>
 
+          {/* In Progress */}
           <Card
             style={{ borderTopColor: UI_COLORS.warning }}
-            className="border-t-4 bg-gradient-to-br from-amber-50 to-white hover:shadow-lg transition-all duration-300"
+            className="border-t-4 bg-gradient-to-br from-amber-50 to-white transition-all duration-300 hover:shadow-lg"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 font-medium">In Progress</p>
+                <p className="text-sm font-medium text-gray-600">In Progress</p>
                 <p
+                  className="mt-1 animate-[fadeIn_0.5s_ease-in] text-3xl font-bold"
                   style={{ color: UI_COLORS.warning }}
-                  className="text-3xl font-bold mt-1 animate-[fadeIn_0.5s_ease-in]"
                 >
                   {stats.inProgressTasks.toLocaleString("en-US")}
                 </p>
               </div>
+
               <div
+                className="animate-pulse flex h-12 w-12 items-center justify-center rounded-full"
                 style={{ backgroundColor: UI_COLORS.warning + "1a" }}
-                className="h-12 w-12 rounded-full flex items-center justify-center animate-pulse"
               >
                 <FaClock
                   style={{ color: UI_COLORS.warning }}
@@ -953,68 +922,73 @@ export default function ReportsPage() {
             </div>
           </Card>
 
+          {/* Completion Rate */}
           <Card
             style={{ borderTopColor: UI_COLORS.secondary }}
-            className="border-t-4 bg-gradient-to-br from-purple-50 to-white hover:shadow-lg transition-all duration-300"
+            className="border-t-4 bg-gradient-to-br from-purple-50 to-white transition-all duration-300 hover:shadow-lg"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 font-medium">
+                <p className="text-sm font-medium text-gray-600">
                   Completion Rate
                 </p>
                 <p
+                  className="mt-1 animate-[fadeIn_0.5s_ease-in] text-3xl font-bold"
                   style={{ color: UI_COLORS.secondary }}
-                  className="text-3xl font-bold mt-1 animate-[fadeIn_0.5s_ease-in]"
                 >
                   {stats.completionRate}%
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
+
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
                 <FaChartLine className="h-6 w-6 text-purple-600" />
               </div>
             </div>
           </Card>
         </div>
-
-        {/* Charts */}
-        <div className="grid gap-4 lg:grid-cols-2">
+        {/* ---------------------------------------------------
+            CHARTS
+        --------------------------------------------------- */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {/* Status Distribution Pie Chart */}
           <Card title="Status Distribution" icon={<FaChartPie />}>
             {loading ? (
-              <div className="h-72 rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-pulse" />
+              <div className="h-72 animate-pulse rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100" />
             ) : stats.totalTasks === 0 ? (
-              <div className="py-16 flex flex-col items-center justify-center">
+              <div className="flex flex-col items-center justify-center py-16">
                 <div
+                  className="mb-4 flex h-16 w-16 items-center justify-center rounded-full"
                   style={{ backgroundColor: UI_COLORS.primary + "1a" }}
-                  className="h-16 w-16 rounded-full flex items-center justify-center mb-4"
                 >
                   <FaChartPie
                     style={{ color: UI_COLORS.primary }}
                     className="h-8 w-8"
                   />
                 </div>
-                <div className="text-lg font-semibold text-gray-800 mb-2">
+
+                <div className="mb-2 text-lg font-semibold text-gray-800">
                   No Task Data Available
                 </div>
-                <div className="text-sm text-gray-500 mb-4 text-center max-w-xs">
-                  Try expanding the date range or clearing filters to see your
-                  task distribution
+
+                <div className="mb-4 max-w-xs text-center text-sm text-gray-500">
+                  Try clearing filters to view your task distribution
                 </div>
+
                 <Button
                   variant="secondary"
+                  className="flex items-center gap-2 text-sm"
                   onClick={() => {
-                    setSelectedPeriod("year");
                     setSelectedProject("");
                     setSelectedEmployee("");
                   }}
-                  className="text-sm flex items-center gap-2"
                 >
-                  <FaChartBar />
-                  View This Year
+                  <FaChartPie />
+                  View All Tasks
                 </Button>
               </div>
             ) : (
-              <div style={{ width: "100%", height: 280 }}>
-                <ResponsiveContainer>
+              <div className="h-[280px] w-full min-w-0">
+                <ResponsiveContainer minWidth={0} minHeight={0}>
                   <PieChart>
                     <Pie
                       data={statusChartData}
@@ -1028,12 +1002,11 @@ export default function ReportsPage() {
                       }
                     >
                       {statusChartData.map((entry, idx) => (
-                        <Cell key={`s-${idx}`} fill={entry.color} />
+                        <Cell key={idx} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      formatter={(value, name) => [`${value} tasks`, name]}
-                    />
+
+                    <Tooltip formatter={(v, name) => [`${v} tasks`, name]} />
                     <Legend verticalAlign="bottom" height={24} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -1041,17 +1014,18 @@ export default function ReportsPage() {
             )}
           </Card>
 
+          {/* Tasks Over Time Line Chart */}
           <Card title="Tasks Over Time" icon={<FaChartLine />}>
             {loading ? (
-              <div className="h-72 rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-pulse" />
+              <div className="h-72 animate-pulse rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100" />
             ) : (
-              <div style={{ width: "100%", height: 280 }}>
-                <ResponsiveContainer>
+              <div className="h-[280px] w-full min-w-0">
+                <ResponsiveContainer minWidth={0} minHeight={0}>
                   <LineChart
                     data={tasksOverTimeData}
                     margin={{ top: 10, right: 20, bottom: 0, left: 0 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
                     <XAxis
                       dataKey="date"
                       tick={{ fill: "#9ca3af", fontSize: 12 }}
@@ -1068,10 +1042,10 @@ export default function ReportsPage() {
                         style={{ fill: "#9ca3af" }}
                       />
                     </YAxis>
-                    <Tooltip
-                      formatter={(value, name) => [`${value} tasks`, name]}
-                    />
+
+                    <Tooltip formatter={(v, name) => [`${v} tasks`, name]} />
                     <Legend verticalAlign="bottom" height={24} />
+
                     <Line
                       type="monotone"
                       dataKey="Created"
@@ -1094,264 +1068,21 @@ export default function ReportsPage() {
             )}
           </Card>
         </div>
-
-        {/* Gantt Chart */}
-        <Card
-          title={
-            <div className="flex items-center gap-2">
-              <FaCalendarAlt style={{ color: UI_COLORS.primary }} />
-              <span>Timeline (Gantt)</span>
-            </div>
-          }
-          actions={
-            <div className="flex items-center gap-3 flex-wrap">
-              {/* Scale Selector */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-600 font-medium">
-                  Scale:
-                </span>
-                <div className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white p-0.5 shadow-sm">
-                  {[
-                    { value: "day", label: "Day", icon: <FaCalendarAlt /> },
-                    { value: "week", label: "Week", icon: <FaCalendarAlt /> },
-                    { value: "month", label: "Month", icon: <FaCalendarAlt /> },
-                  ].map((scale) => (
-                    <button
-                      key={scale.value}
-                      onClick={() => setGanttScale(scale.value)}
-                      style={{
-                        backgroundColor:
-                          ganttScale === scale.value
-                            ? UI_COLORS.primary
-                            : "transparent",
-                        color: ganttScale === scale.value ? "white" : "#374151",
-                      }}
-                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
-                        ganttScale === scale.value
-                          ? "shadow-sm"
-                          : "hover:bg-gray-100"
-                      }`}
-                    >
-                      {scale.icon}
-                      {scale.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Time Period Filter */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
-                  <FaCalendarAlt className="text-[10px]" />
-                  Time Range
-                </label>
-                <select
-                  value={selectedPeriod}
-                  onChange={(e) => setSelectedPeriod(e.target.value)}
-                  aria-label="Select time period for Gantt chart"
-                  className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                >
-                  {timePeriods.map((period) => (
-                    <option key={period.id} value={period.id}>
-                      {period.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Zoom Controls */}
-              <div className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1 shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => setGanttZoom((z) => Math.max(0.5, z - 0.25))}
-                  className="rounded px-2 py-1 text-xs hover:bg-gray-100 transition flex items-center gap-1"
-                  title="Zoom out"
-                >
-                  <FaSearchMinus />
-                </button>
-                <span className="text-xs font-medium w-14 text-center text-gray-700">
-                  {Math.round(ganttZoom * 100)}%
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setGanttZoom((z) => Math.min(3, z + 0.25))}
-                  className="rounded px-2 py-1 text-xs hover:bg-gray-100 transition flex items-center gap-1"
-                  title="Zoom in"
-                >
-                  <FaSearchPlus />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGanttZoom(1)}
-                  className="ml-1 rounded px-2 py-1 text-xs hover:bg-gray-100 transition text-gray-600 flex items-center gap-1"
-                  title="Reset zoom"
-                >
-                  <FaUndo className="text-[10px]" />
-                  Reset
-                </button>
-              </div>
-
-              {/* Options */}
-              <label className="flex items-center gap-2 text-xs cursor-pointer hover:bg-gray-50 rounded px-2 py-1 transition">
-                <input
-                  type="checkbox"
-                  checked={ganttShowLabels}
-                  onChange={(e) => setGanttShowLabels(e.target.checked)}
-                  className="rounded"
-                />
-                <span className="font-medium text-gray-700">Show Labels</span>
-              </label>
-
-              <label className="flex items-center gap-2 text-xs cursor-pointer hover:bg-gray-50 rounded px-2 py-1 transition">
-                <input
-                  type="checkbox"
-                  checked={ganttGroupProjects}
-                  onChange={(e) => setGanttGroupProjects(e.target.checked)}
-                  className="rounded"
-                />
-                <span className="font-medium text-gray-700">
-                  Group by Project
-                </span>
-              </label>
-
-              {/* Status Filters */}
-              <div className="hidden xl:flex items-center gap-1">
-                {Object.keys(ganttStatuses).map((s) => (
-                  <label
-                    key={s}
-                    className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg px-2.5 py-1.5 text-xs cursor-pointer transition"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={ganttStatuses[s]}
-                      onChange={(e) =>
-                        setGanttStatuses((prev) => ({
-                          ...prev,
-                          [s]: e.target.checked,
-                        }))
-                      }
-                      className="rounded"
-                    />
-                    <span className="font-medium text-gray-700">{s}</span>
-                  </label>
-                ))}
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowGantt((v) => !v)}
-                  className="text-xs"
-                >
-                  {showGantt ? "👁️ Hide" : "👁️ Show"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={async () => {
-                    try {
-                      const html2canvas = (await import("html2canvas")).default;
-                      const el = document.querySelector(".gantt-export-target");
-                      if (!el) return toast.error("Gantt not found");
-                      const canvas = await html2canvas(el, {
-                        backgroundColor: "#ffffff",
-                        scale: 1.5,
-                      });
-                      const link = document.createElement("a");
-                      link.href = canvas.toDataURL("image/png");
-                      link.download = `gantt_export_${Date.now()}.png`;
-                      link.click();
-                      toast.success("Exported PNG");
-                    } catch (e) {
-                      console.error(e);
-                      toast.error("PNG export failed");
-                    }
-                  }}
-                  title="Export visible timeline to PNG"
-                  className="text-xs"
-                >
-                  📥 Export PNG
-                </Button>
-              </div>
-            </div>
-          }
-        >
-          {showGantt ? (
-            loading ? (
-              <div className="h-56 rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 animate-pulse" />
-            ) : ganttItems.length === 0 ? (
-              <div className="py-16 flex flex-col items-center justify-center">
-                <div
-                  style={{ backgroundColor: UI_COLORS.primary + "1a" }}
-                  className="h-16 w-16 rounded-full flex items-center justify-center mb-4"
-                >
-                  <FaCalendarAlt
-                    style={{ color: UI_COLORS.primary }}
-                    className="h-8 w-8"
-                  />
-                </div>
-                <div className="text-lg font-semibold text-gray-800 mb-2">
-                  No Tasks in Timeline
-                </div>
-                <div className="text-sm text-gray-500 mb-4 text-center max-w-md">
-                  There are no tasks with assigned dates in the selected time
-                  period. Tasks need start and end dates to appear on the Gantt
-                  chart.
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    onClick={() => setSelectedPeriod("year")}
-                    className="text-sm flex items-center gap-2"
-                  >
-                    <FaCalendarAlt />
-                    View This Year
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="overflow-x-auto gantt-export-target max-w-full">
-                <div className="min-w-[600px] max-w-full">
-                  <GanttChart
-                    items={ganttItems}
-                    projects={projects}
-                    users={users}
-                    clients={clients}
-                    start={ganttRange.startDate}
-                    end={ganttRange.endDate}
-                    scale={ganttScale}
-                    baseDayWidth={
-                      ganttScale === "day"
-                        ? 26 * ganttZoom
-                        : ganttScale === "week"
-                        ? 6 * ganttZoom
-                        : 2.2 * ganttZoom
-                    }
-                    showBarLabels={ganttShowLabels}
-                    leftWidth={ganttLeftWidth}
-                    visibleStatuses={Object.entries(ganttStatuses)
-                      .filter(([, v]) => v)
-                      .map(([k]) => k)}
-                    groupByProject={ganttGroupProjects}
-                    onLeftWidthChange={(w) => setGanttLeftWidth(w)}
-                  />
-                </div>
-              </div>
-            )
-          ) : null}
-        </Card>
-
-        {/* Task Status Breakdown */}
-        <Card title="Task Status Breakdown" icon={<FaChartBar />}>
+        {/* ---------------------------------------------------
+            TASK STATUS BREAKDOWN
+        --------------------------------------------------- */}
+        <Card title="Task Status Breakdown" icon={<FaChartLine />}>
           <div className="space-y-5">
+            {/* Completed */}
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <FaCheckCircle className="text-green-600" />
                   <span className="text-sm font-semibold text-gray-800">
                     Completed
                   </span>
                 </div>
+
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-green-600">
                     {stats.completedTasks}
@@ -1359,9 +1090,10 @@ export default function ReportsPage() {
                   <span className="text-xs text-gray-500">tasks</span>
                 </div>
               </div>
-              <div className="relative w-full bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
+
+              <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100 shadow-inner">
                 <div
-                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-500 shadow-sm"
+                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-green-500 to-green-600 shadow-sm transition-all duration-500"
                   style={{ width: `${completedWidth}%` }}
                 >
                   {completedWidth > 10 && (
@@ -1373,14 +1105,16 @@ export default function ReportsPage() {
               </div>
             </div>
 
+            {/* In Progress */}
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FaClock className="text-cyan-600 animate-pulse" />
+                  <FaClock className="animate-pulse text-cyan-600" />
                   <span className="text-sm font-semibold text-gray-800">
                     In Progress
                   </span>
                 </div>
+
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-cyan-600">
                     {stats.inProgressTasks}
@@ -1388,9 +1122,10 @@ export default function ReportsPage() {
                   <span className="text-xs text-gray-500">tasks</span>
                 </div>
               </div>
-              <div className="relative w-full bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
+
+              <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100 shadow-inner">
                 <div
-                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-500 to-cyan-600 rounded-full transition-all duration-500 shadow-sm"
+                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-600 shadow-sm transition-all duration-500"
                   style={{ width: `${inProgressWidth}%` }}
                 >
                   {inProgressWidth > 10 && (
@@ -1402,14 +1137,16 @@ export default function ReportsPage() {
               </div>
             </div>
 
+            {/* To-Do */}
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <FaTasks className="text-gray-600" />
                   <span className="text-sm font-semibold text-gray-800">
                     To-Do
                   </span>
                 </div>
+
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-gray-600">
                     {stats.todoTasks}
@@ -1417,9 +1154,10 @@ export default function ReportsPage() {
                   <span className="text-xs text-gray-500">tasks</span>
                 </div>
               </div>
-              <div className="relative w-full bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
+
+              <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100 shadow-inner">
                 <div
-                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-gray-400 to-gray-500 rounded-full transition-all duration-500 shadow-sm"
+                  className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gray-400 to-gray-500 shadow-sm transition-all duration-500"
                   style={{ width: `${todoWidth}%` }}
                 >
                   {todoWidth > 10 && (
@@ -1433,8 +1171,10 @@ export default function ReportsPage() {
           </div>
         </Card>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          {/* Priority Breakdown */}
+        {/* ---------------------------------------------------
+            PRIORITY DISTRIBUTION
+        --------------------------------------------------- */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card title="Priority Distribution" icon={<FaExclamationTriangle />}>
             <div className="space-y-3">
               {Object.entries(stats.priorityBreakdown).map(
@@ -1456,26 +1196,29 @@ export default function ReportsPage() {
                       bar: "bg-green-600",
                     },
                   };
-                  const color = colors[priority];
+
+                  const c = colors[priority];
                   const width =
                     stats.totalTasks > 0 ? (count / stats.totalTasks) * 100 : 0;
 
                   return (
                     <div key={priority} className="flex items-center gap-3">
                       <span
-                        className={`${color.bg} ${color.text} px-3 py-1 rounded text-sm font-medium min-w-[80px]`}
+                        className={`${c.bg} ${c.text} min-w-[80px] rounded px-3 py-1 text-sm font-medium`}
                       >
                         {priority}
                       </span>
+
                       <div className="flex-1">
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="h-2 w-full rounded-full bg-gray-200">
                           <div
-                            className={`${color.bar} h-2 rounded-full transition-all`}
+                            className={`${c.bar} h-2 rounded-full transition-all`}
                             style={{ width: `${width}%` }}
-                          ></div>
+                          />
                         </div>
                       </div>
-                      <span className="text-sm text-content-tertiary min-w-[40px] text-right">
+
+                      <span className="min-w-[40px] text-right text-sm text-gray-600">
                         {count}
                       </span>
                     </div>
@@ -1485,20 +1228,24 @@ export default function ReportsPage() {
             </div>
           </Card>
 
-          {/* Project Breakdown */}
+          {/* ---------------------------------------------------
+              PROJECT BREAKDOWN
+          --------------------------------------------------- */}
           <Card title="Tasks by Project" icon={<FaProjectDiagram />}>
             {loading ? (
-              <div className="h-40 animate-pulse rounded-lg bg-surface-strong" />
+              <div className="h-40 animate-pulse rounded-lg bg-gray-100" />
             ) : Object.keys(stats.projectBreakdown).length === 0 ? (
-              <div className="py-14 flex flex-col items-center justify-center">
-                <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center mb-3">
+              <div className="flex flex-col items-center justify-center py-14">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
                   <FaProjectDiagram className="h-6 w-6 text-purple-500" />
                 </div>
-                <div className="text-sm font-semibold text-gray-800 mb-1">
+
+                <div className="mb-1 text-sm font-semibold text-gray-800">
                   No Project Data
                 </div>
+
                 <div className="text-xs text-gray-500">
-                  Adjust filters to see task distribution
+                  Adjust filters to see distribution
                 </div>
               </div>
             ) : (
@@ -1509,20 +1256,24 @@ export default function ReportsPage() {
                     const project = projects.find(
                       (p) => p.name === projectName
                     );
+
                     return (
                       <div
                         key={projectName}
                         className="flex items-center gap-3"
                       >
                         <div
-                          className="w-3 h-3 rounded-full"
+                          className="h-3 w-3 rounded-full"
                           style={{
                             backgroundColor: project?.color || "#9ca3af",
                           }}
-                        ></div>
-                        <span className="text-sm flex-1">{projectName}</span>
+                        />
+
+                        <span className="flex-1 text-sm">{projectName}</span>
+
                         <span className="text-sm font-semibold">{count}</span>
-                        <span className="text-xs text-content-tertiary">
+
+                        <span className="text-xs text-gray-500">
                           (
                           {stats.totalTasks > 0
                             ? Math.round((count / stats.totalTasks) * 100)
@@ -1537,43 +1288,42 @@ export default function ReportsPage() {
           </Card>
         </div>
 
-        {/* Resource-Based Reports */}
+        {/* ---------------------------------------------------
+            RESOURCE PERFORMANCE TABLE
+        --------------------------------------------------- */}
         {Object.keys(resourceStats).length > 0 && (
           <Card
             title="Resource Performance"
             icon={<FaUsers />}
             actions={
-              <Button
-                onClick={() => exportResourceReport()}
-                variant="secondary"
-              >
-                <FaDownload /> Export CSV
+              <Button variant="secondary" onClick={exportResourceReport}>
+                <FaDownload /> Export Excel
               </Button>
             }
           >
-            <div className="mb-4">
-              <p className="text-sm text-content-tertiary">
-                Performance breakdown by team member for the selected period
-              </p>
-            </div>
+            <p className="mb-4 text-sm text-gray-500">
+              Performance breakdown by team member
+            </p>
+
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-subtle">
-                    <th className="text-left py-3 px-4">Resource</th>
-                    <th className="text-left py-3 px-4">Role</th>
-                    <th className="text-center py-3 px-4">Total Tasks</th>
-                    <th className="text-center py-3 px-4">Completed</th>
-                    <th className="text-center py-3 px-4">In Progress</th>
-                    <th className="text-center py-3 px-4">To-Do</th>
-                    <th className="text-center py-3 px-4">Completion %</th>
+                  <tr className="border-b border-gray-200">
+                    <th className="py-3 px-4 text-left">Resource</th>
+                    <th className="py-3 px-4 text-left">Role</th>
+                    <th className="py-3 px-4 text-center">Total Tasks</th>
+                    <th className="py-3 px-4 text-center">Completed</th>
+                    <th className="py-3 px-4 text-center">In Progress</th>
+                    <th className="py-3 px-4 text-center">To-Do</th>
+                    <th className="py-3 px-4 text-center">Completion %</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {Object.values(resourceStats)
                     .sort((a, b) => b.completionRate - a.completionRate)
                     .map((resource) => {
-                      const completionColor =
+                      const color =
                         resource.completionRate >= 80
                           ? "text-green-600"
                           : resource.completionRate >= 50
@@ -1583,8 +1333,9 @@ export default function ReportsPage() {
                       return (
                         <tr
                           key={resource.id}
-                          className="border-b border-subtle hover:bg-surface-subtle"
+                          className="border-b border-gray-200 hover:bg-gray-50"
                         >
+                          {/* Resource */}
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
                               <span className="h-7 w-7 overflow-hidden rounded-full ring-1 ring-indigo-500/20">
@@ -1595,49 +1346,52 @@ export default function ReportsPage() {
                                     className="h-full w-full object-cover"
                                   />
                                 ) : (
-                                  <div className="h-full w-full rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-[10px] font-semibold text-white">
+                                  <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-[10px] font-semibold text-white">
                                     {(resource.name || resource.email || "U")
-                                      .toString()
                                       .charAt(0)
                                       .toUpperCase()}
                                   </div>
                                 )}
                               </span>
+
                               <div>
                                 <div className="font-medium">
                                   {resource.name}
                                 </div>
-                                <div className="text-xs text-content-tertiary">
+                                <div className="text-xs text-gray-500">
                                   {resource.email}
                                 </div>
                               </div>
                             </div>
                           </td>
+
+                          {/* Role */}
                           <td className="py-3 px-4">
-                            <span className="inline-block px-2 py-1 rounded text-xs bg-indigo-100 text-indigo-700">
-                              {resource.role || resource.resourceRole || ""}
+                            <span className="rounded bg-indigo-100 px-2 py-1 text-xs text-indigo-700">
+                              {resource.resourceRole}
                             </span>
                           </td>
+
                           <td className="py-3 px-4 text-center font-semibold">
                             {resource.total}
                           </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className="inline-flex items-center gap-1 text-green-600">
-                              <FaCheckCircle className="text-xs" />
-                              {resource.completed}
-                            </span>
+
+                          <td className="py-3 px-4 text-center text-green-600">
+                            <FaCheckCircle className="inline text-xs" />{" "}
+                            {resource.completed}
                           </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className="inline-flex items-center gap-1 text-cyan-600">
-                              <FaClock className="text-xs" />
-                              {resource.inProgress}
-                            </span>
+
+                          <td className="py-3 px-4 text-center text-cyan-600">
+                            <FaClock className="inline text-xs" />{" "}
+                            {resource.inProgress}
                           </td>
+
                           <td className="py-3 px-4 text-center text-gray-600">
                             {resource.todo}
                           </td>
+
                           <td
-                            className={`py-3 px-4 text-center font-bold ${completionColor}`}
+                            className={`py-3 px-4 text-center font-bold ${color}`}
                           >
                             {resource.completionRate}%
                           </td>
@@ -1650,102 +1404,70 @@ export default function ReportsPage() {
           </Card>
         )}
 
-        {/* Recent Tasks */}
+        {/* ---------------------------------------------------
+            RECENT TASKS TABLE
+        --------------------------------------------------- */}
         {(loading || filteredData.tasks.length > 0) && (
           <Card title="Recent Tasks" icon={<FaChartPie />}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-subtle">
-                    <th
-                      className="text-left py-2 px-3 cursor-pointer hover:bg-gray-50 transition-colors group"
-                      onClick={() => handleSort("task")}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>Task</span>
-                        {getSortIcon("task")}
-                      </div>
-                    </th>
-                    <th
-                      className="text-left py-2 px-3 cursor-pointer hover:bg-gray-50 transition-colors group"
-                      onClick={() => handleSort("assignee")}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>Assignee</span>
-                        {getSortIcon("assignee")}
-                      </div>
-                    </th>
-                    <th
-                      className="text-left py-2 px-3 cursor-pointer hover:bg-gray-50 transition-colors group"
-                      onClick={() => handleSort("project")}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>Project</span>
-                        {getSortIcon("project")}
-                      </div>
-                    </th>
-                    <th
-                      className="text-left py-2 px-3 cursor-pointer hover:bg-gray-50 transition-colors group"
-                      onClick={() => handleSort("status")}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>Status</span>
-                        {getSortIcon("status")}
-                      </div>
-                    </th>
-                    <th
-                      className="text-left py-2 px-3 cursor-pointer hover:bg-gray-50 transition-colors group"
-                      onClick={() => handleSort("priority")}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>Priority</span>
-                        {getSortIcon("priority")}
-                      </div>
-                    </th>
-                    <th
-                      className="text-left py-2 px-3 cursor-pointer hover:bg-gray-50 transition-colors group"
-                      onClick={() => handleSort("created")}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>Created</span>
-                        {getSortIcon("created")}
-                      </div>
-                    </th>
-                    <th
-                      className="text-left py-2 px-3 cursor-pointer hover:bg-gray-50 transition-colors group"
-                      onClick={() => handleSort("completed")}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <span>Completed</span>
-                        {getSortIcon("completed")}
-                      </div>
-                    </th>
+                  <tr className="border-b border-gray-200">
+                    {/* Sort Columns */}
+                    {[
+                      ["task", "Task"],
+                      ["assignee", "Assignee"],
+                      ["project", "Project"],
+                      ["status", "Status"],
+                      ["priority", "Priority"],
+                      ["created", "Created"],
+                      ["completed", "Completed"],
+                    ].map(([key, label]) => (
+                      <th
+                        key={key}
+                        className="group cursor-pointer px-3 py-2 text-left transition-colors hover:bg-gray-50"
+                        onClick={() => handleSort(key)}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span>{label}</span>
+                          {getSortIcon(key)}
+                        </div>
+                      </th>
+                    ))}
                   </tr>
                 </thead>
+
                 <tbody>
                   {loading && <SkeletonRow columns={7} />}
+
                   {!loading &&
                     sortedRecentTasks.map((task) => {
                       const project = projects.find(
                         (p) => p.id === task.projectId
                       );
+
                       const assigneeUser = users.find(
-                        (r) => r.id === task.assigneeId
+                        (u) => u.id === task.assigneeId
                       );
                       const assigneeClient = clients.find(
                         (c) => c.id === task.assigneeId
                       );
+
                       const assigneeName =
                         assigneeUser?.name ||
                         assigneeClient?.clientName ||
                         "Unassigned";
+
                       const assigneeRole =
                         assigneeUser?.role || (assigneeClient ? "Client" : "");
 
                       return (
-                        <tr key={task.id} className="border-b border-subtle">
-                          <td className="py-2 px-3">{task.title}</td>
-                          <td className="py-2 px-3">
+                        <tr key={task.id} className="border-b border-gray-200">
+                          {/* Task */}
+                          <td className="px-3 py-2">{task.title}</td>
+
+                          {/* Assignee */}
+                          <td className="px-3 py-2">
                             <div className="flex items-center gap-2">
                               <span className="h-6 w-6 overflow-hidden rounded-full ring-1 ring-indigo-500/20">
                                 {assigneeUser?.imageUrl ||
@@ -1759,45 +1481,52 @@ export default function ReportsPage() {
                                     className="h-full w-full object-cover"
                                   />
                                 ) : (
-                                  <div className="h-full w-full rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-[9px] font-semibold text-white">
+                                  <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-[9px] font-semibold text-white">
                                     {(assigneeName || "U")
-                                      .toString()
                                       .charAt(0)
                                       .toUpperCase()}
                                   </div>
                                 )}
                               </span>
+
                               <div className="text-xs">
                                 <div className="font-medium">
                                   {assigneeName}
                                 </div>
-                                <div className="text-content-tertiary">
+                                <div className="text-gray-500">
                                   {assigneeRole}
                                 </div>
                               </div>
                             </div>
                           </td>
-                          <td className="py-2 px-3">
+
+                          {/* Project */}
+                          <td className="px-3 py-2">
                             <span
-                              className="inline-block px-2 py-1 rounded text-xs"
+                              className="rounded px-2 py-1 text-xs"
                               style={{
-                                backgroundColor: (project?.color || "#9ca3af") + "20",
-                                color: project?.color || "#6b7280",
+                                backgroundColor: project?.color + "20",
+                                color: project?.color,
                               }}
                             >
-                              {project?.name || "Unknown"}
+                              {project?.name}
                             </span>
                           </td>
-                          <td className="py-2 px-3">
+
+                          {/* Status */}
+                          <td className="px-3 py-2">
                             <span
                               className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getStatusBadge(
                                 task.status
                               )}`}
                             >
-                              {task.status}
+                              {statusIcons[task.status]}
+                              <span>{task.status}</span>
                             </span>
                           </td>
-                          <td className="py-2 px-3">
+
+                          {/* Priority */}
+                          <td className="px-3 py-2">
                             <span
                               className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getPriorityBadge(
                                 task.priority
@@ -1807,7 +1536,9 @@ export default function ReportsPage() {
                               <span>{task.priority}</span>
                             </span>
                           </td>
-                          <td className="py-2 px-3 text-content-tertiary">
+
+                          {/* Created */}
+                          <td className="px-3 py-2 text-gray-500">
                             {task.createdDate
                               ? new Date(task.createdDate).toLocaleDateString(
                                   "en-US",
@@ -1819,7 +1550,9 @@ export default function ReportsPage() {
                                 )
                               : "-"}
                           </td>
-                          <td className="py-2 px-3 text-content-tertiary">
+
+                          {/* Completed */}
+                          <td className="px-3 py-2 text-gray-500">
                             {task.completedDate
                               ? new Date(task.completedDate).toLocaleDateString(
                                   "en-US",
@@ -1837,13 +1570,14 @@ export default function ReportsPage() {
                 </tbody>
               </table>
             </div>
-            {/* Load More Button */}
+
+            {/* Load More */}
             {!loading && filteredData.tasks.length > recentTasksLimit && (
-              <div className="flex justify-center pt-4 border-t border-gray-200">
+              <div className="flex justify-center border-t border-gray-200 pt-4">
                 <Button
                   variant="secondary"
-                  onClick={() => setRecentTasksLimit((prev) => prev + 20)}
                   className="text-sm"
+                  onClick={() => setRecentTasksLimit((prev) => prev + 20)}
                 >
                   Load More Tasks (
                   {filteredData.tasks.length - recentTasksLimit} remaining)
@@ -1853,6 +1587,19 @@ export default function ReportsPage() {
           </Card>
         )}
       </div>
+      {showTaskModal && selectedTask && (
+        <TaskModal
+          onClose={() => {
+            setShowTaskModal(false);
+            setSelectedTask(null);
+          }}
+          onSave={handleSaveTask}
+          taskToEdit={selectedTask}
+          projects={projects}
+          assignees={users}
+          clients={clients}
+        />
+      )}
     </div>
   );
 }

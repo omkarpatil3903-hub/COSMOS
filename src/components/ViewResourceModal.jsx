@@ -112,24 +112,19 @@ function ViewResourceModal({ resource, onClose }) {
                 <label className="block text-xs font-medium text-gray-500 mb-1">
                   Join Date
                 </label>
-                <p className="text-gray-900">{resource.joinDate || "Not provided"}</p>
+                <p className="text-gray-900">
+                  {resource.joinDate || "Not provided"}
+                </p>
+              </div>
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Password
+                </label>
+                <p className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                  {resource.devPassword || "Not provided"}
+                </p>
               </div>
             </div>
-
-            {/* Dev Password Warning (if exists) */}
-            {resource.devPassword && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <label className="text-sm font-medium text-yellow-800 flex items-center gap-2 mb-2">
-                  <span>⚠️ Password (Dev Only)</span>
-                </label>
-                <p className="text-gray-900 font-mono font-semibold text-sm">
-                  {resource.devPassword}
-                </p>
-                <p className="text-xs text-yellow-600 mt-2">
-                  Remove this field before production deployment
-                </p>
-              </div>
-            )}
           </div>
           <div className="flex justify-end pt-6 border-t border-gray-200 mt-6">
             <Button type="button" variant="ghost" onClick={onClose}>

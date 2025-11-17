@@ -296,7 +296,18 @@ function DashboardPage() {
         (d) => (d[dataKey1] || 0) + (d[dataKey2] || 0) + (d[dataKey3] || 0)
       )
     );
-    console.log("userdata:", userData);
+    if (!Array.isArray(data) || data.length === 0 || !isFinite(maxValue) || maxValue <= 0) {
+      return (
+        <div>
+          <h3 className="text-lg font-semibold text-content-primary mb-4">
+            {title}
+          </h3>
+          <div className="h-64 flex items-center justify-center text-sm text-content-tertiary">
+            No data
+          </div>
+        </div>
+      );
+    }
     return (
       <div>
         <h3 className="text-lg font-semibold text-content-primary mb-4">
@@ -383,8 +394,28 @@ function DashboardPage() {
 
   // Enhanced line chart component for revenue with better visualization
   const LineChart = ({ data, title, dataKey, color = "#10B981" }) => {
-    const maxValue = Math.max(...data.map((d) => d[dataKey]));
-    const minValue = Math.min(...data.map((d) => d[dataKey]));
+    const values = Array.isArray(data)
+      ? data
+          .map((d) => (d && typeof d[dataKey] === "number" ? d[dataKey] : null))
+          .filter((v) => typeof v === "number" && isFinite(v))
+      : [];
+
+    if (values.length === 0) {
+      return (
+        <div>
+          <h3 className="text-lg font-semibold text-content-primary mb-4">
+            {title}
+          </h3>
+          <div className="h-64 flex items-center justify-center text-sm text-content-tertiary">
+            No data
+          </div>
+        </div>
+      );
+    }
+
+    const maxValue = Math.max(...values);
+    const minValue = Math.min(...values);
+    const range = maxValue - minValue || 1;
 
     return (
       <div>
@@ -394,8 +425,8 @@ function DashboardPage() {
         <div className="h-64 relative">
           <div className="absolute inset-0 flex items-end justify-between pb-8">
             {data.map((item, index) => {
-              const height =
-                ((item[dataKey] - minValue) / (maxValue - minValue)) * 150;
+              const value = Number(item && item[dataKey]) || 0;
+              const height = ((value - minValue) / range) * 150;
               return (
                 <div key={index} className="flex flex-col items-center flex-1">
                   <div className="relative flex flex-col items-center">
@@ -645,26 +676,30 @@ function DashboardPage() {
           <h5 className="text-sm font-medium text-content-primary">
             Upcoming Events
           </h5>
-          {data
-            .filter((event) => new Date(event.date) >= currentDate)
-            .slice(0, 5)
-            .map((event, index) => (
-              <div key={index} className="flex items-center gap-2 text-xs">
-                <div
-                  className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: event.color }}
-                ></div>
-                <span className="text-content-secondary">
-                  {new Date(event.date).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
-                <span className="text-content-primary font-medium truncate">
-                  {event.title}
-                </span>
-              </div>
-            ))}
+          {data.filter((event) => new Date(event.date) >= currentDate).slice(0, 5).length === 0 ? (
+            <div className="text-xs text-content-tertiary">No upcoming events.</div>
+          ) : (
+            data
+              .filter((event) => new Date(event.date) >= currentDate)
+              .slice(0, 5)
+              .map((event, index) => (
+                <div key={index} className="flex items-center gap-2 text-xs">
+                  <div
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: event.color }}
+                  ></div>
+                  <span className="text-content-secondary">
+                    {new Date(event.date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </span>
+                  <span className="text-content-primary font-medium truncate">
+                    {event.title}
+                  </span>
+                </div>
+              ))
+          )}
         </div>
 
         {/* Legend */}
@@ -789,7 +824,7 @@ function DashboardPage() {
           <Card className="p-6">
             <BarChart
               data={monthlyStatus}
-              title="Monthly Project Status (2025)"
+              title="Monthly Project Status (Last 12 months)"
               dataKey1="completed"
               dataKey2="inProgress"
               dataKey3="pending"
@@ -818,6 +853,9 @@ function DashboardPage() {
               <h3 className="text-lg font-semibold text-content-primary mb-4">
                 Project Health Overview
               </h3>
+              {statusSummary.total === 0 && (
+                <div className="text-sm text-content-tertiary mb-2">No task data yet.</div>
+              )}
 
               {/* Status distribution stacked bar */}
               <div className="space-y-2">

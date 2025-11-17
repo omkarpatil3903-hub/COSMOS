@@ -940,7 +940,7 @@ const EmployeeCalendar = () => {
             className="absolute inset-0 bg-black/50"
             onClick={closeEventModal}
           />
-          <Card className="z-10 w-full max-w-2xl max-h-[90vh] overflow-auto">
+          <Card className="z-10 w-auto max-w-[90vw] md:max-w-xl lg:max-w-2xl max-h-[85vh] overflow-auto">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Create Meeting</h2>
               <button

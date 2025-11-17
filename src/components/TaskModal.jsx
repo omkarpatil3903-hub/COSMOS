@@ -1,5 +1,6 @@
 // src/components/TaskModal.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+
 import Card from "./Card";
 import Button from "./Button";
 import DateRangeCalendar from "./calendar/DateRangeCalendar";
@@ -198,33 +199,104 @@ function TaskModal({
     const dd = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${dd}`;
   };
+  const modalRef = useRef(null);
+  const prevFocusedRef = useRef(null);
+  useEffect(() => {
+    prevFocusedRef.current = document.activeElement;
+    const root = modalRef.current;
+    if (root) {
+      const el = root.querySelector(
+        'input, select, textarea, button, [tabindex]:not([tabindex="-1"])'
+      );
+      if (el && typeof el.focus === "function") el.focus();
+      else if (typeof root.focus === "function") root.focus();
+    }
+    return () => {
+      if (
+        prevFocusedRef.current &&
+        typeof prevFocusedRef.current.focus === "function"
+      ) {
+        prevFocusedRef.current.focus();
+      }
+    };
+  }, []);
+  
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    const originalPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.paddingRight = originalPaddingRight;
+    };
+  }, []);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      onClose();
+      return;
+    }
+    if (e.key === "Tab") {
+      const root = modalRef.current;
+      if (!root) return;
+      const selectors =
+        'a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, [contenteditable], [tabindex]:not([tabindex="-1"])';
+      const nodes = Array.from(root.querySelectorAll(selectors)).filter(
+        (el) => el instanceof HTMLElement && !el.hasAttribute("disabled")
+      );
+      if (nodes.length === 0) {
+        e.preventDefault();
+        if (typeof root.focus === "function") root.focus();
+        return;
+      }
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first || document.activeElement === root) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+  };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
+    <div ref={modalRef} tabIndex={-1} onKeyDown={handleKeyDown} className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain p-4 sm:p-6" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <Card className="z-10 w-full max-w-2xl max-h-[90vh] overflow-auto">
-        <h2 className="text-xl font-semibold mb-2">
-          {taskToEdit ? "Edit Task" : "Create Task"}
-        </h2>
+      <div className="z-10 w-full max-w-2xl mx-4 sm:mx-6">
+        <Card className="w-full max-h-[90vh] overflow-y-auto overscroll-contain">
+          <h2 className="text-xl font-semibold mb-2">
+            {taskToEdit ? "Edit Task" : "Create Task"}
+          </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-content-secondary">
-              Project
-            </label>
-            <select
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
-            >
-              <option value="">Select Project</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-content-secondary">
+                Project
+              </label>
+              <select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
+              >
+                <option value="">Select Project</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
           <div>
             <label className="block text-sm font-medium text-content-secondary">
@@ -636,7 +708,8 @@ function TaskModal({
             </Button>
           </div>
         </form>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }
