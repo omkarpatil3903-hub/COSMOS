@@ -293,17 +293,6 @@ function TasksManagement() {
 
   const handleSave = async (taskData) => {
     try {
-      const MIN_COMMENT_LEN = 5;
-      if (
-        (taskData.status || "To-Do") === "Done" &&
-        (!taskData.completionComment ||
-          taskData.completionComment.trim().length < MIN_COMMENT_LEN)
-      ) {
-        toast.error(
-          `Completion comment must be at least ${MIN_COMMENT_LEN} characters`
-        );
-        return;
-      }
       if (taskData.id) {
         const ref = doc(db, "tasks", taskData.id);
         const wt =
