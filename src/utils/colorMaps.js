@@ -110,3 +110,10 @@ export function getStatusBadge(status) {
   const k = normalizeKey(status);
   return STATUS_CLASSES[k]?.badge || "bg-gray-100 text-gray-700";
 }
+
+//for gantt chart
+export const STATUS_HEX = {
+  "to-do": "#9ca3af", // gray-400
+  "in progress": "#3b82f6", // blue-500
+  done: "#10b981", // green-500
+};

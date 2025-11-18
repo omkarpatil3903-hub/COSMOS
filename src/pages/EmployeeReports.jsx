@@ -36,7 +36,6 @@ export default function EmployeeReports() {
       setTasks(allTasks);
       setLoading(false);
     });
-
     // Fetch projects where employee has tasks
     const projectIds = new Set();
     const unsubTasksForProjects = onSnapshot(qTasks, (snap) => {

@@ -17,6 +17,7 @@ import {
   FaSpinner,
 } from "react-icons/fa";
 import { FaArrowsRotate } from "react-icons/fa6";
+import GanttChart from "../components/GanttChart";
 
 import toast from "react-hot-toast";
 
@@ -30,8 +31,10 @@ import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 
 import {
   getPriorityBadge,
+  getPriorityHex,
   getStatusBadge,
   PRIORITY_HEX,
+  STATUS_HEX,
   TYPE_HEX,
 } from "../utils/colorMaps";
 
@@ -49,9 +52,6 @@ import {
   Legend,
   Label,
 } from "recharts";
-
-import TaskModal from "../components/TaskModal";
-import { updateTask } from "../services/taskService";
 
 // ---------------------------------------------------
 // UI THEME CONSTANTS
@@ -112,8 +112,6 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [recentTasksLimit, setRecentTasksLimit] = useState(10);
-  const [showTaskModal, setShowTaskModal] = useState(false);
-  const [selectedTask, setSelectedTask] = useState(null);
 
   // ---------------------------------------------------
   // ACTIVE FILTER COUNT
@@ -142,6 +140,12 @@ export default function ReportsPage() {
               name: data.projectName || data.name || "Untitled",
               color: data.color || "#6b7280",
               status: data.status || "Active",
+              startDate: data.startDate
+                ? data.startDate.toDate().toISOString().slice(0, 10)
+                : null,
+              endDate: data.endDate
+                ? data.endDate.toDate().toISOString().slice(0, 10)
+                : null,
             };
           })
         );
@@ -151,7 +155,6 @@ export default function ReportsPage() {
         toast.error("Failed to load projects");
       }
     );
-
     const unsubUsers = onSnapshot(
       collection(db, "users"),
       (snap) => {
@@ -233,35 +236,6 @@ export default function ReportsPage() {
 
     return { tasks: filteredTasks };
   }, [tasks, selectedProject, selectedEmployee]);
-
-  // ---------------------------------------------------
-  // GANTT CHART DATA
-  // ---------------------------------------------------
-
-  const handleSaveTask = async (payload) => {
-    try {
-      await updateTask(payload.id, {
-        title: payload.title,
-        description: payload.description,
-        assigneeId: payload.assigneeId,
-        assigneeType: payload.assigneeType,
-        projectId: payload.projectId,
-        priority: payload.priority,
-        status: payload.status,
-        assignedDate: payload.assignedDate
-          ? new Date(payload.assignedDate)
-          : null,
-        dueDate: payload.dueDate ? new Date(payload.dueDate) : null,
-        completionComment: payload.completionComment || "",
-      });
-      toast.success("Task updated");
-      setShowTaskModal(false);
-      setSelectedTask(null);
-    } catch (err) {
-      console.error("Failed to update task", err);
-      toast.error("Failed to update task");
-    }
-  };
 
   // ---------------------------------------------------
   // STATS CALCULATIONS
@@ -434,6 +408,74 @@ export default function ReportsPage() {
     projects,
     recentTasksLimit,
   ]);
+
+  // ---------------------------------------------------
+  // Gantt
+  // ---------------------------------------------------
+  const ganttData = useMemo(() => {
+    if (!projects.length) return [];
+
+    // ----- 1. PROJECT PARENTS -----
+    const projectParents = projects.map((p) => {
+      let duration = 1;
+
+      if (p.startDate && p.endDate) {
+        const s = new Date(p.startDate);
+        const e = new Date(p.endDate);
+        const diff = Math.ceil((e - s) / (1000 * 60 * 60 * 24));
+        duration = diff > 0 ? diff : 1;
+      }
+
+      return {
+        id: p.id,
+        text: p.name,
+        start_date: p.startDate || "2025-01-01",
+        duration,
+        parent: 0,
+        progress: 0,
+        open: true,
+        color: p.color,
+      };
+    });
+
+    // ---- 2. Task Rows ----
+    const taskRows = filteredData.tasks.map((t) => {
+      const start = t.assignedDate ? t.assignedDate.slice(0, 10) : null;
+      const end = t.dueDate ? t.dueDate.slice(0, 10) : null;
+
+      let duration = 1;
+
+      if (start && end) {
+        const s = new Date(start);
+        const e = new Date(end);
+        const diff = Math.ceil((e - s) / (1000 * 60 * 60 * 24));
+        duration = diff > 0 ? diff : 1;
+      }
+
+      //find the assigned user or client
+      const assignedUser = users.find((u) => u.id === t.assigneeId);
+      const assignedClient = clients.find((c) => c.id === t.assigneeId);
+      const assignedName =
+        assignedUser?.name || assignedClient?.clientName || "unassigned";
+
+      return {
+        id: t.id,
+        assignedTo: assignedName,
+        text: t.title,
+        start_date: start || "2025-01-01",
+        duration,
+        parent: t.projectId,
+        progress: t.status === "Done" ? 1 : 0,
+        priority: t.priority?.toLowerCase(),
+        status: t.status?.toLowerCase(),
+
+        statusColor: STATUS_HEX[t.status?.toLowerCase()] || "#9ca3af",
+        priorityColor: getPriorityHex(t.priority),
+      };
+    });
+    console.log("gantt task Data ", taskRows);
+    return [...projectParents, ...taskRows];
+  }, [projects, filteredData.tasks]);
 
   // ---------------------------------------------------
   // ICON + CARD STYLE MEMOS
@@ -718,9 +760,9 @@ export default function ReportsPage() {
       <PageHeader
         title="Analytics & Reports"
         actions={
-            <Button variant="secondary" onClick={exportReport}>
-              <FaDownload /> Export Excel
-            </Button>
+          <Button variant="secondary" onClick={exportReport}>
+            <FaDownload /> Export Excel
+          </Button>
         }
       >
         View comprehensive analytics and reports across different time periods
@@ -1403,6 +1445,22 @@ export default function ReportsPage() {
             </div>
           </Card>
         )}
+        <Card
+          title="Project Timeline (Gantt Chart)"
+          icon={<FaProjectDiagram />}
+        >
+          {loading ? (
+            <div className="h-64 bg-gray-100 animate-pulse rounded-md" />
+          ) : ganttData.length === 0 ? (
+            <p className="text-center text-gray-500 py-10 text-sm">
+              No tasks available to display Gantt chart.
+            </p>
+          ) : (
+            <div className="mt-4">
+              <GanttChart data={ganttData} />
+            </div>
+          )}
+        </Card>
 
         {/* ---------------------------------------------------
             RECENT TASKS TABLE
@@ -1587,19 +1645,6 @@ export default function ReportsPage() {
           </Card>
         )}
       </div>
-      {showTaskModal && selectedTask && (
-        <TaskModal
-          onClose={() => {
-            setShowTaskModal(false);
-            setSelectedTask(null);
-          }}
-          onSave={handleSaveTask}
-          taskToEdit={selectedTask}
-          projects={projects}
-          assignees={users}
-          clients={clients}
-        />
-      )}
     </div>
   );
 }
