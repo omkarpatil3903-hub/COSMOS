@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { HiXMark } from "react-icons/hi2";
 import { FaEye, FaEyeSlash, FaSpinner } from "react-icons/fa";
+import toast from "react-hot-toast";
 import Button from "./Button";
 
 function EditResourceModal({
@@ -63,17 +64,16 @@ function EditResourceModal({
       password: validateField("password", formData.password),
     };
     setErrors(newErrors);
-    const hasErrors = Object.values(newErrors).some(Boolean);
-    if (hasErrors) return;
+    const firstError =
+      Object.values(newErrors).find((message) => message) || "";
+    if (firstError) {
+      toast.error(firstError);
+      return;
+    }
     onSubmit(e);
   };
 
-  const isSubmitDisabled = Boolean(
-    validateField("fullName", formData.fullName) ||
-      validateField("email", formData.email) ||
-      validateField("mobile", formData.mobile) ||
-      (formData.password ? validateField("password", formData.password) : false)
-  );
+  const isSubmitDisabled = false;
   const disableSubmit = isSubmitDisabled || isSubmitting || !hasChanges;
 
   return (
@@ -101,7 +101,7 @@ function EditResourceModal({
               <HiXMark className="h-6 w-6" />
             </button>
           </div>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" noValidate>
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-content-secondary uppercase tracking-wide">
                 Basic Info
@@ -116,17 +116,10 @@ function EditResourceModal({
                     onChange={(e) => {
                       const v = e.target.value;
                       setFormData({ ...formData, fullName: v });
-                      setErrors((prev) => ({
-                        ...prev,
-                        fullName: validateField("fullName", v),
-                      }));
+                      if (errors.fullName) {
+                        setErrors((prev) => ({ ...prev, fullName: "" }));
+                      }
                     }}
-                    onBlur={(e) =>
-                      setErrors((prev) => ({
-                        ...prev,
-                        fullName: validateField("fullName", e.target.value),
-                      }))
-                    }
                     className={`w-full rounded-lg border ${
                       errors.fullName ? "border-red-500" : "border-subtle"
                     } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
@@ -147,17 +140,10 @@ function EditResourceModal({
                     onChange={(e) => {
                       const v = e.target.value;
                       setFormData({ ...formData, email: v });
-                      setErrors((prev) => ({
-                        ...prev,
-                        email: validateField("email", v),
-                      }));
+                      if (errors.email) {
+                        setErrors((prev) => ({ ...prev, email: "" }));
+                      }
                     }}
-                    onBlur={(e) =>
-                      setErrors((prev) => ({
-                        ...prev,
-                        email: validateField("email", e.target.value),
-                      }))
-                    }
                     className={`w-full rounded-lg border ${
                       errors.email ? "border-red-500" : "border-subtle"
                     } bg-surface py-2 px-3 text-sm text-content-primary focus-visible;border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
@@ -176,17 +162,10 @@ function EditResourceModal({
                     onChange={(e) => {
                       const v = e.target.value;
                       setFormData({ ...formData, mobile: v });
-                      setErrors((prev) => ({
-                        ...prev,
-                        mobile: validateField("mobile", v),
-                      }));
+                      if (errors.mobile) {
+                        setErrors((prev) => ({ ...prev, mobile: "" }));
+                      }
                     }}
-                    onBlur={(e) =>
-                      setErrors((prev) => ({
-                        ...prev,
-                        mobile: validateField("mobile", e.target.value),
-                      }))
-                    }
                     className={`w-full rounded-lg border ${
                       errors.mobile ? "border-red-500" : "border-subtle"
                     } bg-surface py-2 px-3 text-sm text-content-primary focus-visible;border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
@@ -306,17 +285,10 @@ function EditResourceModal({
                     onChange={(e) => {
                       const v = e.target.value;
                       setFormData({ ...formData, password: v });
-                      setErrors((prev) => ({
-                        ...prev,
-                        password: validateField("password", v),
-                      }));
+                      if (errors.password) {
+                        setErrors((prev) => ({ ...prev, password: "" }));
+                      }
                     }}
-                    onBlur={(e) =>
-                      setErrors((prev) => ({
-                        ...prev,
-                        password: validateField("password", e.target.value),
-                      }))
-                    }
                     className={`w-full rounded-lg border ${
                       errors.password ? "border-red-500" : "border-subtle"
                     } bg-surface py-2 pl-3 pr-10 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}

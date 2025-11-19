@@ -39,7 +39,7 @@ const AddProjectModal = ({
               <HiXMark className="h-6 w-6" />
             </button>
           </div>
-          <form onSubmit={handleFormSubmit} className="space-y-6">
+          <form onSubmit={handleFormSubmit} className="space-y-6" noValidate>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                 Project Name *
@@ -102,6 +102,9 @@ const AddProjectModal = ({
                     </option>
                   ))}
                 </select>
+                {errors.clientId && (
+                  <p className="text-xs text-red-600 mt-1">{errors.clientId}</p>
+                )}
               </label>
               <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                 Start Date *

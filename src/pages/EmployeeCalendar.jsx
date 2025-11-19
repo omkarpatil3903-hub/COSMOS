@@ -25,7 +25,8 @@ import {
 } from "react-icons/fa";
 import { MdReplayCircleFilled } from "react-icons/md";
 import { TYPE_CLASSES, PRIORITY_CLASSES } from "../utils/colorMaps";
-import { occursOnDate } from "../utils/recurringTasks";
+// ✅ Import Helper Functions
+import { expandRecurringOccurrences } from "../utils/recurringTasks";
 
 const EmployeeCalendar = () => {
   const { user } = useAuthContext();
@@ -37,9 +38,10 @@ const EmployeeCalendar = () => {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showFloatingMenu, setShowFloatingMenu] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [editingEvent, setEditingEvent] = useState(null);
-  const [filterType, setFilterType] = useState("all"); // all, meetings, tasks
-  const [filterStatus, setFilterStatus] = useState("all"); // all, approved, request, pending (for meetings) | in_progress, done (for tasks)
+  const [filterType, setFilterType] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [projects, setProjects] = useState([]);
   const [clients, setClients] = useState([]);
   const [resources, setResources] = useState([]);
@@ -149,36 +151,93 @@ const EmployeeCalendar = () => {
     };
   }, [tasks, events]);
 
-  // Filtered tasks and events based on current filter settings
+  // ✅ CORRECTED: Filtered items with Robust Date Logic
   const filteredItems = useMemo(() => {
     let items = [];
 
-    // Add tasks if type filter allows
+    // 1. PROCESSING TASKS
     if (filterType === "all" || filterType === "tasks") {
-      const filteredTasks = tasks.filter((task) => {
+      const activeTasks = tasks.filter((task) => {
         if (filterStatus === "all") return true;
-
-        // Map task status to filter values
         const statusMap = {
           in_progress: ["In Progress", "To-Do"],
           done: ["Done", "Completed"],
         };
-
         return statusMap[filterStatus]?.includes(task.status);
       });
 
-      items = [
-        ...items,
-        ...filteredTasks.map((task) => ({ ...task, itemType: "task" })),
-      ];
+      activeTasks.forEach((task) => {
+        // A. Always add the REAL task instance
+        items.push({ ...task, itemType: "task" });
+
+        // B. If Recurring, generate GHOST tasks for this view
+        if (task.isRecurring && task.status !== "Done") {
+          // Calculate view range (Current Month)
+          const year = currentDate.getFullYear();
+          const month = currentDate.getMonth();
+
+          const startView = new Date(year, month, 1);
+          const endView = new Date(year, month + 1, 0);
+
+          // ✅ FIX: The expandRecurringOccurrences needs to start from task's base date
+          // Get task base due date
+          const taskDueDate =
+            task.dueDate?.toDate?.() || new Date(task.dueDate);
+          // Use UTC components to get the "intended" date (since tasks are stored as UTC midnight)
+          const taskBaseDateOnly = new Date(
+            taskDueDate.getUTCFullYear(),
+            taskDueDate.getUTCMonth(),
+            taskDueDate.getUTCDate()
+          );
+
+          // Use the LATER of task start date or month start date
+          const effectiveStart =
+            taskBaseDateOnly > startView ? taskBaseDateOnly : startView;
+
+          // Only process if task starts on or before month end
+          if (effectiveStart <= endView) {
+            // Get all dates this task should occur on in this month
+            const occurrenceDates = expandRecurringOccurrences(
+              task,
+              effectiveStart,
+              endView
+            );
+
+            occurrenceDates.forEach((dateStr) => {
+              // Check if a real task already exists for this date to avoid duplicates
+              const realTaskExists = tasks.some((t) => {
+                const tDate = t.dueDate?.toDate
+                  ? t.dueDate.toDate().toISOString().split("T")[0]
+                  : t.dueDate;
+
+                // Compare Series ID and Date String
+                return (
+                  t.parentRecurringTaskId ===
+                    (task.parentRecurringTaskId || task.id) && tDate === dateStr
+                );
+              });
+
+              // If no real task exists yet, add a GHOST task
+              if (!realTaskExists) {
+                items.push({
+                  ...task,
+                  id: `ghost-${task.id}-${dateStr}`, // Unique fake ID
+                  dueDate: dateStr, // Override date
+                  itemType: "task",
+                  isGhost: true, // Flag for UI styling
+                  status: "Scheduled",
+                });
+              }
+            });
+          }
+        }
+      });
     }
 
-    // Add events/meetings if type filter allows
+    // 2. PROCESSING MEETINGS
     if (filterType === "all" || filterType === "meetings") {
       const filteredEvents = events.filter((event) => {
         if (filterStatus === "all") return true;
-
-        // Map event status to filter values
         return event.status === filterStatus;
       });
 
@@ -189,7 +248,7 @@ const EmployeeCalendar = () => {
     }
 
     return items;
-  }, [tasks, events, filterType, filterStatus]);
+  }, [tasks, events, filterType, filterStatus, currentDate]);
 
   const getItemsForDate = (date) => {
     const dateStr = `${date.getFullYear()}-${String(
@@ -202,11 +261,11 @@ const EmployeeCalendar = () => {
         const taskDateStr = `${dueDate.getFullYear()}-${String(
           dueDate.getMonth() + 1
         ).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
-        return item.isRecurring
-          ? occursOnDate(item, date)
+
+        return item.isGhost
+          ? item.dueDate === dateStr
           : taskDateStr === dateStr;
       } else if (item.itemType === "meeting") {
-        // For meetings, check the date field
         return item.date === dateStr;
       }
       return false;
@@ -241,9 +300,9 @@ const EmployeeCalendar = () => {
       const dayItems = getItemsForDate(date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const currentDate = new Date(date);
-      currentDate.setHours(0, 0, 0, 0);
-      const isPast = currentDate < today;
+      const currentDateObj = new Date(date);
+      currentDateObj.setHours(0, 0, 0, 0);
+      const isPast = currentDateObj < today;
       const isToday = date.toDateString() === new Date().toDateString();
       const isSelected = selectedDate?.toDateString() === date.toDateString();
 
@@ -279,7 +338,7 @@ const EmployeeCalendar = () => {
 
           <div className="mt-1 space-y-1">
             {dayItems.slice(0, 2).map((item) => {
-              const isEvent = item.type === "meeting" || item.attendees;
+              const isEvent = item.itemType === "meeting";
               const typeKey = isEvent
                 ? String(item.type || "meeting").toLowerCase()
                 : item.isRecurring
@@ -293,16 +352,24 @@ const EmployeeCalendar = () => {
               const priorityDot =
                 PRIORITY_CLASSES[priorityKey]?.dot || "bg-gray-400";
 
+              // Styling for Ghost Items
               return (
                 <div
                   key={item.id}
-                  className={`text-xs p-1.5 rounded-md ${
-                    isPast ? "bg-gray-200 text-gray-500" : typeBadge
-                  } truncate relative shadow-sm hover:shadow-md transition-shadow cursor-pointer`}
-                  title={item.title}
+                  className={`text-xs p-1.5 rounded-md truncate relative shadow-sm hover:shadow-md transition-shadow cursor-pointer 
+                    ${isPast ? "bg-gray-200 text-gray-500" : typeBadge}
+                    ${
+                      item.isGhost
+                        ? "opacity-60 border border-dashed border-gray-400 bg-gray-50"
+                        : ""
+                    } 
+                  `}
+                  title={
+                    item.isGhost ? "Future Recurrence (Projected)" : item.title
+                  }
                 >
-                  {/* Priority strip on the left -- hidden for meetings */}
-                  {typeKey !== "meeting" && (
+                  {/* Priority strip on the left -- hidden for meetings and ghost tasks */}
+                  {typeKey !== "meeting" && !item.isGhost && (
                     <span
                       className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-md ${priorityDot}`}
                       aria-hidden
@@ -313,10 +380,11 @@ const EmployeeCalendar = () => {
                     <span className="truncate font-medium">
                       {isEvent ? `${item.time} ${item.title}` : item.title}
                     </span>
-                    {/* Recurring icon for events */}
-                    {isEvent && (item.isRecurring || item.recurringPattern) && (
+                    {/* Recurring/Ghost Icon */}
+                    {(isEvent && (item.isRecurring || item.recurringPattern)) ||
+                    item.isGhost ? (
                       <MdReplayCircleFilled className="text-teal-600 text-sm ml-1 flex-shrink-0" />
-                    )}
+                    ) : null}
                   </div>
                 </div>
               );
@@ -349,17 +417,14 @@ const EmployeeCalendar = () => {
     "December",
   ];
 
-  // Task creation handlers
   const handleTaskSave = async (taskData) => {
     try {
-      // Convert dueDate string to Date object if needed
       const dueDate = taskData.dueDate ? new Date(taskData.dueDate) : null;
-
       const newTask = {
         title: taskData.title,
         description: taskData.description || "",
         projectId: taskData.projectId || "",
-        assigneeId: user.uid, // Always assign to current user for employee calendar
+        assigneeId: user.uid,
         assigneeType: "user",
         status: taskData.status || "To-Do",
         priority: taskData.priority || "Medium",
@@ -388,7 +453,6 @@ const EmployeeCalendar = () => {
     }
   };
 
-  // Event creation handlers
   const openEventModal = (event) => {
     if (event) {
       setEditingEvent(event);
@@ -418,7 +482,7 @@ const EmployeeCalendar = () => {
         priority: eventData.priority || "medium",
         location: eventData.location || "",
         attendees: eventData.attendees || [],
-        attendeeIds: [user.uid], // Include current user as attendee
+        attendeeIds: [user.uid],
         createdBy: user.uid,
         objectives: eventData.objectives || [],
         createdAt: serverTimestamp(),
@@ -440,44 +504,7 @@ const EmployeeCalendar = () => {
           View your tasks, meetings, and deadlines.
         </PageHeader>
         <div className="space-y-6">
-          {/* Skeleton for Calendar Controls */}
-          <Card className="p-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-64 bg-gray-200 animate-pulse rounded" />
-                <div className="h-10 w-20 bg-gray-200 animate-pulse rounded" />
-              </div>
-            </div>
-          </Card>
-
-          {/* Skeleton for Stats */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="border-l-4">
-                <div className="h-20 bg-gray-200 animate-pulse rounded" />
-              </Card>
-            ))}
-          </div>
-
-          {/* Skeleton for Calendar Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <Card className="lg:col-span-3 p-4">
-              <div className="grid grid-cols-7 gap-2">
-                {Array.from({ length: 35 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-24 bg-gray-200 animate-pulse rounded"
-                  />
-                ))}
-              </div>
-            </Card>
-            <Card className="p-4">
-              <div className="space-y-3">
-                <div className="h-6 bg-gray-200 animate-pulse rounded" />
-                <div className="h-32 bg-gray-200 animate-pulse rounded" />
-              </div>
-            </Card>
-          </div>
+          <Card className="p-4">Loading...</Card>
         </div>
       </div>
     );
@@ -490,7 +517,6 @@ const EmployeeCalendar = () => {
       </PageHeader>
 
       <div className="space-y-6">
-        {/* Calendar Controls */}
         <Card className="p-4">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -512,7 +538,6 @@ const EmployeeCalendar = () => {
                   <FaChevronRight />
                 </button>
               </div>
-
               <Button
                 variant="secondary"
                 onClick={() => setCurrentDate(new Date())}
@@ -534,7 +559,6 @@ const EmployeeCalendar = () => {
                 <option value="meetings">Meetings</option>
                 <option value="tasks">Tasks</option>
               </select>
-
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
@@ -555,7 +579,6 @@ const EmployeeCalendar = () => {
                   </>
                 )}
               </select>
-
               <Button
                 onClick={() => openEventModal(null)}
                 className="bg-indigo-600 hover:bg-indigo-700"
@@ -566,7 +589,6 @@ const EmployeeCalendar = () => {
           </div>
         </Card>
 
-        {/* Calendar Stats */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card className="border-l-4" style={{ borderLeftColor: "#4f46e5" }}>
             <div className="flex items-center justify-between">
@@ -579,7 +601,6 @@ const EmployeeCalendar = () => {
               <FaCalendarAlt className="h-8 w-8 text-indigo-600 opacity-60" />
             </div>
           </Card>
-
           <Card className="border-l-4" style={{ borderLeftColor: "#10b981" }}>
             <div className="flex items-center justify-between">
               <div>
@@ -591,7 +612,6 @@ const EmployeeCalendar = () => {
               <FaCheck className="h-8 w-8 text-emerald-500 opacity-60" />
             </div>
           </Card>
-
           <Card className="border-l-4" style={{ borderLeftColor: "#f97316" }}>
             <div className="flex items-center justify-between">
               <div>
@@ -605,11 +625,13 @@ const EmployeeCalendar = () => {
               <FaClock className="h-8 w-8 text-orange-500 opacity-60" />
             </div>
           </Card>
-
           <Card className="border-l-4" style={{ borderLeftColor: "#eab308" }}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-content-tertiary">Pending Tasks</p>
+                <p className="text-3xl font-bold mt-1">
+                  {calendarStats.pendingTasks}
+                </p>
               </div>
               <FaTasks className="h-8 w-8 text-yellow-600 opacity-60" />
             </div>
@@ -617,9 +639,7 @@ const EmployeeCalendar = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Calendar Grid */}
           <Card className="lg:col-span-3 p-4">
-            {/* Day Headers */}
             <div className="grid grid-cols-7 gap-0 mb-4">
               {[
                 "Sunday",
@@ -638,14 +658,11 @@ const EmployeeCalendar = () => {
                 </div>
               ))}
             </div>
-
-            {/* Calendar Grid */}
             <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded overflow-hidden">
               {renderCalendarDays()}
             </div>
           </Card>
 
-          {/* Task Details Sidebar */}
           <Card className="p-4">
             <h3 className="font-semibold text-lg mb-4 border-b pb-2">
               {selectedDate
@@ -667,121 +684,36 @@ const EmployeeCalendar = () => {
                     <p className="text-gray-500 text-sm font-medium">
                       No items on this date
                     </p>
-                    <p className="text-gray-400 text-xs mt-1">
-                      Click "Add Event" or "Add Task" to schedule something
-                    </p>
                   </div>
                 ) : (
                   getItemsForDate(selectedDate).map((item) => {
-                    // Check if it's a task or meeting based on itemType
+                    // ✅ RENDER DETAILS IN SIDEBAR
                     const isEvent = item.itemType === "meeting";
-
                     if (isEvent) {
-                      const statusStyles = {
-                        approved: "bg-green-100 text-green-700",
-                        pending: "bg-yellow-100 text-yellow-700",
-                        cancelled: "bg-red-100 text-red-700",
-                        completed: "bg-blue-100 text-blue-700",
-                      };
-                      const statusClass =
-                        statusStyles[item.status] ||
-                        "bg-gray-100 text-gray-600";
-                      const isAdminCreated = item.createdBy === "admin";
-                      const displayLabel = isAdminCreated
-                        ? "by admin"
-                        : item.status
-                        ? item.status.replace(/\b\w/g, (ch) => ch.toUpperCase())
-                        : "Pending";
-                      const displayClass = isAdminCreated
-                        ? "bg-blue-100 text-blue-700"
-                        : statusClass;
-
                       return (
                         <div
                           key={item.id}
-                          className="border-2 rounded-lg p-3 space-y-2 hover:shadow-lg transition-all duration-200 bg-white hover:border-blue-300"
+                          className="border-2 rounded-lg p-3 space-y-2 bg-white"
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <h4 className="font-medium text-sm">
-                                {item.title}
-                              </h4>
-                              <span
-                                className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${displayClass}`}
-                              >
-                                {displayLabel}
-                              </span>
-                            </div>
-                            {/* Recurring icon for events in detail view */}
-                            {(item.isRecurring || item.recurringPattern) && (
-                              <MdReplayCircleFilled className="text-teal-600 text-lg flex-shrink-0" />
-                            )}
-                          </div>
-
-                          <div className="text-xs text-gray-600 space-y-1">
-                            <div>Time: {item.time || "—"}</div>
-                            <div>
-                              Duration:{" "}
-                              {item.duration ? `${item.duration} minutes` : "—"}
-                            </div>
-                            {item.location && (
-                              <div>Location: {item.location}</div>
-                            )}
-                            {item.description && (
-                              <div className="text-[11px] text-content-secondary">
-                                Notes: {item.description}
-                              </div>
-                            )}
-                            {item.attendees && item.attendees.length > 0 && (
-                              <div className="text-[11px]">
-                                <span className="font-medium">Attendees:</span>{" "}
-                                {item.attendees.length}
-                              </div>
-                            )}
-                          </div>
-
-                          {item.objectives && item.objectives.length > 0 && (
-                            <div className="border-t pt-2">
-                              <p className="text-[11px] font-semibold text-content-secondary mb-1">
-                                Objectives
-                              </p>
-                              <ul className="space-y-1">
-                                {item.objectives.map((objective) => (
-                                  <li
-                                    key={objective.id}
-                                    className="text-[11px] text-content-secondary"
-                                  >
-                                    • {objective.text}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
+                          <h4 className="font-medium text-sm">{item.title}</h4>
+                          <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                            Meeting
+                          </span>
                         </div>
                       );
                     }
 
-                    // Task rendering with enhanced styling
-                    const statusStyles = {
-                      Done: "bg-green-100 text-green-700",
-                      "In Progress": "bg-blue-100 text-blue-700",
-                      "To-Do": "bg-yellow-100 text-yellow-700",
-                    };
-                    const statusClass =
-                      statusStyles[item.status] || "bg-gray-100 text-gray-600";
-
-                    const isAdminCreatedTask = item.createdBy === "admin";
-                    const taskDisplayLabel = isAdminCreatedTask
-                      ? "by admin"
-                      : item.status;
-                    const taskDisplayClass = isAdminCreatedTask
-                      ? "bg-blue-100 text-blue-700"
-                      : statusClass;
+                    const isGhost = item.isGhost;
+                    const taskDisplayClass = isGhost
+                      ? "bg-gray-100 text-gray-600 border-dashed border-gray-300"
+                      : "bg-white";
 
                     return (
                       <div
                         key={item.id}
-                        className="border-2 rounded-lg p-3 space-y-2 hover:shadow-lg transition-all duration-200 bg-white hover:border-blue-300"
+                        className={`border-2 rounded-lg p-3 space-y-2 hover:shadow-lg transition-all duration-200 hover:border-blue-300 ${taskDisplayClass} ${
+                          isGhost ? "opacity-75" : ""
+                        }`}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>
@@ -793,75 +725,16 @@ const EmployeeCalendar = () => {
                                 <MdReplayCircleFilled className="text-teal-600 text-sm" />
                               )}
                             </div>
-                            <span
-                              className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${taskDisplayClass}`}
-                            >
-                              {taskDisplayLabel}
+                            <span className="inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-gray-100">
+                              {isGhost ? "Projected Recurrence" : item.status}
                             </span>
                           </div>
                         </div>
-
                         <div className="text-xs text-gray-600 space-y-1">
-                          <div>
-                            Due Date:{" "}
-                            {item.dueDate
-                              ? new Date(
-                                  item.dueDate?.toDate?.() || item.dueDate
-                                ).toLocaleDateString()
-                              : "No due date"}
-                          </div>
-                          {item.priority && (
-                            <div>
-                              Priority:{" "}
-                              <span
-                                className={`inline-block ml-1 px-2 py-0.5 rounded ${
-                                  PRIORITY_CLASSES[
-                                    String(item.priority).toLowerCase()
-                                  ]?.badge || "bg-gray-100 text-gray-700"
-                                }`}
-                              >
-                                {item.priority}
-                              </span>
-                            </div>
-                          )}
-                          {item.weightage && (
-                            <div>Weight: {item.weightage}%</div>
-                          )}
-                          {item.projectId && (
-                            <div>
-                              Project:{" "}
-                              {projects.find((p) => p.id === item.projectId)
-                                ?.name || item.projectId}
-                            </div>
-                          )}
-                          {item.description && (
-                            <div className="text-[11px] text-content-secondary">
-                              Notes: {item.description}
-                            </div>
-                          )}
-                          {item.isRecurring && (
-                            <div className="text-[11px] text-teal-600">
-                              Recurs: {item.recurringPattern} • Every{" "}
-                              {item.recurringInterval}
-                            </div>
-                          )}
-                          {item.completionComment && item.status === "Done" && (
-                            <div className="text-[11px] text-green-700 bg-green-50 p-2 rounded border border-green-200">
-                              <span className="font-medium">
-                                ✅ Completion note:
-                              </span>
-                              <div className="mt-1">
-                                {item.completionComment}
-                              </div>
-                            </div>
-                          )}
-                          {item.assignedDate && (
-                            <div className="text-[10px] text-gray-400">
-                              Assigned:{" "}
-                              {new Date(
-                                item.assignedDate?.toDate?.() ||
-                                  item.assignedDate
-                              ).toLocaleDateString()}
+                          <div>Due Date: {item.dueDate}</div>
+                          {item.isGhost && (
+                            <div className="text-indigo-600 font-medium">
+                              Auto-creates on this date
                             </div>
                           )}
                         </div>
@@ -872,7 +745,6 @@ const EmployeeCalendar = () => {
               </div>
             ) : (
               <div className="text-center text-gray-500 mt-8">
-                <FaCalendarAlt size={48} className="mx-auto mb-4 opacity-50" />
                 <p className="text-sm">Click on a date to view events</p>
               </div>
             )}
@@ -883,7 +755,6 @@ const EmployeeCalendar = () => {
       {/* Floating Add Button with Dropdown */}
       <div className="fixed bottom-6 right-6 z-50">
         <div className="relative">
-          {/* Dropdown Menu */}
           {showFloatingMenu && (
             <div className="absolute bottom-16 right-0 bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-[160px] animate-in slide-in-from-bottom-2">
               <button
@@ -908,21 +779,17 @@ const EmployeeCalendar = () => {
               </button>
             </div>
           )}
-
-          {/* Main Floating Button */}
           <button
             onClick={() => setShowFloatingMenu(!showFloatingMenu)}
             className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${
               showFloatingMenu ? "rotate-45" : ""
             }`}
-            title="Add Task"
           >
             <FaPlus className="text-xl group-hover:scale-110 transition-transform" />
           </button>
         </div>
       </div>
 
-      {/* Task Modal */}
       {showTaskModal && (
         <TaskModal
           onClose={() => setShowTaskModal(false)}
@@ -933,7 +800,6 @@ const EmployeeCalendar = () => {
         />
       )}
 
-      {/* Event Modal */}
       {showEventModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
@@ -941,167 +807,93 @@ const EmployeeCalendar = () => {
             onClick={closeEventModal}
           />
           <Card className="z-10 w-auto max-w-[90vw] md:max-w-xl lg:max-w-2xl max-h-[85vh] overflow-auto">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Create Meeting</h2>
-              <button
-                onClick={closeEventModal}
-                className="rounded-lg p-2 text-content-secondary hover:bg-surface-subtle"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form
-              className="space-y-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const eventData = {
-                  title: formData.get("title"),
-                  date: formData.get("date"),
-                  time: formData.get("time"),
-                  duration: formData.get("duration"),
-                  description: formData.get("description"),
-                  location: formData.get("location"),
-                  clientId: formData.get("clientId"),
-                  clientName:
-                    clients.find((c) => c.id === formData.get("clientId"))
-                      ?.clientName || "",
-                  priority: formData.get("priority"),
-                };
-                handleEventSave(eventData);
-              }}
-            >
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-1 text-sm md:col-span-2">
-                  <span className="font-medium text-content-secondary">
-                    Meeting Title *
-                  </span>
-                  <input
-                    name="title"
-                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                    placeholder="Team sync meeting"
-                    required
-                  />
-                </label>
-
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-content-secondary">
-                    Date *
-                  </span>
-                  <input
-                    name="date"
-                    type="date"
-                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2 date-input-blue"
-                    defaultValue={
-                      selectedDate
-                        ? selectedDate.toISOString().split("T")[0]
-                        : new Date().toISOString().split("T")[0]
-                    }
-                    required
-                  />
-                </label>
-
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-content-secondary">
-                    Time *
-                  </span>
-                  <input
-                    name="time"
-                    type="time"
-                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2 date-input-blue"
-                    defaultValue="09:00"
-                    required
-                  />
-                </label>
-
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-content-secondary">
-                    Duration (minutes)
-                  </span>
-                  <select
-                    name="duration"
-                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                  >
-                    <option value="30">30 minutes</option>
-                    <option value="60" selected>
-                      1 hour
-                    </option>
-                    <option value="90">1.5 hours</option>
-                    <option value="120">2 hours</option>
-                  </select>
-                </label>
-
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-content-secondary">
-                    Client (Optional)
-                  </span>
-                  <select
-                    name="clientId"
-                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                  >
-                    <option value="">Select Client</option>
-                    {clients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.clientName ||
-                          client.companyName ||
-                          client.email}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-content-secondary">
-                    Priority
-                  </span>
-                  <select
-                    name="priority"
-                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium" selected>
-                      Medium
-                    </option>
-                    <option value="high">High</option>
-                  </select>
-                </label>
-
-                <label className="space-y-1 text-sm md:col-span-2">
-                  <span className="font-medium text-content-secondary">
-                    Location
-                  </span>
-                  <input
-                    name="location"
-                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                    placeholder="Conference Room A / Zoom Link"
-                  />
-                </label>
-
-                <label className="space-y-1 text-sm md:col-span-2">
-                  <span className="font-medium text-content-secondary">
-                    Description
-                  </span>
-                  <textarea
-                    name="description"
-                    rows={3}
-                    className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
-                    placeholder="Meeting agenda and objectives..."
-                  />
-                </label>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="secondary"
+            <div className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">Create Meeting</h2>
+                <button
                   onClick={closeEventModal}
+                  className="text-gray-500 hover:text-gray-700"
                 >
-                  Cancel
-                </Button>
-                <Button type="submit">Create Meeting</Button>
+                  ✕
+                </button>
               </div>
-            </form>
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.target);
+                  handleEventSave(Object.fromEntries(formData));
+                }}
+              >
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">
+                      Title
+                    </span>
+                    <input
+                      name="title"
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">
+                      Date
+                    </span>
+                    <input
+                      type="date"
+                      name="date"
+                      required
+                      defaultValue={new Date().toISOString().split("T")[0]}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">
+                      Time
+                    </span>
+                    <input
+                      type="time"
+                      name="time"
+                      required
+                      defaultValue="09:00"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">
+                      Duration (min)
+                    </span>
+                    <input
+                      type="number"
+                      name="duration"
+                      defaultValue="60"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                    />
+                  </label>
+                  <label className="block md:col-span-2">
+                    <span className="text-sm font-medium text-gray-700">
+                      Description
+                    </span>
+                    <textarea
+                      name="description"
+                      rows="3"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                    ></textarea>
+                  </label>
+                </div>
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={closeEventModal}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit">Create Meeting</Button>
+                </div>
+              </form>
+            </div>
           </Card>
         </div>
       )}

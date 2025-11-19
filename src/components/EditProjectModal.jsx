@@ -1,5 +1,6 @@
 import React from "react";
 import { HiXMark } from "react-icons/hi2";
+import { FaSpinner } from "react-icons/fa";
 import Button from "./Button";
 
 const EditProjectModal = ({
@@ -14,6 +15,7 @@ const EditProjectModal = ({
   errors = {},
   setErrors,
   hasChanges,
+  isUpdating,
 }) => {
   if (!showEditForm || !selectedProject) return null;
 
@@ -58,7 +60,7 @@ const EditProjectModal = ({
               <HiXMark className="h-6 w-6" />
             </button>
           </div>
-          <form onSubmit={handleEditSubmit} className="space-y-6">
+          <form onSubmit={handleEditSubmit} className="space-y-6" noValidate>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                 Project Name *
@@ -121,10 +123,10 @@ const EditProjectModal = ({
                     </option>
                   ))}
                 </select>
+                {errors.clientId && (
+                  <p className="text-xs text-red-600 mt-1">{errors.clientId}</p>
+                )}
               </label>
-              {errors.clientId && (
-                <p className="text-xs text-red-600 mt-1">{errors.clientId}</p>
-              )}
               <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                 Start Date *
                 <input
@@ -308,8 +310,15 @@ const EditProjectModal = ({
             </div>
 
             <div className="flex gap-3 pt-4">
-              <Button type="submit" disabled={!hasChanges}>
-                {hasChanges ? "Update Project" : "No changes"}
+              <Button type="submit" disabled={isUpdating || !hasChanges}>
+                {isUpdating && (
+                  <FaSpinner className="h-4 w-4 animate-spin mr-2" />
+                )}
+                {isUpdating
+                  ? "Saving..."
+                  : hasChanges
+                  ? "Update Project"
+                  : "No changes"}
               </Button>
               <Button type="button" variant="ghost" onClick={handleClose}>
                 Cancel

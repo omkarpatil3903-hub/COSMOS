@@ -90,6 +90,7 @@ function ManageProjects() {
   const [addErrors, setAddErrors] = useState({});
   const [editErrors, setEditErrors] = useState({});
   const [initialEditData, setInitialEditData] = useState(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Subscribe to Firestore projects
   useEffect(() => {
@@ -447,6 +448,8 @@ function ManageProjects() {
       return;
     }
 
+    setIsUpdating(true);
+
     try {
       const ref = doc(db, "projects", selectedProject.id);
       const selectedClient = clients.find((c) => c.id === formData.clientId);
@@ -474,11 +477,14 @@ function ManageProjects() {
       });
       setShowEditForm(false);
       setSelectedProject(null);
+      setInitialEditData(null);
       setEditErrors({});
       toast.success("Project updated successfully!");
     } catch (err) {
       console.error("Update project failed", err);
       toast.error("Failed to update project");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -966,6 +972,7 @@ function ManageProjects() {
             errors={editErrors}
             setErrors={setEditErrors}
             hasChanges={hasEditChanges}
+            isUpdating={isUpdating}
           />
 
           <ViewProjectModal
