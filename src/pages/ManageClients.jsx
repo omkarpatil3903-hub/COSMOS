@@ -8,6 +8,8 @@ import {
   FaEdit,
   FaTrash,
   FaEye,
+  FaEyeSlash,
+  FaSpinner,
 } from "react-icons/fa";
 import { HiXMark } from "react-icons/hi2";
 import toast from "react-hot-toast";
@@ -64,6 +66,12 @@ function ManageClients() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [initialEditData, setInitialEditData] = useState(null);
+
   // State for search, sorting, and pagination
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({
@@ -90,6 +98,8 @@ function ManageClients() {
   // State for image upload
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [addErrors, setAddErrors] = useState({});
+  const [editErrors, setEditErrors] = useState({});
 
   // Subscribe to clients from Firestore
   useEffect(() => {
@@ -109,6 +119,7 @@ function ManageClients() {
             contactNo: data.contactNo || "",
             typeOfBusiness: data.typeOfBusiness || "",
             address: data.address || "",
+            devPassword: data.devPassword || "******",
             noOfEmployees: data.noOfEmployees || "",
             imageUrl: data.imageUrl || "",
             role: data.role || "client",
@@ -127,7 +138,7 @@ function ManageClients() {
     );
     return () => unsub();
   }, []);
-
+  console.log("Client Data : ", clients);
   const filteredClients = useMemo(() => {
     let result = [...clients];
 
@@ -164,6 +175,19 @@ function ManageClients() {
     setCurrentPage(1);
   }, [searchTerm, sortConfig]);
 
+  useEffect(() => {
+    const anyModalOpen =
+      showAddForm || showEditForm || showViewModal || showDeleteModal;
+    if (!anyModalOpen || typeof document === "undefined") return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [showAddForm, showEditForm, showViewModal, showDeleteModal]);
+
   const totalPages = Math.max(
     1,
     Math.ceil(filteredClients.length / rowsPerPage)
@@ -173,6 +197,27 @@ function ManageClients() {
     indexOfFirstRow,
     indexOfFirstRow + rowsPerPage
   );
+
+  const hasEditChanges = useMemo(() => {
+    if (!initialEditData) return false;
+    const fieldsToCompare = [
+      "companyName",
+      "clientName",
+      "email",
+      "contactNo",
+      "typeOfBusiness",
+      "address",
+      "noOfEmployees",
+      "role",
+      "imageUrl",
+    ];
+    const dataChanged = fieldsToCompare.some((field) => {
+      const nextValue = formData[field] ?? "";
+      const initialValue = initialEditData[field] ?? "";
+      return nextValue !== initialValue;
+    });
+    return dataChanged || Boolean(imageFile);
+  }, [formData, initialEditData, imageFile]);
 
   const handleNextPage = () => {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
@@ -216,20 +261,72 @@ function ManageClients() {
     }
   };
 
+  const validateClientForm = (data, { mode }) => {
+    const errors = {};
+
+    if (!data.companyName || !data.companyName.trim()) {
+      errors.companyName = "Company name is required";
+    }
+
+    if (!data.clientName || !data.clientName.trim()) {
+      errors.clientName = "Client name is required";
+    }
+
+    if (!data.email || !data.email.trim()) {
+      errors.email = "Email is required";
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+      if (!emailRegex.test(data.email)) {
+        errors.email = "Enter a valid email address";
+      }
+    }
+
+    const contactDigits = String(data.contactNo || "").replace(/\D/g, "");
+    if (!contactDigits) {
+      errors.contactNo = "Contact number is required";
+    } else if (contactDigits.length !== 10) {
+      errors.contactNo = "Enter a valid 10-digit contact number";
+    }
+
+    if (!data.typeOfBusiness || !data.typeOfBusiness.trim()) {
+      errors.typeOfBusiness = "Business type is required";
+    }
+
+    if (!data.address || !data.address.trim()) {
+      errors.address = "Address is required";
+    }
+
+    if (mode === "add") {
+      if (!data.password) {
+        errors.password = "Password is required";
+      } else if (String(data.password).length < 6) {
+        errors.password = "Password must be at least 6 characters";
+      }
+    }
+
+    if (data.noOfEmployees) {
+      const n = Number(data.noOfEmployees);
+      if (!Number.isFinite(n) || n < 0) {
+        errors.noOfEmployees = "Enter a valid non-negative number of employees";
+      }
+    }
+
+    return errors;
+  };
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-
-    if (
-      !formData.companyName ||
-      !formData.clientName ||
-      !formData.email ||
-      !formData.password
-    ) {
-      toast.error("Please fill in all required fields.");
+    if (isAdding) return;
+    const errors = validateClientForm(formData, { mode: "add" });
+    setAddErrors(errors);
+    if (Object.keys(errors).length) {
+      const firstError = Object.values(errors)[0];
+      if (firstError) toast.error(firstError);
       return;
     }
 
     try {
+      setIsAdding(true);
       // Create Firebase Auth user via a secondary app instance
       const secondaryName = "Secondary";
       const secondaryApp = getApps().some((a) => a.name === secondaryName)
@@ -254,6 +351,7 @@ function ManageClients() {
         noOfEmployees: formData.noOfEmployees,
         imageUrl: imageFile || "",
         role: formData.role || "client",
+        devPassword: formData.password || "******",
         status: "Active",
         joinDate: serverTimestamp(),
         createdAt: serverTimestamp(),
@@ -283,6 +381,8 @@ function ManageClients() {
     } catch (error) {
       console.error("Failed to add client", error);
       toast.error("Failed to add client");
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -300,6 +400,17 @@ function ManageClients() {
       imageUrl: client.imageUrl || "",
       role: client.role,
     });
+    setInitialEditData({
+      companyName: client.companyName || "",
+      clientName: client.clientName || "",
+      email: client.email || "",
+      contactNo: client.contactNo || "",
+      typeOfBusiness: client.typeOfBusiness || "",
+      address: client.address || "",
+      noOfEmployees: client.noOfEmployees || "",
+      imageUrl: client.imageUrl || "",
+      role: client.role || "client",
+    });
     // Show existing image in preview
     setImagePreview(client.imageUrl || null);
     // Set imageFile to null - will only update if user selects new image
@@ -309,15 +420,18 @@ function ManageClients() {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    if (!selectedClient || isUpdating || !hasEditChanges) return;
 
-    if (!formData.companyName || !formData.clientName || !formData.email) {
-      toast.error("Please fill in all required fields.");
+    const errors = validateClientForm(formData, { mode: "edit" });
+    setEditErrors(errors);
+    if (Object.keys(errors).length) {
+      const firstError = Object.values(errors)[0];
+      if (firstError) toast.error(firstError);
       return;
     }
 
-    if (!selectedClient) return;
-
     try {
+      setIsUpdating(true);
       await updateDoc(doc(db, CLIENTS_COLLECTION, selectedClient.id), {
         companyName: formData.companyName,
         clientName: formData.clientName,
@@ -346,10 +460,13 @@ function ManageClients() {
       setImagePreview(null);
       setShowEditForm(false);
       setSelectedClient(null);
+      setInitialEditData(null);
       toast.success("Client updated successfully!");
     } catch (error) {
       console.error("Failed to update client", error);
       toast.error("Failed to update client");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -360,8 +477,9 @@ function ManageClients() {
   };
 
   const confirmDelete = async () => {
-    if (!selectedClient) return;
+    if (!selectedClient || isDeleting) return;
     try {
+      setIsDeleting(true);
       await deleteDoc(doc(db, CLIENTS_COLLECTION, selectedClient.id));
       setShowDeleteModal(false);
       setSelectedClient(null);
@@ -369,6 +487,8 @@ function ManageClients() {
     } catch (error) {
       console.error("Failed to delete client", error);
       toast.error("Failed to delete client");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -684,7 +804,14 @@ function ManageClients() {
 
       {/* Add Client Modal - Fixed positioning */}
       {showAddForm && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40"
+          onClick={() => setShowAddForm(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setShowAddForm(false);
+          }}
+          tabIndex={-1}
+        >
           <div
             className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative z-[10000]"
             onClick={(e) => e.stopPropagation()}
@@ -701,142 +828,330 @@ function ManageClients() {
                   <HiXMark className="h-6 w-6" />
                 </button>
               </div>
-              <form onSubmit={handleFormSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Company Name *
-                    <input
-                      type="text"
-                      value={formData.companyName}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          companyName: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Client Name *
-                    <input
-                      type="text"
-                      value={formData.clientName}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          clientName: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Email *
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Contact No *
-                    <input
-                      type="tel"
-                      value={formData.contactNo}
-                      onChange={(e) =>
-                        setFormData({ ...formData, contactNo: e.target.value })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Type of Business *
-                    <input
-                      type="text"
-                      value={formData.typeOfBusiness}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          typeOfBusiness: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    No of Employees
-                    <input
-                      type="number"
-                      value={formData.noOfEmployees}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          noOfEmployees: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Password *
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2">
-                    Address *
-                    <textarea
-                      value={formData.address}
-                      onChange={(e) =>
-                        setFormData({ ...formData, address: e.target.value })
-                      }
-                      rows="3"
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2">
-                    Company Logo / Image
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                    />
-                    {imagePreview && (
-                      <div className="mt-2">
-                        <img
-                          src={imagePreview}
-                          alt="Preview"
-                          className="h-32 w-32 object-cover rounded-lg border border-gray-200"
-                        />
-                      </div>
-                    )}
-                  </label>
+              <form
+                onSubmit={handleFormSubmit}
+                className="space-y-6"
+                noValidate
+              >
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-content-secondary uppercase tracking-wide">
+                    Basic Info
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                      Company Name *
+                      <input
+                        type="text"
+                        value={formData.companyName}
+                        placeholder="e.g. Alpha Tech Pvt Ltd"
+                        onChange={(e) => {
+                          setFormData({
+                            ...formData,
+                            companyName: e.target.value,
+                          });
+                          if (addErrors.companyName) {
+                            setAddErrors((prev) => ({
+                              ...prev,
+                              companyName: "",
+                            }));
+                          }
+                        }}
+                        className={`w-full rounded-lg border ${
+                          addErrors.companyName
+                            ? "border-red-500"
+                            : "border-subtle"
+                        } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                        required
+                      />
+                      {addErrors.companyName && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {addErrors.companyName}
+                        </p>
+                      )}
+                    </label>
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                      Client Name *
+                      <input
+                        type="text"
+                        value={formData.clientName}
+                        placeholder="e.g. John Doe"
+                        onChange={(e) => {
+                          setFormData({
+                            ...formData,
+                            clientName: e.target.value,
+                          });
+                          if (addErrors.clientName) {
+                            setAddErrors((prev) => ({
+                              ...prev,
+                              clientName: "",
+                            }));
+                          }
+                        }}
+                        className={`w-full rounded-lg border ${
+                          addErrors.clientName
+                            ? "border-red-500"
+                            : "border-subtle"
+                        } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                        required
+                      />
+                      {addErrors.clientName && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {addErrors.clientName}
+                        </p>
+                      )}
+                    </label>
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                      Email *
+                      <input
+                        type="email"
+                        value={formData.email}
+                        placeholder="Enter your email (used for future logins)"
+                        onChange={(e) => {
+                          setFormData({ ...formData, email: e.target.value });
+                          if (addErrors.email) {
+                            setAddErrors((prev) => ({ ...prev, email: "" }));
+                          }
+                        }}
+                        className={`w-full rounded-lg border ${
+                          addErrors.email ? "border-red-500" : "border-subtle"
+                        } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                        required
+                      />
+                      {addErrors.email && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {addErrors.email}
+                        </p>
+                      )}
+                    </label>
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                      Contact No *
+                      <input
+                        type="tel"
+                        value={formData.contactNo}
+                        placeholder="10-digit Mobile Number"
+                        onChange={(e) => {
+                          setFormData({
+                            ...formData,
+                            contactNo: e.target.value,
+                          });
+                          if (addErrors.contactNo) {
+                            setAddErrors((prev) => ({
+                              ...prev,
+                              contactNo: "",
+                            }));
+                          }
+                        }}
+                        className={`w-full rounded-lg border ${
+                          addErrors.contactNo
+                            ? "border-red-500"
+                            : "border-subtle"
+                        } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                        required
+                      />
+                      {addErrors.contactNo && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {addErrors.contactNo}
+                        </p>
+                      )}
+                    </label>
+                  </div>
                 </div>
-                <div className="flex gap-3 pt-4">
-                  <Button type="submit">Add Client</Button>
+
+                <div className="space-y-4 border-t border-subtle pt-4">
+                  <h3 className="text-sm font-bold text-content-secondary uppercase tracking-wide">
+                    Business Info
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                      Type of Business *
+                      <input
+                        type="text"
+                        value={formData.typeOfBusiness}
+                        placeholder="e.g. SaaS, FinTech"
+                        onChange={(e) => {
+                          setFormData({
+                            ...formData,
+                            typeOfBusiness: e.target.value,
+                          });
+                          if (addErrors.typeOfBusiness) {
+                            setAddErrors((prev) => ({
+                              ...prev,
+                              typeOfBusiness: "",
+                            }));
+                          }
+                        }}
+                        className={`w-full rounded-lg border ${
+                          addErrors.typeOfBusiness
+                            ? "border-red-500"
+                            : "border-subtle"
+                        } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                        required
+                      />
+                      {addErrors.typeOfBusiness && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {addErrors.typeOfBusiness}
+                        </p>
+                      )}
+                    </label>
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                      No of Employees
+                      <input
+                        type="number"
+                        value={formData.noOfEmployees}
+                        placeholder="e.g. 250"
+                        onChange={(e) => {
+                          setFormData({
+                            ...formData,
+                            noOfEmployees: e.target.value,
+                          });
+                          if (addErrors.noOfEmployees) {
+                            setAddErrors((prev) => ({
+                              ...prev,
+                              noOfEmployees: "",
+                            }));
+                          }
+                        }}
+                        className={`w-full rounded-lg border ${
+                          addErrors.noOfEmployees
+                            ? "border-red-500"
+                            : "border-subtle"
+                        } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                      />
+                      {addErrors.noOfEmployees && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {addErrors.noOfEmployees}
+                        </p>
+                      )}
+                    </label>
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2">
+                      Address *
+                      <textarea
+                        value={formData.address}
+                        placeholder="Registered business address"
+                        onChange={(e) => {
+                          setFormData({ ...formData, address: e.target.value });
+                          if (addErrors.address) {
+                            setAddErrors((prev) => ({
+                              ...prev,
+                              address: "",
+                            }));
+                          }
+                        }}
+                        rows="3"
+                        className={`w-full rounded-lg border ${
+                          addErrors.address ? "border-red-500" : "border-subtle"
+                        } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                        required
+                      />
+                      {addErrors.address && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {addErrors.address}
+                        </p>
+                      )}
+                    </label>
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2">
+                      Company Logo / Image
+                      <p className="text-xs text-content-tertiary">
+                        PNG/JPG, max 1MB. This logo will be used in the client
+                        list and details.
+                      </p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                      />
+                      {imagePreview && (
+                        <div className="mt-3 flex items-center gap-4">
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="h-14 w-14 object-cover rounded-full border border-gray-200"
+                          />
+                          <div className="flex items-center gap-3 text-xs">
+                            <button
+                              type="button"
+                              className="text-indigo-600 hover:underline"
+                              onClick={() => {
+                                setImagePreview(null);
+                                setImageFile(null);
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-4 border-t border-subtle pt-4">
+                  <h3 className="text-sm font-bold text-content-secondary uppercase tracking-wide">
+                    Account & Access
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                      Password *
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={formData.password}
+                          placeholder="Create a password"
+                          onChange={(e) => {
+                            setFormData({
+                              ...formData,
+                              password: e.target.value,
+                            });
+                            if (addErrors.password) {
+                              setAddErrors((prev) => ({
+                                ...prev,
+                                password: "",
+                              }));
+                            }
+                          }}
+                          className={`w-full rounded-lg border ${
+                            addErrors.password
+                              ? "border-red-500"
+                              : "border-subtle"
+                          } bg-surface py-2 pl-3 pr-9 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="absolute inset-y-0 right-2 flex items-center text-content-tertiary hover:text-content-primary"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          tabIndex={-1}
+                        >
+                          {showPassword ? (
+                            <FaEyeSlash className="h-4 w-4" />
+                          ) : (
+                            <FaEye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-xs text-content-tertiary">
+                        Minimum 6 characters.
+                      </p>
+                      {addErrors.password && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {addErrors.password}
+                        </p>
+                      )}
+                    </label>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 pt-4">
                   <Button
                     type="button"
                     variant="ghost"
                     onClick={() => setShowAddForm(false)}
                   >
                     Cancel
+                  </Button>
+                  <Button type="submit" disabled={isAdding}>
+                    {isAdding && <FaSpinner className="h-4 w-4 animate-spin" />}
+                    {isAdding ? "Adding..." : "Add Client"}
                   </Button>
                 </div>
               </form>
@@ -847,7 +1162,20 @@ function ManageClients() {
 
       {/* Edit Client Modal - Fixed positioning */}
       {showEditForm && selectedClient && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40"
+          onClick={() => {
+            setShowEditForm(false);
+            setSelectedClient(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setShowEditForm(false);
+              setSelectedClient(null);
+            }
+          }}
+          tabIndex={-1}
+        >
           <div
             className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative z-[10000]"
             onClick={(e) => e.stopPropagation()}
@@ -881,134 +1209,295 @@ function ManageClients() {
                   <HiXMark className="h-6 w-6" />
                 </button>
               </div>
-              <form onSubmit={handleEditSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Company Name *
-                    <input
-                      type="text"
-                      value={formData.companyName}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          companyName: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Client Name *
-                    <input
-                      type="text"
-                      value={formData.clientName}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          clientName: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Email *
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Contact No *
-                    <input
-                      type="tel"
-                      value={formData.contactNo}
-                      onChange={(e) =>
-                        setFormData({ ...formData, contactNo: e.target.value })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Type of Business *
-                    <input
-                      type="text"
-                      value={formData.typeOfBusiness}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          typeOfBusiness: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    No of Employees
-                    <input
-                      type="number"
-                      value={formData.noOfEmployees}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          noOfEmployees: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2">
-                    Address *
-                    <textarea
-                      value={formData.address}
-                      onChange={(e) =>
-                        setFormData({ ...formData, address: e.target.value })
-                      }
-                      rows="3"
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                      required
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2">
-                    Company Logo / Image
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                    />
-                    {imagePreview && (
-                      <div className="mt-2">
-                        <img
-                          src={imagePreview}
-                          alt="Preview"
-                          className="h-32 w-32 object-cover rounded-lg border border-gray-200"
-                        />
-                      </div>
-                    )}
-                  </label>
+              <form
+                onSubmit={handleEditSubmit}
+                className="space-y-6"
+                noValidate
+              >
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-content-secondary uppercase tracking-wide">
+                    Basic Info
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                      Company Name *
+                      <input
+                        type="text"
+                        value={formData.companyName}
+                        placeholder="e.g. Alpha Tech Pvt Ltd"
+                        onChange={(e) => {
+                          setFormData({
+                            ...formData,
+                            companyName: e.target.value,
+                          });
+                          if (editErrors.companyName) {
+                            setEditErrors((prev) => ({
+                              ...prev,
+                              companyName: "",
+                            }));
+                          }
+                        }}
+                        className={`w-full rounded-lg border ${
+                          editErrors.companyName
+                            ? "border-red-500"
+                            : "border-subtle"
+                        } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                        required
+                      />
+                      {editErrors.companyName && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {editErrors.companyName}
+                        </p>
+                      )}
+                    </label>
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                      Client Name *
+                      <input
+                        type="text"
+                        value={formData.clientName}
+                        placeholder="e.g. John Doe"
+                        onChange={(e) => {
+                          setFormData({
+                            ...formData,
+                            clientName: e.target.value,
+                          });
+                          if (editErrors.clientName) {
+                            setEditErrors((prev) => ({
+                              ...prev,
+                              clientName: "",
+                            }));
+                          }
+                        }}
+                        className={`w-full rounded-lg border ${
+                          editErrors.clientName
+                            ? "border-red-500"
+                            : "border-subtle"
+                        } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                        required
+                      />
+                      {editErrors.clientName && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {editErrors.clientName}
+                        </p>
+                      )}
+                    </label>
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                      Email *
+                      <input
+                        type="email"
+                        value={formData.email}
+                        placeholder="Primary contact email"
+                        onChange={(e) => {
+                          setFormData({ ...formData, email: e.target.value });
+                          if (editErrors.email) {
+                            setEditErrors((prev) => ({ ...prev, email: "" }));
+                          }
+                        }}
+                        className={`w-full rounded-lg border ${
+                          editErrors.email ? "border-red-500" : "border-subtle"
+                        } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                        required
+                      />
+                      {editErrors.email && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {editErrors.email}
+                        </p>
+                      )}
+                    </label>
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                      Contact No *
+                      <input
+                        type="tel"
+                        value={formData.contactNo}
+                        placeholder="e.g. +91 98765 43210"
+                        onChange={(e) => {
+                          setFormData({
+                            ...formData,
+                            contactNo: e.target.value,
+                          });
+                          if (editErrors.contactNo) {
+                            setEditErrors((prev) => ({
+                              ...prev,
+                              contactNo: "",
+                            }));
+                          }
+                        }}
+                        className={`w-full rounded-lg border ${
+                          editErrors.contactNo
+                            ? "border-red-500"
+                            : "border-subtle"
+                        } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                        required
+                      />
+                      {editErrors.contactNo && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {editErrors.contactNo}
+                        </p>
+                      )}
+                    </label>
+                  </div>
                 </div>
-                <div className="flex gap-3 pt-4">
-                  <Button type="submit">Update Client</Button>
+
+                <div className="space-y-4 border-t border-subtle pt-4">
+                  <h3 className="text-sm font-semibold text-content-secondary uppercase tracking-wide">
+                    Business Info
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                      Type of Business *
+                      <input
+                        type="text"
+                        value={formData.typeOfBusiness}
+                        placeholder="e.g. SaaS, FinTech"
+                        onChange={(e) => {
+                          setFormData({
+                            ...formData,
+                            typeOfBusiness: e.target.value,
+                          });
+                          if (editErrors.typeOfBusiness) {
+                            setEditErrors((prev) => ({
+                              ...prev,
+                              typeOfBusiness: "",
+                            }));
+                          }
+                        }}
+                        className={`w-full rounded-lg border ${
+                          editErrors.typeOfBusiness
+                            ? "border-red-500"
+                            : "border-subtle"
+                        } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                        required
+                      />
+                      {editErrors.typeOfBusiness && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {editErrors.typeOfBusiness}
+                        </p>
+                      )}
+                    </label>
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                      No of Employees
+                      <input
+                        type="number"
+                        value={formData.noOfEmployees}
+                        placeholder="e.g. 250"
+                        onChange={(e) => {
+                          setFormData({
+                            ...formData,
+                            noOfEmployees: e.target.value,
+                          });
+                          if (editErrors.noOfEmployees) {
+                            setEditErrors((prev) => ({
+                              ...prev,
+                              noOfEmployees: "",
+                            }));
+                          }
+                        }}
+                        className={`w-full rounded-lg border ${
+                          editErrors.noOfEmployees
+                            ? "border-red-500"
+                            : "border-subtle"
+                        } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                      />
+                      {editErrors.noOfEmployees && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {editErrors.noOfEmployees}
+                        </p>
+                      )}
+                    </label>
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2">
+                      Address *
+                      <textarea
+                        value={formData.address}
+                        placeholder="Registered business address"
+                        onChange={(e) => {
+                          setFormData({ ...formData, address: e.target.value });
+                          if (editErrors.address) {
+                            setEditErrors((prev) => ({ ...prev, address: "" }));
+                          }
+                        }}
+                        rows="3"
+                        className={`w-full rounded-lg border ${
+                          editErrors.address
+                            ? "border-red-500"
+                            : "border-subtle"
+                        } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                        required
+                      />
+                      {editErrors.address && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {editErrors.address}
+                        </p>
+                      )}
+                    </label>
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary md:col-span-2">
+                      Company Logo / Image
+                      <p className="text-xs text-content-tertiary">
+                        PNG/JPG, max 1MB. This logo will be used in the client
+                        list and details.
+                      </p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                      />
+                      {imagePreview && (
+                        <div className="mt-3 flex items-center gap-4">
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="h-14 w-14 object-cover rounded-full border border-gray-200"
+                          />
+                          <div className="flex items-center gap-3 text-xs">
+                            <button
+                              type="button"
+                              className="text-indigo-600 hover:underline"
+                              onClick={() => {
+                                setImagePreview(null);
+                                setImageFile(null);
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-4 border-t border-subtle pt-4">
+                  <h3 className="text-sm font-semibold text-content-secondary uppercase tracking-wide">
+                    Account & Access
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                      Role
+                      <input
+                        type="text"
+                        value={formData.role}
+                        onChange={(e) => {
+                          setFormData({ ...formData, role: e.target.value });
+                        }}
+                        className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                        readOnly
+                      />
+                    </label>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 pt-4">
                   <Button
                     type="button"
                     variant="ghost"
                     onClick={() => {
                       setShowEditForm(false);
                       setSelectedClient(null);
+                      setInitialEditData(null);
                       setFormData({
                         companyName: "",
                         clientName: "",
                         email: "",
+                        password: "",
                         contactNo: "",
                         typeOfBusiness: "",
                         address: "",
@@ -1022,6 +1511,19 @@ function ManageClients() {
                   >
                     Cancel
                   </Button>
+                  <Button
+                    type="submit"
+                    disabled={isUpdating || !hasEditChanges}
+                  >
+                    {isUpdating && (
+                      <FaSpinner className="h-4 w-4 animate-spin" />
+                    )}
+                    {isUpdating
+                      ? "Saving..."
+                      : hasEditChanges
+                      ? "Update Client"
+                      : "No changes"}
+                  </Button>
                 </div>
               </form>
             </div>
@@ -1031,7 +1533,20 @@ function ManageClients() {
 
       {/* View Client Modal - Fixed positioning */}
       {showViewModal && selectedClient && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40"
+          onClick={() => {
+            setShowViewModal(false);
+            setSelectedClient(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setShowViewModal(false);
+              setSelectedClient(null);
+            }
+          }}
+          tabIndex={-1}
+        >
           <div
             className="bg-white rounded-lg shadow-2xl w-full max-w-md relative z-[10000]"
             onClick={(e) => e.stopPropagation()}
@@ -1112,19 +1627,27 @@ function ManageClients() {
                   </div>
                   <div className="bg-gray-50 p-3 rounded-lg">
                     <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Password
+                    </label>
+                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800">
+                      {selectedClient.devPassword || "Not provided"}
+                    </span>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
                       No of Employees
                     </label>
                     <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                       {selectedClient.noOfEmployees || "Not provided"}
                     </span>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-lg md:col-span-2">
+                  <div className="bg-gray-50 p-3 rounded-lg">
                     <label className="block text-xs font-medium text-gray-500 mb-1">
-                      Address
+                      Adress
                     </label>
-                    <p className="text-gray-900">
+                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                       {selectedClient.address || "Not provided"}
-                    </p>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1147,10 +1670,34 @@ function ManageClients() {
 
       {/* Delete Confirmation Modal - Fixed positioning */}
       {showDeleteModal && selectedClient && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
-          <div className="relative z-[10000]">
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40"
+          onClick={() => {
+            setShowDeleteModal(false);
+            setSelectedClient(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setShowDeleteModal(false);
+              setSelectedClient(null);
+            }
+          }}
+          tabIndex={-1}
+        >
+          <div
+            className="relative z-[10000]"
+            onClick={(e) => e.stopPropagation()}
+          >
             <DeleteConfirmationModal
-              itemType="client"
+              itemType="client profile"
+              itemTitle={selectedClient.companyName}
+              itemSubtitle={selectedClient.clientName}
+              title="Delete Client"
+              description="Are you sure you want to permanently delete this client profile?"
+              permanentMessage="This will permanently remove this client profile and its associated access. This action cannot be undone."
+              cancelLabel="Cancel"
+              confirmLabel="Delete Client"
+              isLoading={isDeleting}
               onClose={() => {
                 setShowDeleteModal(false);
                 setSelectedClient(null);

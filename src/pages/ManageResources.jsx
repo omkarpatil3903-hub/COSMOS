@@ -67,6 +67,10 @@ function ManageResources() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedResource, setSelectedResource] = useState(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [initialEditData, setInitialEditData] = useState(null);
 
   // State for search, sorting, and pagination
   const [searchTerm, setSearchTerm] = useState("");
@@ -96,6 +100,22 @@ function ManageResources() {
   // State for image upload
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  // Server-side field errors for add resource flow
+  const [createFieldErrors, setCreateFieldErrors] = useState({});
+
+  const anyModalOpen =
+    showAddForm || showEditForm || showViewModal || showDeleteModal;
+
+  useEffect(() => {
+    if (anyModalOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+    document.body.style.overflow = "";
+  }, [anyModalOpen]);
 
   // Subscribe to Firestore users collection
   useEffect(() => {
@@ -201,6 +221,26 @@ function ManageResources() {
     indexOfFirstRow + rowsPerPage
   );
 
+  const hasEditChanges = useMemo(() => {
+    if (!initialEditData) return false;
+    const fields = [
+      "fullName",
+      "email",
+      "mobile",
+      "resourceType",
+      "employmentType",
+      "resourceRole",
+      "status",
+      "imageUrl",
+    ];
+    const changed = fields.some((field) => {
+      const nextValue = formData[field] ?? "";
+      const initialValue = initialEditData[field] ?? "";
+      return nextValue !== initialValue;
+    });
+    return changed || Boolean(imageFile);
+  }, [formData, initialEditData, imageFile]);
+
   const handleNextPage = () => {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   };
@@ -249,8 +289,48 @@ function ManageResources() {
     }
   };
 
+  const mapAuthError = (code) => {
+    switch (code) {
+      case "auth/email-already-in-use":
+        return "Email is already in use";
+      case "auth/invalid-email":
+        return "Enter a valid email address";
+      case "auth/weak-password":
+        return "Password must be at least 6 characters";
+      case "auth/operation-not-allowed":
+        return "Email/password sign-in is disabled. Contact administrator";
+      case "auth/network-request-failed":
+        return "Network error. Check your internet connection";
+      case "auth/too-many-requests":
+        return "Too many attempts. Please try again later";
+      default:
+        return "";
+    }
+  };
+
+  const mapFirestoreError = (code) => {
+    switch (code) {
+      case "permission-denied":
+        return "You do not have permission to perform this action";
+      case "unavailable":
+        return "Service temporarily unavailable. Please try again";
+      case "deadline-exceeded":
+        return "Request timed out. Please retry";
+      case "aborted":
+        return "Operation aborted. Please retry";
+      case "cancelled":
+        return "Operation cancelled. Please retry";
+      case "not-found":
+        return "Resource not found";
+      default:
+        return "";
+    }
+  };
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    if (isAdding) return;
+    setCreateFieldErrors({});
 
     if (
       !formData.fullName ||
@@ -263,6 +343,7 @@ function ManageResources() {
     }
 
     try {
+      setIsAdding(true);
       // Create Firebase Auth user on a secondary app to avoid switching admin session
       const secondaryName = "Secondary";
       const secondaryApp = getApps().some((a) => a.name === secondaryName)
@@ -314,7 +395,32 @@ function ManageResources() {
       toast.success("Resource added successfully!");
     } catch (err) {
       console.error("Add user failed", err);
-      toast.error("Failed to add resource");
+      const code = err?.code || "";
+      const msg =
+        (code.startsWith("auth/")
+          ? mapAuthError(code)
+          : mapFirestoreError(code)) ||
+        (err?.message
+          ? String(err.message).replace(/^Firebase:\s*/i, "")
+          : "") ||
+        "Failed to add resource. Please try again.";
+      toast.error(msg);
+      const fieldErrors = {};
+      if (
+        code === "auth/email-already-in-use" ||
+        code === "auth/invalid-email"
+      ) {
+        fieldErrors.email = mapAuthError(code);
+      } else if (code === "auth/weak-password") {
+        fieldErrors.password = mapAuthError(code);
+      } else if (code) {
+        fieldErrors._general = mapFirestoreError(code) || msg;
+      } else if (msg) {
+        fieldErrors._general = msg;
+      }
+      setCreateFieldErrors(fieldErrors);
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -332,6 +438,16 @@ function ManageResources() {
       status: resource.status || "Active",
       imageUrl: resource.imageUrl || "",
     });
+    setInitialEditData({
+      fullName: resource.fullName || "",
+      email: resource.email || "",
+      mobile: resource.mobile || "",
+      resourceType: resource.resourceType || "In-house",
+      employmentType: resource.employmentType || "Full-time",
+      resourceRole: resource.resourceRole || "",
+      status: resource.status || "Active",
+      imageUrl: resource.imageUrl || "",
+    });
     // Show existing image in preview
     setImagePreview(resource.imageUrl || null);
     setImageFile(null);
@@ -340,6 +456,7 @@ function ManageResources() {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    if (!selectedResource || isUpdating || !hasEditChanges) return;
 
     if (!formData.fullName || !formData.email || !formData.mobile) {
       toast.error("Please fill in all required fields.");
@@ -347,6 +464,7 @@ function ManageResources() {
     }
 
     try {
+      setIsUpdating(true);
       await updateDoc(doc(db, "users", selectedResource.id), {
         name: formData.fullName,
         email: formData.email,
@@ -372,10 +490,16 @@ function ManageResources() {
       setImagePreview(null);
       setShowEditForm(false);
       setSelectedResource(null);
+      setInitialEditData(null);
       toast.success("Resource updated successfully!");
     } catch (err) {
       console.error("Update user failed", err);
-      toast.error("Failed to update resource");
+      const code = err?.code || "";
+      const msg =
+        mapFirestoreError(code) || err?.message || "Failed to update resource";
+      toast.error(msg);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -386,7 +510,9 @@ function ManageResources() {
   };
 
   const confirmDelete = async () => {
+    if (!selectedResource || isDeleting) return;
     try {
+      setIsDeleting(true);
       await deleteDoc(doc(db, "users", selectedResource.id));
       setShowDeleteModal(false);
       setSelectedResource(null);
@@ -394,6 +520,8 @@ function ManageResources() {
     } catch (err) {
       console.error("Delete user failed", err);
       toast.error("Failed to delete resource");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -483,7 +611,12 @@ function ManageResources() {
                 >
                   Showing {filteredResources.length} records
                 </span>
-                <Button onClick={() => setShowAddForm(true)}>
+                <Button
+                  onClick={() => {
+                    setCreateFieldErrors({});
+                    setShowAddForm(true);
+                  }}
+                >
                   <FaPlus className="h-4 w-4" aria-hidden="true" />
                   Add Resource
                 </Button>
@@ -846,9 +979,29 @@ function ManageResources() {
           formData={formData}
           setFormData={setFormData}
           onSubmit={handleFormSubmit}
-          onClose={() => setShowAddForm(false)}
+          onClose={() => {
+            setShowAddForm(false);
+            setCreateFieldErrors({});
+          }}
           imagePreview={imagePreview}
           onImageChange={handleImageChange}
+          onImageRemove={() => {
+            setImagePreview(null);
+            setImageFile(null);
+            setFormData((prev) => ({ ...prev, imageUrl: "" }));
+          }}
+          existingEmails={resources
+            .map((r) => (r.email || "").toLowerCase())
+            .filter(Boolean)}
+          serverErrors={createFieldErrors}
+          clearServerError={(name) =>
+            setCreateFieldErrors((prev) => {
+              const p = prev || {};
+              const { [name]: _removed, ...rest } = p;
+              return rest;
+            })
+          }
+          isSubmitting={isAdding}
         />
       )}
 
@@ -861,6 +1014,7 @@ function ManageResources() {
           onClose={() => {
             setShowEditForm(false);
             setSelectedResource(null);
+            setInitialEditData(null);
             setFormData({
               fullName: "",
               email: "",
@@ -877,6 +1031,17 @@ function ManageResources() {
           }}
           imagePreview={imagePreview}
           onImageChange={handleImageChange}
+          onImageRemove={() => {
+            setImagePreview(null);
+            setImageFile(null);
+            setFormData((prev) => ({ ...prev, imageUrl: "" }));
+          }}
+          existingEmails={resources
+            .filter((r) => r.id !== selectedResource.id)
+            .map((r) => (r.email || "").toLowerCase())
+            .filter(Boolean)}
+          isSubmitting={isUpdating}
+          hasChanges={hasEditChanges}
         />
       )}
 
@@ -893,14 +1058,43 @@ function ManageResources() {
 
       {/* Delete Confirmation Modal - Outside blurred container */}
       {showDeleteModal && selectedResource && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <DeleteConfirmationModal
-            onClose={() => {
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40"
+          onClick={() => {
+            setShowDeleteModal(false);
+            setSelectedResource(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
               setShowDeleteModal(false);
               setSelectedResource(null);
-            }}
-            onConfirm={confirmDelete}
-          />
+            }
+          }}
+          tabIndex={-1}
+        >
+          <div
+            className="relative z-[10000]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DeleteConfirmationModal
+              title="Delete Resource"
+              description="Are you sure you want to permanently delete this resource?"
+              permanentMessage="This action will revoke their access and cannot be undone."
+              itemType="resource profile"
+              itemTitle={selectedResource.fullName}
+              itemSubtitle={
+                selectedResource.resourceRole || selectedResource.email
+              }
+              cancelLabel="Cancel"
+              confirmLabel="Delete Resource"
+              isLoading={isDeleting}
+              onClose={() => {
+                setShowDeleteModal(false);
+                setSelectedResource(null);
+              }}
+              onConfirm={confirmDelete}
+            />
+          </div>
         </div>
       )}
     </>
