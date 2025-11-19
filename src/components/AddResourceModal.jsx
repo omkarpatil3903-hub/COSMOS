@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { HiXMark } from "react-icons/hi2";
 import { FaEye, FaEyeSlash, FaSpinner } from "react-icons/fa";
+import toast from "react-hot-toast";
 import Button from "./Button";
 
 function AddResourceModal({
@@ -64,17 +65,16 @@ function AddResourceModal({
       password: validateField("password", formData.password),
     };
     setErrors(newErrors);
-    const hasErrors = Object.values(newErrors).some(Boolean);
-    if (hasErrors) return;
+    const firstError =
+      Object.values(newErrors).find((message) => message) || "";
+    if (firstError) {
+      toast.error(firstError);
+      return;
+    }
     onSubmit(e);
   };
 
-  const isSubmitDisabled = Boolean(
-    validateField("fullName", formData.fullName) ||
-      validateField("email", formData.email) ||
-      validateField("mobile", formData.mobile) ||
-      validateField("password", formData.password)
-  );
+  const isSubmitDisabled = false;
   const disableSubmit = isSubmitDisabled || isSubmitting;
 
   const handleOverlayKeyDown = (e) => {
@@ -103,7 +103,7 @@ function AddResourceModal({
               <HiXMark className="h-6 w-6" />
             </button>
           </div>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" noValidate>
             {serverErrors?._general && (
               <div className="rounded-md border border-red-200 bg-red-50 text-red-700 text-sm p-3">
                 {serverErrors._general}
@@ -123,18 +123,11 @@ function AddResourceModal({
                     onChange={(e) => {
                       const v = e.target.value;
                       setFormData({ ...formData, fullName: v });
-                      setErrors((prev) => ({
-                        ...prev,
-                        fullName: validateField("fullName", v),
-                      }));
+                      if (errors.fullName) {
+                        setErrors((prev) => ({ ...prev, fullName: "" }));
+                      }
                       if (serverErrors?.fullName) clearServerError("fullName");
                     }}
-                    onBlur={(e) =>
-                      setErrors((prev) => ({
-                        ...prev,
-                        fullName: validateField("fullName", e.target.value),
-                      }))
-                    }
                     className={`w-full rounded-lg border ${
                       errors.fullName || serverErrors?.fullName
                         ? "border-red-500"
@@ -157,18 +150,11 @@ function AddResourceModal({
                     onChange={(e) => {
                       const v = e.target.value;
                       setFormData({ ...formData, email: v });
-                      setErrors((prev) => ({
-                        ...prev,
-                        email: validateField("email", v),
-                      }));
+                      if (errors.email) {
+                        setErrors((prev) => ({ ...prev, email: "" }));
+                      }
                       if (serverErrors?.email) clearServerError("email");
                     }}
-                    onBlur={(e) =>
-                      setErrors((prev) => ({
-                        ...prev,
-                        email: validateField("email", e.target.value),
-                      }))
-                    }
                     className={`w-full rounded-lg border ${
                       errors.email || serverErrors?.email
                         ? "border-red-500"
@@ -191,18 +177,11 @@ function AddResourceModal({
                     onChange={(e) => {
                       const v = e.target.value;
                       setFormData({ ...formData, mobile: v });
-                      setErrors((prev) => ({
-                        ...prev,
-                        mobile: validateField("mobile", v),
-                      }));
+                      if (errors.mobile) {
+                        setErrors((prev) => ({ ...prev, mobile: "" }));
+                      }
                       if (serverErrors?.mobile) clearServerError("mobile");
                     }}
-                    onBlur={(e) =>
-                      setErrors((prev) => ({
-                        ...prev,
-                        mobile: validateField("mobile", e.target.value),
-                      }))
-                    }
                     className={`w-full rounded-lg border ${
                       errors.mobile || serverErrors?.mobile
                         ? "border-red-500"
@@ -326,18 +305,11 @@ function AddResourceModal({
                     onChange={(e) => {
                       const v = e.target.value;
                       setFormData({ ...formData, password: v });
-                      setErrors((prev) => ({
-                        ...prev,
-                        password: validateField("password", v),
-                      }));
+                      if (errors.password) {
+                        setErrors((prev) => ({ ...prev, password: "" }));
+                      }
                       if (serverErrors?.password) clearServerError("password");
                     }}
-                    onBlur={(e) =>
-                      setErrors((prev) => ({
-                        ...prev,
-                        password: validateField("password", e.target.value),
-                      }))
-                    }
                     className={`w-full rounded-lg border ${
                       errors.password || serverErrors?.password
                         ? "border-red-500"

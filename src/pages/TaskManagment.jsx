@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import toast from "react-hot-toast";
 import PageHeader from "../components/PageHeader";
 import Card from "../components/Card";
@@ -101,7 +107,10 @@ function TasksManagement() {
 
   const scrollToTasksList = useCallback(() => {
     if (tasksListRef.current) {
-      tasksListRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      tasksListRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }
   }, []);
 
@@ -291,8 +300,13 @@ function TasksManagement() {
     [tasks, wipLimits]
   );
 
+  // inside TaskManagment.jsx
+
   const handleSave = async (taskData) => {
     try {
+      // ---------------------------------------------------------
+      // UPDATE EXISTING TASK
+      // ---------------------------------------------------------
       if (taskData.id) {
         const ref = doc(db, "tasks", taskData.id);
         const wt =
@@ -301,6 +315,7 @@ function TasksManagement() {
           taskData.weightage === null
             ? null
             : Number(taskData.weightage);
+
         const update = {
           title: taskData.title,
           description: taskData.description || "",
@@ -322,8 +337,10 @@ function TasksManagement() {
           recurringEndAfter: taskData.recurringEndAfter || "",
           recurringEndType: taskData.recurringEndType || "never",
         };
+
         const current = tasks.find((t) => t.id === taskData.id);
-        // Enforce WIP on status change (only for active columns)
+
+        // Enforce WIP on status change
         if (
           update.status &&
           current &&
@@ -337,42 +354,55 @@ function TasksManagement() {
           );
           return;
         }
+
+        // Handle Completion Timestamp
         if (update.status === "Done" && current?.status !== "Done")
           update.completedAt = serverTimestamp();
         else if (update.status !== "Done" && current?.status === "Done")
           update.completedAt = null;
+
         await updateDoc(ref, update);
-        // If task just transitioned to Done and is recurring, create next instance immediately
+
+        // -----------------------------------------------------
+        // NEW RECURRING LOGIC (UPDATED)
+        // -----------------------------------------------------
         try {
           const becameDone =
             update.status === "Done" && current?.status !== "Done";
-          if (becameDone && (current?.isRecurring || update.isRecurring)) {
+          // Check if it is recurring (either currently or just made recurring)
+          const isRecurring =
+            update.isRecurring ||
+            (current?.isRecurring && update.isRecurring !== false);
+
+          if (becameDone && isRecurring) {
+            // Create a temporary object representing the state AFTER update
             const taskForCheck = {
               ...(current || {}),
               ...update,
               id: taskData.id,
-              // Ensure fields required by shouldCreateNextInstance
-              completedAt: new Date(),
+              completedAt: new Date(), // Assume completed now for logic check
             };
-            if (await shouldCreateNextInstanceAsync(taskForCheck)) {
+
+            // Async check using the new simplified logic
+            const shouldRecur = await shouldCreateNextInstanceAsync(
+              taskForCheck
+            );
+
+            if (shouldRecur) {
               const newId = await createNextRecurringInstance(taskForCheck);
-              if (newId && (update.projectId || current?.projectId)) {
+              if (newId) {
+                toast.success("Next recurring task created automatically! 🔄");
+                // Refresh project progress
                 const pid = update.projectId || current?.projectId;
-                try {
-                  await updateProjectProgress(pid);
-                } catch (err) {
-                  console.warn(
-                    "Failed to refresh project progress for new recurring instance",
-                    err
-                  );
-                }
+                if (pid) updateProjectProgress(pid).catch(console.warn);
               }
             }
           }
         } catch (e) {
-          console.warn("Recurring continuation failed (update)", e);
+          console.error("Recurring continuation failed (update)", e);
         }
-        // Update project progress for previous and possibly new project
+
+        // Update project progress
         const prevProjectId = current?.projectId;
         const nextProjectId = update.projectId || prevProjectId;
         const affected = new Set(
@@ -386,22 +416,25 @@ function TasksManagement() {
           }
         }
         toast.success("Task updated successfully!");
+
+        // ---------------------------------------------------------
+        // CREATE NEW TASK
+        // ---------------------------------------------------------
       } else {
-        // Enforce WIP on creation
         const initialStatus = taskData.status || "To-Do";
         if (initialStatus !== "Done" && isWipExceeded(initialStatus)) {
           const limit = wipLimits?.[initialStatus];
-          toast.error(
-            `WIP limit reached in ${initialStatus} (${limit}). Complete or move tasks out before adding more.`
-          );
+          toast.error(`WIP limit reached in ${initialStatus} (${limit}).`);
           return;
         }
+
         const wt =
           taskData.weightage === "" ||
           taskData.weightage === undefined ||
           taskData.weightage === null
             ? null
             : Number(taskData.weightage);
+
         const payload = {
           title: taskData.title,
           description: taskData.description || "",
@@ -425,24 +458,24 @@ function TasksManagement() {
           recurringEndDate: taskData.recurringEndDate || "",
           recurringEndAfter: taskData.recurringEndAfter || "",
           recurringEndType: taskData.recurringEndType || "never",
-          parentRecurringTaskId: null, // For future instances
-          recurringOccurrenceCount: 0, // Track how many instances created
+          parentRecurringTaskId: null,
+          recurringOccurrenceCount: 0,
         };
+
         const newRef = await addDoc(collection(db, "tasks"), payload);
         toast.success("Task created successfully!");
-        // Update project progress for created task's project
-        if (payload.projectId) {
-          try {
-            await updateProjectProgress(payload.projectId);
-          } catch {
-            /* ignore */
-          }
-        }
+
+        if (payload.projectId)
+          updateProjectProgress(payload.projectId).catch(() => {});
+
         const res = users.find((u) => u.id === payload.assigneeId);
         const cli = clients.find((c) => c.id === payload.assigneeId);
         const name = res?.name || cli?.clientName;
         if (name) toast(`📌 New task assigned to ${name}`, { duration: 4000 });
-        // If created directly as Done and recurring, create next instance
+
+        // -----------------------------------------------------
+        // NEW RECURRING LOGIC (NEW TASK)
+        // -----------------------------------------------------
         try {
           if (payload.isRecurring && payload.status === "Done") {
             const taskForCheck = {
@@ -450,17 +483,14 @@ function TasksManagement() {
               id: newRef.id,
               completedAt: new Date(),
             };
-            if (await shouldCreateNextInstanceAsync(taskForCheck)) {
+
+            const shouldRecur = await shouldCreateNextInstanceAsync(
+              taskForCheck
+            );
+            if (shouldRecur) {
               const newId = await createNextRecurringInstance(taskForCheck);
               if (newId && payload.projectId) {
-                try {
-                  await updateProjectProgress(payload.projectId);
-                } catch (err) {
-                  console.warn(
-                    "Failed to refresh project progress for new recurring instance",
-                    err
-                  );
-                }
+                updateProjectProgress(payload.projectId).catch(console.warn);
               }
             }
           }
@@ -682,26 +712,33 @@ function TasksManagement() {
     }
     try {
       const t = tasks.find((x) => x.id === completionTaskId);
+
+      // 1. Update the task to Done
       await updateDoc(doc(db, "tasks", completionTaskId), {
         status: "Done",
         completedAt: serverTimestamp(),
         progressPercent: 100,
         completionComment: comment,
       });
-      // Create next recurring instance if applicable
+
+      // 2. Check Recurring Logic
       try {
         if (t?.isRecurring) {
-          const checkTask = { ...t, status: "Done", completedAt: new Date() };
-          if (await shouldCreateNextInstanceAsync(checkTask)) {
-            const newId = await createNextRecurringInstance(checkTask);
-            if (newId && t.projectId) {
-              try {
-                await updateProjectProgress(t.projectId);
-              } catch (err) {
-                console.warn(
-                  "Failed to refresh project progress for new recurring instance",
-                  err
-                );
+          // Construct check object
+          const taskForCheck = {
+            ...t,
+            status: "Done",
+            completedAt: new Date(),
+          };
+
+          const shouldRecur = await shouldCreateNextInstanceAsync(taskForCheck);
+
+          if (shouldRecur) {
+            const newId = await createNextRecurringInstance(taskForCheck);
+            if (newId) {
+              toast.success("Next recurring task created automatically! 🔄");
+              if (t.projectId) {
+                updateProjectProgress(t.projectId).catch(console.warn);
               }
             }
           }
@@ -709,6 +746,8 @@ function TasksManagement() {
       } catch (e) {
         console.warn("Recurring continuation failed (admin completion)", e);
       }
+
+      // 3. Update Progress for original task project
       if (t?.projectId) {
         try {
           await updateProjectProgress(t.projectId);
@@ -716,6 +755,7 @@ function TasksManagement() {
           /* ignore */
         }
       }
+
       toast.success("Task marked as done");
     } catch (err) {
       console.error("Admin completion failed", err);
@@ -743,7 +783,8 @@ function TasksManagement() {
       if (filterPriority && t.priority !== filterPriority) return false;
       if (filterStatus && t.status !== filterStatus) return false;
       if (onlyOverdue) {
-        if (!(t.dueDate && t.status !== "Done" && t.dueDate < today)) return false;
+        if (!(t.dueDate && t.status !== "Done" && t.dueDate < today))
+          return false;
       }
       if (search) {
         const s = search.toLowerCase();
@@ -903,7 +944,10 @@ function TasksManagement() {
 
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card onClick={() => applyStatusQuickFilter("To-Do")} className="cursor-pointer hover:bg-surface-subtle">
+          <Card
+            onClick={() => applyStatusQuickFilter("To-Do")}
+            className="cursor-pointer hover:bg-surface-subtle"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-content-secondary">To-Do</div>
@@ -914,7 +958,10 @@ function TasksManagement() {
               <FaListAlt className="h-8 w-8 text-gray-400" />
             </div>
           </Card>
-          <Card onClick={() => applyStatusQuickFilter("In Progress")} className="cursor-pointer hover:bg-surface-subtle">
+          <Card
+            onClick={() => applyStatusQuickFilter("In Progress")}
+            className="cursor-pointer hover:bg-surface-subtle"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-content-secondary">
@@ -927,7 +974,10 @@ function TasksManagement() {
               <FaClock className="h-8 w-8 text-blue-500" />
             </div>
           </Card>
-          <Card onClick={() => applyStatusQuickFilter("Done")} className="cursor-pointer hover:bg-surface-subtle">
+          <Card
+            onClick={() => applyStatusQuickFilter("Done")}
+            className="cursor-pointer hover:bg-surface-subtle"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-content-secondary">Completed</div>
@@ -936,7 +986,10 @@ function TasksManagement() {
               <FaCheckCircle className="h-8 w-8 text-green-500" />
             </div>
           </Card>
-          <Card onClick={applyOverdueQuickFilter} className="cursor-pointer hover:bg-surface-subtle">
+          <Card
+            onClick={applyOverdueQuickFilter}
+            className="cursor-pointer hover:bg-surface-subtle"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-content-secondary">Overdue</div>

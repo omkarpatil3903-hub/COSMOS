@@ -33,43 +33,82 @@ export function occursOnDate(task, date) {
     ? task.dueDate.toDate()
     : new Date(task.dueDate);
   if (!(base instanceof Date) || Number.isNaN(base.getTime())) return false;
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const b = new Date(base.getFullYear(), base.getMonth(), base.getDate());
+
+  // Normalize 'date' (the check date) to YMD (Local)
+  // Normalize 'base' (the task due date) to YMD.
+  // ASSUMPTION: Task due dates are stored as UTC midnight (from input type="date").
+  // So we use getUTC* methods to get the intended date.
+
+  const checkYear = date.getFullYear();
+  const checkMonth = date.getMonth();
+  const checkDay = date.getDate();
+
+  const baseYear = base.getUTCFullYear();
+  const baseMonth = base.getUTCMonth();
+  const baseDay = base.getUTCDate();
+
+  // Create UTC dates for comparison to avoid DST issues
+  const d = new Date(Date.UTC(checkYear, checkMonth, checkDay));
+  const b = new Date(Date.UTC(baseYear, baseMonth, baseDay));
+
   // Skip weekends if enabled
-  if (task?.skipWeekends && (d.getDay() === 0 || d.getDay() === 6))
+  if (task?.skipWeekends && (d.getUTCDay() === 0 || d.getUTCDay() === 6))
     return false;
+
   const endType = task.recurringEndType;
   const interval = Number(task.recurringInterval || 1);
+
   if (!task.isRecurring) {
     return d.getTime() === b.getTime();
   }
+
   if (endType === "date" && task.recurringEndDate) {
-    const end = new Date(task.recurringEndDate);
+    const endRaw = new Date(task.recurringEndDate);
+    // Assume end date is also UTC midnight
+    const end = new Date(
+      Date.UTC(
+        endRaw.getUTCFullYear(),
+        endRaw.getUTCMonth(),
+        endRaw.getUTCDate()
+      )
+    );
     if (d > end) return false;
   }
+
   const diffDays = Math.floor((d - b) / (24 * 60 * 60 * 1000));
+
   if (diffDays < 0) return false;
+
   const pattern = task.recurringPattern || "daily";
+
   if (pattern === "daily") {
     return diffDays % interval === 0;
   }
+
   if (pattern === "weekly") {
-    if (d.getDay() !== b.getDay()) return false;
+    if (d.getUTCDay() !== b.getUTCDay()) return false;
     const weeks = Math.floor(diffDays / 7);
     return weeks % interval === 0;
   }
+
   if (pattern === "monthly") {
-    if (d.getDate() !== b.getDate()) return false;
+    if (d.getUTCDate() !== b.getUTCDate()) return false;
     const months =
-      (d.getFullYear() - b.getFullYear()) * 12 + (d.getMonth() - b.getMonth());
+      (d.getUTCFullYear() - b.getUTCFullYear()) * 12 +
+      (d.getUTCMonth() - b.getUTCMonth());
     return months % interval === 0;
   }
+
   if (pattern === "yearly") {
-    if (d.getDate() !== b.getDate() || d.getMonth() !== b.getMonth())
+    if (
+      d.getUTCDate() !== b.getUTCDate() ||
+      d.getUTCMonth() !== b.getUTCMonth()
+    )
       return false;
-    const years = d.getFullYear() - b.getFullYear();
+    const years = d.getUTCFullYear() - b.getUTCFullYear();
     return years % interval === 0;
   }
+
   return false;
 }
 
