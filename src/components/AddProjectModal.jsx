@@ -9,11 +9,20 @@ const AddProjectModal = ({
   setFormData,
   clients,
   handleFormSubmit,
+  errors = {},
+  setErrors,
 }) => {
   if (!showAddForm) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40"
+      onClick={() => setShowAddForm(false)}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") setShowAddForm(false);
+      }}
+      tabIndex={-1}
+    >
       <div
         className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative z-[10000]"
         onClick={(e) => e.stopPropagation()}
@@ -37,24 +46,34 @@ const AddProjectModal = ({
                 <input
                   type="text"
                   value={formData.projectName}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = e.target.value;
                     setFormData({
                       ...formData,
-                      projectName: e.target.value,
-                    })
-                  }
-                  className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                      projectName: value,
+                    });
+                    if (setErrors && errors.projectName) {
+                      setErrors((prev) => ({ ...prev, projectName: "" }));
+                    }
+                  }}
+                  className={`w-full rounded-lg border ${
+                    errors.projectName ? "border-red-500" : "border-subtle"
+                  } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
                   required
                 />
+                {errors.projectName && (
+                  <p className="text-xs text-red-600 mt-1">
+                    {errors.projectName}
+                  </p>
+                )}
               </label>
               <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                 Company Name *
                 <select
                   value={
                     formData.clientId ||
-                    clients.find(
-                      (c) => c.companyName === formData.clientName
-                    )?.id ||
+                    clients.find((c) => c.companyName === formData.clientName)
+                      ?.id ||
                     ""
                   }
                   onChange={(e) => {
@@ -65,8 +84,13 @@ const AddProjectModal = ({
                       clientId: id,
                       clientName: c?.companyName || "",
                     });
+                    if (setErrors && errors.clientId) {
+                      setErrors((prev) => ({ ...prev, clientId: "" }));
+                    }
                   }}
-                  className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                  className={`w-full rounded-lg border ${
+                    errors.clientId ? "border-red-500" : "border-subtle"
+                  } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
                   required
                 >
                   <option value="" disabled>
@@ -84,30 +108,55 @@ const AddProjectModal = ({
                 <input
                   type="date"
                   value={formData.startDate}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = e.target.value;
                     setFormData({
                       ...formData,
-                      startDate: e.target.value,
-                    })
-                  }
-                  className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                      startDate: value,
+                    });
+                    if (setErrors && (errors.startDate || errors.endDate)) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        startDate: "",
+                        endDate:
+                          prev.endDate && prev.startDate ? prev.endDate : "",
+                      }));
+                    }
+                  }}
+                  className={`w-full rounded-lg border ${
+                    errors.startDate ? "border-red-500" : "border-subtle"
+                  } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
                   required
                 />
+                {errors.startDate && (
+                  <p className="text-xs text-red-600 mt-1">
+                    {errors.startDate}
+                  </p>
+                )}
               </label>
               <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                 End Date *
                 <input
                   type="date"
                   value={formData.endDate}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = e.target.value;
                     setFormData({
                       ...formData,
-                      endDate: e.target.value,
-                    })
-                  }
-                  className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                      endDate: value,
+                    });
+                    if (setErrors && errors.endDate) {
+                      setErrors((prev) => ({ ...prev, endDate: "" }));
+                    }
+                  }}
+                  className={`w-full rounded-lg border ${
+                    errors.endDate ? "border-red-500" : "border-subtle"
+                  } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
                   required
                 />
+                {errors.endDate && (
+                  <p className="text-xs text-red-600 mt-1">{errors.endDate}</p>
+                )}
               </label>
             </div>
 
@@ -134,6 +183,9 @@ const AddProjectModal = ({
                   + Add Objective
                 </Button>
               </div>
+              {errors.okrs && (
+                <p className="text-xs text-red-600 mt-1">{errors.okrs}</p>
+              )}
 
               {formData.okrs.map((okr, okrIndex) => (
                 <div
@@ -163,9 +215,13 @@ const AddProjectModal = ({
                     type="text"
                     value={okr.objective}
                     onChange={(e) => {
+                      const value = e.target.value;
                       const newOkrs = [...formData.okrs];
-                      newOkrs[okrIndex].objective = e.target.value;
+                      newOkrs[okrIndex].objective = value;
                       setFormData({ ...formData, okrs: newOkrs });
+                      if (setErrors && errors.okrs) {
+                        setErrors((prev) => ({ ...prev, okrs: "" }));
+                      }
                     }}
                     placeholder="e.g., Launch new product feature successfully"
                     className="w-full rounded-lg border border-subtle bg-white py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100 mb-3"
@@ -196,10 +252,13 @@ const AddProjectModal = ({
                         type="text"
                         value={kr}
                         onChange={(e) => {
+                          const value = e.target.value;
                           const newOkrs = [...formData.okrs];
-                          newOkrs[okrIndex].keyResults[krIndex] =
-                            e.target.value;
+                          newOkrs[okrIndex].keyResults[krIndex] = value;
                           setFormData({ ...formData, okrs: newOkrs });
+                          if (setErrors && errors.okrs) {
+                            setErrors((prev) => ({ ...prev, okrs: "" }));
+                          }
                         }}
                         placeholder={`Key result ${krIndex + 1}`}
                         className="flex-1 rounded-lg border border-subtle bg-white py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
