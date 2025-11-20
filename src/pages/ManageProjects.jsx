@@ -11,7 +11,10 @@ import {
   FaTh,
   FaList,
 } from "react-icons/fa";
-import { HiOutlineArrowDownTray, HiMiniArrowPath } from "react-icons/hi2";
+import {
+  HiOutlineArrowDownTray,
+  HiMiniArrowPath,
+} from "react-icons/hi2";
 // Excel export not used on this page currently
 import toast from "react-hot-toast";
 import { db } from "../firebase";
@@ -87,10 +90,6 @@ function ManageProjects() {
       },
     ],
   });
-  const [addErrors, setAddErrors] = useState({});
-  const [editErrors, setEditErrors] = useState({});
-  const [initialEditData, setInitialEditData] = useState(null);
-  const [isUpdating, setIsUpdating] = useState(false);
 
   // Subscribe to Firestore projects
   useEffect(() => {
@@ -233,37 +232,6 @@ function ManageProjects() {
     indexOfFirstRow + rowsPerPage
   );
 
-  const hasEditChanges = useMemo(() => {
-    if (!initialEditData) return false;
-
-    const next = formData || {};
-    const initial = initialEditData || {};
-
-    if ((next.projectName || "") !== (initial.projectName || "")) {
-      return true;
-    }
-    if ((next.clientId || "") !== (initial.clientId || "")) {
-      return true;
-    }
-    if ((next.clientName || "") !== (initial.clientName || "")) {
-      return true;
-    }
-    if ((next.startDate || "") !== (initial.startDate || "")) {
-      return true;
-    }
-    if ((next.endDate || "") !== (initial.endDate || "")) {
-      return true;
-    }
-
-    const nextOkrs = Array.isArray(next.okrs) ? next.okrs : [];
-    const initialOkrs = Array.isArray(initial.okrs) ? initial.okrs : [];
-    if (JSON.stringify(nextOkrs) !== JSON.stringify(initialOkrs)) {
-      return true;
-    }
-
-    return false;
-  }, [formData, initialEditData]);
-
   const handleNextPage = () => {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   };
@@ -292,66 +260,24 @@ function ManageProjects() {
   //   setCurrentPage(1);
   // };
 
-  const validateProjectForm = (data) => {
-    const errors = {};
-
-    if (!data.projectName || !data.projectName.trim()) {
-      errors.projectName = "Project name is required";
-    } else if (data.projectName.trim().length < 3) {
-      errors.projectName = "Project name must be at least 3 characters";
-    }
-
-    if (!data.clientId) {
-      errors.clientId = "Company is required";
-    }
-
-    if (!data.startDate) {
-      errors.startDate = "Start date is required";
-    }
-
-    if (!data.endDate) {
-      errors.endDate = "End date is required";
-    }
-
-    if (data.startDate && data.endDate) {
-      const start = new Date(data.startDate);
-      const end = new Date(data.endDate);
-      if (
-        !Number.isNaN(start.getTime()) &&
-        !Number.isNaN(end.getTime()) &&
-        end < start
-      ) {
-        errors.endDate = "End date cannot be before start date";
-      }
-    }
-
-    const hasValidOKR =
-      Array.isArray(data.okrs) &&
-      data.okrs.some(
-        (okr) =>
-          okr &&
-          typeof okr.objective === "string" &&
-          okr.objective.trim() &&
-          Array.isArray(okr.keyResults) &&
-          okr.keyResults.some((kr) => typeof kr === "string" && kr.trim())
-      );
-    if (!hasValidOKR) {
-      errors.okrs = "Add at least one objective with at least one key result.";
-    }
-
-    return errors;
-  };
-
   const handleFormSubmit = async (e) => {
     e.preventDefault();
 
-    const errors = validateProjectForm(formData);
-    setAddErrors(errors);
-    if (Object.keys(errors).length) {
-      const firstError = Object.values(errors)[0];
-      if (firstError) {
-        toast.error(firstError);
-      }
+    // Validate OKRs
+    const hasValidOKR = formData.okrs.some(
+      (okr) => okr.objective.trim() && okr.keyResults.some((kr) => kr.trim())
+    );
+
+    if (
+      !formData.projectName ||
+      !formData.clientId ||
+      !formData.startDate ||
+      !formData.endDate ||
+      !hasValidOKR
+    ) {
+      toast.error(
+        "Please fill in all required fields including at least one objective with key results."
+      );
       return;
     }
 
@@ -383,7 +309,6 @@ function ManageProjects() {
         endDate: "",
         okrs: [{ objective: "", keyResults: [""] }],
       });
-      setAddErrors({});
       setShowAddForm(false);
     } catch (err) {
       console.error("Add project failed", err);
@@ -402,15 +327,6 @@ function ManageProjects() {
       endDate: project.endDate,
       okrs: project.okrs || [{ objective: "", keyResults: [""] }],
     });
-    setInitialEditData({
-      projectName: project.projectName || "",
-      clientId: project.clientId || "",
-      clientName: project.clientName || "",
-      startDate: project.startDate || "",
-      endDate: project.endDate || "",
-      okrs: project.okrs || [{ objective: "", keyResults: [""] }],
-    });
-    setEditErrors({});
     setShowEditForm(true);
   };
 
@@ -434,21 +350,23 @@ function ManageProjects() {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
 
-    if (!selectedProject || !hasEditChanges) {
+    // Validate OKRs
+    const hasValidOKR = formData.okrs.some(
+      (okr) => okr.objective.trim() && okr.keyResults.some((kr) => kr.trim())
+    );
+
+    if (
+      !formData.projectName ||
+      !formData.clientId ||
+      !formData.startDate ||
+      !formData.endDate ||
+      !hasValidOKR
+    ) {
+      toast.error(
+        "Please fill in all required fields including at least one objective with key results."
+      );
       return;
     }
-
-    const errors = validateProjectForm(formData);
-    setEditErrors(errors);
-    if (Object.keys(errors).length) {
-      const firstError = Object.values(errors)[0];
-      if (firstError) {
-        toast.error(firstError);
-      }
-      return;
-    }
-
-    setIsUpdating(true);
 
     try {
       const ref = doc(db, "projects", selectedProject.id);
@@ -477,14 +395,10 @@ function ManageProjects() {
       });
       setShowEditForm(false);
       setSelectedProject(null);
-      setInitialEditData(null);
-      setEditErrors({});
       toast.success("Project updated successfully!");
     } catch (err) {
       console.error("Update project failed", err);
       toast.error("Failed to update project");
-    } finally {
-      setIsUpdating(false);
     }
   };
 
@@ -956,8 +870,6 @@ function ManageProjects() {
             setFormData={setFormData}
             clients={clients}
             handleFormSubmit={handleFormSubmit}
-            errors={addErrors}
-            setErrors={setAddErrors}
           />
 
           <EditProjectModal
@@ -969,10 +881,6 @@ function ManageProjects() {
             setFormData={setFormData}
             clients={clients}
             handleEditSubmit={handleEditSubmit}
-            errors={editErrors}
-            setErrors={setEditErrors}
-            hasChanges={hasEditChanges}
-            isUpdating={isUpdating}
           />
 
           <ViewProjectModal

@@ -39,11 +39,6 @@ import {
 } from "react-icons/fa";
 import { MdReplayCircleFilled } from "react-icons/md";
 import StatCard from "../components/StatCard";
-import {
-  shouldCreateNextInstanceAsync,
-  createNextRecurringInstance,
-} from "../utils/recurringTasks";
-import { updateProjectProgress } from "../utils/projectProgress";
 
 const EmployeeTasks = () => {
   const { user } = useAuthContext();
@@ -270,12 +265,11 @@ const EmployeeTasks = () => {
         setShowCompletionModal(true);
         return;
       }
-
       let updates = { status: newStatus };
       if (newStatus === "In Progress") {
         updates.progressPercent = 0;
       }
-      // Reverting from Done
+      // If reverting from Done status, remove completion data
       if (newStatus !== "Done") {
         updates.completedAt = null;
         updates.completedBy = null;
@@ -283,18 +277,11 @@ const EmployeeTasks = () => {
         updates.completionComment = null;
         updates.progressPercent = newStatus === "In Progress" ? 0 : null;
       }
-
       const current =
         tasks.find((t) => t.id === taskId) ||
         selfTasks.find((t) => t.id === taskId);
       const col = current?.collectionName || "tasks";
-
       await updateDoc(doc(db, col, taskId), updates);
-
-      // Note: In Employee view, "Done" usually triggers the modal via the first IF block.
-      // However, if you ever allow direct "Done" without modal, put the recurring logic here too.
-      // For now, the main logic sits in handleSubmitCompletion (below).
-
       toast.success("Task status updated!");
     } catch (error) {
       console.error("Error updating task status:", error);
@@ -312,7 +299,6 @@ const EmployeeTasks = () => {
         tasks.find((t) => t.id === completionTaskId) ||
         selfTasks.find((t) => t.id === completionTaskId);
       const col = current?.collectionName || "tasks";
-
       await updateDoc(doc(db, col, completionTaskId), {
         status: "Done",
         completedAt: serverTimestamp(),
@@ -321,36 +307,6 @@ const EmployeeTasks = () => {
         completedByType: "user",
         ...(comment ? { completionComment: comment } : {}),
       });
-
-      // ---------------------------------------------------------
-      // RECURRING TRIGGER LOGIC (Only for assigned tasks, not self tasks usually)
-      // ---------------------------------------------------------
-      if (col === "tasks" && current?.isRecurring) {
-        try {
-          const taskForCheck = {
-            ...current,
-            status: "Done",
-            completedAt: new Date(),
-          };
-
-          const shouldRecur = await shouldCreateNextInstanceAsync(taskForCheck);
-          if (shouldRecur) {
-            const newId = await createNextRecurringInstance(taskForCheck);
-            if (newId) {
-              toast.success("Next recurring task created! 🔄");
-              if (current.projectId) {
-                try {
-                  await updateProjectProgress(current.projectId);
-                } catch (e) {}
-              }
-            }
-          }
-        } catch (e) {
-          console.error("Recurring logic error", e);
-        }
-      }
-      // ---------------------------------------------------------
-
       toast.success("Task marked as complete!");
     } catch (error) {
       console.error("Error completing task:", error);
@@ -368,7 +324,6 @@ const EmployeeTasks = () => {
       const current =
         tasks.find((t) => t.id === taskId) ||
         selfTasks.find((t) => t.id === taskId);
-
       if (current && (current.progressPercent ?? 0) === value) return;
       const col = current?.collectionName || "tasks";
 
@@ -385,41 +340,12 @@ const EmployeeTasks = () => {
 
       await updateDoc(doc(db, col, taskId), updateData);
 
-      // ---------------------------------------------------------
-      // RECURRING TRIGGER LOGIC (For 100% Progress)
-      // ---------------------------------------------------------
-      if (value === 100 && col === "tasks" && current?.isRecurring) {
-        try {
-          const taskForCheck = {
-            ...current,
-            status: "Done",
-            completedAt: new Date(),
-          };
-          const shouldRecur = await shouldCreateNextInstanceAsync(taskForCheck);
-          if (shouldRecur) {
-            const newId = await createNextRecurringInstance(taskForCheck);
-            if (newId) {
-              toast.success("Next recurring task created! 🔄");
-              if (current.projectId) {
-                try {
-                  await updateProjectProgress(current.projectId);
-                } catch (e) {}
-              }
-            }
-          }
-        } catch (e) {
-          console.error("Recurring logic error", e);
-        }
-      }
-      // ---------------------------------------------------------
-
       if (value === 100) {
         toast.success("Task completed automatically!");
       } else {
         toast.success("Progress updated");
       }
 
-      // Update local state
       if (selectedTask?.id === taskId) {
         setSelectedTask({
           ...selectedTask,
