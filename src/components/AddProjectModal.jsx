@@ -9,6 +9,8 @@ const AddProjectModal = ({
   setFormData,
   clients,
   handleFormSubmit,
+  addErrors,
+  setAddErrors,
 }) => {
   if (!showAddForm) return null;
 
@@ -30,31 +32,43 @@ const AddProjectModal = ({
               <HiXMark className="h-6 w-6" />
             </button>
           </div>
-          <form onSubmit={handleFormSubmit} className="space-y-6">
+          <form onSubmit={handleFormSubmit} className="space-y-6" noValidate>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                 Project Name *
                 <input
                   type="text"
                   value={formData.projectName}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData({
                       ...formData,
                       projectName: e.target.value,
-                    })
-                  }
-                  className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                    });
+                    if (addErrors.projectName) {
+                      setAddErrors((prev) => ({
+                        ...prev,
+                        projectName: "",
+                      }));
+                    }
+                  }}
+                  className={`w-full rounded-lg border ${
+                    addErrors.projectName ? "border-red-500" : "border-subtle"
+                  } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
                   required
                 />
+                {addErrors.projectName && (
+                  <p className="text-xs text-red-600 mt-1">
+                    {addErrors.projectName}
+                  </p>
+                )}
               </label>
               <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                 Company Name *
                 <select
                   value={
                     formData.clientId ||
-                    clients.find(
-                      (c) => c.companyName === formData.clientName
-                    )?.id ||
+                    clients.find((c) => c.companyName === formData.clientName)
+                      ?.id ||
                     ""
                   }
                   onChange={(e) => {
@@ -65,8 +79,16 @@ const AddProjectModal = ({
                       clientId: id,
                       clientName: c?.companyName || "",
                     });
+                    if (addErrors.clientId) {
+                      setAddErrors((prev) => ({
+                        ...prev,
+                        clientId: "",
+                      }));
+                    }
                   }}
-                  className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                  className={`w-full rounded-lg border ${
+                    addErrors.clientId ? "border-red-500" : "border-subtle"
+                  } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
                   required
                 >
                   <option value="" disabled>
@@ -79,18 +101,31 @@ const AddProjectModal = ({
                   ))}
                 </select>
               </label>
+              {addErrors.clientId && (
+                <p className="text-xs text-red-600 mt-1">
+                  {addErrors.clientId}
+                </p>
+              )}
               <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                 Start Date *
                 <input
                   type="date"
                   value={formData.startDate}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData({
                       ...formData,
                       startDate: e.target.value,
-                    })
-                  }
-                  className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                    });
+                    if (addErrors.startDate) {
+                      setAddErrors((prev) => ({
+                        ...prev,
+                        startDate: "",
+                      }));
+                    }
+                  }}
+                  className={`w-full rounded-lg border ${
+                    addErrors.startDate ? "border-red-500" : "border-subtle"
+                  } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
                   required
                 />
               </label>
@@ -99,13 +134,21 @@ const AddProjectModal = ({
                 <input
                   type="date"
                   value={formData.endDate}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData({
                       ...formData,
                       endDate: e.target.value,
-                    })
-                  }
-                  className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                    });
+                    if (addErrors.endDate) {
+                      setAddErrors((prev) => ({
+                        ...prev,
+                        endDate: "",
+                      }));
+                    }
+                  }}
+                  className={`w-full rounded-lg border ${
+                    addErrors.endDate ? "border-red-500" : "border-subtle"
+                  } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
                   required
                 />
               </label>
@@ -134,6 +177,9 @@ const AddProjectModal = ({
                   + Add Objective
                 </Button>
               </div>
+              {addErrors.okrs && (
+                <p className="text-xs text-red-600 mt-1">{addErrors.okrs}</p>
+              )}
 
               {formData.okrs.map((okr, okrIndex) => (
                 <div
@@ -166,6 +212,12 @@ const AddProjectModal = ({
                       const newOkrs = [...formData.okrs];
                       newOkrs[okrIndex].objective = e.target.value;
                       setFormData({ ...formData, okrs: newOkrs });
+                      if (addErrors.okrs) {
+                        setAddErrors((prev) => ({
+                          ...prev,
+                          okrs: "",
+                        }));
+                      }
                     }}
                     placeholder="e.g., Launch new product feature successfully"
                     className="w-full rounded-lg border border-subtle bg-white py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100 mb-3"
@@ -200,6 +252,12 @@ const AddProjectModal = ({
                           newOkrs[okrIndex].keyResults[krIndex] =
                             e.target.value;
                           setFormData({ ...formData, okrs: newOkrs });
+                          if (addErrors.okrs) {
+                            setAddErrors((prev) => ({
+                              ...prev,
+                              okrs: "",
+                            }));
+                          }
                         }}
                         placeholder={`Key result ${krIndex + 1}`}
                         className="flex-1 rounded-lg border border-subtle bg-white py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
