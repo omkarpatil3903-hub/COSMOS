@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import Card from "./Card";
 import Button from "./Button";
 import DateRangeCalendar from "./calendar/DateRangeCalendar";
+import toast from "react-hot-toast";
+import { validateTaskForm } from "../utils/formBuilders";
 
 // Now receives projects and assignees from parent instead of local samples
 function TaskModal({
@@ -38,9 +40,16 @@ function TaskModal({
   const [rangeDays, setRangeDays] = useState(0);
   const [skipWeekends, setSkipWeekends] = useState(false);
   const [previewDates, setPreviewDates] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [initialTaskState, setInitialTaskState] = useState(null);
 
   useEffect(() => {
     if (taskToEdit) {
+      const initialWeightage =
+        taskToEdit.weightage !== undefined && taskToEdit.weightage !== null
+          ? String(taskToEdit.weightage)
+          : "";
+
       setTitle(taskToEdit.title || "");
       setDescription(taskToEdit.description || "");
       setAssigneeId(taskToEdit.assigneeId || "");
@@ -50,11 +59,7 @@ function TaskModal({
       setAssignedDate(taskToEdit.assignedDate || "");
       setPriority(taskToEdit.priority || "Medium");
       setStatus(taskToEdit.status || "To-Do");
-      setWeightage(
-        taskToEdit.weightage !== undefined && taskToEdit.weightage !== null
-          ? String(taskToEdit.weightage)
-          : ""
-      );
+      setWeightage(initialWeightage);
       setCompletionComment(taskToEdit.completionComment || "");
 
       // Load recurring task data
@@ -64,6 +69,31 @@ function TaskModal({
       setRecurringEndDate(taskToEdit.recurringEndDate || "");
       setRecurringEndAfter(taskToEdit.recurringEndAfter || "");
       setRecurringEndType(taskToEdit.recurringEndType || "never");
+      setErrors({});
+
+      setInitialTaskState({
+        title: taskToEdit.title || "",
+        description: taskToEdit.description || "",
+        assigneeId: taskToEdit.assigneeId || "",
+        assigneeType: taskToEdit.assigneeType || "user",
+        projectId: taskToEdit.projectId || "",
+        dueDate: taskToEdit.dueDate || "",
+        assignedDate: taskToEdit.assignedDate || "",
+        priority: taskToEdit.priority || "Medium",
+        status: taskToEdit.status || "To-Do",
+        weightage: initialWeightage,
+        completionComment: taskToEdit.completionComment || "",
+        isRecurring: taskToEdit.isRecurring || false,
+        recurringPattern: taskToEdit.recurringPattern || "daily",
+        recurringInterval: taskToEdit.recurringInterval || 1,
+        recurringEndDate: taskToEdit.recurringEndDate || "",
+        recurringEndAfter: taskToEdit.recurringEndAfter || "",
+        recurringEndType: taskToEdit.recurringEndType || "never",
+        skipWeekends: taskToEdit.skipWeekends || false,
+      });
+    } else {
+      setInitialTaskState(null);
+      setErrors({});
     }
   }, [taskToEdit]);
 
@@ -72,6 +102,19 @@ function TaskModal({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const { isValid, errors: validationErrors } = validateTaskForm({
+      title,
+      dueDate,
+      projectId,
+      assigneeId,
+      assignedDate,
+    });
+    setErrors(validationErrors || {});
+    if (!isValid) {
+      const firstError = validationErrors && Object.values(validationErrors)[0];
+      if (firstError) toast.error(firstError);
+      return;
+    }
     onSave({
       id: taskToEdit?.id,
       title,
@@ -220,11 +263,12 @@ function TaskModal({
       }
     };
   }, []);
-  
+
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
     const originalPaddingRight = document.body.style.paddingRight;
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    const scrollbarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
     document.body.style.overflow = "hidden";
     if (scrollbarWidth > 0) {
       document.body.style.paddingRight = `${scrollbarWidth}px`;
@@ -257,7 +301,10 @@ function TaskModal({
       const first = nodes[0];
       const last = nodes[nodes.length - 1];
       if (e.shiftKey) {
-        if (document.activeElement === first || document.activeElement === root) {
+        if (
+          document.activeElement === first ||
+          document.activeElement === root
+        ) {
           e.preventDefault();
           last.focus();
         }
@@ -270,8 +317,37 @@ function TaskModal({
     }
   };
 
+  const hasChanges =
+    !taskToEdit || !initialTaskState
+      ? true
+      : title !== initialTaskState.title ||
+        description !== initialTaskState.description ||
+        assigneeId !== initialTaskState.assigneeId ||
+        assigneeType !== initialTaskState.assigneeType ||
+        projectId !== initialTaskState.projectId ||
+        dueDate !== initialTaskState.dueDate ||
+        assignedDate !== initialTaskState.assignedDate ||
+        priority !== initialTaskState.priority ||
+        status !== initialTaskState.status ||
+        weightage !== initialTaskState.weightage ||
+        completionComment !== initialTaskState.completionComment ||
+        isRecurring !== initialTaskState.isRecurring ||
+        recurringPattern !== initialTaskState.recurringPattern ||
+        recurringInterval !== initialTaskState.recurringInterval ||
+        recurringEndDate !== initialTaskState.recurringEndDate ||
+        recurringEndAfter !== initialTaskState.recurringEndAfter ||
+        recurringEndType !== initialTaskState.recurringEndType ||
+        skipWeekends !== initialTaskState.skipWeekends;
+
   return (
-    <div ref={modalRef} tabIndex={-1} onKeyDown={handleKeyDown} className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain p-4 sm:p-6" role="dialog" aria-modal="true">
+    <div
+      ref={modalRef}
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain p-4 sm:p-6"
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
       <div className="z-10 w-full max-w-2xl mx-4 sm:mx-6">
         <Card className="w-full max-h-[90vh] overflow-y-auto overscroll-contain">
@@ -279,15 +355,22 @@ function TaskModal({
             {taskToEdit ? "Edit Task" : "Create Task"}
           </h2>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div>
               <label className="block text-sm font-medium text-content-secondary">
                 Project
               </label>
               <select
                 value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
+                onChange={(e) => {
+                  setProjectId(e.target.value);
+                  if (errors.projectId) {
+                    setErrors((prev) => ({ ...prev, projectId: "" }));
+                  }
+                }}
+                className={`mt-1 block w-full rounded-md border ${
+                  errors.projectId ? "border-red-500" : "border-subtle"
+                } bg-surface px-3 py-2 text-sm text-content-primary`}
               >
                 <option value="">Select Project</option>
                 {projects.map((p) => (
@@ -296,418 +379,463 @@ function TaskModal({
                   </option>
                 ))}
               </select>
-            </div>
-
-          <div>
-            <label className="block text-sm font-medium text-content-secondary">
-              Title *
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
-            />
-          </div>
-
-          {status === "Done" && (
-            <div>
-              <label className="block text-sm font-medium text-content-secondary">
-                Completion Comment
-              </label>
-              <textarea
-                value={completionComment}
-                onChange={(e) => setCompletionComment(e.target.value)}
-                rows={3}
-                placeholder="Add details about completion..."
-                className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
-                maxLength={300}
-              />
-              <div className="mt-1 text-xs text-content-tertiary text-right">
-                {(completionComment || "").length}/300
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-content-secondary">
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-content-secondary">
-                Assigned To
-              </label>
-              <div className="mt-1 grid grid-cols-2 gap-2">
-                <select
-                  value={assigneeType}
-                  onChange={(e) => {
-                    setAssigneeType(e.target.value);
-                    setAssigneeId(""); // reset selection when type changes
-                  }}
-                  className="block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
-                  disabled={isClientLocked}
-                >
-                  <option value="user">Resource</option>
-                  <option value="client">Client</option>
-                </select>
-                <select
-                  value={assigneeId}
-                  onChange={(e) => setAssigneeId(e.target.value)}
-                  className="block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
-                  disabled={isClientLocked}
-                >
-                  <option value="">Unassigned</option>
-                  {assigneeType === "user"
-                    ? assignees.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name}
-                        </option>
-                      ))
-                    : clients.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.clientName}
-                          {c.companyName ? ` (${c.companyName})` : ""}
-                        </option>
-                      ))}
-                </select>
-                {isClientLocked && (
-                  <p className="col-span-2 text-xs text-content-tertiary">
-                    Client-assigned tasks cannot be reassigned here.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-content-secondary">
-                Assigned Date
-              </label>
-              <input
-                type="date"
-                value={assignedDate}
-                onChange={(e) => setAssignedDate(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-content-secondary">
-                Due Date
-              </label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
-              />
+              {errors.projectId && (
+                <p className="mt-1 text-xs text-red-600">{errors.projectId}</p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-content-secondary">
-                {status === "Done" && taskToEdit?.completedAt
-                  ? (() => {
-                      const due = taskToEdit.dueDate
-                        ? new Date(taskToEdit.dueDate)
-                        : null;
-                      const comp = taskToEdit.completedAt
-                        ? new Date(taskToEdit.completedAt)
-                        : null;
-                      if (!comp) return "Completion Date";
-                      const compD = new Date(
-                        comp.getFullYear(),
-                        comp.getMonth(),
-                        comp.getDate()
-                      );
-                      const dueD = due
-                        ? new Date(
-                            due.getFullYear(),
-                            due.getMonth(),
-                            due.getDate()
-                          )
-                        : null;
-                      const late = dueD
-                        ? compD.getTime() > dueD.getTime()
-                        : false;
-                      return late ? "Delayed Completion" : "Completed At";
-                    })()
-                  : "Completion Date"}
+                Title *
               </label>
               <input
                 type="text"
-                value={
-                  status === "Done" && taskToEdit?.completedAt
-                    ? new Date(taskToEdit.completedAt).toLocaleDateString()
-                    : "—"
-                }
-                disabled
-                className="mt-1 block w-full rounded-md border border-subtle bg-gray-100 px-3 py-2 text-sm text-content-secondary cursor-not-allowed"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (errors.title) {
+                    setErrors((prev) => ({ ...prev, title: "" }));
+                  }
+                }}
+                className={`mt-1 block w-full rounded-md border ${
+                  errors.title ? "border-red-500" : "border-subtle"
+                } bg-transparent px-3 py-2 text-sm text-content-primary`}
               />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-content-secondary">
-                Priority
-              </label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
-              >
-                <option>Low</option>
-                <option>Medium</option>
-                <option>High</option>
-              </select>
+              {errors.title && (
+                <p className="mt-1 text-xs text-red-600">{errors.title}</p>
+              )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-content-secondary">
-                Status
-              </label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
-              >
-                <option>To-Do</option>
-                <option>In Progress</option>
-                <option>Done</option>
-              </select>
-            </div>
+            {status === "Done" && (
+              <div>
+                <label className="block text-sm font-medium text-content-secondary">
+                  Completion Comment
+                </label>
+                <textarea
+                  value={completionComment}
+                  onChange={(e) => setCompletionComment(e.target.value)}
+                  rows={3}
+                  placeholder="Add details about completion..."
+                  className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
+                  maxLength={300}
+                />
+                <div className="mt-1 text-xs text-content-tertiary text-right">
+                  {(completionComment || "").length}/300
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-content-secondary">
-                Weightage
+                Description
               </label>
-              <input
-                type="number"
-                value={weightage}
-                onChange={(e) => setWeightage(e.target.value)}
-                min="0"
-                step="1"
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
                 className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
-                placeholder="e.g., 5"
               />
             </div>
-          </div>
 
-          {/* Recurring Task Section */}
-          <div className="border-t border-subtle pt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <input
-                type="checkbox"
-                id="isRecurring"
-                checked={isRecurring}
-                onChange={(e) => setIsRecurring(e.target.checked)}
-                className="rounded border-gray-300"
-              />
-              <label
-                htmlFor="isRecurring"
-                className="text-sm font-medium text-content-secondary cursor-pointer"
-              >
-                Make this a recurring task
-              </label>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-content-secondary">
+                  Assigned To
+                </label>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  <select
+                    value={assigneeType}
+                    onChange={(e) => {
+                      setAssigneeType(e.target.value);
+                      setAssigneeId(""); // reset selection when type changes
+                      if (errors.assigneeId) {
+                        setErrors((prev) => ({ ...prev, assigneeId: "" }));
+                      }
+                    }}
+                    className="block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
+                    disabled={isClientLocked}
+                  >
+                    <option value="user">Resource</option>
+                    <option value="client">Client</option>
+                  </select>
+                  <select
+                    value={assigneeId}
+                    onChange={(e) => {
+                      setAssigneeId(e.target.value);
+                      if (errors.assigneeId) {
+                        setErrors((prev) => ({ ...prev, assigneeId: "" }));
+                      }
+                    }}
+                    className={`block w-full rounded-md border ${
+                      errors.assigneeId ? "border-red-500" : "border-subtle"
+                    } bg-surface px-3 py-2 text-sm text-content-primary`}
+                    disabled={isClientLocked}
+                  >
+                    <option value="">Unassigned</option>
+                    {assigneeType === "user"
+                      ? assignees.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name}
+                          </option>
+                        ))
+                      : clients.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.clientName}
+                            {c.companyName ? ` (${c.companyName})` : ""}
+                          </option>
+                        ))}
+                  </select>
+                  {isClientLocked && (
+                    <p className="col-span-2 text-xs text-content-tertiary">
+                      Client-assigned tasks cannot be reassigned here.
+                    </p>
+                  )}
+                  {errors.assigneeId && (
+                    <p className="col-span-2 text-xs text-red-600">
+                      {errors.assigneeId}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {isRecurring && (
-              <div className="space-y-4 bg-blue-50 p-4 rounded-lg">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                  {/* Left: Compact Calendar */}
-                  <div>
-                    <label className="block text-sm font-medium text-content-secondary mb-2">
-                      Set duration (drag on calendar)
-                    </label>
-                    <DateRangeCalendar
-                      valueStart={dueDate || null}
-                      valueEnd={recurringEndDate || null}
-                      onChange={({ start, end, days }) => {
-                        setDueDate(start);
-                        setRecurringEndDate(end);
-                        setRecurringEndType("date");
-                        setRangeDays(days);
-                      }}
-                      minDate={assignedDate || null}
-                      compact
-                      accent="sky"
-                      className="bg-sky-200/40 rounded-lg p-2 border border-sky-300"
-                    />
-                    {(dueDate || recurringEndDate) && (
-                      <p className="mt-2 text-xs text-blue-700">
-                        Start: <strong>{dueDate || "—"}</strong> • End:{" "}
-                        <strong>{recurringEndDate || "—"}</strong>
-                        {rangeDays > 0
-                          ? ` • Duration: ${rangeDays} day${
-                              rangeDays > 1 ? "s" : ""
-                            }`
-                          : ""}
-                      </p>
-                    )}
-                  </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-content-secondary">
+                  Assigned Date
+                </label>
+                <input
+                  type="date"
+                  value={assignedDate}
+                  onChange={(e) => setAssignedDate(e.target.value)}
+                  className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-content-secondary">
+                  Due Date
+                </label>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => {
+                    setDueDate(e.target.value);
+                    if (errors.dueDate) {
+                      setErrors((prev) => ({ ...prev, dueDate: "" }));
+                    }
+                  }}
+                  className={`mt-1 block w-full rounded-md border ${
+                    errors.dueDate ? "border-red-500" : "border-subtle"
+                  } bg-transparent px-3 py-2 text-sm text-content-primary`}
+                />
+                {errors.dueDate && (
+                  <p className="mt-1 text-xs text-red-600">{errors.dueDate}</p>
+                )}
+              </div>
 
-                  {/* Right: Manual Inputs and Controls */}
-                  <div>
-                    <label className="block text-sm font-medium text-content-secondary mb-1">
-                      Repeat Every
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        min="1"
-                        value={recurringInterval}
-                        onChange={(e) =>
-                          setRecurringInterval(parseInt(e.target.value) || 1)
-                        }
-                        className="w-20 rounded-md border border-subtle bg-white px-3 py-2 text-sm text-content-primary"
-                      />
-                      <select
-                        value={recurringPattern}
-                        onChange={(e) => setRecurringPattern(e.target.value)}
-                        className="flex-1 rounded-md border border-subtle bg-white px-3 py-2 text-sm text-content-primary"
-                      >
-                        <option value="daily">Day(s)</option>
-                        <option value="weekly">Week(s)</option>
-                        <option value="monthly">Month(s)</option>
-                        <option value="yearly">Year(s)</option>
-                      </select>
-                    </div>
+              <div>
+                <label className="block text-sm font-medium text-content-secondary">
+                  {status === "Done" && taskToEdit?.completedAt
+                    ? (() => {
+                        const due = taskToEdit.dueDate
+                          ? new Date(taskToEdit.dueDate)
+                          : null;
+                        const comp = taskToEdit.completedAt
+                          ? new Date(taskToEdit.completedAt)
+                          : null;
+                        if (!comp) return "Completion Date";
+                        const compD = new Date(
+                          comp.getFullYear(),
+                          comp.getMonth(),
+                          comp.getDate()
+                        );
+                        const dueD = due
+                          ? new Date(
+                              due.getFullYear(),
+                              due.getMonth(),
+                              due.getDate()
+                            )
+                          : null;
+                        const late = dueD
+                          ? compD.getTime() > dueD.getTime()
+                          : false;
+                        return late ? "Delayed Completion" : "Completed At";
+                      })()
+                    : "Completion Date"}
+                </label>
+                <input
+                  type="text"
+                  value={
+                    status === "Done" && taskToEdit?.completedAt
+                      ? new Date(taskToEdit.completedAt).toLocaleDateString()
+                      : "—"
+                  }
+                  disabled
+                  className="mt-1 block w-full rounded-md border border-subtle bg-gray-100 px-3 py-2 text-sm text-content-secondary cursor-not-allowed"
+                />
+              </div>
+            </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium text-content-secondary mb-1">
-                          Due Date (start)
-                        </label>
-                        <input
-                          type="date"
-                          value={dueDate}
-                          onChange={(e) => setDueDate(e.target.value)}
-                          className="w-full rounded-md border border-subtle bg-white px-3 py-2 text-sm text-content-primary"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-content-secondary mb-1">
-                          Recurring End Date
-                        </label>
-                        <input
-                          type="date"
-                          value={recurringEndDate}
-                          onChange={(e) => {
-                            setRecurringEndDate(e.target.value);
-                            setRecurringEndType("date");
-                          }}
-                          min={dueDate || undefined}
-                          className="w-full rounded-md border border-subtle bg-white px-3 py-2 text-sm text-content-primary"
-                        />
-                      </div>
-                    </div>
-                    {rangeDays > 0 && (
-                      <p className="mt-2 text-xs text-content-secondary">
-                        Duration from selected range:{" "}
-                        <strong>
-                          {rangeDays} day{rangeDays > 1 ? "s" : ""}
-                        </strong>
-                      </p>
-                    )}
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-content-secondary">
+                  Priority
+                </label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                  className="mt-1 block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
+                >
+                  <option>Low</option>
+                  <option>Medium</option>
+                  <option>High</option>
+                </select>
+              </div>
 
-                    <div className="mt-4">
-                      <label className="block text-sm font-medium text-content-secondary mb-1">
-                        Ends
+              <div>
+                <label className="block text-sm font-medium text-content-secondary">
+                  Status
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="mt-1 block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
+                >
+                  <option>To-Do</option>
+                  <option>In Progress</option>
+                  <option>Done</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-content-secondary">
+                  Weightage
+                </label>
+                <input
+                  type="number"
+                  value={weightage}
+                  onChange={(e) => setWeightage(e.target.value)}
+                  min="0"
+                  step="1"
+                  className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
+                  placeholder="e.g., 5"
+                />
+              </div>
+            </div>
+
+            {/* Recurring Task Section */}
+            <div className="border-t border-subtle pt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <input
+                  type="checkbox"
+                  id="isRecurring"
+                  checked={isRecurring}
+                  onChange={(e) => setIsRecurring(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                <label
+                  htmlFor="isRecurring"
+                  className="text-sm font-medium text-content-secondary cursor-pointer"
+                >
+                  Make this a recurring task
+                </label>
+              </div>
+
+              {isRecurring && (
+                <div className="space-y-4 bg-blue-50 p-4 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                    {/* Left: Compact Calendar */}
+                    <div>
+                      <label className="block text-sm font-medium text-content-secondary mb-2">
+                        Set duration (drag on calendar)
                       </label>
-                      <select
-                        value={recurringEndType}
-                        onChange={(e) => setRecurringEndType(e.target.value)}
-                        className="w-full rounded-md border border-subtle bg-white px-3 py-2 text-sm text-content-primary"
-                      >
-                        <option value="never">Never</option>
-                        <option value="date">On Date</option>
-                        <option value="after">After Occurrences</option>
-                      </select>
+                      <DateRangeCalendar
+                        valueStart={dueDate || null}
+                        valueEnd={recurringEndDate || null}
+                        onChange={({ start, end, days }) => {
+                          setDueDate(start);
+                          setRecurringEndDate(end);
+                          setRecurringEndType("date");
+                          setRangeDays(days);
+                        }}
+                        minDate={assignedDate || null}
+                        compact
+                        accent="sky"
+                        className="bg-sky-200/40 rounded-lg p-2 border border-sky-300"
+                      />
+                      {(dueDate || recurringEndDate) && (
+                        <p className="mt-2 text-xs text-blue-700">
+                          Start: <strong>{dueDate || "—"}</strong> • End:{" "}
+                          <strong>{recurringEndDate || "—"}</strong>
+                          {rangeDays > 0
+                            ? ` • Duration: ${rangeDays} day${
+                                rangeDays > 1 ? "s" : ""
+                              }`
+                            : ""}
+                        </p>
+                      )}
+                    </div>
 
-                      {recurringEndType === "after" && (
-                        <div className="mt-3">
+                    {/* Right: Manual Inputs and Controls */}
+                    <div>
+                      <label className="block text-sm font-medium text-content-secondary mb-1">
+                        Repeat Every
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          value={recurringInterval}
+                          onChange={(e) =>
+                            setRecurringInterval(parseInt(e.target.value) || 1)
+                          }
+                          className="w-20 rounded-md border border-subtle bg-white px-3 py-2 text-sm text-content-primary"
+                        />
+                        <select
+                          value={recurringPattern}
+                          onChange={(e) => setRecurringPattern(e.target.value)}
+                          className="flex-1 rounded-md border border-subtle bg-white px-3 py-2 text-sm text-content-primary"
+                        >
+                          <option value="daily">Day(s)</option>
+                          <option value="weekly">Week(s)</option>
+                          <option value="monthly">Month(s)</option>
+                          <option value="yearly">Year(s)</option>
+                        </select>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div>
                           <label className="block text-sm font-medium text-content-secondary mb-1">
-                            Number of Occurrences
+                            Due Date (start)
                           </label>
                           <input
-                            type="number"
-                            min="1"
-                            value={recurringEndAfter}
-                            onChange={(e) =>
-                              setRecurringEndAfter(e.target.value)
-                            }
-                            placeholder="e.g., 10"
+                            type="date"
+                            value={dueDate}
+                            onChange={(e) => setDueDate(e.target.value)}
                             className="w-full rounded-md border border-subtle bg-white px-3 py-2 text-sm text-content-primary"
                           />
                         </div>
+                        <div>
+                          <label className="block text-sm font-medium text-content-secondary mb-1">
+                            Recurring End Date
+                          </label>
+                          <input
+                            type="date"
+                            value={recurringEndDate}
+                            onChange={(e) => {
+                              setRecurringEndDate(e.target.value);
+                              setRecurringEndType("date");
+                            }}
+                            min={dueDate || undefined}
+                            className="w-full rounded-md border border-subtle bg-white px-3 py-2 text-sm text-content-primary"
+                          />
+                        </div>
+                      </div>
+                      {rangeDays > 0 && (
+                        <p className="mt-2 text-xs text-content-secondary">
+                          Duration from selected range:{" "}
+                          <strong>
+                            {rangeDays} day{rangeDays > 1 ? "s" : ""}
+                          </strong>
+                        </p>
                       )}
-                      <div className="mt-3 flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id="skipWeekends"
-                          checked={skipWeekends}
-                          onChange={(e) => setSkipWeekends(e.target.checked)}
-                          className="rounded border-gray-300"
-                        />
-                        <label
-                          htmlFor="skipWeekends"
-                          className="text-xs font-medium text-content-secondary cursor-pointer"
-                        >
-                          Skip weekends
+
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium text-content-secondary mb-1">
+                          Ends
                         </label>
+                        <select
+                          value={recurringEndType}
+                          onChange={(e) => setRecurringEndType(e.target.value)}
+                          className="w-full rounded-md border border-subtle bg-white px-3 py-2 text-sm text-content-primary"
+                        >
+                          <option value="never">Never</option>
+                          <option value="date">On Date</option>
+                          <option value="after">After Occurrences</option>
+                        </select>
+
+                        {recurringEndType === "after" && (
+                          <div className="mt-3">
+                            <label className="block text-sm font-medium text-content-secondary mb-1">
+                              Number of Occurrences
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={recurringEndAfter}
+                              onChange={(e) =>
+                                setRecurringEndAfter(e.target.value)
+                              }
+                              placeholder="e.g., 10"
+                              className="w-full rounded-md border border-subtle bg-white px-3 py-2 text-sm text-content-primary"
+                            />
+                          </div>
+                        )}
+                        <div className="mt-3 flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id="skipWeekends"
+                            checked={skipWeekends}
+                            onChange={(e) => setSkipWeekends(e.target.checked)}
+                            className="rounded border-gray-300"
+                          />
+                          <label
+                            htmlFor="skipWeekends"
+                            className="text-xs font-medium text-content-secondary cursor-pointer"
+                          >
+                            Skip weekends
+                          </label>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="text-xs text-blue-700 bg-blue-100 p-2 rounded">
-                  <strong>Note:</strong> Recurring tasks will automatically
-                  create new instances based on your schedule.
-                </div>
-                {previewDates.length > 0 && (
-                  <div className="mt-3 rounded-md bg-white p-3 border border-subtle">
-                    <p className="text-xs font-semibold text-content-secondary mb-1">
-                      Upcoming occurrences (preview):
-                    </p>
-                    <div className="flex flex-wrap gap-1 text-[11px]">
-                      {previewDates.map((d) => (
-                        <span
-                          key={d}
-                          className="px-2 py-1 rounded bg-indigo-50 text-indigo-700 border border-indigo-100"
-                        >
-                          {d}
-                        </span>
-                      ))}
-                    </div>
-                    <p className="mt-1 text-[10px] text-content-tertiary">
-                      Based on current pattern & interval. Actual creation
-                      occurs after completion.
-                    </p>
+                  <div className="text-xs text-blue-700 bg-blue-100 p-2 rounded">
+                    <strong>Note:</strong> Recurring tasks will automatically
+                    create new instances based on your schedule.
                   </div>
-                )}
-              </div>
-            )}
-          </div>
+                  {previewDates.length > 0 && (
+                    <div className="mt-3 rounded-md bg-white p-3 border border-subtle">
+                      <p className="text-xs font-semibold text-content-secondary mb-1">
+                        Upcoming occurrences (preview):
+                      </p>
+                      <div className="flex flex-wrap gap-1 text-[11px]">
+                        {previewDates.map((d) => (
+                          <span
+                            key={d}
+                            className="px-2 py-1 rounded bg-indigo-50 text-indigo-700 border border-indigo-100"
+                          >
+                            {d}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="mt-1 text-[10px] text-content-tertiary">
+                        Based on current pattern & interval. Actual creation
+                        occurs after completion.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
-          <div className="flex justify-end gap-4 pt-4">
-            <Button onClick={onClose} variant="secondary" type="button">
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary">
-              Save Task
-            </Button>
-          </div>
-        </form>
+            <div className="flex justify-end gap-4 pt-4">
+              <Button onClick={onClose} variant="secondary" type="button">
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={!!taskToEdit && !hasChanges}
+              >
+                {taskToEdit
+                  ? hasChanges
+                    ? "Save Changes"
+                    : "No changes"
+                  : "Save Task"}
+              </Button>
+            </div>
+          </form>
         </Card>
       </div>
     </div>

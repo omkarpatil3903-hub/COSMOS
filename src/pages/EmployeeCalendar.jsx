@@ -196,23 +196,49 @@ const EmployeeCalendar = () => {
       date.getMonth() + 1
     ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-    const dayItems = filteredItems.filter((item) => {
-      if (item.itemType === "task") {
-        const dueDate = item.dueDate?.toDate?.() || new Date(item.dueDate);
-        const taskDateStr = `${dueDate.getFullYear()}-${String(
-          dueDate.getMonth() + 1
-        ).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
-        return item.isRecurring
-          ? occursOnDate(item, date)
-          : taskDateStr === dateStr;
-      } else if (item.itemType === "meeting") {
-        // For meetings, check the date field
+    // 1. Find all "Real" items for this date (Meetings, Non-recurring tasks, Child tasks)
+    const realItems = filteredItems.filter((item) => {
+      if (item.itemType === "meeting") {
         return item.date === dateStr;
       }
-      return false;
+      // It's a task
+      const dueDate = item.dueDate?.toDate?.() || new Date(item.dueDate);
+      const taskDateStr = `${dueDate.getFullYear()}-${String(
+        dueDate.getMonth() + 1
+      ).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
+
+      return taskDateStr === dateStr;
     });
 
-    return dayItems;
+    // 2. Find "Ghost" items (Recurring roots expanding to this date)
+    const ghostItems = filteredItems
+      .filter((item) => {
+        if (item.itemType !== "task") return false;
+        if (!item.isRecurring) return false;
+        if (item.parentRecurringTaskId) return false; // Child tasks don't generate ghosts
+
+        // Check if it occurs on this date
+        if (!occursOnDate(item, date)) return false;
+
+        // Check if this EXACT task is already in realItems (e.g. Root task is due today)
+        if (realItems.some((real) => real.id === item.id)) return false;
+
+        // Check if a CHILD instance of this series exists in realItems
+        const hasRealInstance = realItems.some(
+          (real) => real.parentRecurringTaskId === item.id
+        );
+
+        return !hasRealInstance;
+      })
+      .map((item) => ({
+        ...item,
+        status: "To-Do",
+        progressPercent: 0,
+        completedAt: null,
+        isGhost: true, // Marker for debugging or styling if needed
+      }));
+
+    return [...realItems, ...ghostItems];
   };
 
   const renderCalendarDays = () => {

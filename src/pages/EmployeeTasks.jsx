@@ -39,6 +39,10 @@ import {
 } from "react-icons/fa";
 import { MdReplayCircleFilled } from "react-icons/md";
 import StatCard from "../components/StatCard";
+import {
+  shouldCreateNextInstanceAsync,
+  createNextRecurringInstance,
+} from "../utils/recurringTasks";
 
 const EmployeeTasks = () => {
   const { user } = useAuthContext();
@@ -307,6 +311,29 @@ const EmployeeTasks = () => {
         completedByType: "user",
         ...(comment ? { completionComment: comment } : {}),
       });
+      // If this is an admin recurring task, create the next instance (same rules as Task Management)
+      if (col === "tasks" && current?.isRecurring) {
+        try {
+          let due = current.dueDate;
+          if (current?.dueDate?.toDate) {
+            due = current.dueDate.toDate().toISOString().slice(0, 10);
+          }
+          const checkTask = {
+            ...current,
+            status: "Done",
+            completedAt: new Date(),
+            dueDate: due,
+          };
+          if (await shouldCreateNextInstanceAsync(checkTask)) {
+            await createNextRecurringInstance(checkTask);
+          }
+        } catch (e) {
+          console.warn(
+            "Recurring continuation failed (employee completion)",
+            e
+          );
+        }
+      }
       toast.success("Task marked as complete!");
     } catch (error) {
       console.error("Error completing task:", error);
@@ -339,6 +366,32 @@ const EmployeeTasks = () => {
       }
 
       await updateDoc(doc(db, col, taskId), updateData);
+
+      // For admin recurring tasks, reaching 100% should also create the next instance
+      if (value === 100 && col === "tasks" && current?.isRecurring) {
+        try {
+          let due = current.dueDate;
+          if (current?.dueDate?.toDate) {
+            due = current.dueDate.toDate().toISOString().slice(0, 10);
+          }
+          const checkTask = {
+            ...current,
+            ...updateData,
+            id: taskId,
+            status: "Done",
+            completedAt: new Date(),
+            dueDate: due,
+          };
+          if (await shouldCreateNextInstanceAsync(checkTask)) {
+            await createNextRecurringInstance(checkTask);
+          }
+        } catch (e) {
+          console.warn(
+            "Recurring continuation failed (employee progress completion)",
+            e
+          );
+        }
+      }
 
       if (value === 100) {
         toast.success("Task completed automatically!");
@@ -412,6 +465,13 @@ const EmployeeTasks = () => {
   // Advanced filtering
   const filteredTasks = baseTasks
     .filter((task) => {
+      // 1. Get today's date as a string (YYYY-MM-DD)
+      const todayISO = new Date().toISOString().split("T")[0];
+
+      // 2. If task has a visibleFrom date and it is in the future, HIDE IT
+      if (task.visibleFrom && task.visibleFrom > todayISO) {
+        return false;
+      }
       // Status filter
       let statusMatch = true;
       if (statusFilter === "all") {

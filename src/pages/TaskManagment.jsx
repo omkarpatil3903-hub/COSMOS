@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import toast from "react-hot-toast";
 import PageHeader from "../components/PageHeader";
 import Card from "../components/Card";
@@ -101,7 +107,10 @@ function TasksManagement() {
 
   const scrollToTasksList = useCallback(() => {
     if (tasksListRef.current) {
-      tasksListRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      tasksListRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }
   }, []);
 
@@ -729,6 +738,9 @@ function TasksManagement() {
   const filtered = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     return tasks.filter((t) => {
+      if (t.visibleFrom && t.visibleFrom > today) {
+        return false;
+      }
       if (!showArchived && t.archived) return false;
       if (filterProject && t.projectId !== filterProject) return false;
       if (
@@ -743,7 +755,8 @@ function TasksManagement() {
       if (filterPriority && t.priority !== filterPriority) return false;
       if (filterStatus && t.status !== filterStatus) return false;
       if (onlyOverdue) {
-        if (!(t.dueDate && t.status !== "Done" && t.dueDate < today)) return false;
+        if (!(t.dueDate && t.status !== "Done" && t.dueDate < today))
+          return false;
       }
       if (search) {
         const s = search.toLowerCase();
@@ -903,7 +916,10 @@ function TasksManagement() {
 
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card onClick={() => applyStatusQuickFilter("To-Do")} className="cursor-pointer hover:bg-surface-subtle">
+          <Card
+            onClick={() => applyStatusQuickFilter("To-Do")}
+            className="cursor-pointer hover:bg-surface-subtle"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-content-secondary">To-Do</div>
@@ -914,7 +930,10 @@ function TasksManagement() {
               <FaListAlt className="h-8 w-8 text-gray-400" />
             </div>
           </Card>
-          <Card onClick={() => applyStatusQuickFilter("In Progress")} className="cursor-pointer hover:bg-surface-subtle">
+          <Card
+            onClick={() => applyStatusQuickFilter("In Progress")}
+            className="cursor-pointer hover:bg-surface-subtle"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-content-secondary">
@@ -927,7 +946,10 @@ function TasksManagement() {
               <FaClock className="h-8 w-8 text-blue-500" />
             </div>
           </Card>
-          <Card onClick={() => applyStatusQuickFilter("Done")} className="cursor-pointer hover:bg-surface-subtle">
+          <Card
+            onClick={() => applyStatusQuickFilter("Done")}
+            className="cursor-pointer hover:bg-surface-subtle"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-content-secondary">Completed</div>
@@ -936,7 +958,10 @@ function TasksManagement() {
               <FaCheckCircle className="h-8 w-8 text-green-500" />
             </div>
           </Card>
-          <Card onClick={applyOverdueQuickFilter} className="cursor-pointer hover:bg-surface-subtle">
+          <Card
+            onClick={applyOverdueQuickFilter}
+            className="cursor-pointer hover:bg-surface-subtle"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-content-secondary">Overdue</div>

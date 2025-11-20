@@ -11,10 +11,7 @@ import {
   FaTh,
   FaList,
 } from "react-icons/fa";
-import {
-  HiOutlineArrowDownTray,
-  HiMiniArrowPath,
-} from "react-icons/hi2";
+import { HiOutlineArrowDownTray, HiMiniArrowPath } from "react-icons/hi2";
 // Excel export not used on this page currently
 import toast from "react-hot-toast";
 import { db } from "../firebase";
@@ -65,6 +62,8 @@ function ManageProjects() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [addErrors, setAddErrors] = useState({});
+  const [editErrors, setEditErrors] = useState({});
 
   // State for search, sorting, and pagination
   const [searchTerm, setSearchTerm] = useState("");
@@ -259,25 +258,51 @@ function ManageProjects() {
   //   setRowsPerPage(10);
   //   setCurrentPage(1);
   // };
+  const validateProjectForm = (data) => {
+    const errors = {};
+
+    if (!data.projectName || !data.projectName.trim()) {
+      errors.projectName = "Project name is required";
+    }
+
+    if (!data.clientId) {
+      errors.clientId = "Company is required";
+    }
+
+    if (!data.startDate) {
+      errors.startDate = "Start date is required";
+    }
+
+    if (!data.endDate) {
+      errors.endDate = "End date is required";
+    }
+
+    const hasValidOKR = Array.isArray(data.okrs)
+      ? data.okrs.some(
+          (okr) =>
+            okr.objective &&
+            okr.objective.trim() &&
+            Array.isArray(okr.keyResults) &&
+            okr.keyResults.some((kr) => kr && kr.trim())
+        )
+      : false;
+
+    if (!hasValidOKR) {
+      errors.okrs =
+        "Please add at least one objective with at least one key result.";
+    }
+
+    return errors;
+  };
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate OKRs
-    const hasValidOKR = formData.okrs.some(
-      (okr) => okr.objective.trim() && okr.keyResults.some((kr) => kr.trim())
-    );
-
-    if (
-      !formData.projectName ||
-      !formData.clientId ||
-      !formData.startDate ||
-      !formData.endDate ||
-      !hasValidOKR
-    ) {
-      toast.error(
-        "Please fill in all required fields including at least one objective with key results."
-      );
+    const errors = validateProjectForm(formData);
+    setAddErrors(errors);
+    if (Object.keys(errors).length) {
+      const firstError = Object.values(errors)[0];
+      if (firstError) toast.error(firstError);
       return;
     }
 
@@ -309,6 +334,7 @@ function ManageProjects() {
         endDate: "",
         okrs: [{ objective: "", keyResults: [""] }],
       });
+      setAddErrors({});
       setShowAddForm(false);
     } catch (err) {
       console.error("Add project failed", err);
@@ -327,6 +353,7 @@ function ManageProjects() {
       endDate: project.endDate,
       okrs: project.okrs || [{ objective: "", keyResults: [""] }],
     });
+    setEditErrors({});
     setShowEditForm(true);
   };
 
@@ -350,21 +377,11 @@ function ManageProjects() {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate OKRs
-    const hasValidOKR = formData.okrs.some(
-      (okr) => okr.objective.trim() && okr.keyResults.some((kr) => kr.trim())
-    );
-
-    if (
-      !formData.projectName ||
-      !formData.clientId ||
-      !formData.startDate ||
-      !formData.endDate ||
-      !hasValidOKR
-    ) {
-      toast.error(
-        "Please fill in all required fields including at least one objective with key results."
-      );
+    const errors = validateProjectForm(formData);
+    setEditErrors(errors);
+    if (Object.keys(errors).length) {
+      const firstError = Object.values(errors)[0];
+      if (firstError) toast.error(firstError);
       return;
     }
 
@@ -393,6 +410,7 @@ function ManageProjects() {
         endDate: "",
         okrs: [{ objective: "", keyResults: [""] }],
       });
+      setEditErrors({});
       setShowEditForm(false);
       setSelectedProject(null);
       toast.success("Project updated successfully!");
@@ -870,6 +888,8 @@ function ManageProjects() {
             setFormData={setFormData}
             clients={clients}
             handleFormSubmit={handleFormSubmit}
+            addErrors={addErrors}
+            setAddErrors={setAddErrors}
           />
 
           <EditProjectModal
@@ -881,6 +901,8 @@ function ManageProjects() {
             setFormData={setFormData}
             clients={clients}
             handleEditSubmit={handleEditSubmit}
+            editErrors={editErrors}
+            setEditErrors={setEditErrors}
           />
 
           <ViewProjectModal

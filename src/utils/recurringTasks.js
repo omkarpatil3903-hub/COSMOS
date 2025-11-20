@@ -5,7 +5,15 @@ import { db } from "../firebase";
 /**
  * Calculate the next due date based on recurring pattern
  */
-export function calculateNextDueDate(currentDueDate, pattern, interval) {
+/**
+ * Calculate the next due date based on recurring pattern
+ */
+export function calculateNextDueDate(
+  currentDueDate,
+  pattern,
+  interval,
+  skipWeekends = false
+) {
   const date = new Date(currentDueDate);
 
   switch (pattern) {
@@ -23,6 +31,18 @@ export function calculateNextDueDate(currentDueDate, pattern, interval) {
       break;
     default:
       date.setDate(date.getDate() + interval);
+  }
+
+  // If skipWeekends is enabled, ensure the result is not Saturday or Sunday
+  if (skipWeekends) {
+    const day = date.getDay();
+    if (day === 6) {
+      // Saturday -> Monday
+      date.setDate(date.getDate() + 2);
+    } else if (day === 0) {
+      // Sunday -> Monday
+      date.setDate(date.getDate() + 1);
+    }
   }
 
   return date.toISOString().slice(0, 10);
@@ -170,7 +190,8 @@ export async function createNextRecurringInstance(task) {
     const nextDueDate = calculateNextDueDate(
       task.dueDate,
       task.recurringPattern,
-      task.recurringInterval
+      task.recurringInterval,
+      task.skipWeekends
     );
 
     // Check if instance already exists for this date
@@ -200,6 +221,7 @@ export async function createNextRecurringInstance(task) {
       projectId: restOfTask.projectId,
       assignedDate: new Date().toISOString().slice(0, 10),
       dueDate: nextDueDate,
+      visibleFrom: nextDueDate,
       priority: restOfTask.priority,
       status: "To-Do",
       progressPercent: 0,

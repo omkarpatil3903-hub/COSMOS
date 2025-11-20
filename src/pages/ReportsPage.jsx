@@ -110,8 +110,7 @@ export default function ReportsPage() {
   // UI STATES
   // ---------------------------------------------------
   const [loading, setLoading] = useState(true);
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
-  const [recentTasksLimit, setRecentTasksLimit] = useState(10);
+
 
   // ---------------------------------------------------
   // ACTIVE FILTER COUNT
@@ -314,100 +313,8 @@ export default function ReportsPage() {
     return map;
   }, [filteredData, users]);
 
-  // ---------------------------------------------------
-  // SORT HANDLER
-  // ---------------------------------------------------
-  const handleSort = (key) => {
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-    }));
-  };
-  // ---------------------------------------------------
-  // SORTED RECENT TASKS
-  // ---------------------------------------------------
-  const sortedRecentTasks = useMemo(() => {
-    if (!sortConfig.key) return filteredData.tasks.slice(0, recentTasksLimit);
 
-    const sorted = [...filteredData.tasks].sort((a, b) => {
-      let aValue, bValue;
 
-      switch (sortConfig.key) {
-        case "task":
-          aValue = a.title?.toLowerCase() || "";
-          bValue = b.title?.toLowerCase() || "";
-          break;
-
-        case "assignee": {
-          const aUser = users.find((u) => u.id === a.assigneeId);
-          const aClient = clients.find((c) => c.id === a.assigneeId);
-
-          const bUser = users.find((u) => u.id === b.assigneeId);
-          const bClient = clients.find((c) => c.id === b.assigneeId);
-
-          aValue = (
-            aUser?.name ||
-            aClient?.clientName ||
-            "Unassigned"
-          ).toLowerCase();
-
-          bValue = (
-            bUser?.name ||
-            bClient?.clientName ||
-            "Unassigned"
-          ).toLowerCase();
-          break;
-        }
-
-        case "project": {
-          const aProj = projects.find((p) => p.id === a.projectId);
-          const bProj = projects.find((p) => p.id === b.projectId);
-
-          aValue = (aProj?.name || "").toLowerCase();
-          bValue = (bProj?.name || "").toLowerCase();
-          break;
-        }
-
-        case "status":
-          aValue = a.status?.toLowerCase() || "";
-          bValue = b.status?.toLowerCase() || "";
-          break;
-
-        case "priority": {
-          const order = { High: 3, Medium: 2, Low: 1 };
-          aValue = order[a.priority] || 0;
-          bValue = order[b.priority] || 0;
-          break;
-        }
-
-        case "created":
-          aValue = a.createdDate ? new Date(a.createdDate).getTime() : 0;
-          bValue = b.createdDate ? new Date(b.createdDate).getTime() : 0;
-          break;
-
-        case "completed":
-          aValue = a.completedDate ? new Date(a.completedDate).getTime() : 0;
-          bValue = b.completedDate ? new Date(b.completedDate).getTime() : 0;
-          break;
-
-        default:
-          return 0;
-      }
-
-      if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
-      if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
-      return 0;
-    });
-
-    return sorted.slice(0, recentTasksLimit);
-  }, [
-    filteredData.tasks,
-    sortConfig,
-    users,
-    clients,
-    projects,
-    recentTasksLimit,
-  ]);
 
   // ---------------------------------------------------
   // Gantt
@@ -505,14 +412,7 @@ export default function ReportsPage() {
     []
   );
 
-  const getSortIcon = (key) => {
-    if (sortConfig.key !== key) return <FaSort className="text-gray-400" />;
-    return sortConfig.direction === "asc" ? (
-      <FaSortUp style={iconStyles.primary} />
-    ) : (
-      <FaSortDown style={iconStyles.primary} />
-    );
-  };
+
 
   const exportReport = async () => {
     const ExcelJS = (await import("exceljs")).default;
@@ -1462,188 +1362,7 @@ export default function ReportsPage() {
           )}
         </Card>
 
-        {/* ---------------------------------------------------
-            RECENT TASKS TABLE
-        --------------------------------------------------- */}
-        {(loading || filteredData.tasks.length > 0) && (
-          <Card title="Recent Tasks" icon={<FaChartPie />}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    {/* Sort Columns */}
-                    {[
-                      ["task", "Task"],
-                      ["assignee", "Assignee"],
-                      ["project", "Project"],
-                      ["status", "Status"],
-                      ["priority", "Priority"],
-                      ["created", "Created"],
-                      ["completed", "Completed"],
-                    ].map(([key, label]) => (
-                      <th
-                        key={key}
-                        className="group cursor-pointer px-3 py-2 text-left transition-colors hover:bg-gray-50"
-                        onClick={() => handleSort(key)}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span>{label}</span>
-                          {getSortIcon(key)}
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
 
-                <tbody>
-                  {loading && <SkeletonRow columns={7} />}
-
-                  {!loading &&
-                    sortedRecentTasks.map((task) => {
-                      const project = projects.find(
-                        (p) => p.id === task.projectId
-                      );
-
-                      const assigneeUser = users.find(
-                        (u) => u.id === task.assigneeId
-                      );
-                      const assigneeClient = clients.find(
-                        (c) => c.id === task.assigneeId
-                      );
-
-                      const assigneeName =
-                        assigneeUser?.name ||
-                        assigneeClient?.clientName ||
-                        "Unassigned";
-
-                      const assigneeRole =
-                        assigneeUser?.role || (assigneeClient ? "Client" : "");
-
-                      return (
-                        <tr key={task.id} className="border-b border-gray-200">
-                          {/* Task */}
-                          <td className="px-3 py-2">{task.title}</td>
-
-                          {/* Assignee */}
-                          <td className="px-3 py-2">
-                            <div className="flex items-center gap-2">
-                              <span className="h-6 w-6 overflow-hidden rounded-full ring-1 ring-indigo-500/20">
-                                {assigneeUser?.imageUrl ||
-                                assigneeClient?.imageUrl ? (
-                                  <img
-                                    src={
-                                      assigneeUser?.imageUrl ||
-                                      assigneeClient?.imageUrl
-                                    }
-                                    alt="Avatar"
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-[9px] font-semibold text-white">
-                                    {(assigneeName || "U")
-                                      .charAt(0)
-                                      .toUpperCase()}
-                                  </div>
-                                )}
-                              </span>
-
-                              <div className="text-xs">
-                                <div className="font-medium">
-                                  {assigneeName}
-                                </div>
-                                <div className="text-gray-500">
-                                  {assigneeRole}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Project */}
-                          <td className="px-3 py-2">
-                            <span
-                              className="rounded px-2 py-1 text-xs"
-                              style={{
-                                backgroundColor: project?.color + "20",
-                                color: project?.color,
-                              }}
-                            >
-                              {project?.name}
-                            </span>
-                          </td>
-
-                          {/* Status */}
-                          <td className="px-3 py-2">
-                            <span
-                              className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getStatusBadge(
-                                task.status
-                              )}`}
-                            >
-                              {statusIcons[task.status]}
-                              <span>{task.status}</span>
-                            </span>
-                          </td>
-
-                          {/* Priority */}
-                          <td className="px-3 py-2">
-                            <span
-                              className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getPriorityBadge(
-                                task.priority
-                              )}`}
-                            >
-                              <FaFlag />
-                              <span>{task.priority}</span>
-                            </span>
-                          </td>
-
-                          {/* Created */}
-                          <td className="px-3 py-2 text-gray-500">
-                            {task.createdDate
-                              ? new Date(task.createdDate).toLocaleDateString(
-                                  "en-US",
-                                  {
-                                    year: "numeric",
-                                    month: "short",
-                                    day: "numeric",
-                                  }
-                                )
-                              : "-"}
-                          </td>
-
-                          {/* Completed */}
-                          <td className="px-3 py-2 text-gray-500">
-                            {task.completedDate
-                              ? new Date(task.completedDate).toLocaleDateString(
-                                  "en-US",
-                                  {
-                                    year: "numeric",
-                                    month: "short",
-                                    day: "numeric",
-                                  }
-                                )
-                              : "-"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Load More */}
-            {!loading && filteredData.tasks.length > recentTasksLimit && (
-              <div className="flex justify-center border-t border-gray-200 pt-4">
-                <Button
-                  variant="secondary"
-                  className="text-sm"
-                  onClick={() => setRecentTasksLimit((prev) => prev + 20)}
-                >
-                  Load More Tasks (
-                  {filteredData.tasks.length - recentTasksLimit} remaining)
-                </Button>
-              </div>
-            )}
-          </Card>
-        )}
       </div>
     </div>
   );
