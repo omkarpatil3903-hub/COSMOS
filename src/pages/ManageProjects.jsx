@@ -11,7 +11,6 @@ import {
   FaTh,
   FaList,
 } from "react-icons/fa";
-import { HiOutlineArrowDownTray, HiMiniArrowPath } from "react-icons/hi2";
 // Excel export not used on this page currently
 import toast from "react-hot-toast";
 import { db } from "../firebase";
@@ -19,6 +18,7 @@ import AddProjectModal from "../components/AddProjectModal";
 import EditProjectModal from "../components/EditProjectModal";
 import ViewProjectModal from "../components/ViewProjectModal";
 import DeleteProjectModal from "../components/DeleteProjectModal";
+import { formatDate } from "../utils/formatDate";
 import {
   addDoc,
   collection,
@@ -64,6 +64,7 @@ function ManageProjects() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [addErrors, setAddErrors] = useState({});
   const [editErrors, setEditErrors] = useState({});
+  const [showCompleted, setShowCompleted] = useState(false);
 
   // State for search, sorting, and pagination
   const [searchTerm, setSearchTerm] = useState("");
@@ -178,8 +179,19 @@ function ManageProjects() {
     });
   }, [projects, tasks]);
 
+  const completedProjectsCount = useMemo(() => {
+    return projectsWithDerived.filter((p) => p.progress === 100).length;
+  }, [projectsWithDerived]);
+
   const filteredProjects = useMemo(() => {
     let result = [...projectsWithDerived];
+
+    // Filter by completion status FIRST
+    if (showCompleted) {
+      result = result.filter((p) => p.progress === 100);
+    } else {
+      result = result.filter((p) => p.progress < 100);
+    }
 
     if (searchTerm) {
       const normalisedTerm = searchTerm.trim().toLowerCase();
@@ -215,11 +227,11 @@ function ManageProjects() {
     }
 
     return result;
-  }, [projectsWithDerived, searchTerm, sortConfig]);
+  }, [projectsWithDerived, searchTerm, sortConfig, showCompleted]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, sortConfig]);
+  }, [searchTerm, sortConfig, showCompleted]);
 
   const totalPages = Math.max(
     1,
@@ -629,6 +641,24 @@ function ManageProjects() {
                 >
                   Showing {filteredProjects.length} records
                 </span>
+                <button
+                  onClick={() => setShowCompleted(!showCompleted)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    showCompleted
+                      ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
+                      : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
+                  }`}
+                  title={
+                    showCompleted
+                      ? "Hide completed projects"
+                      : "Show completed projects"
+                  }
+                >
+                  <FaEye className="h-4 w-4" />
+                  {showCompleted
+                    ? "Hide Completed"
+                    : `View Completed (${completedProjectsCount})`}
+                </button>
                 <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                   <button
                     onClick={() => setViewMode("table")}

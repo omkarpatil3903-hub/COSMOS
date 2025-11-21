@@ -473,8 +473,13 @@ export default function ClientTasks() {
   const TaskCard = ({ task }) => (
     <div className="bg-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-2">
-        <h4 className="font-semibold text-gray-900 flex-1">
-          {task.title || task.taskName || "Untitled Task"}
+        <h4 className="font-semibold text-gray-900 flex-1 min-w-0">
+          <span
+            className="block truncate"
+            title={task.title || task.taskName || "Untitled Task"}
+          >
+            {task.title || task.taskName || "Untitled Task"}
+          </span>
         </h4>
         {task.priority && (
           <span
@@ -491,18 +496,29 @@ export default function ClientTasks() {
         )}
       </div>
 
-      <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+      <p
+        className="text-sm text-gray-600 mb-3 line-clamp-2"
+        title={task.description || "No description"}
+      >
         {task.description || "No description"}
       </p>
       {task.status === "Done" && task.completionComment && (
-        <p className="text-xs italic text-indigo-700 mb-2 line-clamp-1">
+        <p
+          className="text-xs italic text-indigo-700 mb-2 line-clamp-1"
+          title={task.completionComment}
+        >
           💬 {task.completionComment}
         </p>
       )}
 
       <div className="flex items-center justify-between text-xs mb-3">
         {task.projectName && (
-          <span className="text-indigo-600">{task.projectName}</span>
+          <span
+            className="text-indigo-600 block truncate max-w-[180px]"
+            title={task.projectName}
+          >
+            {task.projectName}
+          </span>
         )}
         <div className="flex items-center gap-2">
           <span
@@ -777,7 +793,12 @@ export default function ClientTasks() {
                   {/* Task Title */}
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="font-medium text-gray-900 text-sm leading-tight flex-1 pr-2">
-                      {task.title || task.taskName || "Untitled Task"}
+                      <span
+                        className="block truncate"
+                        title={task.title || task.taskName || "Untitled Task"}
+                      >
+                        {task.title || task.taskName || "Untitled Task"}
+                      </span>
                     </h4>
                     {/* Priority Badge */}
                     {task.priority && (
@@ -796,7 +817,10 @@ export default function ClientTasks() {
                   </div>
 
                   {/* Description */}
-                  <p className="text-xs text-gray-500 mb-3 line-clamp-2">
+                  <p
+                    className="text-xs text-gray-500 mb-3 line-clamp-2"
+                    title={task.description || "No description"}
+                  >
                     {task.description || "No description"}
                   </p>
 
@@ -893,7 +917,12 @@ export default function ClientTasks() {
                   {/* Task Title */}
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="font-medium text-gray-900 text-sm leading-tight flex-1 pr-2">
-                      {task.title || task.taskName || "Untitled Task"}
+                      <span
+                        className="block truncate"
+                        title={task.title || task.taskName || "Untitled Task"}
+                      >
+                        {task.title || task.taskName || "Untitled Task"}
+                      </span>
                     </h4>
                     {/* Priority Badge */}
                     {task.priority && (
@@ -912,7 +941,10 @@ export default function ClientTasks() {
                   </div>
 
                   {/* Description */}
-                  <p className="text-xs text-gray-500 mb-3 line-clamp-2">
+                  <p
+                    className="text-xs text-gray-500 mb-3 line-clamp-2"
+                    title={task.description || "No description"}
+                  >
                     {task.description || "No description"}
                   </p>
 
@@ -1053,7 +1085,12 @@ export default function ClientTasks() {
                   {/* Task Title */}
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="font-medium text-gray-900 text-sm leading-tight flex-1 pr-2">
-                      {task.title || task.taskName || "Untitled Task"}
+                      <span
+                        className="block truncate"
+                        title={task.title || task.taskName || "Untitled Task"}
+                      >
+                        {task.title || task.taskName || "Untitled Task"}
+                      </span>
                     </h4>
                     {/* Priority Badge */}
                     {task.priority && (
@@ -1072,7 +1109,10 @@ export default function ClientTasks() {
                   </div>
 
                   {/* Description */}
-                  <p className="text-xs text-gray-500 mb-3 line-clamp-2">
+                  <p
+                    className="text-xs text-gray-500 mb-3 line-clamp-2"
+                    title={task.description || "No description"}
+                  >
                     {task.description || "No description"}
                   </p>
 
@@ -1182,10 +1222,17 @@ export default function ClientTasks() {
                     className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:shadow-sm transition-all bg-white relative"
                   >
                     <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 pr-32">
+                      <div className="flex-1 pr-32 min-w-0">
                         <div className="flex items-start gap-3 mb-2">
-                          <h4 className="font-semibold text-gray-900 flex-1">
-                            {task.title || task.taskName || "Untitled Task"}
+                          <h4 className="font-semibold text-gray-900 flex-1 min-w-0">
+                            <span
+                              className="block truncate"
+                              title={
+                                task.title || task.taskName || "Untitled Task"
+                              }
+                            >
+                              {task.title || task.taskName || "Untitled Task"}
+                            </span>
                           </h4>
                         </div>
 
@@ -1266,7 +1313,10 @@ export default function ClientTasks() {
                             )}
                         </div>
 
-                        <p className="text-sm text-gray-600 mb-3">
+                        <p
+                          className="text-sm text-gray-600 mb-3 line-clamp-2"
+                          title={task.description || "No description"}
+                        >
                           {task.description || "No description"}
                         </p>
 
@@ -1409,10 +1459,17 @@ export default function ClientTasks() {
                       className="p-4 border border-gray-200 rounded-lg bg-white relative"
                     >
                       <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 pr-32">
+                        <div className="flex-1 pr-32 min-w-0">
                           <div className="flex items-start gap-3 mb-2">
-                            <h4 className="font-semibold text-gray-900 flex-1">
-                              {task.title || task.taskName || "Untitled Task"}
+                            <h4 className="font-semibold text-gray-900 flex-1 min-w-0">
+                              <span
+                                className="block truncate"
+                                title={
+                                  task.title || task.taskName || "Untitled Task"
+                                }
+                              >
+                                {task.title || task.taskName || "Untitled Task"}
+                              </span>
                             </h4>
                           </div>
 
@@ -1461,11 +1518,17 @@ export default function ClientTasks() {
                             )}
                           </div>
 
-                          <p className="text-sm text-gray-600 mb-2">
+                          <p
+                            className="text-sm text-gray-600 mb-2 line-clamp-2"
+                            title={task.description || "No description"}
+                          >
                             {task.description || "No description"}
                           </p>
                           {task.completionComment && (
-                            <p className="text-xs italic text-indigo-700 mb-1 line-clamp-1">
+                            <p
+                              className="text-xs italic text-indigo-700 mb-1 line-clamp-1"
+                              title={task.completionComment}
+                            >
                               💬 {task.completionComment}
                             </p>
                           )}

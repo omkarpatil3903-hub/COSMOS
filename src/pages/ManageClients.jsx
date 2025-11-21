@@ -46,7 +46,7 @@ const CLIENTS_COLLECTION = "clients";
 
 const tableHeaders = [
   { key: "srNo", label: "Sr. No.", sortable: false },
-  { key: "image", label: "Logo/Image", sortable: false },
+  { key: "image", label: "Image", sortable: false },
   { key: "companyName", label: "Company Name", sortable: true },
   { key: "clientName", label: "Client Name", sortable: true },
   { key: "email", label: "Email", sortable: true },
@@ -653,7 +653,7 @@ function ManageClients() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
+            <div className="w-full max-h-[65vh] overflow-x-auto overflow-y-auto rounded-lg border border-gray-200 shadow-sm">
               <table className="min-w-full divide-y divide-gray-200 bg-white">
                 <caption className="sr-only">
                   Filtered client records with search and pagination controls
@@ -675,7 +675,11 @@ function ManageClients() {
                           key={header.key}
                           scope="col"
                           aria-sort={ariaSort}
-                          className="group px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200"
+                          className={`group px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 ${
+                            header.key === "actions"
+                              ? "sticky right-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100"
+                              : ""
+                          }`}
                         >
                           {header.sortable ? (
                             <button
@@ -718,24 +722,44 @@ function ManageClients() {
                           </div>
                         )}
                       </td>
-                      <td className="px-3 py-3 text-sm font-semibold text-gray-900">
-                        <span>{client.companyName}</span>
+                      <td className="px-3 py-3 text-sm font-semibold text-gray-900 max-w-xs">
+                        <span
+                          className="block truncate"
+                          title={client.companyName || ""}
+                        >
+                          {client.companyName}
+                        </span>
                       </td>
-                      <td className="px-3 py-3 text-sm font-semibold text-gray-900">
-                        <span>{client.clientName}</span>
+                      <td className="px-3 py-3 text-sm font-semibold text-gray-900 max-w-xs">
+                        <span
+                          className="block truncate"
+                          title={client.clientName || ""}
+                        >
+                          {client.clientName}
+                        </span>
                       </td>
-                      <td className="px-3 py-3 text-sm text-gray-600">
-                        <div className="flex items-center">
-                          <div className="w-2 h-2 rounded-full bg-green-400 mr-2 animate-pulse"></div>
-                          {client.email}
+                      <td className="px-3 py-3 text-sm text-gray-600 max-w-xs">
+                        <div className="flex items-center max-w-xs">
+                          {/* <div className="w-2 h-2 rounded-full bg-green-400 mr-2 animate-pulse"></div> */}
+                          <span
+                            className="flex-1 min-w-0 truncate"
+                            title={client.email || ""}
+                          >
+                            {client.email}
+                          </span>
                         </div>
                       </td>
                       <td className="px-3 py-3 text-sm text-gray-600">
                         {client.contactNo || "-"}
                       </td>
-                      <td className="px-3 py-3 text-sm text-gray-600">
-                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                          {client.typeOfBusiness || "Not specified"}
+                      <td className="px-3 py-3 text-sm text-gray-600 max-w-xs">
+                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 max-w-xs">
+                          <span
+                            className="block truncate"
+                            title={client.typeOfBusiness || "Not specified"}
+                          >
+                            {client.typeOfBusiness || "Not specified"}
+                          </span>
                         </span>
                       </td>
                       <td className="px-3 py-3 text-sm text-gray-600 text-center">
@@ -747,8 +771,8 @@ function ManageClients() {
                           "-"
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-3 text-sm">
-                        <div className="flex items-center space-x-3">
+                      <td className="whitespace-nowrap px-3 py-2 text-sm sticky right-0 z-10 bg-white">
+                        <div className="flex items-center space-x-2">
                           <button
                             onClick={() => handleView(client.id)}
                             className="p-2 rounded-full text-indigo-600 hover:bg-indigo-100 shadow-md"

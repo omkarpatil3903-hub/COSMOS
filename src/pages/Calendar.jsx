@@ -12,25 +12,11 @@ import {
   FaCheck,
   FaTimes,
   FaClock,
-  FaChevronLeft,
-  FaChevronRight,
   FaTasks,
-  FaUser,
-  FaFilter,
-  FaProjectDiagram,
-  FaUsers,
-  FaCheckCircle,
-  FaHourglassHalf,
-  FaBan,
-  FaClipboardList,
-  FaHandshake,
-  FaFolder,
-  FaUserTie,
 } from "react-icons/fa";
 import { db } from "../firebase";
 import {
   TYPE_CLASSES,
-  STATUS_BORDER_CLASSES,
   PRIORITY_CLASSES,
   getPriorityBadge,
 } from "../utils/colorMaps";
@@ -47,12 +33,7 @@ import {
 } from "firebase/firestore";
 
 // Refactored: Import utilities and services
-import {
-  tsToDate,
-  dateToInputValue,
-  DAY_NAMES,
-  MONTH_NAMES,
-} from "../utils/dateUtils";
+import { tsToDate, dateToInputValue, DAY_NAMES } from "../utils/dateUtils";
 import { calculateCalendarStats } from "../utils/calendarUtils";
 import StatsCards from "../components/calendar/StatsCards";
 import CalendarHeader from "../components/calendar/CalendarHeader";

@@ -1232,17 +1232,28 @@ function TasksManagement() {
                           />
                           <div className="flex-1">
                             <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <div className="font-medium text-content-primary">
-                                  {t.title}
+                              <div className="min-w-0">
+                                <div className="font-medium text-content-primary max-w-[260px]">
+                                  <span
+                                    className="block truncate"
+                                    title={t.title || "Untitled Task"}
+                                  >
+                                    {t.title || "Untitled Task"}
+                                  </span>
                                 </div>
                                 {t.description && (
-                                  <p className="mt-1 text-sm text-content-secondary">
+                                  <p
+                                    className="mt-1 text-sm text-content-secondary line-clamp-2"
+                                    title={t.description}
+                                  >
                                     {t.description}
                                   </p>
                                 )}
                                 {t.status === "Done" && t.completionComment && (
-                                  <p className="mt-1 text-xs italic text-indigo-700 line-clamp-1">
+                                  <p
+                                    className="mt-1 text-xs italic text-indigo-700 line-clamp-1"
+                                    title={t.completionComment}
+                                  >
                                     💬 {t.completionComment}
                                   </p>
                                 )}
@@ -1359,25 +1370,48 @@ function TasksManagement() {
                               </div>
                             </div>
                             <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-content-tertiary">
-                              <div>
+                              <div className="min-w-0">
                                 <span className="font-medium">Project:</span>{" "}
-                                {project?.name || "—"}
+                                <span
+                                  className="inline-block max-w-[220px] align-bottom truncate"
+                                  title={project?.name || "—"}
+                                >
+                                  {project?.name || "—"}
+                                </span>
                               </div>
-                              <div>
+                              <div className="min-w-0">
                                 <span className="font-medium">
                                   Assigned to:
                                 </span>{" "}
-                                {assignee?.name ||
-                                  assignee?.clientName ||
-                                  "Unassigned"}
-                                {assignee?.clientName && assignee?.companyName
-                                  ? ` (${assignee.companyName})`
-                                  : ""}
-                                {assignee?.role
-                                  ? ` (${assignee.role})`
-                                  : assignee?.clientName
-                                  ? " (Client)"
-                                  : ""}
+                                <span
+                                  className="inline-block max-w-[260px] align-bottom truncate"
+                                  title={
+                                    (assignee?.name ||
+                                      assignee?.clientName ||
+                                      "Unassigned") +
+                                    (assignee?.clientName &&
+                                    assignee?.companyName
+                                      ? ` (${assignee.companyName})`
+                                      : "") +
+                                    (assignee?.role
+                                      ? ` (${assignee.role})`
+                                      : assignee?.clientName
+                                      ? " (Client)"
+                                      : "")
+                                  }
+                                >
+                                  {assignee?.name ||
+                                    assignee?.clientName ||
+                                    "Unassigned"}
+                                  {assignee?.clientName && assignee?.companyName
+                                    ? ` (${assignee.companyName})`
+                                    : ""}
+                                  {assignee?.role
+                                    ? ` (${assignee.role})`
+                                    : assignee?.clientName
+                                    ? " (Client)"
+                                    : ""}
+                                </span>
                               </div>
                             </div>
                             {/* Progress Bar */}
