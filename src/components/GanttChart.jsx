@@ -41,6 +41,7 @@ export default function GanttChart({ data }) {
   const containerRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showLegend, setShowLegend] = useState(true);
+  const [zoomLevel, setZoomLevel] = useState("day");
 
   useEffect(() => {
     gantt.config.date_format = "%Y-%m-%d";
@@ -72,7 +73,7 @@ export default function GanttChart({ data }) {
           scale_height: 50,
           min_column_width: 50,
           scales: [
-            { unit: "week", step: 1, format: "Week #%W" },
+            { unit: "week", step: 1, format: "Week %W" },
             { unit: "day", step: 1, format: "%D" },
           ],
         },
@@ -89,6 +90,7 @@ export default function GanttChart({ data }) {
     });
 
     gantt.ext.zoom.setLevel("day");
+    setZoomLevel("day");
 
     // ------------------------------------
     // TOOLTIP CONFIGURATION
@@ -96,7 +98,7 @@ export default function GanttChart({ data }) {
     gantt.plugins({ tooltip: true });
 
     gantt.templates.tooltip_text = function (start, end, task) {
-      const format = gantt.date.date_to_str("%Y-%m-%d");
+      const format = gantt.date.date_to_str("%d/%m/%Y");
 
       const statusIcon =
         statusIconMap[task.status?.toLowerCase()] || statusIconMap["to-do"];
@@ -230,7 +232,10 @@ export default function GanttChart({ data }) {
   // ------------------------------
   // Toolbar Helper Functions
   // ------------------------------
-  const setZoom = (level) => gantt.ext.zoom.setLevel(level);
+  const setZoom = (level) => {
+    gantt.ext.zoom.setLevel(level);
+    setZoomLevel(level);
+  };
 
   const collapseAll = () => {
     gantt.eachTask((t) => (t.$open = false));
@@ -279,7 +284,11 @@ export default function GanttChart({ data }) {
           <div className="flex items-center gap-1 bg-surface rounded-lg shadow-soft border border-subtle p-1">
             <button
               onClick={() => setZoom("day")}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-content-primary hover:bg-indigo-50 hover:text-indigo-700 transition-colors duration-200"
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                zoomLevel === "day"
+                  ? "bg-indigo-600 text-white shadow-soft"
+                  : "text-content-primary hover:bg-indigo-50 hover:text-indigo-700"
+              }`}
               title="Day View"
             >
               <FaCalendarDay className="w-3.5 h-3.5" />
@@ -287,7 +296,11 @@ export default function GanttChart({ data }) {
             </button>
             <button
               onClick={() => setZoom("week")}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-content-primary hover:bg-indigo-50 hover:text-indigo-700 transition-colors duration-200"
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                zoomLevel === "week"
+                  ? "bg-indigo-600 text-white shadow-soft"
+                  : "text-content-primary hover:bg-indigo-50 hover:text-indigo-700"
+              }`}
               title="Week View"
             >
               <FaCalendarWeek className="w-3.5 h-3.5" />
@@ -295,7 +308,11 @@ export default function GanttChart({ data }) {
             </button>
             <button
               onClick={() => setZoom("month")}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-content-primary hover:bg-indigo-50 hover:text-indigo-700 transition-colors duration-200"
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                zoomLevel === "month"
+                  ? "bg-indigo-600 text-white shadow-soft"
+                  : "text-content-primary hover:bg-indigo-50 hover:text-indigo-700"
+              }`}
               title="Month View"
             >
               <FaCalendar className="w-3.5 h-3.5" />
@@ -336,7 +353,11 @@ export default function GanttChart({ data }) {
           {/* Fullscreen Button */}
           <button
             onClick={toggleFullscreen}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-subtle text-sm font-medium text-content-primary hover:bg-surface-subtle transition-colors duration-200 shadow-soft"
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 shadow-soft border ${
+              isFullscreen
+                ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                : "bg-surface border-subtle text-content-primary hover:bg-surface-subtle"
+            }`}
             title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
           >
             {isFullscreen ? (
@@ -351,7 +372,11 @@ export default function GanttChart({ data }) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowLegend(!showLegend)}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-content-secondary hover:bg-surface-subtle transition-colors"
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
+              showLegend
+                ? "bg-surface-subtle text-content-primary"
+                : "text-content-secondary hover:bg-surface-subtle"
+            }`}
             title={showLegend ? "Hide Legend" : "Show Legend"}
           >
             {showLegend ? (
@@ -455,6 +480,21 @@ export default function GanttChart({ data }) {
             font-weight: 500;
           }
 
+          /* Task bar animations & hover */
+          .gantt_task_line,
+          .gantt_task_bar {
+            transition: box-shadow 0.25s ease, filter 0.25s ease, opacity 0.3s ease, transform 0.3s ease;
+            opacity: 0;
+            transform: translateY(4px);
+            animation: gantt-fade-in 0.35s ease-out forwards;
+          }
+
+          .gantt_task_line:hover,
+          .gantt_task_bar:hover {
+            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
+            filter: brightness(1.05);
+          }
+
           /* TODAY MARKER - Enhanced visibility with project colors */
           .gantt-today-marker {
             width: 3px !important;
@@ -462,6 +502,7 @@ export default function GanttChart({ data }) {
             box-shadow: 0 0 10px rgba(79, 70, 229, 0.5) !important;
             z-index: 10 !important;
             position: relative !important;
+            animation: gantt-pulse 1.8s ease-in-out infinite;
           }
 
           .gantt_marker_content {
@@ -479,12 +520,14 @@ export default function GanttChart({ data }) {
           .gantt_task_scale {
             background-color: var(--color-surface-subtle, #f8fafc) !important;
             border-color: var(--color-border-subtle, #e2e8f0) !important;
+            transition: background-color 0.25s ease, border-color 0.25s ease;
           }
 
           .gantt_grid_head_cell,
           .gantt_scale_cell {
             color: var(--color-content-secondary, #64748b) !important;
             font-weight: 600 !important;
+            transition: color 0.25s ease;
           }
 
           .gantt_cell,
@@ -538,6 +581,29 @@ export default function GanttChart({ data }) {
           @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+          }
+
+          @keyframes gantt-fade-in {
+            from {
+              opacity: 0;
+              transform: translateY(6px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          @keyframes gantt-pulse {
+            0% {
+              box-shadow: 0 0 6px rgba(79, 70, 229, 0.4);
+            }
+            50% {
+              box-shadow: 0 0 14px rgba(79, 70, 229, 0.85);
+            }
+            100% {
+              box-shadow: 0 0 6px rgba(79, 70, 229, 0.4);
+            }
           }
 
         `}

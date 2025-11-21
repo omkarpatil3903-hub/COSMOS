@@ -111,7 +111,6 @@ export default function ReportsPage() {
   // ---------------------------------------------------
   const [loading, setLoading] = useState(true);
 
-
   // ---------------------------------------------------
   // ACTIVE FILTER COUNT
   // ---------------------------------------------------
@@ -313,9 +312,6 @@ export default function ReportsPage() {
     return map;
   }, [filteredData, users]);
 
-
-
-
   // ---------------------------------------------------
   // Gantt
   // ---------------------------------------------------
@@ -411,8 +407,6 @@ export default function ReportsPage() {
     }),
     []
   );
-
-
 
   const exportReport = async () => {
     const ExcelJS = (await import("exceljs")).default;
@@ -1211,7 +1205,12 @@ export default function ReportsPage() {
                           }}
                         />
 
-                        <span className="flex-1 text-sm">{projectName}</span>
+                        <span
+                          className="flex-1 text-sm truncate"
+                          title={projectName}
+                        >
+                          {projectName}
+                        </span>
 
                         <span className="text-sm font-semibold">{count}</span>
 
@@ -1247,7 +1246,7 @@ export default function ReportsPage() {
               Performance breakdown by team member
             </p>
 
-            <div className="overflow-x-auto">
+            <div className="max-h-[65vh] overflow-x-auto overflow-y-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200">
@@ -1296,12 +1295,28 @@ export default function ReportsPage() {
                                 )}
                               </span>
 
-                              <div>
-                                <div className="font-medium">
-                                  {resource.name}
+                              <div className="min-w-0">
+                                <div className="font-medium max-w-[200px]">
+                                  <span
+                                    className="block truncate"
+                                    title={
+                                      resource.name ||
+                                      resource.email ||
+                                      "Unknown Resource"
+                                    }
+                                  >
+                                    {resource.name ||
+                                      resource.email ||
+                                      "Unknown Resource"}
+                                  </span>
                                 </div>
-                                <div className="text-xs text-gray-500">
-                                  {resource.email}
+                                <div className="text-xs text-gray-500 max-w-[260px]">
+                                  <span
+                                    className="block truncate"
+                                    title={resource.email || ""}
+                                  >
+                                    {resource.email}
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -1309,8 +1324,13 @@ export default function ReportsPage() {
 
                           {/* Role */}
                           <td className="py-3 px-4">
-                            <span className="rounded bg-indigo-100 px-2 py-1 text-xs text-indigo-700">
-                              {resource.resourceRole}
+                            <span className="inline-flex max-w-[200px] rounded bg-indigo-100 px-2 py-1 text-xs text-indigo-700">
+                              <span
+                                className="block truncate"
+                                title={resource.resourceRole || "Not specified"}
+                              >
+                                {resource.resourceRole || "Not specified"}
+                              </span>
                             </span>
                           </td>
 
@@ -1361,8 +1381,6 @@ export default function ReportsPage() {
             </div>
           )}
         </Card>
-
-
       </div>
     </div>
   );

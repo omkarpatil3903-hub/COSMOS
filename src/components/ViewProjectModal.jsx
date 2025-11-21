@@ -1,7 +1,7 @@
 import React from "react";
 import { HiXMark } from "react-icons/hi2";
 import Button from "./Button";
-
+import { formatDate } from "../utils/formatDate";
 const ViewProjectModal = ({
   showViewModal,
   setShowViewModal,
@@ -57,7 +57,7 @@ const ViewProjectModal = ({
                   Start Date
                 </label>
                 <p className="text-gray-900 font-medium">
-                  {selectedProject.startDate}
+                  {formatDate(selectedProject.startDate)}
                 </p>
               </div>
               <div className="bg-gray-50 p-3 rounded-lg">
@@ -65,7 +65,7 @@ const ViewProjectModal = ({
                   End Date
                 </label>
                 <p className="text-gray-900 font-medium">
-                  {selectedProject.endDate}
+                  {formatDate(selectedProject.endDate)}
                 </p>
               </div>
             </div>
