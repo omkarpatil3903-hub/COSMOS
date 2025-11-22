@@ -230,37 +230,41 @@ function TasksManagement() {
     };
   }, []);
 
+  // Ref to track if we've already checked deadlines in this session to prevent spam
+  const hasCheckedDeadlines = useRef(false);
+
   useEffect(() => {
     const checkDeadlines = () => {
+      // Only run this check once per session or on long intervals, not on every render
+      if (hasCheckedDeadlines.current) return;
+
       const today = new Date();
       const threeDaysFromNow = new Date(today);
       threeDaysFromNow.setDate(today.getDate() + 3);
 
-      tasks.forEach((task) => {
-        if (task.status !== "Done" && task.dueDate) {
-          const dueDate = new Date(task.dueDate);
-          if (dueDate >= today && dueDate <= threeDaysFromNow) {
-            const daysUntil = Math.ceil(
-              (dueDate - today) / (1000 * 60 * 60 * 24)
-            );
-            const assignee = users.find((u) => u.id === task.assigneeId);
-            toast(
-              `⚠ Task "${
-                task.title
-              }" due in ${daysUntil} day(s) (Assigned to: ${
-                assignee?.name || "Unassigned"
-              })`,
-              { duration: 5000, icon: "⏰" }
-            );
-          }
-        }
+      const dueSoonTasks = tasks.filter((task) => {
+        if (task.status === "Done" || !task.dueDate) return false;
+        const dueDate = new Date(task.dueDate);
+        return dueDate >= today && dueDate <= threeDaysFromNow;
       });
+
+      if (dueSoonTasks.length > 0) {
+        // Show a single summary toast instead of spamming for each task
+        const message = dueSoonTasks.length === 1
+          ? `⚠ Task "${dueSoonTasks[0].title}" is due shortly.`
+          : `⚠ You have ${dueSoonTasks.length} tasks due within the next 3 days.`;
+        
+        toast(message, { duration: 6000, icon: "⏰" });
+        hasCheckedDeadlines.current = true;
+      }
     };
 
-    checkDeadlines();
-    const interval = setInterval(checkDeadlines, 30 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [tasks, users]);
+    // Small delay to ensure data is loaded
+    if (tasks.length > 0) {
+      const timer = setTimeout(checkDeadlines, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [tasks]); // We still depend on tasks, but the ref prevents re-running logic repeatedly
 
   const projectById = useCallback(
     (id) => projects.find((p) => p.id === id),
@@ -840,6 +844,14 @@ function TasksManagement() {
     );
   }, [filtered]);
 
+  // Calculate global overdue tasks (ignoring current filters) for the persistent banner
+  const globalOverdueTasks = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return tasks.filter(
+      (t) => !t.archived && t.dueDate && t.dueDate < today && t.status !== "Done"
+    );
+  }, [tasks]);
+
   // Active users list for assignment/reassignment UIs
   const activeUsers = useMemo(() => users.filter(isUserActive), [users]);
 
@@ -910,7 +922,18 @@ function TasksManagement() {
 
   return (
     <div>
-      <PageHeader title="Task Management">
+      <PageHeader 
+        title={
+          <div className="flex items-center gap-3">
+            Task Management
+            {globalOverdueTasks.length > 0 && (
+              <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-800 animate-pulse">
+                {globalOverdueTasks.length} Overdue
+              </span>
+            )}
+          </div>
+        }
+      >
         Create, assign, track, and analyze tasks across all projects.
       </PageHeader>
 
@@ -960,16 +983,20 @@ function TasksManagement() {
           </Card>
           <Card
             onClick={applyOverdueQuickFilter}
-            className="cursor-pointer hover:bg-surface-subtle"
+            className={`cursor-pointer transition-all duration-300 ${
+              globalOverdueTasks.length > 0 
+                ? "bg-red-50 border-red-300 ring-2 ring-red-100 ring-offset-2" 
+                : "hover:bg-surface-subtle"
+            }`}
           >
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-content-secondary">Overdue</div>
-                <div className="mt-1 text-2xl font-semibold text-red-600">
-                  {overdueTasks.length}
+                <div className={`text-sm ${globalOverdueTasks.length > 0 ? "text-red-700 font-medium" : "text-content-secondary"}`}>Overdue</div>
+                <div className={`mt-1 text-2xl font-bold ${globalOverdueTasks.length > 0 ? "text-red-800" : "text-red-600"}`}>
+                  {globalOverdueTasks.length}
                 </div>
               </div>
-              <FaExclamationTriangle className="h-8 w-8 text-red-500" />
+              <FaExclamationTriangle className={`h-8 w-8 ${globalOverdueTasks.length > 0 ? "text-red-600 animate-bounce" : "text-red-500"}`} />
             </div>
           </Card>
         </div>

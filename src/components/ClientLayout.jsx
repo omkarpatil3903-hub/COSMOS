@@ -156,12 +156,15 @@ export default function ClientLayout() {
               <FaUserCircle className="h-5 w-5" aria-hidden="true" />
             </span>
             {!isCollapsed && (
-              <div>
-                <p className="text-sm font-medium text-content-tertiary">
+              <div className="min-w-0">
+                <p 
+                  className="text-sm font-medium text-content-tertiary truncate" 
+                  title={userData?.clientName || userData?.companyName || "Client User"}
+                >
                   {userData?.clientName || userData?.companyName || "Client User"}
                 </p>
-<h2 className="text-lg font-semibold text-content-primary">
-                                   Client Portal
+                <h2 className="text-lg font-semibold text-content-primary truncate">
+                  Client Portal
                 </h2>
               </div>
             )}

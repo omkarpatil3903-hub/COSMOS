@@ -85,15 +85,16 @@ function EmployeeLayout() {
       icon: <FaProjectDiagram className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/employee/calendar",
-      text: "Calendar",
-      icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
-    },
-    {
       to: "/employee/reports",
       text: "Reports",
       icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
     },
+    {
+      to: "/employee/calendar",
+      text: "Calendar",
+      icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
+    },
+   
   ];
 
   useEffect(() => {
@@ -153,11 +154,11 @@ function EmployeeLayout() {
             </span>
 
             {!isCollapsed && (
-              <div>
-                <p className="text-sm font-medium text-content-tertiary">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-content-tertiary truncate" title={userData?.name || "Employee"}>
                   {userData?.name || "Employee"}
                 </p>
-                <h2 className="text-lg font-semibold text-content-primary">
+                <h2 className="text-lg font-semibold text-content-primary truncate">
                   Employee Portal
                 </h2>
               </div>
