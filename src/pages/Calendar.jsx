@@ -54,16 +54,6 @@ const buildDefaultEventForm = (baseDate = new Date()) => ({
   attendeesText: "",
 });
 
-// Removed unused buildDefaultTaskForm
-
-// Add meeting requests data
-// Removed sample data
-
-// Sample data for events
-// Removed sample data
-
-// Removed sample data
-
 function Calendar() {
   const [events, setEvents] = useState([]);
   const [meetingRequests, setMeetingRequests] = useState([]);
@@ -209,7 +199,6 @@ function Calendar() {
               };
             })
           );
-          console.log("📋 Tasks loaded:", snap.docs.length, "tasks");
           setLoading(false);
         }
       );

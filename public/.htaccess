@@ -1,0 +1,86 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Redirect HTTP to HTTPS (optional, uncomment if using SSL)
+  # RewriteCond %{HTTPS} off
+  # RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # Handle Authorization Header
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+  # Don't rewrite files or directories
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Rewrite everything else to index.html to allow client-side routing
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Disable directory browsing
+Options -Indexes
+
+# Enable GZIP compression
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>
+
+# Browser caching for static assets
+<IfModule mod_expires.c>
+  ExpiresActive On
+  
+  # Images
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/gif "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/x-icon "access plus 1 year"
+  
+  # CSS and JavaScript
+  ExpiresByType text/css "access plus 1 month"
+  ExpiresByType application/javascript "access plus 1 month"
+  ExpiresByType text/javascript "access plus 1 month"
+  
+  # Fonts
+  ExpiresByType font/woff "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+  ExpiresByType application/font-woff "access plus 1 year"
+  ExpiresByType application/font-woff2 "access plus 1 year"
+  
+  # Default
+  ExpiresDefault "access plus 1 month"
+</IfModule>
+
+# Security Headers
+<IfModule mod_headers.c>
+  # X-Frame-Options
+  Header always set X-Frame-Options "SAMEORIGIN"
+  
+  # X-Content-Type-Options
+  Header always set X-Content-Type-Options "nosniff"
+  
+  # X-XSS-Protection
+  Header always set X-XSS-Protection "1; mode=block"
+  
+  # Referrer-Policy
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  
+  # Remove X-Powered-By header
+  Header unset X-Powered-By
+</IfModule>
+
+# MIME Types
+<IfModule mod_mime.c>
+  AddType application/javascript js
+  AddType text/css css
+  AddType image/svg+xml svg svgz
+  AddType application/font-woff woff
+  AddType application/font-woff2 woff2
+</IfModule>
+
+# Custom Error Pages (optional)
+# ErrorDocument 404 /index.html
+# ErrorDocument 500 /index.html

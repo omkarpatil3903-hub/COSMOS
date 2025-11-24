@@ -1,27 +1,28 @@
-import { useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+// src/components/ClientLayout.jsx
+import { useState, useEffect } from "react";
+import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { signOut } from "firebase/auth";
-import { auth } from "../firebase";
+import { auth } from "../../firebase";
+import { useAuthContext } from "../../context/useAuthContext";
 import { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import {
   FaTachometerAlt,
-  FaTasks,
   FaProjectDiagram,
+  FaTasks,
   FaCalendarAlt,
   FaChartBar,
   FaSignOutAlt,
-  FaChevronLeft,
-  FaUserTie,
+  FaUserCircle,
   FaBars,
   FaTimes,
+  FaChevronLeft,
 } from "react-icons/fa";
-import { useAuthContext } from "../context/useAuthContext";
 
-// Reusable sidebar link component matching admin panel exactly
+// Reusable sidebar link component matching admin panel
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   const baseClasses =
-    `group flex items-center ${
-      isCollapsed ? "justify-center px-2" : "gap-3 px-3"
+    `group flex items-center ${isCollapsed ? "justify-center px-2" : "gap-3 px-3"
     } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
   const activeClasses =
     "border-indigo-200 bg-indigo-50 text-indigo-700 shadow-soft";
@@ -31,7 +32,7 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   return (
     <NavLink
       to={to}
-      end={to === "/employee"}
+      end={to === "/client"}
       title={isCollapsed ? text : ""}
       className={({ isActive }) =>
         `${baseClasses} ${isActive ? activeClasses : inactiveClasses}`
@@ -46,55 +47,53 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   );
 };
 
-function EmployeeLayout() {
+export default function ClientLayout() {
+  const { userData } = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
-  const { userData } = useAuthContext();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [avatarError, setAvatarError] = useState(false);
 
   // Dynamic page title based on route
   useEffect(() => {
     const pathToTitle = {
-      "/employee": "Dashboard - Employee Portal",
-      "/employee/tasks": "My Tasks - Employee Portal",
-      "/employee/projects": "My Projects - Employee Portal",
-      "/employee/calendar": "Calendar - Employee Portal",
-      "/employee/reports": "Reports - Employee Portal",
+      "/client": "Dashboard - Client Portal",
+      "/client/projects": "My Projects - Client Portal",
+      "/client/tasks": "My Tasks - Client Portal",
+      "/client/calendar": "Calendar - Client Portal",
+      "/client/reports": "Reports - Client Portal",
     };
 
-    const title = pathToTitle[location.pathname] || "Employee Portal";
+    const title = pathToTitle[location.pathname] || "Client Portal";
     document.title = title;
   }, [location.pathname]);
 
   const navigationItems = [
     {
-      to: "/employee",
+      to: "/client",
       text: "Dashboard",
       icon: <FaTachometerAlt className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/employee/tasks",
-      text: "My Tasks",
-      icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
-    },
-    {
-      to: "/employee/projects",
+      to: "/client/projects",
       text: "Projects",
       icon: <FaProjectDiagram className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/employee/reports",
-      text: "Reports",
-      icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
+      to: "/client/tasks",
+      text: "Tasks",
+      icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/employee/calendar",
+      to: "/client/calendar",
       text: "Calendar",
       icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
     },
-   
+    // {
+    //   to: "/client/reports",
+    //   text: "Reports",
+    //   icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
+    // },
   ];
 
   useEffect(() => {
@@ -104,9 +103,11 @@ function EmployeeLayout() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      toast.success("Logged out successfully");
       navigate("/login");
     } catch (error) {
-      console.error("Failed to log out", error);
+      console.error("Logout error:", error);
+      toast.error("Failed to logout");
     }
   };
 
@@ -127,39 +128,41 @@ function EmployeeLayout() {
         Skip to main content
       </a>
       <Toaster position="top-right" />
+
+      {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${
-          isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
-        } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"}`}
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
+          } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"}`}
         aria-label="Primary"
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="h-10 w-10 overflow-hidden rounded-full shadow-md ring-1 ring-indigo-500/20">
-              {userData?.imageUrl && !avatarError ? (
-                <img
-                  src={userData.imageUrl}
-                  alt="Avatar"
-                  className="h-full w-full object-cover object-center transition-transform duration-200 hover:scale-105"
-                  onError={() => setAvatarError(true)}
-                />
-              ) : (
-                <div className="h-full w-full rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold">
-                  {(userData?.name || userData?.clientName || userData?.email || "U")
-                    .toString()
-                    .charAt(0)
-                    .toUpperCase()}
-                </div>
-              )}
+            {userData?.imageUrl ? (
+              <img
+                src={userData.imageUrl}
+                alt={userData?.clientName || userData?.companyName || "Client"}
+                className="h-10 w-10 rounded-xl object-cover shadow-soft"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <span
+              className={`flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft ${userData?.imageUrl ? 'hidden' : ''}`}
+            >
+              <FaUserCircle className="h-5 w-5" aria-hidden="true" />
             </span>
-
             {!isCollapsed && (
               <div className="min-w-0">
-                <p className="text-sm font-medium text-content-tertiary truncate" title={userData?.name || "Employee"}>
-                  {userData?.name || "Employee"}
+                <p
+                  className="text-sm font-medium text-content-tertiary truncate"
+                  title={userData?.clientName || userData?.companyName || "Client User"}
+                >
+                  {userData?.clientName || userData?.companyName || "Client User"}
                 </p>
                 <h2 className="text-lg font-semibold text-content-primary truncate">
-                  Employee Portal
+                  Client Portal
                 </h2>
               </div>
             )}
@@ -172,9 +175,8 @@ function EmployeeLayout() {
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <FaChevronLeft
-              className={`h-4 w-4 transition-transform duration-300 ${
-                isCollapsed ? "rotate-180" : ""
-              }`}
+              className={`h-4 w-4 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""
+                }`}
               aria-hidden="true"
             />
           </button>
@@ -250,5 +252,3 @@ function EmployeeLayout() {
     </div>
   );
 }
-
-export default EmployeeLayout;

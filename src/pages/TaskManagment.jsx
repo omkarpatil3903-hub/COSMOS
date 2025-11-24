@@ -83,7 +83,6 @@ function TasksManagement() {
   const [clients, setClients] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [showArchived, setShowArchived] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingTask, setViewingTask] = useState(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
@@ -91,17 +90,55 @@ function TasksManagement() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
 
-  const [filterProject, setFilterProject] = useState("");
-  const [filterAssignee, setFilterAssignee] = useState("");
-  const [filterAssigneeType, setFilterAssigneeType] = useState("");
-  const [filterPriority, setFilterPriority] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-  const [search, setSearch] = useState("");
   const [view, setView] = useState("list");
 
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [onlyOverdue, setOnlyOverdue] = useState(false);
+
+  // 1. Consolidated Filter State
+  const [filters, setFilters] = useState({
+    project: "",
+    assignee: "",
+    assigneeType: "",
+    priority: "",
+    status: "",
+    search: "",
+    showArchived: false,
+    onlyOverdue: false,
+  });
+
+
+
+  // Helper to update a single filter
+  const updateFilter = (key, value) => {
+    setFilters((prev) => {
+      const next = { ...prev, [key]: value };
+      // Reset assignee if project or assigneeType changes to avoid stale selection
+      if (key === "project" || key === "assigneeType") {
+        next.assignee = "";
+      }
+      return next;
+    });
+  };
+
+  // 2. Optimized Data Lookups (Maps) - creates instant access to data
+  const projectMap = useMemo(() => {
+    return projects.reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
+  }, [projects]);
+
+  const userMap = useMemo(() => {
+    return users.reduce((acc, u) => ({ ...acc, [u.id]: u }), {});
+  }, [users]);
+
+  const clientMap = useMemo(() => {
+    return clients.reduce((acc, c) => ({ ...acc, [c.id]: c }), {});
+  }, [clients]);
+
+  // Fast Lookup Helpers
+  const getProject = useCallback((id) => projectMap[id], [projectMap]);
+  const getAssignee = useCallback((id) => userMap[id] || clientMap[id], [userMap, clientMap]);
   const tasksListRef = useRef(null);
+
+
 
   const scrollToTasksList = useCallback(() => {
     if (tasksListRef.current) {
@@ -112,34 +149,49 @@ function TasksManagement() {
     }
   }, []);
 
-  const applyStatusQuickFilter = useCallback(
-    (status) => {
-      setOnlyOverdue(false);
-      setSearch("");
-      setFilterProject("");
-      setFilterAssignee("");
-      setFilterAssigneeType("");
-      setFilterPriority("");
-      setFilterStatus(status);
-      setShowArchived(false);
-      setView("list");
-      setTimeout(scrollToTasksList, 0);
-    },
-    [scrollToTasksList]
-  );
-
-  const applyOverdueQuickFilter = useCallback(() => {
-    setOnlyOverdue(true);
-    setSearch("");
-    setFilterProject("");
-    setFilterAssignee("");
-    setFilterAssigneeType("");
-    setFilterPriority("");
-    setFilterStatus("");
-    setShowArchived(false);
+  const applyStatusQuickFilter = useCallback((status) => {
+    setFilters({
+      project: "",
+      assignee: "",
+      assigneeType: "",
+      priority: "",
+      status: status,
+      search: "",
+      showArchived: false,
+      onlyOverdue: false,
+    });
     setView("list");
     setTimeout(scrollToTasksList, 0);
   }, [scrollToTasksList]);
+
+  const applyOverdueQuickFilter = useCallback(() => {
+    setFilters((prev) => ({
+      ...prev,
+      project: "",
+      assignee: "",
+      assigneeType: "",
+      priority: "",
+      status: "",
+      search: "",
+      showArchived: false,
+      onlyOverdue: true,
+    }));
+    setView("list");
+    setTimeout(scrollToTasksList, 0);
+  }, [scrollToTasksList]);
+
+  const clearFilters = () => {
+    setFilters({
+      project: "",
+      assignee: "",
+      assigneeType: "",
+      priority: "",
+      status: "",
+      search: "",
+      showArchived: false,
+      onlyOverdue: false,
+    });
+  };
 
   const wipLimits = useMemo(() => ({}), []);
 
@@ -263,25 +315,6 @@ function TasksManagement() {
       return () => clearTimeout(timer);
     }
   }, [tasks]); // We still depend on tasks, but the ref prevents re-running logic repeatedly
-
-  const projectById = useCallback(
-    (id) => projects.find((p) => p.id === id),
-    [projects]
-  );
-  const assigneeById = useCallback(
-    (id) => users.find((u) => u.id === id) || clients.find((c) => c.id === id),
-    [users, clients]
-  );
-
-  // Keep Assignee filter coherent with segmented Assignee Type control
-  useEffect(() => {
-    setFilterAssignee("");
-  }, [filterAssigneeType]);
-
-  // Clear assignee selection when project filter changes to avoid stale selection
-  useEffect(() => {
-    setFilterAssignee("");
-  }, [filterProject]);
 
   const openCreate = () => {
     setEditing(null);
@@ -611,15 +644,6 @@ function TasksManagement() {
       });
   };
 
-  const clearFilters = () => {
-    setSearch("");
-    setFilterProject("");
-    setFilterAssignee("");
-    setFilterAssigneeType("");
-    setFilterPriority("");
-    setFilterStatus("");
-    setShowArchived(false);
-  };
 
   const reassignTask = async (taskId, encoded) => {
     const task = tasks.find((t) => t.id === taskId);
@@ -738,86 +762,85 @@ function TasksManagement() {
 
   const filtered = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
+
     return tasks.filter((t) => {
-      if (t.visibleFrom && t.visibleFrom > today) {
-        return false;
+      // 1. Global Visibility Check
+      if (t.visibleFrom && t.visibleFrom > today) return false;
+      if (!filters.showArchived && t.archived) return false;
+
+      // 2. Overdue Check
+      if (filters.onlyOverdue) {
+        if (!(t.dueDate && t.status !== "Done" && t.dueDate < today)) return false;
       }
-      if (!showArchived && t.archived) return false;
-      if (filterProject && t.projectId !== filterProject) return false;
-      if (
-        filterAssigneeType &&
-        (t.assigneeType || "user") !== filterAssigneeType
-      )
-        return false;
-      if (filterAssignee) {
-        const [type, id] = filterAssignee.split(":");
+
+      // 3. Exact Match Filters
+      if (filters.project && t.projectId !== filters.project) return false;
+      if (filters.assigneeType && (t.assigneeType || "user") !== filters.assigneeType) return false;
+      if (filters.priority && t.priority !== filters.priority) return false;
+      if (filters.status && t.status !== filters.status) return false;
+
+      // 4. Assignee ID Check
+      if (filters.assignee) {
+        const [type, id] = filters.assignee.split(":");
         if (t.assigneeType !== type || t.assigneeId !== id) return false;
       }
-      if (filterPriority && t.priority !== filterPriority) return false;
-      if (filterStatus && t.status !== filterStatus) return false;
-      if (onlyOverdue) {
-        if (!(t.dueDate && t.status !== "Done" && t.dueDate < today))
-          return false;
-      }
-      if (search) {
-        const s = search.toLowerCase();
-        const project = projects.find((p) => p.id === t.projectId);
-        const assignee =
-          users.find((u) => u.id === t.assigneeId) ||
-          clients.find((c) => c.id === t.assigneeId);
-        const searchText = `${t.title} ${t.description} ${project?.name || ""
-          } ${assignee?.name || assignee?.clientName || ""}`.toLowerCase();
+
+      // 5. Search Text
+      if (filters.search) {
+        const s = filters.search.toLowerCase();
+        const project = projectMap[t.projectId];
+        const assignee = userMap[t.assigneeId] || clientMap[t.assigneeId];
+
+        const searchText = `${t.title} ${t.description} ${project?.name || ""} ${assignee?.name || assignee?.clientName || ""
+          }`.toLowerCase();
+
         if (!searchText.includes(s)) return false;
       }
+
       return true;
     });
-  }, [
-    tasks,
-    showArchived,
-    filterProject,
-    filterAssignee,
-    filterAssigneeType,
-    filterPriority,
-    filterStatus,
-    onlyOverdue,
-    search,
-    projects,
-    users,
-    clients,
-  ]);
+  }, [tasks, filters, projectMap, userMap, clientMap]);
 
-  // Assignee options constrained by selected project
+  // 1. Filtered Users (Resources)
+  // If a project is selected in the filter, only show users involved in that project
   const filteredAssigneeUsers = useMemo(() => {
-    if (!filterProject) return users;
+    if (!filters.project) return users;
+
     const ids = new Set(
       tasks
         .filter(
           (t) =>
-            t.projectId === filterProject &&
+            t.projectId === filters.project &&
             (t.assigneeType || "user") === "user" &&
             t.assigneeId
         )
         .map((t) => t.assigneeId)
     );
     return users.filter((u) => ids.has(u.id));
-  }, [filterProject, tasks, users]);
+  }, [filters.project, tasks, users]);
 
+  // 2. Filtered Clients
+  // If a project is selected, only show the client for that project
   const filteredAssigneeClients = useMemo(() => {
-    if (!filterProject) return clients;
-    const proj = projects.find((p) => p.id === filterProject);
+    if (!filters.project) return clients;
+
+    // Use our new Map for fast lookup, or find if map isn't ready
+    const proj = projectMap[filters.project] || projects.find((p) => p.id === filters.project);
+
     if (proj?.clientId) return clients.filter((c) => c.id === proj.clientId);
+
     const ids = new Set(
       tasks
         .filter(
           (t) =>
-            t.projectId === filterProject &&
+            t.projectId === filters.project &&
             (t.assigneeType || "user") === "client" &&
             t.assigneeId
         )
         .map((t) => t.assigneeId)
     );
     return clients.filter((c) => ids.has(c.id));
-  }, [filterProject, projects, clients, tasks]);
+  }, [filters.project, projects, projectMap, clients, tasks]);
 
   const counts = useMemo(() => {
     const c = { "To-Do": 0, "In Progress": 0, Done: 0 };
@@ -871,10 +894,10 @@ function TasksManagement() {
         { header: "Weightage", key: "weightage", width: 15 },
       ];
       filtered.forEach((t) => {
-        const project = projects.find((p) => p.id === t.projectId);
-        const assignee =
-          users.find((u) => u.id === t.assigneeId) ||
-          clients.find((c) => c.id === t.assigneeId);
+        // Use the Maps we created in Step 3 for instant lookup
+        const project = projectMap[t.projectId];
+        const assignee = userMap[t.assigneeId] || clientMap[t.assigneeId];
+
         worksheet.addRow({
           id: t.id,
           title: t.title,
@@ -1025,14 +1048,14 @@ function TasksManagement() {
             <div className="flex flex-wrap items-center gap-3">
               <input
                 placeholder="Search tasks..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={filters.search}
+                onChange={(e) => updateFilter("search", e.target.value)}
                 className="flex-1 min-w-[200px] rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary placeholder:text-content-tertiary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
               />
 
               <select
-                value={filterProject}
-                onChange={(e) => setFilterProject(e.target.value)}
+                value={filters.project}
+                onChange={(e) => updateFilter("project", e.target.value)}
                 className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
               >
                 <option value="">All Projects</option>
@@ -1044,12 +1067,12 @@ function TasksManagement() {
               </select>
 
               <select
-                value={filterAssignee}
-                onChange={(e) => setFilterAssignee(e.target.value)}
+                value={filters.assignee}
+                onChange={(e) => updateFilter("assignee", e.target.value)}
                 className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
               >
                 <option value="">All Assignees</option>
-                {(!filterAssigneeType || filterAssigneeType === "user") && (
+                {(!filters.assigneeType || filters.assigneeType === "user") && (
                   <optgroup label="Resources">
                     {filteredAssigneeUsers.map((u) => (
                       <option key={u.id} value={`user:${u.id}`}>
@@ -1058,7 +1081,7 @@ function TasksManagement() {
                     ))}
                   </optgroup>
                 )}
-                {(!filterAssigneeType || filterAssigneeType === "client") && (
+                {(!filters.assigneeType || filters.assigneeType === "client") && (
                   <optgroup label="Clients">
                     {filteredAssigneeClients.map((c) => (
                       <option key={c.id} value={`client:${c.id}`}>
@@ -1071,8 +1094,8 @@ function TasksManagement() {
               </select>
 
               <select
-                value={filterPriority}
-                onChange={(e) => setFilterPriority(e.target.value)}
+                value={filters.priority}
+                onChange={(e) => updateFilter("priority", e.target.value)}
                 className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
               >
                 <option value="">All Priorities</option>
@@ -1082,8 +1105,8 @@ function TasksManagement() {
               </select>
 
               <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                value={filters.status}
+                onChange={(e) => updateFilter("status", e.target.value)}
                 className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
               >
                 <option value="">All Statuses</option>
@@ -1102,8 +1125,8 @@ function TasksManagement() {
               <label className="flex items-center gap-2 text-sm text-content-primary ml-2">
                 <input
                   type="checkbox"
-                  checked={showArchived}
-                  onChange={(e) => setShowArchived(e.target.checked)}
+                  checked={filters.showArchived}
+                  onChange={(e) => updateFilter("showArchived", e.target.checked)}
                 />
                 Show Archived
               </label>
@@ -1118,31 +1141,31 @@ function TasksManagement() {
               <div className="flex items-center gap-2">
                 <div className="mr-2 flex items-center rounded-lg border border-subtle p-0.5">
                   <button
-                    className={`rounded-md px-3 py-1 text-sm ${filterAssigneeType === ""
+                    className={`rounded-md px-3 py-1 text-sm ${filters.assigneeType === ""
                       ? "bg-indigo-600 text-white"
                       : "text-content-primary"
                       }`}
-                    onClick={() => setFilterAssigneeType("")}
+                    onClick={() => updateFilter("assigneeType", "")}
                     type="button"
                   >
                     All
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1 text-sm ${filterAssigneeType === "user"
+                    className={`rounded-md px-3 py-1 text-sm ${filters.assigneeType === "user"
                       ? "bg-indigo-600 text-white"
                       : "text-content-primary"
                       }`}
-                    onClick={() => setFilterAssigneeType("user")}
+                    onClick={() => updateFilter("assigneeType", "user")}
                     type="button"
                   >
                     Resources
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1 text-sm ${filterAssigneeType === "client"
+                    className={`rounded-md px-3 py-1 text-sm ${filters.assigneeType === "client"
                       ? "bg-indigo-600 text-white"
                       : "text-content-primary"
                       }`}
-                    onClick={() => setFilterAssigneeType("client")}
+                    onClick={() => updateFilter("assigneeType", "client")}
                     type="button"
                   >
                     Clients
@@ -1200,8 +1223,8 @@ function TasksManagement() {
                   tasks={filtered}
                   onMove={moveTask}
                   onEdit={handleEdit}
-                  getProject={projectById}
-                  getAssignee={assigneeById}
+                  getProject={getProject}
+                  getAssignee={getAssignee}
                   showReassignOnCard
                   users={activeUsers}
                   onReassign={(taskId, value) => reassignTask(taskId, value)}
@@ -1239,8 +1262,8 @@ function TasksManagement() {
                     <TaskListItem
                       key={t.id}
                       task={t}
-                      project={projectById(t.projectId)}
-                      assignee={assigneeById(t.assigneeId)}
+                      project={getProject(t.projectId)}
+                      assignee={getAssignee(t.assigneeId)}
                       isSelected={selectedIds.has(t.id)}
                       onToggleSelect={toggleSelect}
                       onView={handleView}
@@ -1270,8 +1293,8 @@ function TasksManagement() {
       {showViewModal && viewingTask && (
         <TaskViewModal
           task={viewingTask}
-          project={projectById(viewingTask.projectId)}
-          assignee={assigneeById(viewingTask.assigneeId)}
+          project={getProject(viewingTask.projectId)}
+          assignee={getAssignee(viewingTask.assigneeId)}
           users={users}
           clients={clients}
           onClose={() => setShowViewModal(false)}

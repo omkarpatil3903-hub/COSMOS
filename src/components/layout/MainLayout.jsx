@@ -1,30 +1,30 @@
-// src/components/ClientLayout.jsx
-import { useState, useEffect } from "react";
-import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
+// src/components/MainLayout.jsx
+import React, { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
-import { auth } from "../firebase";
-import { useAuthContext } from "../context/useAuthContext";
+import { auth } from "../../firebase";
 import { Toaster } from "react-hot-toast";
-import toast from "react-hot-toast";
 import {
   FaTachometerAlt,
+  FaSearch,
+  FaChartBar,
+  FaUserCheck,
   FaProjectDiagram,
   FaTasks,
-  FaCalendarAlt,
-  FaChartBar,
+  FaListAlt,
   FaSignOutAlt,
-  FaUserCircle,
+  FaChevronLeft,
+  FaShieldAlt,
+  FaCalendarAlt,
   FaBars,
   FaTimes,
-  FaChevronLeft,
 } from "react-icons/fa";
 
-// Reusable sidebar link component matching admin panel
+// NEW: A reusable link component to keep our code clean
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
-  const baseClasses =
-    `group flex items-center ${
-      isCollapsed ? "justify-center px-2" : "gap-3 px-3"
-    } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
+  const baseClasses = `group flex items-center ${
+    isCollapsed ? "justify-center px-2" : "gap-3 px-3"
+  } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
   const activeClasses =
     "border-indigo-200 bg-indigo-50 text-indigo-700 shadow-soft";
   const inactiveClasses =
@@ -33,7 +33,8 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   return (
     <NavLink
       to={to}
-      end={to === "/client"}
+      end={to === "/"}
+      // The 'title' attribute provides a native browser tooltip
       title={isCollapsed ? text : ""}
       className={({ isActive }) =>
         `${baseClasses} ${isActive ? activeClasses : inactiveClasses}`
@@ -48,8 +49,7 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   );
 };
 
-export default function ClientLayout() {
-  const { userData } = useAuthContext();
+function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -58,43 +58,69 @@ export default function ClientLayout() {
   // Dynamic page title based on route
   useEffect(() => {
     const pathToTitle = {
-      "/client": "Dashboard - Client Portal",
-      "/client/projects": "My Projects - Client Portal",
-      "/client/tasks": "My Tasks - Client Portal",
-      "/client/calendar": "Calendar - Client Portal",
-      "/client/reports": "Reports - Client Portal",
+      "/": "Dashboard - Admin Panel",
+      "/manage-resources": "Manage Resources - Admin Panel",
+      "/manage-clients": "Manage Clients - Admin Panel",
+      "/manage-projects": "Manage Projects - Admin Panel",
+      "/mom": "Meeting Minutes - Admin Panel",
+      "/task-management": "Task Management - Admin Panel",
+      "/reports": "Reports - Admin Panel",
+      "/calendar": "Calendar - Admin Panel",
     };
 
-    const title = pathToTitle[location.pathname] || "Client Portal";
+    const title = pathToTitle[location.pathname] || "Admin Panel";
     document.title = title;
   }, [location.pathname]);
 
   const navigationItems = [
     {
-      to: "/client",
+      to: "/",
       text: "Dashboard",
       icon: <FaTachometerAlt className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/client/projects",
-      text: "Projects",
+      to: "/manage-resources",
+      text: "Manage Resources",
+      icon: <FaSearch className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/manage-clients",
+      text: "Manage Clients",
+      icon: <FaUserCheck className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/manage-projects",
+      text: "Manage Projects",
       icon: <FaProjectDiagram className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/client/tasks",
-      text: "Tasks",
+      to: "/task-management",
+      text: "Task Management",
       icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
     },
+
     {
-      to: "/client/calendar",
+      to: "/reports",
+      text: "Reports",
+      icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
+    },
+
+    // {
+    //   to: "/mom",
+    //   text: "Minutes of Meeting",
+    //   icon: <FaListAlt className="h-4 w-4" aria-hidden="true" />,
+    // },
+    {
+      to: "/mom-pro",
+      text: "Minutes of Meeting ",
+      icon: <FaListAlt className="h-4 w-4" aria-hidden="true" />,
+    },
+
+    {
+      to: "/calendar",
       text: "Calendar",
       icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
     },
-    // {
-    //   to: "/client/reports",
-    //   text: "Reports",
-    //   icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
-    // },
   ];
 
   useEffect(() => {
@@ -104,11 +130,9 @@ export default function ClientLayout() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      toast.success("Logged out successfully");
       navigate("/login");
     } catch (error) {
-      console.error("Logout error:", error);
-      toast.error("Failed to logout");
+      console.error("Failed to log out", error);
     }
   };
 
@@ -129,8 +153,6 @@ export default function ClientLayout() {
         Skip to main content
       </a>
       <Toaster position="top-right" />
-
-      {/* Sidebar */}
       <aside
         className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${
           isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
@@ -139,32 +161,16 @@ export default function ClientLayout() {
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            {userData?.imageUrl ? (
-              <img
-                src={userData.imageUrl}
-                alt={userData?.clientName || userData?.companyName || "Client"}
-                className="h-10 w-10 rounded-xl object-cover shadow-soft"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
-                }}
-              />
-            ) : null}
-            <span 
-              className={`flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft ${userData?.imageUrl ? 'hidden' : ''}`}
-            >
-              <FaUserCircle className="h-5 w-5" aria-hidden="true" />
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft">
+              <FaShieldAlt className="h-5 w-5" aria-hidden="true" />
             </span>
             {!isCollapsed && (
-              <div className="min-w-0">
-                <p 
-                  className="text-sm font-medium text-content-tertiary truncate" 
-                  title={userData?.clientName || userData?.companyName || "Client User"}
-                >
-                  {userData?.clientName || userData?.companyName || "Client User"}
+              <div>
+                <p className="text-sm font-medium text-content-tertiary">
+                  COSMOS
                 </p>
-                <h2 className="text-lg font-semibold text-content-primary truncate">
-                  Client Portal
+                <h2 className="text-lg font-semibold text-content-primary">
+                  Admin Panel
                 </h2>
               </div>
             )}
@@ -231,11 +237,11 @@ export default function ClientLayout() {
       )}
 
       <div
-        className={`flex min-h-screen flex-1 flex-col transition-all duration-300 ${contentPadding}`}
+        className={`flex min-h-screen flex-1 flex-col transition-all duration-300 w-full ${contentPadding}`}
       >
         <main
           id="main-content"
-          className="flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8"
+          className="flex-1 px-4 py-6 sm:px-6 lg:px-6 lg:py-8 w-full max-w-full overflow-x-hidden"
         >
           <div className="mb-6 flex items-center justify-between lg:hidden">
             <button
@@ -255,3 +261,5 @@ export default function ClientLayout() {
     </div>
   );
 }
+
+export default MainLayout;

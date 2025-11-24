@@ -7,17 +7,17 @@ import "./index.css";
 
 // Import all your components
 import LoginPage from "./pages/LoginPage";
-import MainLayout from "./components/MainLayout";
+import MainLayout from "./components/layout/MainLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import DashboardPage from "./pages/DashboardPage";
 import ReportsPage from "./pages/ReportsPage";
-import ClientLayout from "./components/ClientLayout";
+import ClientLayout from "./components/layout/ClientLayout";
 import ClientDashboard from "./pages/ClientDashboard";
 import ClientProjects from "./pages/ClientProjects";
 import ClientTasks from "./pages/ClientTasks";
 import ClientCalendar from "./pages/ClientCalendar";
 import ClientReports from "./pages/ClientReports";
-import EmployeeLayout from "./components/EmployeeLayout";
+import EmployeeLayout from "./components/layout/EmployeeLayout";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import EmployeeTasks from "./pages/EmployeeTasks";
 import EmployeeProjects from "./pages/EmployeeProjects";
