@@ -1533,277 +1533,310 @@ function TasksManagement() {
 
       {showViewModal && viewingTask && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 p-4"
           onClick={() => setShowViewModal(false)}
         >
           <div
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl"
+            className="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-4 flex items-start justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">Task Details</h2>
-              <button
-                onClick={() => setShowViewModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="h-6 w-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-800">
+                  Task Details
+                </h2>
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
 
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900">
-                      {viewingTask.title}
-                    </h3>
-                    <div className="mt-1 flex items-center gap-2">
+              <div className="space-y-6">
+                {/* Title and Badges */}
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                    {viewingTask.title}
+                  </h3>
+                  {viewingTask.isRecurring && (
+                    <div className="mb-3 flex items-center gap-1.5 text-sm text-indigo-600">
+                      <MdReplayCircleFilled className="h-4 w-4" />
+                      <span className="font-medium">Recurring Task</span>
+                      <span className="text-gray-500">• {viewingTask.recurringPattern}</span>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <span
+                      className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold ${getStatusBadge(
+                        viewingTask.status
+                      )}`}
+                    >
+                      {statusIcons[viewingTask.status]}
+                      <span>{viewingTask.status}</span>
+                    </span>
+                    {viewingTask.priority && (
                       <span
-                        className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getStatusBadge(
-                          viewingTask.status
+                        className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold ${getPriorityBadge(
+                          viewingTask.priority
                         )}`}
                       >
-                        {statusIcons[viewingTask.status]}
-                        <span>{viewingTask.status}</span>
+                        <FaFlag />
+                        <span>{viewingTask.priority}</span>
                       </span>
-                      {viewingTask.priority && (
-                        <span
-                          className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getPriorityBadge(
-                            viewingTask.priority
-                          )}`}
-                        >
-                          <FaFlag />
-                          <span>{viewingTask.priority}</span>
-                        </span>
-                      )}
-                    </div>
+                    )}
+                    {viewingTask.weightage !== null && viewingTask.weightage !== undefined && (
+                      <span className="flex items-center gap-1.5 rounded-md bg-purple-100 px-2.5 py-1 text-xs font-semibold text-purple-800">
+                        Weightage: {viewingTask.weightage}
+                      </span>
+                    )}
                   </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Description
-                </label>
-                <p className="mt-1 text-gray-900">
-                  {viewingTask.description || "No description"}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Project
-                  </label>
-                  <p className="mt-1 text-gray-900">
-                    {projectById(viewingTask.projectId)?.name || "—"}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Assigned To
-                  </label>
-                  <p className="mt-1 text-gray-900">
-                    {(() => {
-                      const assignee = assigneeById(viewingTask.assigneeId);
-                      if (!assignee) return "Unassigned";
-                      return assignee.name || assignee.clientName || "—";
-                    })()}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Status
-                  </label>
-                  <p className="mt-1 text-gray-900">{viewingTask.status}</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Priority
-                  </label>
-                  <p className="mt-1 text-gray-900">{viewingTask.priority}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Weightage
-                  </label>
-                  <p className="mt-1 text-gray-900">
-                    {viewingTask.weightage !== null &&
-                    viewingTask.weightage !== undefined
-                      ? viewingTask.weightage
-                      : "—"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Assigned Date
-                  </label>
-                  <p className="mt-1 text-gray-900">
-                    {viewingTask.assignedDate
-                      ? new Date(viewingTask.assignedDate).toLocaleDateString()
-                      : "—"}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Due Date
-                  </label>
-                  <p className="mt-1 text-gray-900">
-                    {viewingTask.dueDate
-                      ? new Date(viewingTask.dueDate).toLocaleDateString()
-                      : "No due date"}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    {(() => {
-                      if (!viewingTask.completedAt) return "Completion Date";
-                      const due = viewingTask.dueDate
-                        ? new Date(viewingTask.dueDate)
-                        : null;
-                      const comp = new Date(viewingTask.completedAt);
-                      const compD = new Date(
-                        comp.getFullYear(),
-                        comp.getMonth(),
-                        comp.getDate()
-                      );
-                      const dueD = due
-                        ? new Date(
-                            due.getFullYear(),
-                            due.getMonth(),
-                            due.getDate()
-                          )
-                        : null;
-                      const late = dueD
-                        ? compD.getTime() > dueD.getTime()
-                        : false;
-                      return late ? "Delayed Completion" : "Completed At";
-                    })()}
-                  </label>
-                  <p className="mt-1 text-gray-900">
-                    {viewingTask.completedAt
-                      ? new Date(viewingTask.completedAt).toLocaleDateString()
-                      : "—"}
-                  </p>
-                  {viewingTask.completedAt &&
-                    (() => {
-                      const due = viewingTask.dueDate
-                        ? new Date(viewingTask.dueDate)
-                        : null;
-                      const comp = new Date(viewingTask.completedAt);
-                      const compD = new Date(
-                        comp.getFullYear(),
-                        comp.getMonth(),
-                        comp.getDate()
-                      );
-                      const dueD = due
-                        ? new Date(
-                            due.getFullYear(),
-                            due.getMonth(),
-                            due.getDate()
-                          )
-                        : null;
-                      if (!dueD) return null;
-                      const diffDays = Math.max(
-                        0,
-                        Math.ceil((compD - dueD) / (1000 * 60 * 60 * 24))
-                      );
-                      if (diffDays <= 0) return null;
-                      return (
-                        <p className="mt-1 text-xs font-medium text-red-700">
-                          Late by {diffDays} day(s)
-                        </p>
-                      );
-                    })()}
-                </div>
-              </div>
-
-              {(viewingTask.completionComment || viewingTask.completedBy) && (
-                <div className="rounded-md bg-indigo-50 p-3">
-                  <div className="text-sm font-medium text-indigo-800">
-                    Completion
-                  </div>
-                  {viewingTask.completionComment && (
-                    <p className="mt-1 text-indigo-900">
-                      {viewingTask.completionComment}
+                {/* Description */}
+                {viewingTask.description && (
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Description
+                    </label>
+                    <p className="text-gray-900 whitespace-pre-wrap">
+                      {viewingTask.description}
                     </p>
-                  )}
-                  {viewingTask.completedBy && (
-                    <p className="mt-1 text-xs text-indigo-800">
-                      By:{" "}
+                  </div>
+                )}
+
+                {/* Project and Assignment Info Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Project
+                    </label>
+                    <p className="text-gray-900 font-semibold">
+                      {projectById(viewingTask.projectId)?.name || "No project assigned"}
+                    </p>
+                  </div>
+
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Assigned To
+                    </label>
+                    <p className="text-gray-900 font-semibold">
                       {(() => {
-                        const by =
-                          (viewingTask.completedByType || "user") === "client"
-                            ? clients.find(
-                                (c) => c.id === viewingTask.completedBy
-                              )
-                            : users.find(
-                                (u) => u.id === viewingTask.completedBy
-                              );
-                        return by?.name || by?.clientName || "—";
-                      })()}{" "}
-                      {viewingTask.completedByType
-                        ? `(${
-                            viewingTask.completedByType === "client"
-                              ? "Client"
-                              : "Resource"
-                          })`
-                        : ""}
+                        const assignee = assigneeById(viewingTask.assigneeId);
+                        if (!assignee) return "Unassigned";
+                        return assignee.name || assignee.clientName || "—";
+                      })()}
                     </p>
-                  )}
+                    {viewingTask.assigneeType && (
+                      <span className="inline-block mt-1 text-xs text-gray-600">
+                        ({viewingTask.assigneeType === "client" ? "Client" : "Resource"})
+                      </span>
+                    )}
+                  </div>
                 </div>
-              )}
 
-              {viewingTask.archived && (
-                <div className="rounded-md bg-gray-100 p-3">
-                  <p className="text-sm font-medium text-gray-700">
-                    This task is archived
-                  </p>
+                {/* Priority, Status, Weightage */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Status
+                    </label>
+                    <p className="text-gray-900 font-medium">{viewingTask.status}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Priority
+                    </label>
+                    <p className="text-gray-900 font-medium">{viewingTask.priority}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Weightage
+                    </label>
+                    <p className="text-gray-900 font-medium">
+                      {viewingTask.weightage !== null && viewingTask.weightage !== undefined
+                        ? viewingTask.weightage
+                        : "—"}
+                    </p>
+                  </div>
                 </div>
-              )}
-            </div>
 
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setShowViewModal(false);
-                  handleEdit(viewingTask);
-                }}
-                className="rounded-md bg-yellow-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-yellow-600"
-              >
-                Edit Task
-              </button>
-              <button
-                onClick={() => setShowViewModal(false)}
-                className="rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-300"
-              >
-                Close
-              </button>
+                {/* Dates */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Assigned Date
+                    </label>
+                    <p className="text-gray-900 font-medium">
+                      {viewingTask.assignedDate
+                        ? new Date(viewingTask.assignedDate).toLocaleDateString()
+                        : "—"}
+                    </p>
+                  </div>
+
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      Due Date
+                    </label>
+                    <p className="text-gray-900 font-medium">
+                      {viewingTask.dueDate
+                        ? new Date(viewingTask.dueDate).toLocaleDateString()
+                        : "No due date"}
+                    </p>
+                    {viewingTask.dueDate && viewingTask.status !== "Done" && (() => {
+                      const today = new Date();
+                      const due = new Date(viewingTask.dueDate);
+                      const isOverdue = due < today;
+                      if (isOverdue) {
+                        return (
+                          <p className="mt-1 text-xs font-medium text-red-600">
+                            Overdue
+                          </p>
+                        );
+                      }
+                    })()}
+                  </div>
+
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">
+                      {(() => {
+                        if (!viewingTask.completedAt) return "Completion Date";
+                        const due = viewingTask.dueDate
+                          ? new Date(viewingTask.dueDate)
+                          : null;
+                        const comp = new Date(viewingTask.completedAt);
+                        const compD = new Date(
+                          comp.getFullYear(),
+                          comp.getMonth(),
+                          comp.getDate()
+                        );
+                        const dueD = due
+                          ? new Date(
+                              due.getFullYear(),
+                              due.getMonth(),
+                              due.getDate()
+                            )
+                          : null;
+                        const late = dueD
+                          ? compD.getTime() > dueD.getTime()
+                          : false;
+                        return late ? "Delayed Completion" : "Completed At";
+                      })()}
+                    </label>
+                    <p className="text-gray-900 font-medium">
+                      {viewingTask.completedAt
+                        ? new Date(viewingTask.completedAt).toLocaleDateString()
+                        : "—"}
+                    </p>
+                    {viewingTask.completedAt &&
+                      (() => {
+                        const due = viewingTask.dueDate
+                          ? new Date(viewingTask.dueDate)
+                          : null;
+                        const comp = new Date(viewingTask.completedAt);
+                        const compD = new Date(
+                          comp.getFullYear(),
+                          comp.getMonth(),
+                          comp.getDate()
+                        );
+                        const dueD = due
+                          ? new Date(
+                              due.getFullYear(),
+                              due.getMonth(),
+                              due.getDate()
+                            )
+                          : null;
+                        if (!dueD) return null;
+                        const diffDays = Math.max(
+                          0,
+                          Math.ceil((compD - dueD) / (1000 * 60 * 60 * 24))
+                        );
+                        if (diffDays <= 0) return null;
+                        return (
+                          <p className="mt-1 text-xs font-medium text-red-600">
+                            Late by {diffDays} day(s)
+                          </p>
+                        );
+                      })()}
+                  </div>
+                </div>
+
+                {/* Completion Comment */}
+                {(viewingTask.completionComment || viewingTask.completedBy) && (
+                  <div className="bg-indigo-50 p-4 rounded-lg">
+                    <label className="block text-xs font-medium text-gray-500 mb-2">
+                      Completion Details
+                    </label>
+                    {viewingTask.completionComment && (
+                      <p className="text-gray-900 mb-2">
+                        {viewingTask.completionComment}
+                      </p>
+                    )}
+                    {viewingTask.completedBy && (
+                      <p className="text-sm text-gray-600">
+                        Completed by:{" "}
+                        {(() => {
+                          const by =
+                            (viewingTask.completedByType || "user") === "client"
+                              ? clients.find(
+                                  (c) => c.id === viewingTask.completedBy
+                                )
+                              : users.find(
+                                  (u) => u.id === viewingTask.completedBy
+                                );
+                          return by?.name || by?.clientName || "—";
+                        })()}
+                        {viewingTask.completedByType && (
+                          <span className="text-xs text-gray-500">
+                            {" "}({viewingTask.completedByType === "client" ? "Client" : "Resource"})
+                          </span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Archived */}
+                {viewingTask.archived && (
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-sm font-medium text-gray-700">
+                      ⚠️ This task is archived
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 mt-6">
+                <Button
+                  onClick={() => setShowViewModal(false)}
+                  variant="secondary"
+                  type="button"
+                >
+                  Close
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowViewModal(false);
+                    handleEdit(viewingTask);
+                  }}
+                  variant="primary"
+                  type="button"
+                >
+                  Edit Task
+                </Button>
+              </div>
             </div>
           </div>
         </div>

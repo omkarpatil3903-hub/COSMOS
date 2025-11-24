@@ -773,9 +773,9 @@ function Calendar() {
       days.push(
         <div
           key={day}
-          className={`h-28 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 ${
+          className={`min-h-28 max-h-48 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 overflow-hidden ${
             isPast
-              ? "bg-gray-50 hover:bg-gray-100 opacity-60"
+              ? "bg-gray-50 hover:bg-gray-100"
               : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
           } ${
             isToday
@@ -791,7 +791,7 @@ function Calendar() {
           <div
             className={`text-sm font-bold mb-1 ${
               isPast && !isToday
-                ? "text-gray-400"
+                ? "text-gray-500"
                 : isToday
                 ? "text-blue-700 text-base"
                 : "text-gray-800"
@@ -981,7 +981,13 @@ function Calendar() {
 
               {selectedDate ? (
                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                  {getEventsForDate(selectedDate).length === 0 ? (
+                  {getEventsForDate(selectedDate)
+                    .sort((a, b) => {
+                      const timeA = a.time || "00:00";
+                      const timeB = b.time || "00:00";
+                      return timeA.localeCompare(timeB);
+                    })
+                    .length === 0 ? (
                     <div className="text-center py-8">
                       <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
                         <FaCalendarAlt className="text-gray-400 text-2xl" />
@@ -994,7 +1000,13 @@ function Calendar() {
                       </p>
                     </div>
                   ) : (
-                    getEventsForDate(selectedDate).map((event) => {
+                    getEventsForDate(selectedDate)
+                      .sort((a, b) => {
+                        const timeA = a.time || "00:00";
+                        const timeB = b.time || "00:00";
+                        return timeA.localeCompare(timeB);
+                      })
+                      .map((event) => {
                       const clientRecord = event.clientId
                         ? clientsById.get(event.clientId)
                         : null;
@@ -1048,17 +1060,17 @@ function Calendar() {
                               <div className="flex gap-1">
                                 <button
                                   onClick={() => openEventModal(event)}
-                                  className="text-blue-600 hover:text-blue-800"
+                                  className="w-11 h-11 flex items-center justify-center text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
                                   title="Edit event"
                                 >
-                                  <FaEdit size={12} />
+                                  <FaEdit size={16} />
                                 </button>
                                 <button
                                   onClick={() => deleteEvent(event.id)}
-                                  className="text-red-600 hover:text-red-800"
+                                  className="w-11 h-11 flex items-center justify-center text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
                                   title="Delete event"
                                 >
-                                  <FaTrash size={12} />
+                                  <FaTrash size={16} />
                                 </button>
                               </div>
                             )}

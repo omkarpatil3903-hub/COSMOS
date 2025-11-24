@@ -112,6 +112,26 @@ const CalendarHeader = ({
                 ))}
             </select>
 
+            {/* Clear All Filters Button */}
+            {(filterType !== "all" || 
+              filterStatus !== "all" || 
+              filterProject !== "all" || 
+              filterEmployee !== "all") && (
+              <button
+                onClick={() => {
+                  onFilterTypeChange("all");
+                  onFilterStatusChange("all");
+                  onFilterProjectChange("all");
+                  onFilterEmployeeChange("all");
+                }}
+                className="px-3 py-2 bg-blue-100 text-blue-700 rounded-md text-sm font-medium hover:bg-blue-200 transition-colors flex items-center gap-2"
+                title="Clear all filters"
+              >
+                <FaTimes size={12} />
+                Clear Filters
+              </button>
+            )}
+
           </div>
         </div>
       </Card>
