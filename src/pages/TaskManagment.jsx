@@ -11,6 +11,8 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import KanbanBoard from "../components/KanbanBoard";
 import TaskModal from "../components/TaskModal";
+import TaskListItem from "../components/TaskManagment/TaskListItem";
+import TaskViewModal from "../components/TaskManagment/TaskViewModal";
 import {
   shouldCreateNextInstanceAsync,
   createNextRecurringInstance,
@@ -25,16 +27,12 @@ import {
   FaListAlt,
   FaList,
   FaTh,
-  FaFlag,
   FaClipboardList,
   FaSpinner,
-  FaCalendarAlt,
 } from "react-icons/fa";
-import { IoIosWarning } from "react-icons/io";
-import { MdReplayCircleFilled } from "react-icons/md";
+
 import { db } from "../firebase";
 import { updateProjectProgress } from "../utils/projectProgress";
-import { getPriorityBadge, getStatusBadge } from "../utils/colorMaps";
 import {
   addDoc,
   collection,
@@ -85,7 +83,6 @@ function TasksManagement() {
   const [clients, setClients] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [showArchived, setShowArchived] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingTask, setViewingTask] = useState(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
@@ -93,17 +90,55 @@ function TasksManagement() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
 
-  const [filterProject, setFilterProject] = useState("");
-  const [filterAssignee, setFilterAssignee] = useState("");
-  const [filterAssigneeType, setFilterAssigneeType] = useState("");
-  const [filterPriority, setFilterPriority] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-  const [search, setSearch] = useState("");
   const [view, setView] = useState("list");
 
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [onlyOverdue, setOnlyOverdue] = useState(false);
+
+  // 1. Consolidated Filter State
+  const [filters, setFilters] = useState({
+    project: "",
+    assignee: "",
+    assigneeType: "",
+    priority: "",
+    status: "",
+    search: "",
+    showArchived: false,
+    onlyOverdue: false,
+  });
+
+
+
+  // Helper to update a single filter
+  const updateFilter = (key, value) => {
+    setFilters((prev) => {
+      const next = { ...prev, [key]: value };
+      // Reset assignee if project or assigneeType changes to avoid stale selection
+      if (key === "project" || key === "assigneeType") {
+        next.assignee = "";
+      }
+      return next;
+    });
+  };
+
+  // 2. Optimized Data Lookups (Maps) - creates instant access to data
+  const projectMap = useMemo(() => {
+    return projects.reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
+  }, [projects]);
+
+  const userMap = useMemo(() => {
+    return users.reduce((acc, u) => ({ ...acc, [u.id]: u }), {});
+  }, [users]);
+
+  const clientMap = useMemo(() => {
+    return clients.reduce((acc, c) => ({ ...acc, [c.id]: c }), {});
+  }, [clients]);
+
+  // Fast Lookup Helpers
+  const getProject = useCallback((id) => projectMap[id], [projectMap]);
+  const getAssignee = useCallback((id) => userMap[id] || clientMap[id], [userMap, clientMap]);
   const tasksListRef = useRef(null);
+
+
 
   const scrollToTasksList = useCallback(() => {
     if (tasksListRef.current) {
@@ -114,34 +149,49 @@ function TasksManagement() {
     }
   }, []);
 
-  const applyStatusQuickFilter = useCallback(
-    (status) => {
-      setOnlyOverdue(false);
-      setSearch("");
-      setFilterProject("");
-      setFilterAssignee("");
-      setFilterAssigneeType("");
-      setFilterPriority("");
-      setFilterStatus(status);
-      setShowArchived(false);
-      setView("list");
-      setTimeout(scrollToTasksList, 0);
-    },
-    [scrollToTasksList]
-  );
-
-  const applyOverdueQuickFilter = useCallback(() => {
-    setOnlyOverdue(true);
-    setSearch("");
-    setFilterProject("");
-    setFilterAssignee("");
-    setFilterAssigneeType("");
-    setFilterPriority("");
-    setFilterStatus("");
-    setShowArchived(false);
+  const applyStatusQuickFilter = useCallback((status) => {
+    setFilters({
+      project: "",
+      assignee: "",
+      assigneeType: "",
+      priority: "",
+      status: status,
+      search: "",
+      showArchived: false,
+      onlyOverdue: false,
+    });
     setView("list");
     setTimeout(scrollToTasksList, 0);
   }, [scrollToTasksList]);
+
+  const applyOverdueQuickFilter = useCallback(() => {
+    setFilters((prev) => ({
+      ...prev,
+      project: "",
+      assignee: "",
+      assigneeType: "",
+      priority: "",
+      status: "",
+      search: "",
+      showArchived: false,
+      onlyOverdue: true,
+    }));
+    setView("list");
+    setTimeout(scrollToTasksList, 0);
+  }, [scrollToTasksList]);
+
+  const clearFilters = () => {
+    setFilters({
+      project: "",
+      assignee: "",
+      assigneeType: "",
+      priority: "",
+      status: "",
+      search: "",
+      showArchived: false,
+      onlyOverdue: false,
+    });
+  };
 
   const wipLimits = useMemo(() => ({}), []);
 
@@ -180,8 +230,8 @@ function TasksManagement() {
                 : typeof data.weightage === "string" &&
                   data.weightage.trim() !== "" &&
                   !isNaN(Number(data.weightage))
-                ? Number(data.weightage)
-                : null,
+                  ? Number(data.weightage)
+                  : null,
             archived: !!data.archived,
             isRecurring: data.isRecurring || false,
             recurringPattern: data.recurringPattern || "daily",
@@ -230,56 +280,41 @@ function TasksManagement() {
     };
   }, []);
 
+  // Ref to track if we've already checked deadlines in this session to prevent spam
+  const hasCheckedDeadlines = useRef(false);
+
   useEffect(() => {
     const checkDeadlines = () => {
+      // Only run this check once per session or on long intervals, not on every render
+      if (hasCheckedDeadlines.current) return;
+
       const today = new Date();
       const threeDaysFromNow = new Date(today);
       threeDaysFromNow.setDate(today.getDate() + 3);
 
-      tasks.forEach((task) => {
-        if (task.status !== "Done" && task.dueDate) {
-          const dueDate = new Date(task.dueDate);
-          if (dueDate >= today && dueDate <= threeDaysFromNow) {
-            const daysUntil = Math.ceil(
-              (dueDate - today) / (1000 * 60 * 60 * 24)
-            );
-            const assignee = users.find((u) => u.id === task.assigneeId);
-            toast(
-              `⚠ Task "${
-                task.title
-              }" due in ${daysUntil} day(s) (Assigned to: ${
-                assignee?.name || "Unassigned"
-              })`,
-              { duration: 5000, icon: "⏰" }
-            );
-          }
-        }
+      const dueSoonTasks = tasks.filter((task) => {
+        if (task.status === "Done" || !task.dueDate) return false;
+        const dueDate = new Date(task.dueDate);
+        return dueDate >= today && dueDate <= threeDaysFromNow;
       });
+
+      if (dueSoonTasks.length > 0) {
+        // Show a single summary toast instead of spamming for each task
+        const message = dueSoonTasks.length === 1
+          ? `⚠ Task "${dueSoonTasks[0].title}" is due shortly.`
+          : `⚠ You have ${dueSoonTasks.length} tasks due within the next 3 days.`;
+
+        toast(message, { duration: 6000, icon: "⏰" });
+        hasCheckedDeadlines.current = true;
+      }
     };
 
-    checkDeadlines();
-    const interval = setInterval(checkDeadlines, 30 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [tasks, users]);
-
-  const projectById = useCallback(
-    (id) => projects.find((p) => p.id === id),
-    [projects]
-  );
-  const assigneeById = useCallback(
-    (id) => users.find((u) => u.id === id) || clients.find((c) => c.id === id),
-    [users, clients]
-  );
-
-  // Keep Assignee filter coherent with segmented Assignee Type control
-  useEffect(() => {
-    setFilterAssignee("");
-  }, [filterAssigneeType]);
-
-  // Clear assignee selection when project filter changes to avoid stale selection
-  useEffect(() => {
-    setFilterAssignee("");
-  }, [filterProject]);
+    // Small delay to ensure data is loaded
+    if (tasks.length > 0) {
+      const timer = setTimeout(checkDeadlines, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [tasks]); // We still depend on tasks, but the ref prevents re-running logic repeatedly
 
   const openCreate = () => {
     setEditing(null);
@@ -306,8 +341,8 @@ function TasksManagement() {
         const ref = doc(db, "tasks", taskData.id);
         const wt =
           taskData.weightage === "" ||
-          taskData.weightage === undefined ||
-          taskData.weightage === null
+            taskData.weightage === undefined ||
+            taskData.weightage === null
             ? null
             : Number(taskData.weightage);
         const update = {
@@ -407,8 +442,8 @@ function TasksManagement() {
         }
         const wt =
           taskData.weightage === "" ||
-          taskData.weightage === undefined ||
-          taskData.weightage === null
+            taskData.weightage === undefined ||
+            taskData.weightage === null
             ? null
             : Number(taskData.weightage);
         const payload = {
@@ -551,7 +586,7 @@ function TasksManagement() {
       // refresh project progress for affected projects
       await Promise.all(
         Array.from(affectedProjects).map((pid) =>
-          updateProjectProgress(pid).catch(() => {})
+          updateProjectProgress(pid).catch(() => { })
         )
       );
     } catch (err) {
@@ -576,7 +611,7 @@ function TasksManagement() {
             .filter(Boolean)
         );
         affected.forEach((pid) => {
-          updateProjectProgress(pid).catch(() => {});
+          updateProjectProgress(pid).catch(() => { });
         });
       })
       .catch((err) => {
@@ -600,7 +635,7 @@ function TasksManagement() {
             .filter(Boolean)
         );
         affected.forEach((pid) => {
-          updateProjectProgress(pid).catch(() => {});
+          updateProjectProgress(pid).catch(() => { });
         });
       })
       .catch((err) => {
@@ -609,15 +644,6 @@ function TasksManagement() {
       });
   };
 
-  const clearFilters = () => {
-    setSearch("");
-    setFilterProject("");
-    setFilterAssignee("");
-    setFilterAssigneeType("");
-    setFilterPriority("");
-    setFilterStatus("");
-    setShowArchived(false);
-  };
 
   const reassignTask = async (taskId, encoded) => {
     const task = tasks.find((t) => t.id === taskId);
@@ -637,8 +663,7 @@ function TasksManagement() {
         assigneeType: newType || (newRes ? "user" : newCli ? "client" : "user"),
       });
       toast.success(
-        `Task reassigned from ${
-          oldRes?.name || oldCli?.clientName || "Unassigned"
+        `Task reassigned from ${oldRes?.name || oldCli?.clientName || "Unassigned"
         } to ${newRes?.name || newCli?.clientName || "Unassigned"}`
       );
     } catch (err) {
@@ -663,13 +688,13 @@ function TasksManagement() {
         progressPercent: willBeDone
           ? 100
           : wasDone
-          ? 0
-          : t.progressPercent ?? 0,
+            ? 0
+            : t.progressPercent ?? 0,
         completedAt: willBeDone
           ? serverTimestamp()
           : wasDone
-          ? null
-          : t.completedAt || null,
+            ? null
+            : t.completedAt || null,
       });
       if (t.projectId) {
         try {
@@ -737,87 +762,85 @@ function TasksManagement() {
 
   const filtered = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
+
     return tasks.filter((t) => {
-      if (t.visibleFrom && t.visibleFrom > today) {
-        return false;
+      // 1. Global Visibility Check
+      if (t.visibleFrom && t.visibleFrom > today) return false;
+      if (!filters.showArchived && t.archived) return false;
+
+      // 2. Overdue Check
+      if (filters.onlyOverdue) {
+        if (!(t.dueDate && t.status !== "Done" && t.dueDate < today)) return false;
       }
-      if (!showArchived && t.archived) return false;
-      if (filterProject && t.projectId !== filterProject) return false;
-      if (
-        filterAssigneeType &&
-        (t.assigneeType || "user") !== filterAssigneeType
-      )
-        return false;
-      if (filterAssignee) {
-        const [type, id] = filterAssignee.split(":");
+
+      // 3. Exact Match Filters
+      if (filters.project && t.projectId !== filters.project) return false;
+      if (filters.assigneeType && (t.assigneeType || "user") !== filters.assigneeType) return false;
+      if (filters.priority && t.priority !== filters.priority) return false;
+      if (filters.status && t.status !== filters.status) return false;
+
+      // 4. Assignee ID Check
+      if (filters.assignee) {
+        const [type, id] = filters.assignee.split(":");
         if (t.assigneeType !== type || t.assigneeId !== id) return false;
       }
-      if (filterPriority && t.priority !== filterPriority) return false;
-      if (filterStatus && t.status !== filterStatus) return false;
-      if (onlyOverdue) {
-        if (!(t.dueDate && t.status !== "Done" && t.dueDate < today))
-          return false;
-      }
-      if (search) {
-        const s = search.toLowerCase();
-        const project = projects.find((p) => p.id === t.projectId);
-        const assignee =
-          users.find((u) => u.id === t.assigneeId) ||
-          clients.find((c) => c.id === t.assigneeId);
-        const searchText = `${t.title} ${t.description} ${
-          project?.name || ""
-        } ${assignee?.name || assignee?.clientName || ""}`.toLowerCase();
+
+      // 5. Search Text
+      if (filters.search) {
+        const s = filters.search.toLowerCase();
+        const project = projectMap[t.projectId];
+        const assignee = userMap[t.assigneeId] || clientMap[t.assigneeId];
+
+        const searchText = `${t.title} ${t.description} ${project?.name || ""} ${assignee?.name || assignee?.clientName || ""
+          }`.toLowerCase();
+
         if (!searchText.includes(s)) return false;
       }
+
       return true;
     });
-  }, [
-    tasks,
-    showArchived,
-    filterProject,
-    filterAssignee,
-    filterAssigneeType,
-    filterPriority,
-    filterStatus,
-    onlyOverdue,
-    search,
-    projects,
-    users,
-    clients,
-  ]);
+  }, [tasks, filters, projectMap, userMap, clientMap]);
 
-  // Assignee options constrained by selected project
+  // 1. Filtered Users (Resources)
+  // If a project is selected in the filter, only show users involved in that project
   const filteredAssigneeUsers = useMemo(() => {
-    if (!filterProject) return users;
+    if (!filters.project) return users;
+
     const ids = new Set(
       tasks
         .filter(
           (t) =>
-            t.projectId === filterProject &&
+            t.projectId === filters.project &&
             (t.assigneeType || "user") === "user" &&
             t.assigneeId
         )
         .map((t) => t.assigneeId)
     );
     return users.filter((u) => ids.has(u.id));
-  }, [filterProject, tasks, users]);
+  }, [filters.project, tasks, users]);
 
+  // 2. Filtered Clients
+  // If a project is selected, only show the client for that project
   const filteredAssigneeClients = useMemo(() => {
-    if (!filterProject) return clients;
-    const proj = projects.find((p) => p.id === filterProject);
+    if (!filters.project) return clients;
+
+    // Use our new Map for fast lookup, or find if map isn't ready
+    const proj = projectMap[filters.project] || projects.find((p) => p.id === filters.project);
+
     if (proj?.clientId) return clients.filter((c) => c.id === proj.clientId);
+
     const ids = new Set(
       tasks
         .filter(
           (t) =>
-            t.projectId === filterProject &&
+            t.projectId === filters.project &&
             (t.assigneeType || "user") === "client" &&
             t.assigneeId
         )
         .map((t) => t.assigneeId)
     );
     return clients.filter((c) => ids.has(c.id));
-  }, [filterProject, projects, clients, tasks]);
+  }, [filters.project, projects, projectMap, clients, tasks]);
 
   const counts = useMemo(() => {
     const c = { "To-Do": 0, "In Progress": 0, Done: 0 };
@@ -839,6 +862,14 @@ function TasksManagement() {
       (t) => t.dueDate && t.dueDate < today && t.status !== "Done"
     );
   }, [filtered]);
+
+  // Calculate global overdue tasks (ignoring current filters) for the persistent banner
+  const globalOverdueTasks = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return tasks.filter(
+      (t) => !t.archived && t.dueDate && t.dueDate < today && t.status !== "Done"
+    );
+  }, [tasks]);
 
   // Active users list for assignment/reassignment UIs
   const activeUsers = useMemo(() => users.filter(isUserActive), [users]);
@@ -863,10 +894,10 @@ function TasksManagement() {
         { header: "Weightage", key: "weightage", width: 15 },
       ];
       filtered.forEach((t) => {
-        const project = projects.find((p) => p.id === t.projectId);
-        const assignee =
-          users.find((u) => u.id === t.assigneeId) ||
-          clients.find((c) => c.id === t.assigneeId);
+        // Use the Maps we created in Step 3 for instant lookup
+        const project = projectMap[t.projectId];
+        const assignee = userMap[t.assigneeId] || clientMap[t.assigneeId];
+
         worksheet.addRow({
           id: t.id,
           title: t.title,
@@ -910,7 +941,18 @@ function TasksManagement() {
 
   return (
     <div>
-      <PageHeader title="Task Management">
+      <PageHeader
+        title={
+          <div className="flex items-center gap-3">
+            Task Management
+            {globalOverdueTasks.length > 0 && (
+              <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-sm font-medium text-red-800 animate-pulse">
+                {globalOverdueTasks.length} Overdue
+              </span>
+            )}
+          </div>
+        }
+      >
         Create, assign, track, and analyze tasks across all projects.
       </PageHeader>
 
@@ -960,16 +1002,19 @@ function TasksManagement() {
           </Card>
           <Card
             onClick={applyOverdueQuickFilter}
-            className="cursor-pointer hover:bg-surface-subtle"
+            className={`cursor-pointer transition-all duration-300 ${globalOverdueTasks.length > 0
+              ? "bg-red-50 border-red-300 ring-2 ring-red-100 ring-offset-2"
+              : "hover:bg-surface-subtle"
+              }`}
           >
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-content-secondary">Overdue</div>
-                <div className="mt-1 text-2xl font-semibold text-red-600">
-                  {overdueTasks.length}
+                <div className={`text-sm ${globalOverdueTasks.length > 0 ? "text-red-700 font-medium" : "text-content-secondary"}`}>Overdue</div>
+                <div className={`mt-1 text-2xl font-bold ${globalOverdueTasks.length > 0 ? "text-red-800" : "text-red-600"}`}>
+                  {globalOverdueTasks.length}
                 </div>
               </div>
-              <FaExclamationTriangle className="h-8 w-8 text-red-500" />
+              <FaExclamationTriangle className={`h-8 w-8 ${globalOverdueTasks.length > 0 ? "text-red-600 animate-bounce" : "text-red-500"}`} />
             </div>
           </Card>
         </div>
@@ -1003,14 +1048,14 @@ function TasksManagement() {
             <div className="flex flex-wrap items-center gap-3">
               <input
                 placeholder="Search tasks..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={filters.search}
+                onChange={(e) => updateFilter("search", e.target.value)}
                 className="flex-1 min-w-[200px] rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary placeholder:text-content-tertiary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
               />
 
               <select
-                value={filterProject}
-                onChange={(e) => setFilterProject(e.target.value)}
+                value={filters.project}
+                onChange={(e) => updateFilter("project", e.target.value)}
                 className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
               >
                 <option value="">All Projects</option>
@@ -1022,12 +1067,12 @@ function TasksManagement() {
               </select>
 
               <select
-                value={filterAssignee}
-                onChange={(e) => setFilterAssignee(e.target.value)}
+                value={filters.assignee}
+                onChange={(e) => updateFilter("assignee", e.target.value)}
                 className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
               >
                 <option value="">All Assignees</option>
-                {(!filterAssigneeType || filterAssigneeType === "user") && (
+                {(!filters.assigneeType || filters.assigneeType === "user") && (
                   <optgroup label="Resources">
                     {filteredAssigneeUsers.map((u) => (
                       <option key={u.id} value={`user:${u.id}`}>
@@ -1036,7 +1081,7 @@ function TasksManagement() {
                     ))}
                   </optgroup>
                 )}
-                {(!filterAssigneeType || filterAssigneeType === "client") && (
+                {(!filters.assigneeType || filters.assigneeType === "client") && (
                   <optgroup label="Clients">
                     {filteredAssigneeClients.map((c) => (
                       <option key={c.id} value={`client:${c.id}`}>
@@ -1049,8 +1094,8 @@ function TasksManagement() {
               </select>
 
               <select
-                value={filterPriority}
-                onChange={(e) => setFilterPriority(e.target.value)}
+                value={filters.priority}
+                onChange={(e) => updateFilter("priority", e.target.value)}
                 className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
               >
                 <option value="">All Priorities</option>
@@ -1060,8 +1105,8 @@ function TasksManagement() {
               </select>
 
               <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                value={filters.status}
+                onChange={(e) => updateFilter("status", e.target.value)}
                 className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
               >
                 <option value="">All Statuses</option>
@@ -1080,8 +1125,8 @@ function TasksManagement() {
               <label className="flex items-center gap-2 text-sm text-content-primary ml-2">
                 <input
                   type="checkbox"
-                  checked={showArchived}
-                  onChange={(e) => setShowArchived(e.target.checked)}
+                  checked={filters.showArchived}
+                  onChange={(e) => updateFilter("showArchived", e.target.checked)}
                 />
                 Show Archived
               </label>
@@ -1096,34 +1141,31 @@ function TasksManagement() {
               <div className="flex items-center gap-2">
                 <div className="mr-2 flex items-center rounded-lg border border-subtle p-0.5">
                   <button
-                    className={`rounded-md px-3 py-1 text-sm ${
-                      filterAssigneeType === ""
-                        ? "bg-indigo-600 text-white"
-                        : "text-content-primary"
-                    }`}
-                    onClick={() => setFilterAssigneeType("")}
+                    className={`rounded-md px-3 py-1 text-sm ${filters.assigneeType === ""
+                      ? "bg-indigo-600 text-white"
+                      : "text-content-primary"
+                      }`}
+                    onClick={() => updateFilter("assigneeType", "")}
                     type="button"
                   >
                     All
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1 text-sm ${
-                      filterAssigneeType === "user"
-                        ? "bg-indigo-600 text-white"
-                        : "text-content-primary"
-                    }`}
-                    onClick={() => setFilterAssigneeType("user")}
+                    className={`rounded-md px-3 py-1 text-sm ${filters.assigneeType === "user"
+                      ? "bg-indigo-600 text-white"
+                      : "text-content-primary"
+                      }`}
+                    onClick={() => updateFilter("assigneeType", "user")}
                     type="button"
                   >
                     Resources
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1 text-sm ${
-                      filterAssigneeType === "client"
-                        ? "bg-indigo-600 text-white"
-                        : "text-content-primary"
-                    }`}
-                    onClick={() => setFilterAssigneeType("client")}
+                    className={`rounded-md px-3 py-1 text-sm ${filters.assigneeType === "client"
+                      ? "bg-indigo-600 text-white"
+                      : "text-content-primary"
+                      }`}
+                    onClick={() => updateFilter("assigneeType", "client")}
                     type="button"
                   >
                     Clients
@@ -1132,22 +1174,20 @@ function TasksManagement() {
                 <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 mr-2">
                   <button
                     onClick={() => setView("list")}
-                    className={`p-2 rounded transition-colors ${
-                      view === "list"
-                        ? "bg-white text-indigo-600 shadow"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
+                    className={`p-2 rounded transition-colors ${view === "list"
+                      ? "bg-white text-indigo-600 shadow"
+                      : "text-gray-600 hover:text-gray-900"
+                      }`}
                     title="List View"
                   >
                     <FaList className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setView("board")}
-                    className={`p-2 rounded transition-colors ${
-                      view === "board"
-                        ? "bg-white text-indigo-600 shadow"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
+                    className={`p-2 rounded transition-colors ${view === "board"
+                      ? "bg-white text-indigo-600 shadow"
+                      : "text-gray-600 hover:text-gray-900"
+                      }`}
                     title="Kanban View"
                   >
                     <FaTh className="w-4 h-4" />
@@ -1183,8 +1223,8 @@ function TasksManagement() {
                   tasks={filtered}
                   onMove={moveTask}
                   onEdit={handleEdit}
-                  getProject={projectById}
-                  getAssignee={assigneeById}
+                  getProject={getProject}
+                  getAssignee={getAssignee}
                   showReassignOnCard
                   users={activeUsers}
                   onReassign={(taskId, value) => reassignTask(taskId, value)}
@@ -1199,6 +1239,7 @@ function TasksManagement() {
                 </div>
               ) : (
                 <div className="space-y-2">
+                  {/* Bulk Select Header */}
                   <div className="flex items-center gap-3 px-2 py-2 border-b border-subtle">
                     <input
                       type="checkbox"
@@ -1215,277 +1256,23 @@ function TasksManagement() {
                         : `${filtered.length} tasks`}
                     </div>
                   </div>
-                  {filtered.map((t) => {
-                    const project = projectById(t.projectId);
-                    const assignee = assigneeById(t.assigneeId);
-                    return (
-                      <div
-                        key={t.id}
-                        className="rounded-lg border border-subtle p-3 hover:bg-surface-subtle"
-                      >
-                        <div className="flex items-start gap-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(t.id)}
-                            onChange={() => toggleSelect(t.id)}
-                            title="Select task"
-                          />
-                          <div className="flex-1">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="font-medium text-content-primary max-w-[260px]">
-                                  <span
-                                    className="block truncate"
-                                    title={t.title || "Untitled Task"}
-                                  >
-                                    {t.title || "Untitled Task"}
-                                  </span>
-                                </div>
-                                {t.description && (
-                                  <p
-                                    className="mt-1 text-sm text-content-secondary line-clamp-2"
-                                    title={t.description}
-                                  >
-                                    {t.description}
-                                  </p>
-                                )}
-                                {t.status === "Done" && t.completionComment && (
-                                  <p
-                                    className="mt-1 text-xs italic text-indigo-700 line-clamp-1"
-                                    title={t.completionComment}
-                                  >
-                                    💬 {t.completionComment}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex flex-col items-end gap-1 text-xs text-content-tertiary whitespace-nowrap">
-                                <div className="flex items-center gap-2">
-                                  {t.priority && (
-                                    <span
-                                      className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getPriorityBadge(
-                                        t.priority
-                                      )}`}
-                                    >
-                                      <FaFlag />
-                                      <span>{t.priority}</span>
-                                    </span>
-                                  )}
-                                  <span
-                                    className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getStatusBadge(
-                                      t.status
-                                    )}`}
-                                  >
-                                    {statusIcons[t.status]}
-                                    <span>{t.status}</span>
-                                  </span>
-                                </div>
-                                <div className="mt-1 flex flex-wrap items-center justify-end gap-2">
-                                  {t.assignedDate && (
-                                    <span className="inline-flex items-center gap-1.5 rounded-md bg-purple-100 px-2 py-1 text-[11px] font-semibold text-purple-700">
-                                      <FaCalendarAlt className="text-purple-600" />
-                                      <span className="font-bold">
-                                        Assigned:
-                                      </span>
-                                      <span>
-                                        {new Date(
-                                          t.assignedDate
-                                        ).toLocaleDateString()}
-                                      </span>
-                                    </span>
-                                  )}
-                                  <span
-                                    className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold ${
-                                      t.dueDate &&
-                                      t.status !== "Done" &&
-                                      t.dueDate <
-                                        new Date().toISOString().slice(0, 10)
-                                        ? "bg-red-100 text-red-700"
-                                        : "bg-blue-100 text-blue-700"
-                                    }`}
-                                  >
-                                    <FaCalendarAlt className="text-current" />
-                                    <span className="font-bold">Due:</span>
-                                    <span>
-                                      {t.dueDate
-                                        ? new Date(
-                                            t.dueDate
-                                          ).toLocaleDateString()
-                                        : "No due"}
-                                    </span>
-                                  </span>
-                                  {t.status === "Done" && t.completedAt && (
-                                    <span
-                                      className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold ${
-                                        t.dueDate &&
-                                        new Date(t.completedAt)
-                                          .toISOString()
-                                          .slice(0, 10) > t.dueDate
-                                          ? "bg-red-100 text-red-700"
-                                          : "bg-green-100 text-green-700"
-                                      }`}
-                                    >
-                                      <FaCalendarAlt className="text-current" />
-                                      <span className="font-bold">
-                                        {t.dueDate &&
-                                        new Date(t.completedAt)
-                                          .toISOString()
-                                          .slice(0, 10) > t.dueDate
-                                          ? "Delayed:"
-                                          : "Completed:"}
-                                      </span>
-                                      <span>
-                                        {new Date(
-                                          t.completedAt
-                                        ).toLocaleDateString()}
-                                      </span>
-                                    </span>
-                                  )}
-                                  {t.dueDate &&
-                                    t.status !== "Done" &&
-                                    t.dueDate <
-                                      new Date().toISOString().slice(0, 10) && (
-                                      <span className="inline-flex items-center gap-1.5 rounded-md bg-red-100 px-2 py-1 text-[10px] font-bold text-red-700">
-                                        <IoIosWarning
-                                          className="text-current"
-                                          size={14}
-                                        />
-                                        Overdue
-                                      </span>
-                                    )}
-                                  {t.archived && (
-                                    <span className="inline-flex items-center gap-1.5 rounded-md bg-gray-200 px-2 py-1 text-[10px] font-semibold text-gray-700">
-                                      📦 Archived
-                                    </span>
-                                  )}
-                                  {t.isRecurring && (
-                                    <span className="inline-flex items-center gap-1.5 rounded-md bg-purple-100 px-2 py-1 text-[10px] font-semibold text-purple-700">
-                                      <MdReplayCircleFilled
-                                        className="text-current"
-                                        size={15}
-                                      />{" "}
-                                      Recurring
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-content-tertiary">
-                              <div className="min-w-0">
-                                <span className="font-medium">Project:</span>{" "}
-                                <span
-                                  className="inline-block max-w-[220px] align-bottom truncate"
-                                  title={project?.name || "—"}
-                                >
-                                  {project?.name || "—"}
-                                </span>
-                              </div>
-                              <div className="min-w-0">
-                                <span className="font-medium">
-                                  Assigned to:
-                                </span>{" "}
-                                <span
-                                  className="inline-block max-w-[260px] align-bottom truncate"
-                                  title={
-                                    (assignee?.name ||
-                                      assignee?.clientName ||
-                                      "Unassigned") +
-                                    (assignee?.clientName &&
-                                    assignee?.companyName
-                                      ? ` (${assignee.companyName})`
-                                      : "") +
-                                    (assignee?.role
-                                      ? ` (${assignee.role})`
-                                      : assignee?.clientName
-                                      ? " (Client)"
-                                      : "")
-                                  }
-                                >
-                                  {assignee?.name ||
-                                    assignee?.clientName ||
-                                    "Unassigned"}
-                                  {assignee?.clientName && assignee?.companyName
-                                    ? ` (${assignee.companyName})`
-                                    : ""}
-                                  {assignee?.role
-                                    ? ` (${assignee.role})`
-                                    : assignee?.clientName
-                                    ? " (Client)"
-                                    : ""}
-                                </span>
-                              </div>
-                            </div>
-                            {/* Progress Bar */}
-                            {t.status === "In Progress" && (
-                              <div className="mt-2 flex items-center gap-2">
-                                <span className="text-xs font-medium text-gray-600">
-                                  Progress:
-                                </span>
-                                <div className="flex-1 max-w-xs bg-gray-200 rounded-full h-2">
-                                  <div
-                                    className="bg-indigo-600 h-2 rounded-full transition-all"
-                                    style={{
-                                      width: `${t.progressPercent || 0}%`,
-                                    }}
-                                  />
-                                </div>
-                                <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">
-                                  {t.progressPercent || 0}%
-                                </span>
-                              </div>
-                            )}
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                              <button
-                                onClick={() => handleView(t)}
-                                className="rounded-md bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-200"
-                              >
-                                View
-                              </button>
-                              {(t.assigneeType || "user") !== "client" && (
-                                <select
-                                  value={(() => {
-                                    const isActive = activeUsers.some(
-                                      (u) => u.id === t.assigneeId
-                                    );
-                                    return isActive
-                                      ? `${t.assigneeType || "user"}:${
-                                          t.assigneeId || ""
-                                        }`
-                                      : ":";
-                                  })()}
-                                  onChange={(e) =>
-                                    reassignTask(t.id, e.target.value)
-                                  }
-                                  className="rounded-md border border-subtle bg-surface px-2 py-1 text-xs"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <option value=":">Reassign...</option>
-                                  <optgroup label="Resources">
-                                    {activeUsers.map((u) => (
-                                      <option key={u.id} value={`user:${u.id}`}>
-                                        {u.name}
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                </select>
-                              )}
-                              <button
-                                onClick={() => handleEdit(t)}
-                                className="rounded-md bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-700 transition hover:bg-yellow-200"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDelete(t)}
-                                className="rounded-md bg-red-100 px-3 py-1 text-xs font-medium text-red-700 transition hover:bg-red-200"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+
+                  {/* The New Clean List Rendering */}
+                  {filtered.map((t) => (
+                    <TaskListItem
+                      key={t.id}
+                      task={t}
+                      project={getProject(t.projectId)}
+                      assignee={getAssignee(t.assigneeId)}
+                      isSelected={selectedIds.has(t.id)}
+                      onToggleSelect={toggleSelect}
+                      onView={handleView}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                      onReassign={reassignTask}
+                      activeUsers={activeUsers}
+                    />
+                  ))}
                 </div>
               )}
             </div>
@@ -1503,283 +1290,19 @@ function TasksManagement() {
           clients={clients}
         />
       )}
-
       {showViewModal && viewingTask && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => setShowViewModal(false)}
-        >
-          <div
-            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-4 flex items-start justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">Task Details</h2>
-              <button
-                onClick={() => setShowViewModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <svg
-                  className="h-6 w-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900">
-                      {viewingTask.title}
-                    </h3>
-                    <div className="mt-1 flex items-center gap-2">
-                      <span
-                        className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getStatusBadge(
-                          viewingTask.status
-                        )}`}
-                      >
-                        {statusIcons[viewingTask.status]}
-                        <span>{viewingTask.status}</span>
-                      </span>
-                      {viewingTask.priority && (
-                        <span
-                          className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getPriorityBadge(
-                            viewingTask.priority
-                          )}`}
-                        >
-                          <FaFlag />
-                          <span>{viewingTask.priority}</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Description
-                </label>
-                <p className="mt-1 text-gray-900">
-                  {viewingTask.description || "No description"}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Project
-                  </label>
-                  <p className="mt-1 text-gray-900">
-                    {projectById(viewingTask.projectId)?.name || "—"}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Assigned To
-                  </label>
-                  <p className="mt-1 text-gray-900">
-                    {(() => {
-                      const assignee = assigneeById(viewingTask.assigneeId);
-                      if (!assignee) return "Unassigned";
-                      return assignee.name || assignee.clientName || "—";
-                    })()}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Status
-                  </label>
-                  <p className="mt-1 text-gray-900">{viewingTask.status}</p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Priority
-                  </label>
-                  <p className="mt-1 text-gray-900">{viewingTask.priority}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Weightage
-                  </label>
-                  <p className="mt-1 text-gray-900">
-                    {viewingTask.weightage !== null &&
-                    viewingTask.weightage !== undefined
-                      ? viewingTask.weightage
-                      : "—"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Assigned Date
-                  </label>
-                  <p className="mt-1 text-gray-900">
-                    {viewingTask.assignedDate
-                      ? new Date(viewingTask.assignedDate).toLocaleDateString()
-                      : "—"}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Due Date
-                  </label>
-                  <p className="mt-1 text-gray-900">
-                    {viewingTask.dueDate
-                      ? new Date(viewingTask.dueDate).toLocaleDateString()
-                      : "No due date"}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    {(() => {
-                      if (!viewingTask.completedAt) return "Completion Date";
-                      const due = viewingTask.dueDate
-                        ? new Date(viewingTask.dueDate)
-                        : null;
-                      const comp = new Date(viewingTask.completedAt);
-                      const compD = new Date(
-                        comp.getFullYear(),
-                        comp.getMonth(),
-                        comp.getDate()
-                      );
-                      const dueD = due
-                        ? new Date(
-                            due.getFullYear(),
-                            due.getMonth(),
-                            due.getDate()
-                          )
-                        : null;
-                      const late = dueD
-                        ? compD.getTime() > dueD.getTime()
-                        : false;
-                      return late ? "Delayed Completion" : "Completed At";
-                    })()}
-                  </label>
-                  <p className="mt-1 text-gray-900">
-                    {viewingTask.completedAt
-                      ? new Date(viewingTask.completedAt).toLocaleDateString()
-                      : "—"}
-                  </p>
-                  {viewingTask.completedAt &&
-                    (() => {
-                      const due = viewingTask.dueDate
-                        ? new Date(viewingTask.dueDate)
-                        : null;
-                      const comp = new Date(viewingTask.completedAt);
-                      const compD = new Date(
-                        comp.getFullYear(),
-                        comp.getMonth(),
-                        comp.getDate()
-                      );
-                      const dueD = due
-                        ? new Date(
-                            due.getFullYear(),
-                            due.getMonth(),
-                            due.getDate()
-                          )
-                        : null;
-                      if (!dueD) return null;
-                      const diffDays = Math.max(
-                        0,
-                        Math.ceil((compD - dueD) / (1000 * 60 * 60 * 24))
-                      );
-                      if (diffDays <= 0) return null;
-                      return (
-                        <p className="mt-1 text-xs font-medium text-red-700">
-                          Late by {diffDays} day(s)
-                        </p>
-                      );
-                    })()}
-                </div>
-              </div>
-
-              {(viewingTask.completionComment || viewingTask.completedBy) && (
-                <div className="rounded-md bg-indigo-50 p-3">
-                  <div className="text-sm font-medium text-indigo-800">
-                    Completion
-                  </div>
-                  {viewingTask.completionComment && (
-                    <p className="mt-1 text-indigo-900">
-                      {viewingTask.completionComment}
-                    </p>
-                  )}
-                  {viewingTask.completedBy && (
-                    <p className="mt-1 text-xs text-indigo-800">
-                      By:{" "}
-                      {(() => {
-                        const by =
-                          (viewingTask.completedByType || "user") === "client"
-                            ? clients.find(
-                                (c) => c.id === viewingTask.completedBy
-                              )
-                            : users.find(
-                                (u) => u.id === viewingTask.completedBy
-                              );
-                        return by?.name || by?.clientName || "—";
-                      })()}{" "}
-                      {viewingTask.completedByType
-                        ? `(${
-                            viewingTask.completedByType === "client"
-                              ? "Client"
-                              : "Resource"
-                          })`
-                        : ""}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {viewingTask.archived && (
-                <div className="rounded-md bg-gray-100 p-3">
-                  <p className="text-sm font-medium text-gray-700">
-                    This task is archived
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setShowViewModal(false);
-                  handleEdit(viewingTask);
-                }}
-                className="rounded-md bg-yellow-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-yellow-600"
-              >
-                Edit Task
-              </button>
-              <button
-                onClick={() => setShowViewModal(false)}
-                className="rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-300"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        <TaskViewModal
+          task={viewingTask}
+          project={getProject(viewingTask.projectId)}
+          assignee={getAssignee(viewingTask.assigneeId)}
+          users={users}
+          clients={clients}
+          onClose={() => setShowViewModal(false)}
+          onEdit={() => {
+            setShowViewModal(false);
+            handleEdit(viewingTask);
+          }}
+        />
       )}
 
       <CompletionCommentModal

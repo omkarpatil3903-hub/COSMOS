@@ -1,28 +1,30 @@
-import { useEffect, useState } from "react";
+// src/components/MainLayout.jsx
+import React, { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
-import { auth } from "../firebase";
+import { auth } from "../../firebase";
 import { Toaster } from "react-hot-toast";
 import {
   FaTachometerAlt,
-  FaTasks,
-  FaProjectDiagram,
-  FaCalendarAlt,
+  FaSearch,
   FaChartBar,
+  FaUserCheck,
+  FaProjectDiagram,
+  FaTasks,
+  FaListAlt,
   FaSignOutAlt,
   FaChevronLeft,
-  FaUserTie,
+  FaShieldAlt,
+  FaCalendarAlt,
   FaBars,
   FaTimes,
 } from "react-icons/fa";
-import { useAuthContext } from "../context/useAuthContext";
 
-// Reusable sidebar link component matching admin panel exactly
+// NEW: A reusable link component to keep our code clean
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
-  const baseClasses =
-    `group flex items-center ${
-      isCollapsed ? "justify-center px-2" : "gap-3 px-3"
-    } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
+  const baseClasses = `group flex items-center ${
+    isCollapsed ? "justify-center px-2" : "gap-3 px-3"
+  } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
   const activeClasses =
     "border-indigo-200 bg-indigo-50 text-indigo-700 shadow-soft";
   const inactiveClasses =
@@ -31,7 +33,8 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   return (
     <NavLink
       to={to}
-      end={to === "/employee"}
+      end={to === "/"}
+      // The 'title' attribute provides a native browser tooltip
       title={isCollapsed ? text : ""}
       className={({ isActive }) =>
         `${baseClasses} ${isActive ? activeClasses : inactiveClasses}`
@@ -46,53 +49,77 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   );
 };
 
-function EmployeeLayout() {
+function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { userData } = useAuthContext();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [avatarError, setAvatarError] = useState(false);
 
   // Dynamic page title based on route
   useEffect(() => {
     const pathToTitle = {
-      "/employee": "Dashboard - Employee Portal",
-      "/employee/tasks": "My Tasks - Employee Portal",
-      "/employee/projects": "My Projects - Employee Portal",
-      "/employee/calendar": "Calendar - Employee Portal",
-      "/employee/reports": "Reports - Employee Portal",
+      "/": "Dashboard - Admin Panel",
+      "/manage-resources": "Manage Resources - Admin Panel",
+      "/manage-clients": "Manage Clients - Admin Panel",
+      "/manage-projects": "Manage Projects - Admin Panel",
+      "/mom": "Meeting Minutes - Admin Panel",
+      "/task-management": "Task Management - Admin Panel",
+      "/reports": "Reports - Admin Panel",
+      "/calendar": "Calendar - Admin Panel",
     };
 
-    const title = pathToTitle[location.pathname] || "Employee Portal";
+    const title = pathToTitle[location.pathname] || "Admin Panel";
     document.title = title;
   }, [location.pathname]);
 
   const navigationItems = [
     {
-      to: "/employee",
+      to: "/",
       text: "Dashboard",
       icon: <FaTachometerAlt className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/employee/tasks",
-      text: "My Tasks",
-      icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
+      to: "/manage-resources",
+      text: "Manage Resources",
+      icon: <FaSearch className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/employee/projects",
-      text: "Projects",
+      to: "/manage-clients",
+      text: "Manage Clients",
+      icon: <FaUserCheck className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/manage-projects",
+      text: "Manage Projects",
       icon: <FaProjectDiagram className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/employee/calendar",
-      text: "Calendar",
-      icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
+      to: "/task-management",
+      text: "Task Management",
+      icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
     },
+
     {
-      to: "/employee/reports",
+      to: "/reports",
       text: "Reports",
       icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
+    },
+
+    // {
+    //   to: "/mom",
+    //   text: "Minutes of Meeting",
+    //   icon: <FaListAlt className="h-4 w-4" aria-hidden="true" />,
+    // },
+    {
+      to: "/mom-pro",
+      text: "Minutes of Meeting ",
+      icon: <FaListAlt className="h-4 w-4" aria-hidden="true" />,
+    },
+
+    {
+      to: "/calendar",
+      text: "Calendar",
+      icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
     },
   ];
 
@@ -134,31 +161,16 @@ function EmployeeLayout() {
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="h-10 w-10 overflow-hidden rounded-full shadow-md ring-1 ring-indigo-500/20">
-              {userData?.imageUrl && !avatarError ? (
-                <img
-                  src={userData.imageUrl}
-                  alt="Avatar"
-                  className="h-full w-full object-cover object-center transition-transform duration-200 hover:scale-105"
-                  onError={() => setAvatarError(true)}
-                />
-              ) : (
-                <div className="h-full w-full rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold">
-                  {(userData?.name || userData?.clientName || userData?.email || "U")
-                    .toString()
-                    .charAt(0)
-                    .toUpperCase()}
-                </div>
-              )}
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft">
+              <FaShieldAlt className="h-5 w-5" aria-hidden="true" />
             </span>
-
             {!isCollapsed && (
               <div>
                 <p className="text-sm font-medium text-content-tertiary">
-                  {userData?.name || "Employee"}
+                  COSMOS
                 </p>
                 <h2 className="text-lg font-semibold text-content-primary">
-                  Employee Portal
+                  Admin Panel
                 </h2>
               </div>
             )}
@@ -225,11 +237,11 @@ function EmployeeLayout() {
       )}
 
       <div
-        className={`flex min-h-screen flex-1 flex-col transition-all duration-300 ${contentPadding}`}
+        className={`flex min-h-screen flex-1 flex-col transition-all duration-300 w-full ${contentPadding}`}
       >
         <main
           id="main-content"
-          className="flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8"
+          className="flex-1 px-4 py-6 sm:px-6 lg:px-6 lg:py-8 w-full max-w-full overflow-x-hidden"
         >
           <div className="mb-6 flex items-center justify-between lg:hidden">
             <button
@@ -250,4 +262,4 @@ function EmployeeLayout() {
   );
 }
 
-export default EmployeeLayout;
+export default MainLayout;

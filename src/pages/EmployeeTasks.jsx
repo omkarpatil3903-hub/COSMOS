@@ -38,6 +38,7 @@ import {
   FaPlus,
 } from "react-icons/fa";
 import { MdReplayCircleFilled } from "react-icons/md";
+import { IoIosWarning } from "react-icons/io";
 import StatCard from "../components/StatCard";
 import {
   shouldCreateNextInstanceAsync,
@@ -1272,10 +1273,12 @@ const EmployeeTasks = () => {
                               )}
                             </div>
                           </div>
-                          <div className="flex flex-col items-end gap-2 shrink-0">
+                          
+                          {/* Right Side: Priority, Status, Dates aligned like Admin */}
+                          <div className="flex flex-col items-end gap-1 text-xs text-content-tertiary whitespace-nowrap">
                             <div className="flex items-center gap-2">
                               <span
-                                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] sm:text-xs font-semibold ${
+                                className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${
                                   priorityColors[task.priority] ||
                                   priorityColors.Medium
                                 }`}
@@ -1284,7 +1287,7 @@ const EmployeeTasks = () => {
                                 {task.priority}
                               </span>
                               <span
-                                className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] sm:text-xs font-semibold ${
+                                className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${
                                   statusColors[task.status] ||
                                   statusColors["To-Do"]
                                 }`}
@@ -1293,32 +1296,49 @@ const EmployeeTasks = () => {
                                 <span>{task.status}</span>
                               </span>
                             </div>
-                            <div className="flex flex-wrap justify-end gap-2">
-                              <span
-                                className={`px-2.5 py-1 text-[11px] sm:text-xs font-medium rounded-full flex items-center gap-1 ${
-                                  isOverdue
-                                    ? "bg-red-100 text-red-800 border border-red-200"
-                                    : daysUntilDue <= 3 && daysUntilDue >= 0
-                                    ? "bg-orange-100 text-orange-800 border border-orange-200"
-                                    : "bg-gray-100 text-gray-800"
-                                }`}
-                              >
-                                <FaCalendar className="text-xs" />
-                                Due: {formatDateToDDMMYYYY(dueDate)}
-                              </span>
+                            <div className="mt-1 flex flex-wrap items-center justify-end gap-2">
                               {task.assignedDate && (
-                                <span className="px-2.5 py-1 text-[11px] sm:text-xs font-medium rounded-full flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-200">
-                                  <FaCalendarAlt className="text-xs" />
-                                  Assigned:{" "}
-                                  {formatDateToDDMMYYYY(
-                                    task.assignedDate?.toDate?.() ||
-                                      new Date(task.assignedDate)
-                                  )}
+                                <span className="inline-flex items-center gap-1.5 rounded-md bg-purple-100 px-2 py-1 text-[11px] font-semibold text-purple-700">
+                                  <FaCalendarAlt className="text-purple-600" />
+                                  <span className="font-bold">
+                                    Assigned:
+                                  </span>
+                                  <span>
+                                    {formatDateToDDMMYYYY(task.assignedDate)}
+                                  </span>
                                 </span>
                               )}
+                              <span
+                                className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold ${
+                                  isOverdue
+                                    ? "bg-red-100 text-red-700"
+                                    : "bg-blue-100 text-blue-700"
+                                }`}
+                              >
+                                <FaCalendarAlt className="text-current" />
+                                <span className="font-bold">Due:</span>
+                                <span>
+                                  {task.dueDate
+                                    ? formatDateToDDMMYYYY(dueDate)
+                                    : "No due"}
+                                </span>
+                              </span>
                               {isOverdue && (
-                                <span className="px-2.5 py-1 text-[11px] sm:text-xs font-semibold rounded-full bg-red-100 text-red-700 border border-red-200">
+                                <span className="inline-flex items-center gap-1.5 rounded-md bg-red-100 px-2 py-1 text-[10px] font-bold text-red-700">
+                                  <IoIosWarning
+                                    className="text-current"
+                                    size={14}
+                                  />
                                   Overdue
+                                </span>
+                              )}
+                              {task.isRecurring && (
+                                <span className="inline-flex items-center gap-1.5 rounded-md bg-purple-100 px-2 py-1 text-[10px] font-semibold text-purple-700">
+                                  <MdReplayCircleFilled
+                                    className="text-current"
+                                    size={15}
+                                  />{" "}
+                                  Recurring
                                 </span>
                               )}
                             </div>

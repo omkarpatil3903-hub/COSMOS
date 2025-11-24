@@ -2,8 +2,8 @@
 import { useState, useEffect } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { signOut } from "firebase/auth";
-import { auth } from "../firebase";
-import { useAuthContext } from "../context/useAuthContext";
+import { auth } from "../../firebase";
+import { useAuthContext } from "../../context/useAuthContext";
 import { Toaster } from "react-hot-toast";
 import toast from "react-hot-toast";
 import {
@@ -22,8 +22,7 @@ import {
 // Reusable sidebar link component matching admin panel
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   const baseClasses =
-    `group flex items-center ${
-      isCollapsed ? "justify-center px-2" : "gap-3 px-3"
+    `group flex items-center ${isCollapsed ? "justify-center px-2" : "gap-3 px-3"
     } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
   const activeClasses =
     "border-indigo-200 bg-indigo-50 text-indigo-700 shadow-soft";
@@ -132,9 +131,8 @@ export default function ClientLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${
-          isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
-        } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"}`}
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
+          } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"}`}
         aria-label="Primary"
       >
         <div className="flex items-center justify-between gap-4">
@@ -150,18 +148,21 @@ export default function ClientLayout() {
                 }}
               />
             ) : null}
-            <span 
+            <span
               className={`flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft ${userData?.imageUrl ? 'hidden' : ''}`}
             >
               <FaUserCircle className="h-5 w-5" aria-hidden="true" />
             </span>
             {!isCollapsed && (
-              <div>
-                <p className="text-sm font-medium text-content-tertiary">
+              <div className="min-w-0">
+                <p
+                  className="text-sm font-medium text-content-tertiary truncate"
+                  title={userData?.clientName || userData?.companyName || "Client User"}
+                >
                   {userData?.clientName || userData?.companyName || "Client User"}
                 </p>
-<h2 className="text-lg font-semibold text-content-primary">
-                                   Client Portal
+                <h2 className="text-lg font-semibold text-content-primary truncate">
+                  Client Portal
                 </h2>
               </div>
             )}
@@ -174,9 +175,8 @@ export default function ClientLayout() {
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <FaChevronLeft
-              className={`h-4 w-4 transition-transform duration-300 ${
-                isCollapsed ? "rotate-180" : ""
-              }`}
+              className={`h-4 w-4 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""
+                }`}
               aria-hidden="true"
             />
           </button>
