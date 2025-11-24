@@ -301,8 +301,8 @@ function Calendar() {
             task.status === "Done"
               ? "completed"
               : task.status === "In Progress"
-              ? "pending"
-              : "pending",
+                ? "pending"
+                : "pending",
           date: dateStr,
           time: "23:59",
           duration: 0,
@@ -319,8 +319,8 @@ function Calendar() {
             task.status === "Done"
               ? 100
               : task.status === "In Progress"
-              ? 50
-              : 0,
+                ? 50
+                : 0,
           isTask: true,
           taskId: task.id,
         });
@@ -509,7 +509,7 @@ function Calendar() {
         filterProject === "all" ||
         (event.isTask &&
           tasks.find((t) => t.id === event.taskId)?.projectId ===
-            filterProject);
+          filterProject);
 
       // Employee filter: check if employee is assigned to task or is attendee of event
       let employeeMatch = filterEmployee === "all";
@@ -773,29 +773,25 @@ function Calendar() {
       days.push(
         <div
           key={day}
-          className={`min-h-28 max-h-48 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 overflow-hidden ${
-            isPast
-              ? "bg-gray-50 hover:bg-gray-100"
-              : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
-          } ${
-            isToday
+          className={`min-h-28 max-h-48 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 overflow-hidden ${isPast
+            ? "bg-gray-50 hover:bg-gray-100"
+            : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
+            } ${isToday
               ? "bg-gradient-to-br from-blue-100 to-blue-50 border-blue-400 border-2 opacity-100 ring-2 ring-blue-200"
               : ""
-          } ${
-            isSelected
+            } ${isSelected
               ? "bg-gradient-to-br from-indigo-100 to-indigo-50 border-indigo-400 border-2 opacity-100 ring-2 ring-indigo-200"
               : ""
-          }`}
+            }`}
           onClick={() => setSelectedDate(date)}
         >
           <div
-            className={`text-sm font-bold mb-1 ${
-              isPast && !isToday
-                ? "text-gray-500"
-                : isToday
+            className={`text-sm font-bold mb-1 ${isPast && !isToday
+              ? "text-gray-500"
+              : isToday
                 ? "text-blue-700 text-base"
                 : "text-gray-800"
-            } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
+              } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
           >
             {day}
           </div>
@@ -937,10 +933,10 @@ function Calendar() {
             employeeScheduleInfo={
               filterEmployee !== "all"
                 ? {
-                    name:
-                      resources.find((r) => r.id === filterEmployee)?.name ||
-                      "Unknown Employee",
-                  }
+                  name:
+                    resources.find((r) => r.id === filterEmployee)?.name ||
+                    "Unknown Employee",
+                }
                 : null
             }
             onClearEmployeeFilter={() => setFilterEmployee("all")}
@@ -972,10 +968,10 @@ function Calendar() {
               <h3 className="font-semibold text-lg mb-4 border-b pb-2">
                 {selectedDate
                   ? selectedDate.toLocaleDateString("en-US", {
-                      weekday: "long",
-                      month: "long",
-                      day: "numeric",
-                    })
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                  })
                   : "Select a date"}
               </h3>
 
@@ -1007,157 +1003,157 @@ function Calendar() {
                         return timeA.localeCompare(timeB);
                       })
                       .map((event) => {
-                      const clientRecord = event.clientId
-                        ? clientsById.get(event.clientId)
-                        : null;
-                      const contactName =
-                        event.clientName ||
-                        clientRecord?.companyName ||
-                        clientRecord?.clientName ||
-                        "—";
-                      const contactEmail =
-                        clientRecord?.email || event.email || "—";
-                      const isTaskEvent = Boolean(event.isTask);
-                      const statusStyles = {
-                        approved: "bg-green-100 text-green-700",
-                        pending: "bg-yellow-100 text-yellow-700",
-                        cancelled: "bg-red-100 text-red-700",
-                        completed: "bg-blue-100 text-blue-700",
-                      };
-                      const statusClass =
-                        statusStyles[event.status] ||
-                        "bg-gray-100 text-gray-600";
-                      // Show "by admin" for admin-created events instead of status
-                      const isAdminCreated = event.createdBy === "admin";
-                      const displayLabel = isAdminCreated
-                        ? "by admin"
-                        : event.status
-                        ? event.status.replace(/\b\w/g, (ch) =>
-                            ch.toUpperCase()
-                          )
-                        : "Pending";
-                      const displayClass = isAdminCreated
-                        ? "bg-blue-100 text-blue-700"
-                        : statusClass;
+                        const clientRecord = event.clientId
+                          ? clientsById.get(event.clientId)
+                          : null;
+                        const contactName =
+                          event.clientName ||
+                          clientRecord?.companyName ||
+                          clientRecord?.clientName ||
+                          "—";
+                        const contactEmail =
+                          clientRecord?.email || event.email || "—";
+                        const isTaskEvent = Boolean(event.isTask);
+                        const statusStyles = {
+                          approved: "bg-green-100 text-green-700",
+                          pending: "bg-yellow-100 text-yellow-700",
+                          cancelled: "bg-red-100 text-red-700",
+                          completed: "bg-blue-100 text-blue-700",
+                        };
+                        const statusClass =
+                          statusStyles[event.status] ||
+                          "bg-gray-100 text-gray-600";
+                        // Show "by admin" for admin-created events instead of status
+                        const isAdminCreated = event.createdBy === "admin";
+                        const displayLabel = isAdminCreated
+                          ? "by admin"
+                          : event.status
+                            ? event.status.replace(/\b\w/g, (ch) =>
+                              ch.toUpperCase()
+                            )
+                            : "Pending";
+                        const displayClass = isAdminCreated
+                          ? "bg-blue-100 text-blue-700"
+                          : statusClass;
 
-                      return (
-                        <div
-                          key={event.id}
-                          className="border-2 rounded-lg p-3 space-y-2 hover:shadow-lg transition-all duration-200 bg-white hover:border-blue-300"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <h4 className="font-medium text-sm">
-                                {event.title}
-                              </h4>
-                              <span
-                                className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${displayClass}`}
-                              >
-                                {displayLabel}
-                              </span>
-                            </div>
-                            {!isTaskEvent && (
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => openEventModal(event)}
-                                  className="w-11 h-11 flex items-center justify-center text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                                  title="Edit event"
-                                >
-                                  <FaEdit size={16} />
-                                </button>
-                                <button
-                                  onClick={() => deleteEvent(event.id)}
-                                  className="w-11 h-11 flex items-center justify-center text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
-                                  title="Delete event"
-                                >
-                                  <FaTrash size={16} />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="text-xs text-gray-600 space-y-1">
-                            <div>Time: {event.time || "—"}</div>
-                            <div>Client: {contactName}</div>
-                            <div>
-                              Duration:{" "}
-                              {event.duration
-                                ? `${event.duration} minutes`
-                                : "—"}
-                            </div>
-                            <div>Email: {contactEmail}</div>
-                            {event.priority && event.type !== "meeting" && (
+                        return (
+                          <div
+                            key={event.id}
+                            className="border-2 rounded-lg p-3 space-y-2 hover:shadow-lg transition-all duration-200 bg-white hover:border-blue-300"
+                          >
+                            <div className="flex items-start justify-between gap-2">
                               <div>
-                                Priority:{" "}
+                                <h4 className="font-medium text-sm">
+                                  {event.title}
+                                </h4>
                                 <span
-                                  className={`inline-block ml-1 px-2 py-0.5 rounded ${getPriorityBadge(
-                                    event.priority
-                                  )}`}
+                                  className={`inline-block mt-1 px-2 py-0.5 rounded text-[11px] font-semibold ${displayClass}`}
                                 >
-                                  {String(event.priority)
-                                    .trim()
-                                    .charAt(0)
-                                    .toUpperCase() +
-                                    String(event.priority).trim().slice(1)}
+                                  {displayLabel}
                                 </span>
                               </div>
-                            )}
-                            {event.location && (
-                              <div>Location: {event.location}</div>
-                            )}
-                            {event.description && (
-                              <div className="text-[11px] text-content-secondary">
-                                Notes: {event.description}
+                              {!isTaskEvent && (
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => openEventModal(event)}
+                                    className="w-11 h-11 flex items-center justify-center text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                    title="Edit event"
+                                  >
+                                    <FaEdit size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => deleteEvent(event.id)}
+                                    className="w-11 h-11 flex items-center justify-center text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                                    title="Delete event"
+                                  >
+                                    <FaTrash size={16} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="text-xs text-gray-600 space-y-1">
+                              <div>Time: {event.time || "—"}</div>
+                              <div>Client: {contactName}</div>
+                              <div>
+                                Duration:{" "}
+                                {event.duration
+                                  ? `${event.duration} minutes`
+                                  : "—"}
+                              </div>
+                              <div>Email: {contactEmail}</div>
+                              {event.priority && event.type !== "meeting" && (
+                                <div>
+                                  Priority:{" "}
+                                  <span
+                                    className={`inline-block ml-1 px-2 py-0.5 rounded ${getPriorityBadge(
+                                      event.priority
+                                    )}`}
+                                  >
+                                    {String(event.priority)
+                                      .trim()
+                                      .charAt(0)
+                                      .toUpperCase() +
+                                      String(event.priority).trim().slice(1)}
+                                  </span>
+                                </div>
+                              )}
+                              {event.location && (
+                                <div>Location: {event.location}</div>
+                              )}
+                              {event.description && (
+                                <div className="text-[11px] text-content-secondary">
+                                  Notes: {event.description}
+                                </div>
+                              )}
+                            </div>
+
+                            {event.objectives && event.objectives.length > 0 && (
+                              <div className="border-t pt-2">
+                                <p className="text-[11px] font-semibold text-content-secondary mb-1">
+                                  Objectives
+                                </p>
+                                <ul className="space-y-1">
+                                  {event.objectives.map((objective) => (
+                                    <li
+                                      key={objective.id}
+                                      className="text-[11px] text-content-secondary"
+                                    >
+                                      • {objective.text}
+                                    </li>
+                                  ))}
+                                </ul>
                               </div>
                             )}
-                          </div>
 
-                          {event.objectives && event.objectives.length > 0 && (
-                            <div className="border-t pt-2">
-                              <p className="text-[11px] font-semibold text-content-secondary mb-1">
-                                Objectives
-                              </p>
-                              <ul className="space-y-1">
-                                {event.objectives.map((objective) => (
-                                  <li
-                                    key={objective.id}
-                                    className="text-[11px] text-content-secondary"
-                                  >
-                                    • {objective.text}
-                                  </li>
-                                ))}
-                              </ul>
+                            <div className="flex gap-2 mt-2">
+                              {event.status === "pending" &&
+                                !isTaskEvent &&
+                                !isAdminCreated && (
+                                  <>
+                                    <button
+                                      onClick={() => handleApproveEvent(event.id)}
+                                      className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200"
+                                    >
+                                      <FaCheck size={10} /> Approve
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleCancelEvent(
+                                          event.id,
+                                          "Cancelled by admin"
+                                        )
+                                      }
+                                      className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
+                                    >
+                                      <FaTimes size={10} /> Cancel
+                                    </button>
+                                  </>
+                                )}
                             </div>
-                          )}
-
-                          <div className="flex gap-2 mt-2">
-                            {event.status === "pending" &&
-                              !isTaskEvent &&
-                              !isAdminCreated && (
-                                <>
-                                  <button
-                                    onClick={() => handleApproveEvent(event.id)}
-                                    className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200"
-                                  >
-                                    <FaCheck size={10} /> Approve
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      handleCancelEvent(
-                                        event.id,
-                                        "Cancelled by admin"
-                                      )
-                                    }
-                                    className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200"
-                                  >
-                                    <FaTimes size={10} /> Cancel
-                                  </button>
-                                </>
-                              )}
                           </div>
-                        </div>
-                      );
-                    })
+                        );
+                      })
                   )}
                 </div>
               ) : (
@@ -1434,8 +1430,8 @@ function Calendar() {
                     Meeting Requests -{" "}
                     {activeRequestDate
                       ? new Date(
-                          activeRequestDate + "T00:00"
-                        ).toLocaleDateString()
+                        activeRequestDate + "T00:00"
+                      ).toLocaleDateString()
                       : ""}
                   </h2>
                   <button
@@ -1681,9 +1677,8 @@ function Calendar() {
           {/* Main Floating Button */}
           <button
             onClick={() => setShowFloatingMenu(!showFloatingMenu)}
-            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${
-              showFloatingMenu ? "rotate-45" : ""
-            }`}
+            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${showFloatingMenu ? "rotate-45" : ""
+              }`}
             title="Add Event or Task"
           >
             <FaPlus className="text-xl group-hover:scale-110 transition-transform" />

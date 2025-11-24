@@ -1,15 +1,6 @@
-import React from "react";
 import { FaFlag, FaCalendarAlt, FaDownload } from "react-icons/fa";
 import { getPriorityBadge } from "../utils/colorMaps";
 import toast from "react-hot-toast";
-
-// Simple Kanban board with 4 default columns using HTML5 drag-and-drop
-// Props:
-// - tasks: array of task objects already filtered
-// - onMove: function(taskId, newStatus)
-// - onEdit: function(task)
-// - getProject: function(projectId) -> { name, color }
-// - getAssignee: function(userId) -> { name, role }
 export default function KanbanBoard({
   tasks,
   onMove,
@@ -24,18 +15,18 @@ export default function KanbanBoard({
   users = [], // resources only
   onReassign, // function(taskId, encodedValue)
 }) {
-  
+
   // Function to download all images for a task
   const handleDownloadImages = (task, e) => {
     e.stopPropagation(); // Prevent task edit modal from opening
-    
+
     if (!task.images || task.images.length === 0) {
       toast.error("No images available for download");
       return;
     }
-    
+
     toast.success(`📥 Downloading ${task.images.length} image(s) from "${task.title}"`);
-    
+
     task.images.forEach((img, index) => {
       setTimeout(() => {
         const link = document.createElement('a');
@@ -102,13 +93,13 @@ export default function KanbanBoard({
         const headerClass = overLimit
           ? "bg-red-50"
           : atLimit
-          ? "bg-amber-50"
-          : "";
+            ? "bg-amber-50"
+            : "";
         const countClass = overLimit
           ? "text-red-600"
           : atLimit
-          ? "text-amber-600"
-          : "text-content-tertiary";
+            ? "text-amber-600"
+            : "text-content-tertiary";
 
         return (
           <div
@@ -142,9 +133,8 @@ export default function KanbanBoard({
                 const assignee = getAssignee?.(t.assigneeId);
                 const isClient = !!assignee?.clientName;
                 const assigneeLabel = isClient
-                  ? `${assignee.clientName}${
-                      assignee.companyName ? ` (${assignee.companyName})` : ""
-                    }`
+                  ? `${assignee.clientName}${assignee.companyName ? ` (${assignee.companyName})` : ""
+                  }`
                   : assignee?.name || "Unassigned";
                 const overdue =
                   t.dueDate &&
@@ -157,11 +147,10 @@ export default function KanbanBoard({
                     draggable
                     onDragStart={(e) => onDragStart(e, t.id)}
                     onClick={() => onEdit?.(t)}
-                    className={`cursor-move rounded-lg border p-3 hover:border-indigo-300 ${
-                      overdue
-                        ? "border-red-300 bg-red-50"
-                        : "border-subtle bg-surface"
-                    } ${t.archived ? "opacity-70" : ""}`}
+                    className={`cursor-move rounded-lg border p-3 hover:border-indigo-300 ${overdue
+                      ? "border-red-300 bg-red-50"
+                      : "border-subtle bg-surface"
+                      } ${t.archived ? "opacity-70" : ""}`}
                     title="Drag to another column to change status"
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -189,25 +178,25 @@ export default function KanbanBoard({
                         )}
                         <div className="flex flex-col items-end gap-1">
                           {t.priority && (
-                          <span
-                            className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getPriorityBadge(
-                              t.priority
-                            )}`}
-                          >
-                            <FaFlag />
-                            <span>{t.priority}</span>
-                          </span>
-                        )}
-                        {overdue && (
-                          <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
-                            Overdue
-                          </span>
-                        )}
-                        {t.archived && (
-                          <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700">
-                            Archived
-                          </span>
-                        )}
+                            <span
+                              className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getPriorityBadge(
+                                t.priority
+                              )}`}
+                            >
+                              <FaFlag />
+                              <span>{t.priority}</span>
+                            </span>
+                          )}
+                          {overdue && (
+                            <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+                              Overdue
+                            </span>
+                          )}
+                          {t.archived && (
+                            <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-700">
+                              Archived
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -251,17 +240,16 @@ export default function KanbanBoard({
                         {!isClient && assignee?.role
                           ? ` (${assignee.role})`
                           : isClient
-                          ? " (Client)"
-                          : ""}
+                            ? " (Client)"
+                            : ""}
                       </span>
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold ${
-                          t.dueDate &&
+                        className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold ${t.dueDate &&
                           t.status !== "Done" &&
                           t.dueDate < new Date().toISOString().slice(0, 10)
-                            ? "bg-red-100 text-red-700"
-                            : "bg-blue-100 text-blue-700"
-                        }`}
+                          ? "bg-red-100 text-red-700"
+                          : "bg-blue-100 text-blue-700"
+                          }`}
                       >
                         <FaCalendarAlt className="text-current" />
                         <span className="font-bold">Due:</span>
