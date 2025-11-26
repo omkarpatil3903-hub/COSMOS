@@ -13,7 +13,7 @@ import { getPriorityBadge, getStatusBadge } from "../../utils/colorMaps";
 const statusIcons = {
   "To-Do": <FaClipboardList />,
   "In Progress": <FaSpinner className="animate-spin" />,
-  "Done": <FaCheckCircle />,
+  Done: <FaCheckCircle />,
 };
 
 const TaskListItem = ({
@@ -79,6 +79,36 @@ const TaskListItem = ({
                   💬 {task.completionComment}
                 </p>
               )}
+
+              {/* OKR Badges */}
+              {(task.okrObjective ||
+                (task.okrObjectiveIndex !== undefined &&
+                  task.okrObjectiveIndex !== null)) && (
+                <div className="mt-2 flex flex-wrap items-center gap-1">
+                  {task.okrObjective && (
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-md bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-700"
+                      title={`Objective: ${task.okrObjective}`}
+                    >
+                      🎯{" "}
+                      <span className="truncate max-w-[220px]">
+                        {task.okrObjective}
+                      </span>
+                    </span>
+                  )}
+                  {Array.isArray(task.okrKeyResults) &&
+                    task.okrKeyResults.length > 0 &&
+                    task.okrKeyResults.map((kr, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1.5 rounded-md bg-teal-100 px-2 py-1 text-[10px] font-semibold text-teal-700"
+                        title={`KR: ${kr}`}
+                      >
+                        ✅ <span className="truncate max-w-[200px]">{kr}</span>
+                      </span>
+                    ))}
+                </div>
+              )}
             </div>
 
             {/* Right Side Badges */}
@@ -117,12 +147,11 @@ const TaskListItem = ({
                 )}
 
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold ${task.dueDate &&
-                      task.status !== "Done" &&
-                      isOverdue
+                  className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold ${
+                    task.dueDate && task.status !== "Done" && isOverdue
                       ? "bg-red-100 text-red-700"
                       : "bg-blue-100 text-blue-700"
-                    }`}
+                  }`}
                 >
                   <FaCalendarAlt className="text-current" />
                   <span className="font-bold">Due:</span>
@@ -169,20 +198,48 @@ const TaskListItem = ({
             </div>
             <div className="min-w-0">
               <span className="font-medium">Assigned to:</span>{" "}
-              <span
-                className="inline-block max-w-[260px] align-bottom truncate"
-                title={assignee?.name || assignee?.clientName || "Unassigned"}
-              >
-                {assignee?.name || assignee?.clientName || "Unassigned"}
-                {assignee?.clientName && assignee?.companyName
-                  ? ` (${assignee.companyName})`
-                  : ""}
-                {assignee?.role
-                  ? ` (${assignee.role})`
-                  : assignee?.clientName
+              {Array.isArray(task.assignees) && task.assignees.length > 0 ? (
+                <span className="inline-flex flex-wrap gap-1 align-bottom">
+                  {(assigneesResolved || task.assignees).map((a, idx) => {
+                    const label = a?.name || a?.id || "Unknown";
+                    const meta = a?.company
+                      ? ` (${a.company})`
+                      : a?.role
+                      ? ` (${a.role})`
+                      : "";
+                    const titleText = a?.name
+                      ? `${a.name}${a.company ? ` • ${a.company}` : ""}${
+                          a.role ? ` • ${a.role}` : ""
+                        }`
+                      : `${a?.type || "user"}:${a?.id || "unknown"}`;
+                    return (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-700"
+                        title={titleText}
+                      >
+                        👤 {label}
+                        {meta}
+                      </span>
+                    );
+                  })}
+                </span>
+              ) : (
+                <span
+                  className="inline-block max-w-[260px] align-bottom truncate"
+                  title={assignee?.name || assignee?.clientName || "Unassigned"}
+                >
+                  {assignee?.name || assignee?.clientName || "Unassigned"}
+                  {assignee?.clientName && assignee?.companyName
+                    ? ` (${assignee.companyName})`
+                    : ""}
+                  {assignee?.role
+                    ? ` (${assignee.role})`
+                    : assignee?.clientName
                     ? " (Client)"
                     : ""}
-              </span>
+                </span>
+              )}
             </div>
           </div>
 

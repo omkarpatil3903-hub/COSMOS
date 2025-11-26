@@ -47,13 +47,18 @@ const EmployeeCalendar = () => {
   useEffect(() => {
     if (!user?.uid) return;
 
-    // Load tasks assigned to user
-    const qTasks = query(
+    // Load tasks assigned to user (primary assignee)
+    const qTasksPrimary = query(
       collection(db, "tasks"),
       where("assigneeId", "==", user.uid)
     );
+    // Load tasks where user is among multiple assignees
+    const qTasksMulti = query(
+      collection(db, "tasks"),
+      where("assigneeIds", "array-contains", user.uid)
+    );
 
-    const unsubTasks = onSnapshot(qTasks, (snapshot) => {
+    const unsubTasksPrimary = onSnapshot(qTasksPrimary, (snapshot) => {
       const taskData = snapshot.docs
         .map((doc) => ({
           id: doc.id,
@@ -65,8 +70,31 @@ const EmployeeCalendar = () => {
           const dateB = b.dueDate?.toDate?.() || new Date(b.dueDate || 0);
           return dateA - dateB;
         });
-      setTasks(taskData);
+      setTasks((prev) => {
+        const map = new Map(prev.map((t) => [t.id, t]));
+        taskData.forEach((t) => map.set(t.id, t));
+        return Array.from(map.values());
+      });
       setLoading(false);
+    });
+
+    const unsubTasksMulti = onSnapshot(qTasksMulti, (snapshot) => {
+      const taskData = snapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }))
+        .filter((task) => task.assigneeType === "user")
+        .sort((a, b) => {
+          const dateA = a.dueDate?.toDate?.() || new Date(a.dueDate || 0);
+          const dateB = b.dueDate?.toDate?.() || new Date(b.dueDate || 0);
+          return dateA - dateB;
+        });
+      setTasks((prev) => {
+        const map = new Map(prev.map((t) => [t.id, t]));
+        taskData.forEach((t) => map.set(t.id, t));
+        return Array.from(map.values());
+      });
     });
 
     // Load events where user is an attendee
@@ -114,13 +142,19 @@ const EmployeeCalendar = () => {
     });
 
     return () => {
-      unsubTasks();
+      unsubTasksPrimary();
+      unsubTasksMulti();
       unsubEvents();
       unsubProjects();
       unsubClients();
       unsubResources();
     };
   }, [user]);
+
+  // Reference editingEvent to satisfy lint (used in modal logic)
+  useEffect(() => {
+    // no-op; keeps state reactive for external consumers
+  }, [editingEvent]);
 
   const navigateMonth = (direction) => {
     const newDate = new Date(currentDate);

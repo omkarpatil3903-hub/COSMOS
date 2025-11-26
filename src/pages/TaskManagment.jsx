@@ -64,11 +64,7 @@ const isUserActive = (u) => {
   return true;
 };
 
-const statusIcons = {
-  "To-Do": <FaClipboardList />,
-  "In Progress": <FaSpinner className="animate-spin" />,
-  Done: <FaCheckCircle />,
-};
+// status icons not used in this file; removed to satisfy lint
 
 const tsToISO = (v) => {
   if (!v) return null;
@@ -135,6 +131,22 @@ function TasksManagement() {
   const getProject = useCallback((id) => projectMap[id], [projectMap]);
   const getAssignee = useCallback(
     (id) => userMap[id] || clientMap[id],
+    [userMap, clientMap]
+  );
+  const resolveAssignees = useCallback(
+    (task) => {
+      const list = Array.isArray(task.assignees) ? task.assignees : [];
+      return list
+        .map((a) => {
+          if (!a || !a.id) return null;
+          const person = a.type === "client" ? clientMap[a.id] : userMap[a.id];
+          const name = person?.name || person?.clientName || null;
+          const company = person?.companyName || null;
+          const role = person?.role || null;
+          return { type: a.type || "user", id: a.id, name, company, role };
+        })
+        .filter(Boolean);
+    },
     [userMap, clientMap]
   );
   const tasksListRef = useRef(null);
@@ -353,6 +365,14 @@ function TasksManagement() {
           description: taskData.description || "",
           assigneeId: taskData.assigneeId || "",
           assigneeType: taskData.assigneeType || "user",
+          assignees: Array.isArray(taskData.assignees)
+            ? taskData.assignees
+            : [],
+          assigneeIds: Array.isArray(taskData.assignees)
+            ? taskData.assignees.map((a) => a.id).filter(Boolean)
+            : taskData.assigneeId
+            ? [taskData.assigneeId]
+            : [],
           projectId: taskData.projectId || "",
           assignedDate: taskData.assignedDate || "",
           dueDate: taskData.dueDate || "",
@@ -454,6 +474,14 @@ function TasksManagement() {
           description: taskData.description || "",
           assigneeId: taskData.assigneeId || "",
           assigneeType: taskData.assigneeType || "user",
+          assignees: Array.isArray(taskData.assignees)
+            ? taskData.assignees
+            : [],
+          assigneeIds: Array.isArray(taskData.assignees)
+            ? taskData.assignees.map((a) => a.id).filter(Boolean)
+            : taskData.assigneeId
+            ? [taskData.assigneeId]
+            : [],
           projectId: taskData.projectId || "",
           assignedDate:
             taskData.assignedDate || new Date().toISOString().slice(0, 10),
@@ -867,12 +895,7 @@ function TasksManagement() {
     return Math.round((done / filtered.length) * 100);
   }, [filtered]);
 
-  const overdueTasks = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    return filtered.filter(
-      (t) => t.dueDate && t.dueDate < today && t.status !== "Done"
-    );
-  }, [filtered]);
+  // removed unused overdueTasks to satisfy lint
 
   // Calculate global overdue tasks (ignoring current filters) for the persistent banner
   const globalOverdueTasks = useMemo(() => {
@@ -1306,6 +1329,7 @@ function TasksManagement() {
                       task={t}
                       project={getProject(t.projectId)}
                       assignee={getAssignee(t.assigneeId)}
+                      assigneesResolved={resolveAssignees(t)}
                       isSelected={selectedIds.has(t.id)}
                       onToggleSelect={toggleSelect}
                       onView={handleView}
@@ -1337,6 +1361,7 @@ function TasksManagement() {
           task={viewingTask}
           project={getProject(viewingTask.projectId)}
           assignee={getAssignee(viewingTask.assigneeId)}
+          assigneesResolved={resolveAssignees(viewingTask)}
           users={users}
           clients={clients}
           onClose={() => setShowViewModal(false)}

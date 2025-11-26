@@ -129,17 +129,23 @@ const EmployeeTasks = () => {
     if (taskSource !== "self" && selectedSelfTaskIds.size) {
       setSelectedSelfTaskIds(new Set());
     }
-  }, [taskSource]);
+  }, [taskSource, selectedSelfTaskIds.size]);
 
   useEffect(() => {
     if (!user?.uid) return;
 
-    const q = query(
+    // Query tasks where user is primary assignee
+    const qPrimary = query(
       collection(db, "tasks"),
       where("assigneeId", "==", user.uid)
     );
+    // Query tasks where user is in assigneeIds array (multi-assignee)
+    const qMulti = query(
+      collection(db, "tasks"),
+      where("assigneeIds", "array-contains", user.uid)
+    );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribePrimary = onSnapshot(qPrimary, (snapshot) => {
       const taskData = snapshot.docs
         .map((doc) => ({
           id: doc.id,
@@ -166,7 +172,38 @@ const EmployeeTasks = () => {
       console.log("🔍 All projectIds in tasks:", [
         ...new Set(taskData.map((t) => t.projectId).filter(Boolean)),
       ]);
-      setTasks(taskData);
+      setTasks((prev) => {
+        // Merge with existing and de-duplicate by id (will be finalized after multi subscription)
+        const map = new Map(prev.map((t) => [t.id, t]));
+        taskData.forEach((t) => map.set(t.id, t));
+        return Array.from(map.values());
+      });
+    });
+
+    const unsubscribeMulti = onSnapshot(qMulti, (snapshot) => {
+      const taskData = snapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          status:
+            doc.data().status === "In Review"
+              ? "In Progress"
+              : doc.data().status || "To-Do",
+          progressPercent: doc.data().progressPercent ?? 0,
+          source: "admin",
+          collectionName: "tasks",
+        }))
+        .filter((task) => task.assigneeType === "user")
+        .sort((a, b) => {
+          const dateA = a.dueDate?.toDate?.() || new Date(a.dueDate || 0);
+          const dateB = b.dueDate?.toDate?.() || new Date(b.dueDate || 0);
+          return dateA - dateB;
+        });
+      setTasks((prev) => {
+        const map = new Map(prev.map((t) => [t.id, t]));
+        taskData.forEach((t) => map.set(t.id, t));
+        return Array.from(map.values());
+      });
     });
 
     // Self tasks subscription
@@ -211,7 +248,8 @@ const EmployeeTasks = () => {
     );
 
     return () => {
-      unsubscribe();
+      unsubscribePrimary();
+      unsubscribeMulti();
       unsubscribeSelf();
       unsubscribeProjects();
     };
@@ -1221,9 +1259,7 @@ const EmployeeTasks = () => {
                       task.dueDate?.toDate?.() || new Date(task.dueDate);
                     const isOverdue =
                       dueDate < new Date() && task.status !== "Done";
-                    const daysUntilDue = Math.ceil(
-                      (dueDate - new Date()) / (1000 * 60 * 60 * 24)
-                    );
+                    // daysUntilDue not used; removed to satisfy lint
                     return (
                       <div
                         key={task.id}
@@ -1273,7 +1309,7 @@ const EmployeeTasks = () => {
                               )}
                             </div>
                           </div>
-                          
+
                           {/* Right Side: Priority, Status, Dates aligned like Admin */}
                           <div className="flex flex-col items-end gap-1 text-xs text-content-tertiary whitespace-nowrap">
                             <div className="flex items-center gap-2">
@@ -1300,9 +1336,7 @@ const EmployeeTasks = () => {
                               {task.assignedDate && (
                                 <span className="inline-flex items-center gap-1.5 rounded-md bg-purple-100 px-2 py-1 text-[11px] font-semibold text-purple-700">
                                   <FaCalendarAlt className="text-purple-600" />
-                                  <span className="font-bold">
-                                    Assigned:
-                                  </span>
+                                  <span className="font-bold">Assigned:</span>
                                   <span>
                                     {formatDateToDDMMYYYY(task.assignedDate)}
                                   </span>
