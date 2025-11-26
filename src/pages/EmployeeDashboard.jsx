@@ -34,10 +34,10 @@ const EmployeeDashboard = () => {
 
   // Utility function to format dates in dd/mm/yyyy format
   const formatDateToDDMMYYYY = (date) => {
-    if (!date) return '';
-    const d = date instanceof Date ? date : (date?.toDate?.() || new Date(date));
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
+    if (!date) return "";
+    const d = date instanceof Date ? date : date?.toDate?.() || new Date(date);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
     const year = d.getFullYear();
     return `${day}/${month}/${year}`;
   };
@@ -51,14 +51,16 @@ const EmployeeDashboard = () => {
     employeeName: "",
     reportDate: "",
     reportTime: "",
-    reportContent: ""
+    reportContent: "",
   });
   const [isEditingReport, setIsEditingReport] = useState(false);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [savingReport, setSavingReport] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  const [dismissedNotifications, setDismissedNotifications] = useState(new Set());
+  const [dismissedNotifications, setDismissedNotifications] = useState(
+    new Set()
+  );
   const notificationRef = useRef(null);
 
   useEffect(() => {
@@ -85,8 +87,9 @@ const EmployeeDashboard = () => {
             id: doc.id,
             ...doc.data(),
             status:
-              (doc.data().status === "In Review" ? "In Progress" : doc.data().status) ||
-              "To-Do",
+              (doc.data().status === "In Review"
+                ? "In Progress"
+                : doc.data().status) || "To-Do",
           }))
           // Filter by assigneeType in client-side
           .filter((task) => task.assigneeType === "user");
@@ -248,12 +251,12 @@ const EmployeeDashboard = () => {
       const dd = String(now.getDate()).padStart(2, "0");
       const hh = String(now.getHours()).padStart(2, "0");
       const min = String(now.getMinutes()).padStart(2, "0");
-      
+
       setReportData({
         employeeName: userData?.name || "Employee",
         reportDate: `${dd}/${mm}/${yyyy}`,
         reportTime: `${hh}:${min}`,
-        reportContent: ""
+        reportContent: "",
       });
       setIsEditingReport(false);
     }
@@ -277,38 +280,41 @@ const EmployeeDashboard = () => {
     overdueTasks.forEach((task) => {
       const dueDate = task.dueDate?.toDate?.() || new Date(task.dueDate);
       const daysOverdue = Math.ceil((now - dueDate) / (1000 * 60 * 60 * 24));
-      
+
       newNotifications.push({
         id: `overdue-${task.id}`,
-        type: 'overdue',
-        title: 'Overdue Task',
-        message: `"${task.title}" is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue`,
+        type: "overdue",
+        title: "Overdue Task",
+        message: `"${task.title}" is ${daysOverdue} day${
+          daysOverdue > 1 ? "s" : ""
+        } overdue`,
         taskId: task.id,
-        redirectTo: '/employee/tasks?view=overdue'
+        redirectTo: "/employee/tasks?view=overdue",
       });
     });
 
     // Check for newly assigned tasks (assigned in last 24 hours)
     const newlyAssignedTasks = tasks.filter((task) => {
       if (!task.assignedDate) return false;
-      const assignedDate = task.assignedDate?.toDate?.() || new Date(task.assignedDate);
+      const assignedDate =
+        task.assignedDate?.toDate?.() || new Date(task.assignedDate);
       return assignedDate >= oneDayAgo && task.status !== "Done";
     });
 
     newlyAssignedTasks.forEach((task) => {
       newNotifications.push({
         id: `new-${task.id}`,
-        type: 'task',
-        title: 'New Task Assigned',
+        type: "task",
+        title: "New Task Assigned",
         message: `"${task.title}" has been assigned to you`,
         taskId: task.id,
-        redirectTo: '/employee/tasks'
+        redirectTo: "/employee/tasks",
       });
     });
 
     // Filter out dismissed notifications
     const filteredNotifications = newNotifications.filter(
-      notification => !dismissedNotifications.has(notification.id)
+      (notification) => !dismissedNotifications.has(notification.id)
     );
 
     // Sort notifications by priority (overdue first, then new tasks)
@@ -323,28 +329,31 @@ const EmployeeDashboard = () => {
   // Close notifications when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target)
+      ) {
         setShowNotifications(false);
       }
     };
 
     if (showNotifications) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showNotifications]);
 
   // Handle notification click
   const handleNotificationClick = (notification) => {
-    if (notification.type === 'overdue' || notification.type === 'task') {
+    if (notification.type === "overdue" || notification.type === "task") {
       // For overdue and newly assigned tasks, redirect to task management with scroll to task
-      navigate('/employee/tasks', { 
-        state: { 
-          highlightTaskId: notification.taskId
-        }
+      navigate("/employee/tasks", {
+        state: {
+          highlightTaskId: notification.taskId,
+        },
       });
     } else {
       // For other notifications, use the original redirect
@@ -356,16 +365,20 @@ const EmployeeDashboard = () => {
   // Remove individual notification
   const removeNotification = (notificationId, event) => {
     event.stopPropagation(); // Prevent notification click
-    setDismissedNotifications(prev => new Set([...prev, notificationId]));
-    setNotifications(prev => prev.filter(notification => notification.id !== notificationId));
+    setDismissedNotifications((prev) => new Set([...prev, notificationId]));
+    setNotifications((prev) =>
+      prev.filter((notification) => notification.id !== notificationId)
+    );
     toast.success("Notification removed");
   };
 
   // Clear all notifications
   const clearAllNotifications = () => {
     // Add all current notification IDs to dismissed notifications
-    const currentNotificationIds = notifications.map(n => n.id);
-    setDismissedNotifications(prev => new Set([...prev, ...currentNotificationIds]));
+    const currentNotificationIds = notifications.map((n) => n.id);
+    setDismissedNotifications(
+      (prev) => new Set([...prev, ...currentNotificationIds])
+    );
     setNotifications([]);
     toast.success("All notifications cleared");
   };
@@ -398,15 +411,27 @@ const EmployeeDashboard = () => {
 - *Active Projects:* ${projects.length}
 
 ## Recent Activity
-${recentCompletedTasks.length > 0 ? recentCompletedTasks.map(task => `- ${task.title}`).join('\n') : '- No recent completed tasks'}
+${
+  recentCompletedTasks.length > 0
+    ? recentCompletedTasks.map((task) => `- ${task.title}`).join("\n")
+    : "- No recent completed tasks"
+}
 
 ## Today's Focus
-${todayTasks.length > 0 ? todayTasks.map(task => `- ${task.title} (${task.priority} Priority)`).join('\n') : '- No tasks due today'}
+${
+  todayTasks.length > 0
+    ? todayTasks
+        .map((task) => `- ${task.title} (${task.priority} Priority)`)
+        .join("\n")
+    : "- No tasks due today"
+}
 
 ---
-*Generated on: ${formatDateToDDMMYYYY(new Date())} at ${new Date().toLocaleTimeString()}*`;
-      
-      setReportData(prev => ({ ...prev, reportContent: content }));
+*Generated on: ${formatDateToDDMMYYYY(
+        new Date()
+      )} at ${new Date().toLocaleTimeString()}*`;
+
+      setReportData((prev) => ({ ...prev, reportContent: content }));
       toast.success("Report generated successfully!");
     } catch (error) {
       console.error("Error generating report:", error);
@@ -420,16 +445,16 @@ ${todayTasks.length > 0 ? todayTasks.map(task => `- ${task.title} (${task.priori
   const saveReport = () => {
     setSavingReport(true);
     try {
-      const blob = new Blob([reportData.reportContent], { type: 'text/plain' });
+      const blob = new Blob([reportData.reportContent], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `employee-report-${reportData.reportDate}.txt`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       toast.success("Report saved and downloaded!");
       setShowReportModal(false);
     } catch (error) {
@@ -504,7 +529,9 @@ ${todayTasks.length > 0 ? todayTasks.map(task => `- ${task.title} (${task.priori
           {showNotifications && (
             <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
               <div className="p-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Notifications
+                </h3>
               </div>
               <div className="max-h-96 overflow-y-auto">
                 {notifications.length === 0 ? (
@@ -515,8 +542,8 @@ ${todayTasks.length > 0 ? todayTasks.map(task => `- ${task.title} (${task.priori
                 ) : (
                   <div className="divide-y divide-gray-100">
                     {notifications.map((notification) => (
-                      <div 
-                        key={notification.id} 
+                      <div
+                        key={notification.id}
                         className="p-4 hover:bg-gray-50 transition-colors cursor-pointer relative group"
                         onClick={() => handleNotificationClick(notification)}
                       >
@@ -539,12 +566,24 @@ ${todayTasks.length > 0 ? todayTasks.map(task => `- ${task.title} (${task.priori
                           </div>
                           {/* Individual Remove Button - For all notifications */}
                           <button
-                            onClick={(e) => removeNotification(notification.id, e)}
+                            onClick={(e) =>
+                              removeNotification(notification.id, e)
+                            }
                             className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100"
                             title="Remove notification"
                           >
-                            <svg className="w-4 h-4 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            <svg
+                              className="w-4 h-4 text-gray-400 hover:text-gray-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
                             </svg>
                           </button>
                         </div>
@@ -570,7 +609,10 @@ ${todayTasks.length > 0 ? todayTasks.map(task => `- ${task.title} (${task.priori
 
       {/* Stats Cards - Reordered: Today's Tasks, Pending Tasks, Completed Tasks, Generate Report */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="cursor-pointer" onClick={() => navigate("/employee/tasks?view=today")}>
+        <div
+          className="cursor-pointer"
+          onClick={() => navigate("/employee/tasks?view=today")}
+        >
           <StatCard
             icon={<FaCalendarAlt className="h-5 w-5" />}
             label="Today's Tasks"
@@ -578,7 +620,10 @@ ${todayTasks.length > 0 ? todayTasks.map(task => `- ${task.title} (${task.priori
             color="indigo"
           />
         </div>
-        <div className="cursor-pointer" onClick={() => navigate("/employee/tasks?status=pending")}>
+        <div
+          className="cursor-pointer"
+          onClick={() => navigate("/employee/tasks?status=pending")}
+        >
           <StatCard
             icon={<FaClock className="h-5 w-5" />}
             label="Pending Tasks"
@@ -586,7 +631,10 @@ ${todayTasks.length > 0 ? todayTasks.map(task => `- ${task.title} (${task.priori
             color="amber"
           />
         </div>
-        <div className="cursor-pointer" onClick={() => navigate("/employee/tasks?status=Done")}>
+        <div
+          className="cursor-pointer"
+          onClick={() => navigate("/employee/tasks?status=Done")}
+        >
           <StatCard
             icon={<FaCheckCircle className="h-5 w-5" />}
             label="Completed Tasks"
@@ -594,7 +642,10 @@ ${todayTasks.length > 0 ? todayTasks.map(task => `- ${task.title} (${task.priori
             color="green"
           />
         </div>
-        <div className="cursor-pointer hover:transform hover:scale-105 transition-transform duration-200" onClick={handleGenerateReport}>
+        <div
+          className="cursor-pointer hover:transform hover:scale-105 transition-transform duration-200"
+          onClick={handleGenerateReport}
+        >
           <StatCard
             icon={<FaFileAlt className="h-5 w-5" />}
             label="Generate Report"
@@ -884,8 +935,18 @@ ${todayTasks.length > 0 ? todayTasks.map(task => `- ${task.title} (${task.priori
                 onClick={() => setShowReportModal(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -899,8 +960,14 @@ ${todayTasks.length > 0 ? todayTasks.map(task => `- ${task.title} (${task.priori
                 <input
                   type="text"
                   value={reportData.employeeName}
-                  onChange={(e) => setReportData(prev => ({ ...prev, employeeName: e.target.value }))}
+                  onChange={(e) =>
+                    setReportData((prev) => ({
+                      ...prev,
+                      employeeName: e.target.value,
+                    }))
+                  }
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  spellCheck="true"
                 />
               </div>
               <div>
@@ -910,7 +977,12 @@ ${todayTasks.length > 0 ? todayTasks.map(task => `- ${task.title} (${task.priori
                 <input
                   type="date"
                   value={reportData.reportDate}
-                  onChange={(e) => setReportData(prev => ({ ...prev, reportDate: e.target.value }))}
+                  onChange={(e) =>
+                    setReportData((prev) => ({
+                      ...prev,
+                      reportDate: e.target.value,
+                    }))
+                  }
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
                 />
               </div>
@@ -921,7 +993,12 @@ ${todayTasks.length > 0 ? todayTasks.map(task => `- ${task.title} (${task.priori
                 <input
                   type="time"
                   value={reportData.reportTime}
-                  onChange={(e) => setReportData(prev => ({ ...prev, reportTime: e.target.value }))}
+                  onChange={(e) =>
+                    setReportData((prev) => ({
+                      ...prev,
+                      reportTime: e.target.value,
+                    }))
+                  }
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
                 />
               </div>
@@ -971,13 +1048,21 @@ ${todayTasks.length > 0 ? todayTasks.map(task => `- ${task.title} (${task.priori
                 {isEditingReport ? (
                   <textarea
                     value={reportData.reportContent}
-                    onChange={(e) => setReportData(prev => ({ ...prev, reportContent: e.target.value }))}
+                    onChange={(e) =>
+                      setReportData((prev) => ({
+                        ...prev,
+                        reportContent: e.target.value,
+                      }))
+                    }
                     className="w-full h-96 rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
                     placeholder="Report content will appear here..."
                   />
                 ) : (
                   <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 h-96 overflow-y-auto">
-                    <div className="prose prose-sm max-w-none" style={{ whiteSpace: "pre-wrap" }}>
+                    <div
+                      className="prose prose-sm max-w-none"
+                      style={{ whiteSpace: "pre-wrap" }}
+                    >
                       {reportData.reportContent}
                     </div>
                   </div>

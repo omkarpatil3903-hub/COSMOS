@@ -244,10 +244,10 @@ function TaskModal({
     const dd = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${dd}`;
   };
-  
+
   const modalRef = useRef(null);
   const prevFocusedRef = useRef(null);
-  
+
   useEffect(() => {
     prevFocusedRef.current = document.activeElement;
     const root = modalRef.current;
@@ -392,7 +392,7 @@ function TaskModal({
                 <h3 className="text-sm font-semibold text-blue-800 flex items-center gap-2">
                   <span className="text-lg">↻</span> Recurrence Settings
                 </h3>
-                
+
                 {/* Interval & Pattern */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -421,7 +421,7 @@ function TaskModal({
                       </select>
                     </div>
                   </div>
-                  
+
                   {/* Skip Weekends */}
                   <div className="flex items-end pb-2">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -431,7 +431,9 @@ function TaskModal({
                         onChange={(e) => setSkipWeekends(e.target.checked)}
                         className="rounded border-blue-300 text-blue-600 focus:ring-blue-500"
                       />
-                      <span className="text-sm text-blue-700">Skip Weekends</span>
+                      <span className="text-sm text-blue-700">
+                        Skip Weekends
+                      </span>
                     </label>
                   </div>
                 </div>

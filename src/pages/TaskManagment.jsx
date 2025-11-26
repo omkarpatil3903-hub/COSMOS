@@ -106,8 +106,6 @@ function TasksManagement() {
     onlyOverdue: false,
   });
 
-
-
   // Helper to update a single filter
   const updateFilter = (key, value) => {
     setFilters((prev) => {
@@ -135,10 +133,11 @@ function TasksManagement() {
 
   // Fast Lookup Helpers
   const getProject = useCallback((id) => projectMap[id], [projectMap]);
-  const getAssignee = useCallback((id) => userMap[id] || clientMap[id], [userMap, clientMap]);
+  const getAssignee = useCallback(
+    (id) => userMap[id] || clientMap[id],
+    [userMap, clientMap]
+  );
   const tasksListRef = useRef(null);
-
-
 
   const scrollToTasksList = useCallback(() => {
     if (tasksListRef.current) {
@@ -149,20 +148,23 @@ function TasksManagement() {
     }
   }, []);
 
-  const applyStatusQuickFilter = useCallback((status) => {
-    setFilters({
-      project: "",
-      assignee: "",
-      assigneeType: "",
-      priority: "",
-      status: status,
-      search: "",
-      showArchived: false,
-      onlyOverdue: false,
-    });
-    setView("list");
-    setTimeout(scrollToTasksList, 0);
-  }, [scrollToTasksList]);
+  const applyStatusQuickFilter = useCallback(
+    (status) => {
+      setFilters({
+        project: "",
+        assignee: "",
+        assigneeType: "",
+        priority: "",
+        status: status,
+        search: "",
+        showArchived: false,
+        onlyOverdue: false,
+      });
+      setView("list");
+      setTimeout(scrollToTasksList, 0);
+    },
+    [scrollToTasksList]
+  );
 
   const applyOverdueQuickFilter = useCallback(() => {
     setFilters((prev) => ({
@@ -230,8 +232,8 @@ function TasksManagement() {
                 : typeof data.weightage === "string" &&
                   data.weightage.trim() !== "" &&
                   !isNaN(Number(data.weightage))
-                  ? Number(data.weightage)
-                  : null,
+                ? Number(data.weightage)
+                : null,
             archived: !!data.archived,
             isRecurring: data.isRecurring || false,
             recurringPattern: data.recurringPattern || "daily",
@@ -300,9 +302,10 @@ function TasksManagement() {
 
       if (dueSoonTasks.length > 0) {
         // Show a single summary toast instead of spamming for each task
-        const message = dueSoonTasks.length === 1
-          ? `⚠ Task "${dueSoonTasks[0].title}" is due shortly.`
-          : `⚠ You have ${dueSoonTasks.length} tasks due within the next 3 days.`;
+        const message =
+          dueSoonTasks.length === 1
+            ? `⚠ Task "${dueSoonTasks[0].title}" is due shortly.`
+            : `⚠ You have ${dueSoonTasks.length} tasks due within the next 3 days.`;
 
         toast(message, { duration: 6000, icon: "⏰" });
         hasCheckedDeadlines.current = true;
@@ -341,8 +344,8 @@ function TasksManagement() {
         const ref = doc(db, "tasks", taskData.id);
         const wt =
           taskData.weightage === "" ||
-            taskData.weightage === undefined ||
-            taskData.weightage === null
+          taskData.weightage === undefined ||
+          taskData.weightage === null
             ? null
             : Number(taskData.weightage);
         const update = {
@@ -442,8 +445,8 @@ function TasksManagement() {
         }
         const wt =
           taskData.weightage === "" ||
-            taskData.weightage === undefined ||
-            taskData.weightage === null
+          taskData.weightage === undefined ||
+          taskData.weightage === null
             ? null
             : Number(taskData.weightage);
         const payload = {
@@ -586,7 +589,7 @@ function TasksManagement() {
       // refresh project progress for affected projects
       await Promise.all(
         Array.from(affectedProjects).map((pid) =>
-          updateProjectProgress(pid).catch(() => { })
+          updateProjectProgress(pid).catch(() => {})
         )
       );
     } catch (err) {
@@ -611,7 +614,7 @@ function TasksManagement() {
             .filter(Boolean)
         );
         affected.forEach((pid) => {
-          updateProjectProgress(pid).catch(() => { });
+          updateProjectProgress(pid).catch(() => {});
         });
       })
       .catch((err) => {
@@ -635,7 +638,7 @@ function TasksManagement() {
             .filter(Boolean)
         );
         affected.forEach((pid) => {
-          updateProjectProgress(pid).catch(() => { });
+          updateProjectProgress(pid).catch(() => {});
         });
       })
       .catch((err) => {
@@ -643,7 +646,6 @@ function TasksManagement() {
         toast.error("Failed to unarchive");
       });
   };
-
 
   const reassignTask = async (taskId, encoded) => {
     const task = tasks.find((t) => t.id === taskId);
@@ -663,7 +665,8 @@ function TasksManagement() {
         assigneeType: newType || (newRes ? "user" : newCli ? "client" : "user"),
       });
       toast.success(
-        `Task reassigned from ${oldRes?.name || oldCli?.clientName || "Unassigned"
+        `Task reassigned from ${
+          oldRes?.name || oldCli?.clientName || "Unassigned"
         } to ${newRes?.name || newCli?.clientName || "Unassigned"}`
       );
     } catch (err) {
@@ -688,13 +691,13 @@ function TasksManagement() {
         progressPercent: willBeDone
           ? 100
           : wasDone
-            ? 0
-            : t.progressPercent ?? 0,
+          ? 0
+          : t.progressPercent ?? 0,
         completedAt: willBeDone
           ? serverTimestamp()
           : wasDone
-            ? null
-            : t.completedAt || null,
+          ? null
+          : t.completedAt || null,
       });
       if (t.projectId) {
         try {
@@ -770,12 +773,17 @@ function TasksManagement() {
 
       // 2. Overdue Check
       if (filters.onlyOverdue) {
-        if (!(t.dueDate && t.status !== "Done" && t.dueDate < today)) return false;
+        if (!(t.dueDate && t.status !== "Done" && t.dueDate < today))
+          return false;
       }
 
       // 3. Exact Match Filters
       if (filters.project && t.projectId !== filters.project) return false;
-      if (filters.assigneeType && (t.assigneeType || "user") !== filters.assigneeType) return false;
+      if (
+        filters.assigneeType &&
+        (t.assigneeType || "user") !== filters.assigneeType
+      )
+        return false;
       if (filters.priority && t.priority !== filters.priority) return false;
       if (filters.status && t.status !== filters.status) return false;
 
@@ -791,8 +799,9 @@ function TasksManagement() {
         const project = projectMap[t.projectId];
         const assignee = userMap[t.assigneeId] || clientMap[t.assigneeId];
 
-        const searchText = `${t.title} ${t.description} ${project?.name || ""} ${assignee?.name || assignee?.clientName || ""
-          }`.toLowerCase();
+        const searchText = `${t.title} ${t.description} ${
+          project?.name || ""
+        } ${assignee?.name || assignee?.clientName || ""}`.toLowerCase();
 
         if (!searchText.includes(s)) return false;
       }
@@ -825,7 +834,9 @@ function TasksManagement() {
     if (!filters.project) return clients;
 
     // Use our new Map for fast lookup, or find if map isn't ready
-    const proj = projectMap[filters.project] || projects.find((p) => p.id === filters.project);
+    const proj =
+      projectMap[filters.project] ||
+      projects.find((p) => p.id === filters.project);
 
     if (proj?.clientId) return clients.filter((c) => c.id === proj.clientId);
 
@@ -867,7 +878,8 @@ function TasksManagement() {
   const globalOverdueTasks = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     return tasks.filter(
-      (t) => !t.archived && t.dueDate && t.dueDate < today && t.status !== "Done"
+      (t) =>
+        !t.archived && t.dueDate && t.dueDate < today && t.status !== "Done"
     );
   }, [tasks]);
 
@@ -1002,19 +1014,40 @@ function TasksManagement() {
           </Card>
           <Card
             onClick={applyOverdueQuickFilter}
-            className={`cursor-pointer transition-all duration-300 ${globalOverdueTasks.length > 0
-              ? "bg-red-50 border-red-300 ring-2 ring-red-100 ring-offset-2"
-              : "hover:bg-surface-subtle"
-              }`}
+            className={`cursor-pointer transition-all duration-300 ${
+              globalOverdueTasks.length > 0
+                ? "bg-red-50 border-red-300 ring-2 ring-red-100 ring-offset-2"
+                : "hover:bg-surface-subtle"
+            }`}
           >
             <div className="flex items-center justify-between">
               <div>
-                <div className={`text-sm ${globalOverdueTasks.length > 0 ? "text-red-700 font-medium" : "text-content-secondary"}`}>Overdue</div>
-                <div className={`mt-1 text-2xl font-bold ${globalOverdueTasks.length > 0 ? "text-red-800" : "text-red-600"}`}>
+                <div
+                  className={`text-sm ${
+                    globalOverdueTasks.length > 0
+                      ? "text-red-700 font-medium"
+                      : "text-content-secondary"
+                  }`}
+                >
+                  Overdue
+                </div>
+                <div
+                  className={`mt-1 text-2xl font-bold ${
+                    globalOverdueTasks.length > 0
+                      ? "text-red-800"
+                      : "text-red-600"
+                  }`}
+                >
                   {globalOverdueTasks.length}
                 </div>
               </div>
-              <FaExclamationTriangle className={`h-8 w-8 ${globalOverdueTasks.length > 0 ? "text-red-600 animate-bounce" : "text-red-500"}`} />
+              <FaExclamationTriangle
+                className={`h-8 w-8 ${
+                  globalOverdueTasks.length > 0
+                    ? "text-red-600 animate-bounce"
+                    : "text-red-500"
+                }`}
+              />
             </div>
           </Card>
         </div>
@@ -1051,6 +1084,7 @@ function TasksManagement() {
                 value={filters.search}
                 onChange={(e) => updateFilter("search", e.target.value)}
                 className="flex-1 min-w-[200px] rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary placeholder:text-content-tertiary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                spellCheck="true"
               />
 
               <select
@@ -1081,7 +1115,8 @@ function TasksManagement() {
                     ))}
                   </optgroup>
                 )}
-                {(!filters.assigneeType || filters.assigneeType === "client") && (
+                {(!filters.assigneeType ||
+                  filters.assigneeType === "client") && (
                   <optgroup label="Clients">
                     {filteredAssigneeClients.map((c) => (
                       <option key={c.id} value={`client:${c.id}`}>
@@ -1126,7 +1161,9 @@ function TasksManagement() {
                 <input
                   type="checkbox"
                   checked={filters.showArchived}
-                  onChange={(e) => updateFilter("showArchived", e.target.checked)}
+                  onChange={(e) =>
+                    updateFilter("showArchived", e.target.checked)
+                  }
                 />
                 Show Archived
               </label>
@@ -1141,30 +1178,33 @@ function TasksManagement() {
               <div className="flex items-center gap-2">
                 <div className="mr-2 flex items-center rounded-lg border border-subtle p-0.5">
                   <button
-                    className={`rounded-md px-3 py-1 text-sm ${filters.assigneeType === ""
-                      ? "bg-indigo-600 text-white"
-                      : "text-content-primary"
-                      }`}
+                    className={`rounded-md px-3 py-1 text-sm ${
+                      filters.assigneeType === ""
+                        ? "bg-indigo-600 text-white"
+                        : "text-content-primary"
+                    }`}
                     onClick={() => updateFilter("assigneeType", "")}
                     type="button"
                   >
                     All
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1 text-sm ${filters.assigneeType === "user"
-                      ? "bg-indigo-600 text-white"
-                      : "text-content-primary"
-                      }`}
+                    className={`rounded-md px-3 py-1 text-sm ${
+                      filters.assigneeType === "user"
+                        ? "bg-indigo-600 text-white"
+                        : "text-content-primary"
+                    }`}
                     onClick={() => updateFilter("assigneeType", "user")}
                     type="button"
                   >
                     Resources
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1 text-sm ${filters.assigneeType === "client"
-                      ? "bg-indigo-600 text-white"
-                      : "text-content-primary"
-                      }`}
+                    className={`rounded-md px-3 py-1 text-sm ${
+                      filters.assigneeType === "client"
+                        ? "bg-indigo-600 text-white"
+                        : "text-content-primary"
+                    }`}
                     onClick={() => updateFilter("assigneeType", "client")}
                     type="button"
                   >
@@ -1174,20 +1214,22 @@ function TasksManagement() {
                 <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 mr-2">
                   <button
                     onClick={() => setView("list")}
-                    className={`p-2 rounded transition-colors ${view === "list"
-                      ? "bg-white text-indigo-600 shadow"
-                      : "text-gray-600 hover:text-gray-900"
-                      }`}
+                    className={`p-2 rounded transition-colors ${
+                      view === "list"
+                        ? "bg-white text-indigo-600 shadow"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
                     title="List View"
                   >
                     <FaList className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setView("board")}
-                    className={`p-2 rounded transition-colors ${view === "board"
-                      ? "bg-white text-indigo-600 shadow"
-                      : "text-gray-600 hover:text-gray-900"
-                      }`}
+                    className={`p-2 rounded transition-colors ${
+                      view === "board"
+                        ? "bg-white text-indigo-600 shadow"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
                     title="Kanban View"
                   >
                     <FaTh className="w-4 h-4" />

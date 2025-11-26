@@ -442,6 +442,7 @@ Enhance the content to be more professional and detailed. Keep all original info
                     onChange={(e) => setMeetingVenue(e.target.value)}
                     className="w-full rounded border border-gray-300 px-3 py-2"
                     placeholder="e.g., Office of Digi Sahyadri, Sangli"
+                    spellCheck="true"
                   />
                 </div>
 
@@ -481,6 +482,7 @@ Enhance the content to be more professional and detailed. Keep all original info
                     onChange={(e) => setMomPreparedBy(e.target.value)}
                     className="w-full rounded border border-gray-300 px-3 py-2"
                     placeholder="Your name"
+                    spellCheck="true"
                   />
                 </div>
               </div>
@@ -572,6 +574,7 @@ Enhance the content to be more professional and detailed. Keep all original info
                     onChange={(e) => setNewActionTask(e.target.value)}
                     className="rounded border border-gray-300 px-3 py-2"
                     placeholder="Task description..."
+                    spellCheck="true"
                   />
                   <select
                     value={newActionPerson}

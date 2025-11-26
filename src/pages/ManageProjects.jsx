@@ -38,6 +38,7 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import SkeletonRow from "../components/SkeletonRow";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
+import SevenStageProjectKanban from "../components/SevenStageProjectKanban";
 
 // Removed placeholder data; now loading projects from Firestore
 
@@ -65,6 +66,7 @@ function ManageProjects() {
   const [addErrors, setAddErrors] = useState({});
   const [editErrors, setEditErrors] = useState({});
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showSevenStage, setShowSevenStage] = useState(false);
 
   // State for search, sorting, and pagination
   const [searchTerm, setSearchTerm] = useState("");
@@ -112,6 +114,8 @@ function ManageProjects() {
             : data.endDate || "",
           okrs: data.okrs || [{ objective: "", keyResults: [""] }],
           createdAt: data.createdAt || null,
+          pipelineStage: data.pipelineStage || "Diagnose",
+          pipelineSubstages: data.pipelineSubstages || {},
         };
       });
       setProjects(list);
@@ -438,6 +442,12 @@ function ManageProjects() {
     setShowDeleteModal(true);
   };
 
+  const handlePipelineLocalUpdate = (projectId, updates) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === projectId ? { ...p, ...updates } : p))
+    );
+  };
+
   const handleDelete = async (id) => {
     try {
       const projectRef = doc(db, "projects", id);
@@ -703,6 +713,7 @@ function ManageProjects() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full rounded-lg border border-subtle bg-surface py-2 pl-9 pr-3 text-sm text-content-primary placeholder:text-content-tertiary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                    spellCheck="true"
                   />
                 </div>
               </label>
@@ -905,8 +916,25 @@ function ManageProjects() {
               </div>
             </Card>
           ) : (
-            <Card title="Project Kanban Board">
-              <KanbanView />
+            <Card
+              title="Project Kanban Board"
+              actions={
+                <Button
+                  variant={showSevenStage ? "primary" : "secondary"}
+                  onClick={() => setShowSevenStage(!showSevenStage)}
+                >
+                  {showSevenStage ? "3-Stage View" : "7-Stage Pipeline"}
+                </Button>
+              }
+            >
+              {showSevenStage ? (
+                <SevenStageProjectKanban
+                  projects={filteredProjects}
+                  onUpdate={handlePipelineLocalUpdate}
+                />
+              ) : (
+                <KanbanView />
+              )}
             </Card>
           )}
 

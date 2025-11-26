@@ -290,8 +290,8 @@ function Calendar() {
             task.status === "Done"
               ? "completed"
               : task.status === "In Progress"
-                ? "pending"
-                : "pending",
+              ? "pending"
+              : "pending",
           date: dateStr,
           time: "23:59",
           duration: 0,
@@ -308,8 +308,8 @@ function Calendar() {
             task.status === "Done"
               ? 100
               : task.status === "In Progress"
-                ? 50
-                : 0,
+              ? 50
+              : 0,
           isTask: true,
           taskId: task.id,
         });
@@ -498,7 +498,7 @@ function Calendar() {
         filterProject === "all" ||
         (event.isTask &&
           tasks.find((t) => t.id === event.taskId)?.projectId ===
-          filterProject);
+            filterProject);
 
       // Employee filter: check if employee is assigned to task or is attendee of event
       let employeeMatch = filterEmployee === "all";
@@ -762,25 +762,29 @@ function Calendar() {
       days.push(
         <div
           key={day}
-          className={`min-h-28 max-h-48 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 overflow-hidden ${isPast
-            ? "bg-gray-50 hover:bg-gray-100"
-            : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
-            } ${isToday
+          className={`min-h-28 max-h-48 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 overflow-hidden ${
+            isPast
+              ? "bg-gray-50 hover:bg-gray-100"
+              : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
+          } ${
+            isToday
               ? "bg-gradient-to-br from-blue-100 to-blue-50 border-blue-400 border-2 opacity-100 ring-2 ring-blue-200"
               : ""
-            } ${isSelected
+          } ${
+            isSelected
               ? "bg-gradient-to-br from-indigo-100 to-indigo-50 border-indigo-400 border-2 opacity-100 ring-2 ring-indigo-200"
               : ""
-            }`}
+          }`}
           onClick={() => setSelectedDate(date)}
         >
           <div
-            className={`text-sm font-bold mb-1 ${isPast && !isToday
-              ? "text-gray-500"
-              : isToday
+            className={`text-sm font-bold mb-1 ${
+              isPast && !isToday
+                ? "text-gray-500"
+                : isToday
                 ? "text-blue-700 text-base"
                 : "text-gray-800"
-              } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
+            } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
           >
             {day}
           </div>
@@ -922,10 +926,10 @@ function Calendar() {
             employeeScheduleInfo={
               filterEmployee !== "all"
                 ? {
-                  name:
-                    resources.find((r) => r.id === filterEmployee)?.name ||
-                    "Unknown Employee",
-                }
+                    name:
+                      resources.find((r) => r.id === filterEmployee)?.name ||
+                      "Unknown Employee",
+                  }
                 : null
             }
             onClearEmployeeFilter={() => setFilterEmployee("all")}
@@ -957,22 +961,20 @@ function Calendar() {
               <h3 className="font-semibold text-lg mb-4 border-b pb-2">
                 {selectedDate
                   ? selectedDate.toLocaleDateString("en-US", {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                  })
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                    })
                   : "Select a date"}
               </h3>
 
               {selectedDate ? (
                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                  {getEventsForDate(selectedDate)
-                    .sort((a, b) => {
-                      const timeA = a.time || "00:00";
-                      const timeB = b.time || "00:00";
-                      return timeA.localeCompare(timeB);
-                    })
-                    .length === 0 ? (
+                  {getEventsForDate(selectedDate).sort((a, b) => {
+                    const timeA = a.time || "00:00";
+                    const timeB = b.time || "00:00";
+                    return timeA.localeCompare(timeB);
+                  }).length === 0 ? (
                     <div className="text-center py-8">
                       <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
                         <FaCalendarAlt className="text-gray-400 text-2xl" />
@@ -1017,10 +1019,10 @@ function Calendar() {
                         const displayLabel = isAdminCreated
                           ? "by admin"
                           : event.status
-                            ? event.status.replace(/\b\w/g, (ch) =>
+                          ? event.status.replace(/\b\w/g, (ch) =>
                               ch.toUpperCase()
                             )
-                            : "Pending";
+                          : "Pending";
                         const displayClass = isAdminCreated
                           ? "bg-blue-100 text-blue-700"
                           : statusClass;
@@ -1097,23 +1099,24 @@ function Calendar() {
                               )}
                             </div>
 
-                            {event.objectives && event.objectives.length > 0 && (
-                              <div className="border-t pt-2">
-                                <p className="text-[11px] font-semibold text-content-secondary mb-1">
-                                  Objectives
-                                </p>
-                                <ul className="space-y-1">
-                                  {event.objectives.map((objective) => (
-                                    <li
-                                      key={objective.id}
-                                      className="text-[11px] text-content-secondary"
-                                    >
-                                      • {objective.text}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
+                            {event.objectives &&
+                              event.objectives.length > 0 && (
+                                <div className="border-t pt-2">
+                                  <p className="text-[11px] font-semibold text-content-secondary mb-1">
+                                    Objectives
+                                  </p>
+                                  <ul className="space-y-1">
+                                    {event.objectives.map((objective) => (
+                                      <li
+                                        key={objective.id}
+                                        className="text-[11px] text-content-secondary"
+                                      >
+                                        • {objective.text}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
 
                             <div className="flex gap-2 mt-2">
                               {event.status === "pending" &&
@@ -1121,7 +1124,9 @@ function Calendar() {
                                 !isAdminCreated && (
                                   <>
                                     <button
-                                      onClick={() => handleApproveEvent(event.id)}
+                                      onClick={() =>
+                                        handleApproveEvent(event.id)
+                                      }
                                       className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200"
                                     >
                                       <FaCheck size={10} /> Approve
@@ -1236,6 +1241,7 @@ function Calendar() {
                         }
                         placeholder="Project sync with client"
                         required
+                        spellCheck="true"
                       />
                     </label>
 
@@ -1317,6 +1323,7 @@ function Calendar() {
                           handleEventFormChange("description", e.target.value)
                         }
                         placeholder="Agenda or key talking points"
+                        spellCheck="true"
                       />
                     </label>
 
@@ -1419,8 +1426,8 @@ function Calendar() {
                     Meeting Requests -{" "}
                     {activeRequestDate
                       ? new Date(
-                        activeRequestDate + "T00:00"
-                      ).toLocaleDateString()
+                          activeRequestDate + "T00:00"
+                        ).toLocaleDateString()
                       : ""}
                   </h2>
                   <button
@@ -1609,6 +1616,7 @@ function Calendar() {
                       onChange={(e) => setRejectReason(e.target.value)}
                       placeholder="Please provide a reason for rejecting this meeting request..."
                       required
+                      spellCheck="true"
                     />
                   </label>
 
@@ -1666,8 +1674,9 @@ function Calendar() {
           {/* Main Floating Button */}
           <button
             onClick={() => setShowFloatingMenu(!showFloatingMenu)}
-            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${showFloatingMenu ? "rotate-45" : ""
-              }`}
+            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${
+              showFloatingMenu ? "rotate-45" : ""
+            }`}
             title="Add Event or Task"
           >
             <FaPlus className="text-xl group-hover:scale-110 transition-transform" />
