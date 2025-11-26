@@ -9,20 +9,20 @@ import "./index.css";
 import LoginPage from "./pages/LoginPage";
 import MainLayout from "./components/layout/MainLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
-import DashboardPage from "./pages/DashboardPage";
-import ReportsPage from "./pages/ReportsPage";
+import DashboardPage from "./pages/DashboardPage.jsx";
+import ReportsPage from "./pages/ReportsPage.jsx";
 import ClientLayout from "./components/layout/ClientLayout";
-import ClientDashboard from "./pages/ClientDashboard";
-import ClientProjects from "./pages/ClientProjects";
-import ClientTasks from "./pages/ClientTasks";
-import ClientCalendar from "./pages/ClientCalendar";
-import ClientReports from "./pages/ClientReports";
+import ClientDashboard from "./pages/ClientDashboard.jsx";
+import ClientProjects from "./pages/ClientProjects.jsx";
+import ClientTasks from "./pages/ClientTasks.jsx";
+import ClientCalendar from "./pages/ClientCalendar.jsx";
+import ClientReports from "./pages/ClientReports.jsx";
 import EmployeeLayout from "./components/layout/EmployeeLayout";
-import EmployeeDashboard from "./pages/EmployeeDashboard";
-import EmployeeTasks from "./pages/EmployeeTasks";
-import EmployeeProjects from "./pages/EmployeeProjects";
-import EmployeeCalendar from "./pages/EmployeeCalendar";
-import EmployeeReports from "./pages/EmployeeReports";
+import EmployeeDashboard from "./pages/EmployeeDashboard.jsx";
+import EmployeeTasks from "./pages/EmployeeTasks.jsx";
+import EmployeeProjects from "./pages/EmployeeProjects.jsx";
+import EmployeeCalendar from "./pages/EmployeeCalendar.jsx";
+import EmployeeReports from "./pages/EmployeeReports.jsx";
 import Unauthorized from "./pages/Unauthorized";
 
 import ManageResources from "./pages/ManageResources.jsx";
@@ -33,6 +33,10 @@ import MomNew from "./pages/MomNew.jsx";
 import MomGeneratorPro from "./pages/MomGeneratorPro.jsx";
 import TaskManagment from "./pages/TaskManagment.jsx";
 import Calendar from "./pages/Calendar.jsx";
+
+import Settings from "./pages/Settings.jsx";
+import AddHierarchy from "./pages/AddHierarchy.jsx";
+import ProjectSettings from "./pages/ProjectSettings.jsx";
 
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -90,6 +94,15 @@ const router = createBrowserRouter([
       { path: "/task-management", element: <TaskManagment /> },
       { path: "/reports", element: <ReportsPage /> },
       { path: "/calendar", element: <Calendar /> },
+      {
+        path: "/settings",
+        element: <Settings />,
+        children: [
+          { index: true, element: <AddHierarchy /> },
+          { path: "add-hierarchy", element: <AddHierarchy /> },
+          { path: "project-settings", element: <ProjectSettings /> },
+        ],
+      },
     ],
   },
 ]);
