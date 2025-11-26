@@ -72,25 +72,33 @@ function ManageClients() {
 
   // Table States
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortConfig, setSortConfig] = useState({ key: "clientName", direction: "asc" });
+  const [sortConfig, setSortConfig] = useState({
+    key: "clientName",
+    direction: "asc",
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // --- 1. Data Fetching ---
   useEffect(() => {
     const q = query(collection(db, CLIENTS_COLLECTION), orderBy("companyName"));
-    const unsub = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map((d) => {
-        const data = d.data() || {};
-        return {
-          id: d.id,
-          ...data,
-          joinDate: data.joinDate instanceof Timestamp ? data.joinDate.toDate() : null,
-        };
-      });
-      setClients(list);
-      setLoading(false);
-    },
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = snapshot.docs.map((d) => {
+          const data = d.data() || {};
+          return {
+            id: d.id,
+            ...data,
+            joinDate:
+              data.joinDate instanceof Timestamp
+                ? data.joinDate.toDate()
+                : null,
+          };
+        });
+        setClients(list);
+        setLoading(false);
+      },
       (err) => {
         console.error("Failed to load clients:", err);
         toast.error("Failed to load clients");
@@ -105,10 +113,11 @@ function ManageClients() {
     let result = [...clients];
     if (searchTerm) {
       const term = searchTerm.trim().toLowerCase();
-      result = result.filter(c =>
-        c.clientName?.toLowerCase().includes(term) ||
-        c.companyName?.toLowerCase().includes(term) ||
-        c.email?.toLowerCase().includes(term)
+      result = result.filter(
+        (c) =>
+          c.clientName?.toLowerCase().includes(term) ||
+          c.companyName?.toLowerCase().includes(term) ||
+          c.email?.toLowerCase().includes(term)
       );
     }
     if (sortConfig?.key) {
@@ -117,27 +126,38 @@ function ManageClients() {
       result.sort((a, b) => {
         const aValue = a[key];
         const bValue = b[key];
-        if (typeof aValue === "number" && typeof bValue === "number") return (aValue - bValue) * multiplier;
+        if (typeof aValue === "number" && typeof bValue === "number")
+          return (aValue - bValue) * multiplier;
         return String(aValue).localeCompare(String(bValue)) * multiplier;
       });
     }
     return result;
   }, [clients, searchTerm, sortConfig]);
 
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, sortConfig]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortConfig]);
 
   // --- 3. Pagination Logic ---
-  const totalPages = Math.max(1, Math.ceil(filteredClients.length / rowsPerPage));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredClients.length / rowsPerPage)
+  );
   const indexOfFirstRow = (currentPage - 1) * rowsPerPage;
-  const currentRows = filteredClients.slice(indexOfFirstRow, indexOfFirstRow + rowsPerPage);
+  const currentRows = filteredClients.slice(
+    indexOfFirstRow,
+    indexOfFirstRow + rowsPerPage
+  );
 
-  const handleNextPage = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  const handleNextPage = () =>
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   const handlePrevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
 
   const handleSort = (columnKey) => {
     setSortConfig((prev) => ({
       key: columnKey,
-      direction: prev?.key === columnKey && prev.direction === "asc" ? "desc" : "asc",
+      direction:
+        prev?.key === columnKey && prev.direction === "asc" ? "desc" : "asc",
     }));
   };
 
@@ -246,7 +266,11 @@ function ManageClients() {
 
   const sortIndicator = (columnKey) => {
     if (sortConfig?.key !== columnKey) return null;
-    return sortConfig.direction === "asc" ? <FaSortAmountUpAlt className="h-4 w-4" /> : <FaSortAmountDownAlt className="h-4 w-4" />;
+    return sortConfig.direction === "asc" ? (
+      <FaSortAmountUpAlt className="h-4 w-4" />
+    ) : (
+      <FaSortAmountDownAlt className="h-4 w-4" />
+    );
   };
 
   if (loading) return <SkeletonLoader />; // Simplified for brevity
@@ -284,6 +308,7 @@ function ManageClients() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full rounded-lg border border-subtle bg-surface py-2 pl-9 pr-3 text-sm focus:ring-2 focus:ring-indigo-100"
                   placeholder="e.g. TechCorp or John Doe"
+                  spellCheck="true"
                 />
               </div>
             </label>
@@ -299,7 +324,10 @@ function ManageClients() {
             <div className="flex items-center gap-3">
               <select
                 value={rowsPerPage}
-                onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
                 className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm"
               >
                 <option value={10}>10</option>
@@ -307,8 +335,22 @@ function ManageClients() {
                 <option value={50}>50</option>
               </select>
               <div className="flex gap-2">
-                <Button onClick={handlePrevPage} variant="secondary" disabled={currentPage === 1} className="px-3 py-1">Prev</Button>
-                <Button onClick={handleNextPage} variant="secondary" disabled={currentPage === totalPages} className="px-3 py-1">Next</Button>
+                <Button
+                  onClick={handlePrevPage}
+                  variant="secondary"
+                  disabled={currentPage === 1}
+                  className="px-3 py-1"
+                >
+                  Prev
+                </Button>
+                <Button
+                  onClick={handleNextPage}
+                  variant="secondary"
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1"
+                >
+                  Next
+                </Button>
               </div>
             </div>
           </div>
@@ -321,13 +363,22 @@ function ManageClients() {
                   {tableHeaders.map((header) => (
                     <th
                       key={header.key}
-                      className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 ${header.key === "actions" ? "sticky right-0 z-10 bg-gray-50" : ""}`}
+                      className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 ${
+                        header.key === "actions"
+                          ? "sticky right-0 z-10 bg-gray-50"
+                          : ""
+                      }`}
                     >
                       {header.sortable ? (
-                        <button onClick={() => handleSort(header.key)} className="flex items-center gap-2 hover:text-indigo-600">
+                        <button
+                          onClick={() => handleSort(header.key)}
+                          className="flex items-center gap-2 hover:text-indigo-600"
+                        >
                           {header.label} {sortIndicator(header.key)}
                         </button>
-                      ) : header.label}
+                      ) : (
+                        header.label
+                      )}
                     </th>
                   ))}
                 </tr>
@@ -345,7 +396,10 @@ function ManageClients() {
                 ))}
                 {!currentRows.length && (
                   <tr>
-                    <td colSpan={tableHeaders.length} className="px-6 py-16 text-center text-gray-500">
+                    <td
+                      colSpan={tableHeaders.length}
+                      className="px-6 py-16 text-center text-gray-500"
+                    >
                       No clients found.
                     </td>
                   </tr>
@@ -367,7 +421,10 @@ function ManageClients() {
 
       <ClientFormModal
         isOpen={showEditForm}
-        onClose={() => { setShowEditForm(false); setSelectedClient(null); }}
+        onClose={() => {
+          setShowEditForm(false);
+          setSelectedClient(null);
+        }}
         onSubmit={handleEditSubmit}
         initialData={selectedClient}
         isSubmitting={isUpdating}
@@ -376,12 +433,18 @@ function ManageClients() {
 
       <ClientViewModal
         isOpen={showViewModal}
-        onClose={() => { setShowViewModal(false); setSelectedClient(null); }}
+        onClose={() => {
+          setShowViewModal(false);
+          setSelectedClient(null);
+        }}
         client={selectedClient}
       />
 
       {showDeleteModal && selectedClient && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40" onClick={() => setShowDeleteModal(false)}>
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40"
+          onClick={() => setShowDeleteModal(false)}
+        >
           <div onClick={(e) => e.stopPropagation()}>
             <DeleteConfirmationModal
               itemType="client profile"
@@ -403,7 +466,9 @@ function ManageClients() {
 const SkeletonLoader = () => (
   <div className="space-y-6">
     <PageHeader title="Manage Clients">Loading...</PageHeader>
-    <Card title="Loading Data..."><div className="h-64 bg-gray-100 animate-pulse rounded"></div></Card>
+    <Card title="Loading Data...">
+      <div className="h-64 bg-gray-100 animate-pulse rounded"></div>
+    </Card>
   </div>
 );
 

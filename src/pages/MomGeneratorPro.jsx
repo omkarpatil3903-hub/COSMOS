@@ -641,6 +641,7 @@ export default function MomGeneratorPro() {
                       onChange={(e) => setMeetingVenue(e.target.value)}
                       className="w-full rounded border border-gray-300 px-3 py-2"
                       placeholder="e.g., Office of Digi Sahyadri, Sangli"
+                      spellCheck="true"
                     />
                   </div>
                 </div>
@@ -676,6 +677,7 @@ export default function MomGeneratorPro() {
                     onChange={(e) => setMomPreparedBy(e.target.value)}
                     className="w-full rounded border border-gray-300 px-3 py-2"
                     placeholder="Your name"
+                    spellCheck="true"
                   />
                 </div>
               </div>
@@ -758,6 +760,7 @@ export default function MomGeneratorPro() {
                   onChange={(e) => setNewDiscussionTopic(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2"
                   placeholder="Discussion topic (required)..."
+                  spellCheck="true"
                 />
                 <textarea
                   value={newDiscussionNotes}
@@ -765,6 +768,7 @@ export default function MomGeneratorPro() {
                   className="w-full rounded border border-gray-300 px-3 py-2 resize-vertical"
                   rows="3"
                   placeholder="Notes (required). One point per line (e.g., 'pending API', 'UI fix needed')"
+                  spellCheck="true"
                 />
                 <Button onClick={addDiscussion} variant="primary">
                   <FaPlus /> Add Topic
@@ -842,6 +846,7 @@ export default function MomGeneratorPro() {
                   onChange={(e) => setNewActionTask(e.target.value)}
                   className="rounded border border-gray-300 px-3 py-2"
                   placeholder="Task description..."
+                  spellCheck="true"
                 />
                 <select
                   value={newActionPerson}

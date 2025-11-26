@@ -728,6 +728,7 @@ Now generate the **final Minutes of Meeting (MoM)** below:
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g., Weekly Ops Sync — 2025-10-25"
+                  spellCheck="true"
                 />
               </label>
             </div>
@@ -742,6 +743,7 @@ Now generate the **final Minutes of Meeting (MoM)** below:
                   value={attendees}
                   onChange={(e) => setAttendees(e.target.value)}
                   placeholder="Alice, Bob, Charlie"
+                  spellCheck="true"
                 />
               </label>
             </div>
@@ -758,6 +760,7 @@ Now generate the **final Minutes of Meeting (MoM)** below:
                     onChange={(e) => setNewPoint(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && addPoint()}
                     placeholder="Add a point and press Enter or click +"
+                    spellCheck="true"
                   />
                   <Button
                     onClick={addPoint}
@@ -1139,6 +1142,7 @@ Now generate the **final Minutes of Meeting (MoM)** below:
                 onChange={(e) => setNewComment(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addComment()}
                 placeholder="Add a comment or note..."
+                spellCheck="true"
               />
               <Button onClick={addComment} variant="primary">
                 <FaComments /> Add

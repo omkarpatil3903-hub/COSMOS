@@ -26,7 +26,10 @@ function CompletionCommentModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
       <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-semibold mb-2">{title}</h3>
         <p className="text-sm text-content-secondary mb-3">
@@ -39,12 +42,19 @@ function CompletionCommentModal({
           placeholder={placeholder}
           maxLength={maxLength}
           className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
+          spellCheck="true"
         />
         <div className="mt-1 flex items-center justify-between text-xs">
-          <div className={`font-medium ${tooShort ? "text-red-600" : "text-content-secondary"}`}>
+          <div
+            className={`font-medium ${
+              tooShort ? "text-red-600" : "text-content-secondary"
+            }`}
+          >
             {minLength > 0 ? `Minimum ${minLength} characters` : "Optional"}
           </div>
-          <div className={`${tooLong ? "text-red-600" : "text-content-tertiary"}`}>
+          <div
+            className={`${tooLong ? "text-red-600" : "text-content-tertiary"}`}
+          >
             {(comment || "").length}/{maxLength}
           </div>
         </div>
