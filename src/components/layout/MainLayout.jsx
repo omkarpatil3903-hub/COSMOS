@@ -18,6 +18,7 @@ import {
   FaCalendarAlt,
   FaBars,
   FaTimes,
+  FaCog,
 } from "react-icons/fa";
 
 // NEW: A reusable link component to keep our code clean
@@ -66,6 +67,9 @@ function MainLayout() {
       "/task-management": "Task Management - Admin Panel",
       "/reports": "Reports - Admin Panel",
       "/calendar": "Calendar - Admin Panel",
+      "/settings": "Settings - Admin Panel",
+      "/settings/add-hierarchy": "Settings - Add Hierarchy - Admin Panel",
+      "/settings/project-settings": "Settings - Project Settings - Admin Panel",
     };
 
     const title = pathToTitle[location.pathname] || "Admin Panel";
@@ -120,6 +124,11 @@ function MainLayout() {
       to: "/calendar",
       text: "Calendar",
       icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/settings",
+      text: "Settings",
+      icon: <FaCog className="h-4 w-4" aria-hidden="true" />,
     },
   ];
 
