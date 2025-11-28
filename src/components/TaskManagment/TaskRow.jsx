@@ -7,7 +7,13 @@ import {
   FaRegCalendarAlt,
   FaUserCircle,
   FaRegComment,
+  FaSpinner,
+  FaClipboardList,
+  FaEdit,
+  FaTrash,
 } from "react-icons/fa";
+import { MdReplayCircleFilled } from "react-icons/md";
+import { getPriorityBadge, getStatusBadge } from "../../utils/colorMaps";
 
 const TaskRow = ({
   task,
@@ -15,38 +21,18 @@ const TaskRow = ({
   onToggleSelect,
   onView,
   isSelected,
+  onEdit,
+  onDelete,
+  showActions = true,
 }) => {
-  // 1. Helpers for colors
-  const getPriorityColor = (p) => {
-    switch (p) {
-      case "High":
-        return "text-red-500";
-      case "Medium":
-        return "text-yellow-500";
-      case "Low":
-        return "text-blue-400";
-      default:
-        return "text-gray-300";
-    }
-  };
-
-  const getStatusColor = (s) => {
-    switch (s) {
-      case "In Progress":
-        return "bg-blue-100 text-blue-700";
-      case "Done":
-        return "bg-emerald-100 text-emerald-700";
-      default:
-        return "bg-gray-100 text-gray-600";
-    }
-  };
-
   return (
     <div
       onClick={() => onView(task)}
-      className={`group grid grid-cols-[30px_1fr_120px_120px_80px_110px_60px] items-center gap-4 border-b border-gray-100 py-3 px-4 hover:bg-gray-50 transition-colors cursor-pointer text-sm ${
-        isSelected ? "bg-indigo-50" : ""
-      }`}
+      className={`group grid ${showActions
+        ? "grid-cols-[30px_1fr_180px_100px_100px_80px_110px_80px]"
+        : "grid-cols-[30px_1fr_180px_100px_100px_80px_110px]"
+        } items-center gap-4 border-b border-gray-100 py-3 px-4 hover:bg-gray-50 transition-colors cursor-pointer text-sm ${isSelected ? "bg-indigo-50" : ""
+        }`}
     >
       {/* Col 1: Selection Checkbox */}
       <div onClick={(e) => e.stopPropagation()}>
@@ -65,45 +51,53 @@ const TaskRow = ({
         </span>
       </div>
 
-      {/* Col 3: Assignees (Avatars) */}
-      <div className="flex items-center">
+      {/* Col 3: Assignees (Avatars + Names) */}
+      <div className="flex items-center gap-2">
         {assigneesResolved && assigneesResolved.length > 0 ? (
-          <div className="flex -space-x-2">
-            {assigneesResolved.slice(0, 3).map((u, i) => (
-              <div
-                key={i}
-                className="w-6 h-6 rounded-full bg-indigo-100 border border-white flex items-center justify-center text-[10px] text-indigo-700 font-bold uppercase"
-                title={u.name}
-              >
-                {u.name ? u.name[0] : "?"}
-              </div>
-            ))}
-            {assigneesResolved.length > 3 && (
-              <span className="text-xs text-gray-400 pl-3">
-                +{assigneesResolved.length - 3}
-              </span>
-            )}
-          </div>
+          <>
+            <div className="flex -space-x-2">
+              {assigneesResolved.slice(0, 3).map((u, i) => (
+                <div
+                  key={i}
+                  className="w-6 h-6 rounded-full bg-indigo-100 border border-white flex items-center justify-center text-[10px] text-indigo-700 font-bold uppercase"
+                  title={u?.name || "Unknown"}
+                >
+                  {u?.name ? u.name[0] : "?"}
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col min-w-0">
+              {assigneesResolved.slice(0, 2).map((u, i) => (
+                <span
+                  key={i}
+                  className="text-xs text-gray-600 truncate"
+                  title={u?.name || "Unknown"}
+                >
+                  {u?.name || "Unknown"}
+                </span>
+              ))}
+              {assigneesResolved.length > 2 && (
+                <span className="text-xs text-gray-400">
+                  +{assigneesResolved.length - 2} more
+                </span>
+              )}
+            </div>
+          </>
         ) : (
           <FaUserCircle className="text-gray-300 text-xl" />
         )}
       </div>
 
-      {/* Col 4: Due Date */}
+      {/* Col 4: Assigned Date */}
       <div className="flex items-center gap-2 text-gray-500">
-        {task.dueDate ? (
+        {task.assignedDate ? (
           <>
             <FaRegCalendarAlt className="text-gray-400" />
-            <span
-              className={
-                new Date(task.dueDate) < new Date() && task.status !== "Done"
-                  ? "text-red-500 font-medium"
-                  : ""
-              }
-            >
-              {new Date(task.dueDate).toLocaleDateString(undefined, {
-                month: "short",
+            <span className="text-xs">
+              {new Date(task.assignedDate).toLocaleDateString(undefined, {
+                month: "numeric",
                 day: "numeric",
+                year: "2-digit",
               })}
             </span>
           </>
@@ -112,38 +106,99 @@ const TaskRow = ({
         )}
       </div>
 
-      {/* Col 5: Priority */}
-      <div className="flex justify-center">
-        <FaFlag
-          className={getPriorityColor(task.priority)}
-          title={task.priority}
-        />
+      {/* Col 5: Due Date */}
+      <div className="flex items-center gap-2 text-gray-500">
+        {task.dueDate ? (
+          <>
+            {/* LOGIC: If recurring, show Loop. If not, show Calendar. NEVER show both. */}
+            {task.isRecurring ? (
+              <MdReplayCircleFilled
+                className="text-indigo-500 shrink-0 text-sm"
+                title={`Recurring: ${task.recurringPattern || "Daily"}`}
+              />
+            ) : (
+              <FaRegCalendarAlt className="text-gray-400 shrink-0 text-xs" />
+            )}
+            {/* Date Text */}
+            <span
+              className={
+                new Date(task.dueDate) < new Date() && task.status !== "Done"
+                  ? "text-red-500 font-medium text-xs"
+                  : "text-xs"
+              }
+            >
+              {new Date(task.dueDate).toLocaleDateString(undefined, {
+                month: "numeric",
+                day: "numeric",
+                year: "2-digit",
+              })}
+            </span>
+          </>
+        ) : (
+          <span className="text-gray-300 text-xs"></span>
+        )}
       </div>
 
-      {/* Col 6: Status Badge */}
+      {/* Col 6: Priority */}
+      <div className="flex justify-center">
+        <span
+          className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide ${getPriorityBadge(
+            task.priority
+          )}`}
+          title={task.priority}
+        >
+          <FaFlag className="text-[10px]" />
+          {task.priority}
+        </span>
+      </div>
+
+      {/* Col 7: Status Badge */}
       <div>
         <span
-          className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide ${getStatusColor(
+          className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide ${getStatusBadge(
             task.status
           )}`}
         >
+          {task.status === "Done" ? (
+            <FaCheckCircle />
+          ) : task.status === "In Progress" ? (
+            <FaSpinner className="animate-spin" />
+          ) : (
+            <FaClipboardList />
+          )}
           {task.status}
         </span>
       </div>
 
-      {/* Col 7: Comments/Meta */}
-      <div className="text-center text-gray-400">
-        {task.completionComment ? (
-          <FaRegComment
-            title="Has completion comment"
-            className="text-indigo-400"
-          />
-        ) : (
-          <span className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-gray-300">
-            View
-          </span>
-        )}
-      </div>
+      {/* Col 8: Actions */}
+      {showActions && (
+        <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {onEdit && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(task);
+              }}
+              className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+              title="Edit Task"
+            >
+              <FaEdit />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(task);
+              }}
+              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+              title="Delete Task"
+            >
+              <FaTrash />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

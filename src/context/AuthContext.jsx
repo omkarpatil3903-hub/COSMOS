@@ -1,5 +1,5 @@
 // src/context/AuthContext.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
@@ -59,3 +59,7 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
+export const useAuthContext = () => {
+  return useContext(AuthContext);
+};

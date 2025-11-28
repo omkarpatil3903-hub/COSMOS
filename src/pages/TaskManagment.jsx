@@ -11,7 +11,7 @@ import Card from "../components/Card";
 import Button from "../components/Button";
 import KanbanBoard from "../components/KanbanBoard";
 import TaskModal from "../components/TaskModal";
-import TaskListItem from "../components/TaskManagment/TaskListItem";
+import TaskGroup from "../components/TaskManagment/TaskGroup";
 import TaskViewModal from "../components/TaskManagment/TaskViewModal";
 import {
   shouldCreateNextInstanceAsync,
@@ -44,6 +44,8 @@ import {
   serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
+import { useAuthContext } from "../context/AuthContext";
+import { logTaskActivity } from "../services/taskService";
 
 // Determine if a user/resource is active based on common fields
 const isUserActive = (u) => {
@@ -73,6 +75,7 @@ const tsToISO = (v) => {
 };
 
 function TasksManagement() {
+  const { user } = useAuthContext();
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
@@ -135,8 +138,9 @@ function TasksManagement() {
   );
   const resolveAssignees = useCallback(
     (task) => {
+      // Handle new multi-assignee format
       const list = Array.isArray(task.assignees) ? task.assignees : [];
-      return list
+      const resolved = list
         .map((a) => {
           if (!a || !a.id) return null;
           const person = a.type === "client" ? clientMap[a.id] : userMap[a.id];
@@ -146,6 +150,47 @@ function TasksManagement() {
           return { type: a.type || "user", id: a.id, name, company, role };
         })
         .filter(Boolean);
+
+      // Fallback to legacy single assignee if no multi-assignees
+      if (resolved.length === 0 && task.assigneeId) {
+        const person =
+          task.assigneeType === "client"
+            ? clientMap[task.assigneeId]
+            : userMap[task.assigneeId];
+        if (person) {
+          const name = person?.name || person?.clientName || null;
+          const company = person?.companyName || null;
+          const role = person?.role || null;
+          const fallback = [
+            {
+              type: task.assigneeType || "user",
+              id: task.assigneeId,
+              name,
+              company,
+              role,
+            },
+          ];
+          console.log("Using fallback assignee:", {
+            taskId: task.id,
+            taskTitle: task.title,
+            assigneeId: task.assigneeId,
+            assigneeType: task.assigneeType,
+            person,
+            fallback,
+          });
+          return fallback;
+        }
+      }
+
+      console.log("Resolved assignees:", {
+        taskId: task.id,
+        taskTitle: task.title,
+        assignees: task.assignees,
+        resolved,
+        userMapSize: Object.keys(userMap).length,
+        clientMapSize: Object.keys(clientMap).length,
+      });
+      return resolved;
     },
     [userMap, clientMap]
   );
@@ -221,6 +266,8 @@ function TasksManagement() {
             description: data.description || "",
             assigneeId: data.assigneeId || "",
             assigneeType: data.assigneeType || "user",
+            assignees: data.assignees || [],
+            assigneeIds: data.assigneeIds || [],
             projectId: data.projectId || "",
             assignedDate: data.assignedDate?.toDate
               ? data.assignedDate.toDate().toISOString().slice(0, 10)
@@ -244,8 +291,8 @@ function TasksManagement() {
                 : typeof data.weightage === "string" &&
                   data.weightage.trim() !== "" &&
                   !isNaN(Number(data.weightage))
-                ? Number(data.weightage)
-                : null,
+                  ? Number(data.weightage)
+                  : null,
             archived: !!data.archived,
             isRecurring: data.isRecurring || false,
             recurringPattern: data.recurringPattern || "daily",
@@ -255,6 +302,8 @@ function TasksManagement() {
             recurringEndType: data.recurringEndType || "never",
             parentRecurringTaskId: data.parentRecurringTaskId || null,
             recurringOccurrenceCount: data.recurringOccurrenceCount || 0,
+            okrObjectiveIndex: data.okrObjectiveIndex,
+            okrKeyResultIndices: data.okrKeyResultIndices || [],
           };
         });
         setTasks(list);
@@ -356,8 +405,8 @@ function TasksManagement() {
         const ref = doc(db, "tasks", taskData.id);
         const wt =
           taskData.weightage === "" ||
-          taskData.weightage === undefined ||
-          taskData.weightage === null
+            taskData.weightage === undefined ||
+            taskData.weightage === null
             ? null
             : Number(taskData.weightage);
         const update = {
@@ -371,8 +420,8 @@ function TasksManagement() {
           assigneeIds: Array.isArray(taskData.assignees)
             ? taskData.assignees.map((a) => a.id).filter(Boolean)
             : taskData.assigneeId
-            ? [taskData.assigneeId]
-            : [],
+              ? [taskData.assigneeId]
+              : [],
           projectId: taskData.projectId || "",
           assignedDate: taskData.assignedDate || "",
           dueDate: taskData.dueDate || "",
@@ -388,6 +437,12 @@ function TasksManagement() {
           recurringEndDate: taskData.recurringEndDate || "",
           recurringEndAfter: taskData.recurringEndAfter || "",
           recurringEndType: taskData.recurringEndType || "never",
+          okrObjectiveIndex:
+            taskData.okrObjectiveIndex === undefined
+              ? null
+              : taskData.okrObjectiveIndex,
+          okrKeyResultIndices: taskData.okrKeyResultIndices || [],
+          subtasks: taskData.subtasks || [],
         };
         const current = tasks.find((t) => t.id === taskData.id);
         // Enforce WIP on status change (only for active columns)
@@ -452,6 +507,41 @@ function TasksManagement() {
             /* ignore */
           }
         }
+
+        // Activity Logging
+        if (current) {
+          if (update.status && update.status !== current.status) {
+            logTaskActivity(
+              taskData.id,
+              "status_updated",
+              `Changed status from ${current.status} to ${update.status}`,
+              user
+            );
+          }
+          if (update.priority && update.priority !== current.priority) {
+            logTaskActivity(
+              taskData.id,
+              "priority_updated",
+              `Changed priority from ${current.priority} to ${update.priority}`,
+              user
+            );
+          }
+          // Check for single assignee change (legacy) or multi-assignee change
+          const oldAssignees = JSON.stringify(current.assignees || []);
+          const newAssignees = JSON.stringify(update.assignees || []);
+          if (
+            update.assigneeId !== current.assigneeId ||
+            oldAssignees !== newAssignees
+          ) {
+            logTaskActivity(
+              taskData.id,
+              "assignee_updated",
+              "Updated assignees",
+              user
+            );
+          }
+        }
+
         toast.success("Task updated successfully!");
       } else {
         // Enforce WIP on creation
@@ -465,8 +555,8 @@ function TasksManagement() {
         }
         const wt =
           taskData.weightage === "" ||
-          taskData.weightage === undefined ||
-          taskData.weightage === null
+            taskData.weightage === undefined ||
+            taskData.weightage === null
             ? null
             : Number(taskData.weightage);
         const payload = {
@@ -480,8 +570,8 @@ function TasksManagement() {
           assigneeIds: Array.isArray(taskData.assignees)
             ? taskData.assignees.map((a) => a.id).filter(Boolean)
             : taskData.assigneeId
-            ? [taskData.assigneeId]
-            : [],
+              ? [taskData.assigneeId]
+              : [],
           projectId: taskData.projectId || "",
           assignedDate:
             taskData.assignedDate || new Date().toISOString().slice(0, 10),
@@ -500,10 +590,19 @@ function TasksManagement() {
           recurringEndDate: taskData.recurringEndDate || "",
           recurringEndAfter: taskData.recurringEndAfter || "",
           recurringEndType: taskData.recurringEndType || "never",
+          okrObjectiveIndex:
+            taskData.okrObjectiveIndex === undefined
+              ? null
+              : taskData.okrObjectiveIndex,
+          okrKeyResultIndices: taskData.okrKeyResultIndices || [],
+          subtasks: taskData.subtasks || [],
           parentRecurringTaskId: null, // For future instances
           recurringOccurrenceCount: 0, // Track how many instances created
         };
         const newRef = await addDoc(collection(db, "tasks"), payload);
+
+        logTaskActivity(newRef.id, "created", "Task created", user);
+
         toast.success("Task created successfully!");
         // Update project progress for created task's project
         if (payload.projectId) {
@@ -617,7 +716,7 @@ function TasksManagement() {
       // refresh project progress for affected projects
       await Promise.all(
         Array.from(affectedProjects).map((pid) =>
-          updateProjectProgress(pid).catch(() => {})
+          updateProjectProgress(pid).catch(() => { })
         )
       );
     } catch (err) {
@@ -642,7 +741,7 @@ function TasksManagement() {
             .filter(Boolean)
         );
         affected.forEach((pid) => {
-          updateProjectProgress(pid).catch(() => {});
+          updateProjectProgress(pid).catch(() => { });
         });
       })
       .catch((err) => {
@@ -666,13 +765,33 @@ function TasksManagement() {
             .filter(Boolean)
         );
         affected.forEach((pid) => {
-          updateProjectProgress(pid).catch(() => {});
+          updateProjectProgress(pid).catch(() => { });
         });
       })
       .catch((err) => {
         console.error("Unarchive failed", err);
         toast.error("Failed to unarchive");
       });
+  };
+
+  // Add single task archive handler
+  const handleTaskArchive = async (task) => {
+    if (!window.confirm(`Are you sure you want to archive "${task.title}"?`))
+      return;
+    try {
+      await updateDoc(doc(db, "tasks", task.id), { archived: true });
+      toast.success("Task archived");
+      if (task.projectId) {
+        try {
+          await updateProjectProgress(task.projectId);
+        } catch (err) {
+          console.error("Failed to update project progress:", err);
+        }
+      }
+    } catch (err) {
+      console.error("Archive failed", err);
+      toast.error("Failed to archive");
+    }
   };
 
   const reassignTask = async (taskId, encoded) => {
@@ -693,9 +812,14 @@ function TasksManagement() {
         assigneeType: newType || (newRes ? "user" : newCli ? "client" : "user"),
       });
       toast.success(
-        `Task reassigned from ${
-          oldRes?.name || oldCli?.clientName || "Unassigned"
+        `Task reassigned from ${oldRes?.name || oldCli?.clientName || "Unassigned"
         } to ${newRes?.name || newCli?.clientName || "Unassigned"}`
+      );
+      logTaskActivity(
+        taskId,
+        "assignee_updated",
+        `Reassigned to ${newRes?.name || newCli?.clientName || "Unassigned"}`,
+        user
       );
     } catch (err) {
       console.error("Reassign failed", err);
@@ -719,13 +843,13 @@ function TasksManagement() {
         progressPercent: willBeDone
           ? 100
           : wasDone
-          ? 0
-          : t.progressPercent ?? 0,
+            ? 0
+            : t.progressPercent ?? 0,
         completedAt: willBeDone
           ? serverTimestamp()
           : wasDone
-          ? null
-          : t.completedAt || null,
+            ? null
+            : t.completedAt || null,
       });
       if (t.projectId) {
         try {
@@ -734,6 +858,7 @@ function TasksManagement() {
           /* ignore */
         }
       }
+      logTaskActivity(taskId, "status_updated", `Moved to ${newStatus}`, user);
     } catch (err) {
       console.error("Move failed", err);
       toast.error("Failed to move task");
@@ -753,27 +878,39 @@ function TasksManagement() {
         progressPercent: 100,
         completionComment: comment,
       });
-      // Create next recurring instance if applicable
+
+      // Log activity for completion
+      logTaskActivity(
+        completionTaskId,
+        "completed",
+        `Marked as done${comment ? `: ${comment}` : ""}`,
+        user
+      );
+
+      // Attempt to create next recurring instance if applicable
       try {
-        if (t?.isRecurring) {
-          const checkTask = { ...t, status: "Done", completedAt: new Date() };
-          if (await shouldCreateNextInstanceAsync(checkTask)) {
-            const newId = await createNextRecurringInstance(checkTask);
-            if (newId && t.projectId) {
-              try {
-                await updateProjectProgress(t.projectId);
-              } catch (err) {
-                console.warn(
-                  "Failed to refresh project progress for new recurring instance",
-                  err
-                );
-              }
+        const checkTask = {
+          ...(t || {}),
+          id: completionTaskId,
+          completedAt: new Date(),
+        };
+        if (await shouldCreateNextInstanceAsync(checkTask)) {
+          const newId = await createNextRecurringInstance(checkTask);
+          if (newId && t?.projectId) {
+            try {
+              await updateProjectProgress(t.projectId);
+            } catch (err) {
+              console.warn(
+                "Failed to refresh project progress for new recurring instance",
+                err
+              );
             }
           }
         }
       } catch (e) {
         console.warn("Recurring continuation failed (admin completion)", e);
       }
+
       if (t?.projectId) {
         try {
           await updateProjectProgress(t.projectId);
@@ -827,9 +964,8 @@ function TasksManagement() {
         const project = projectMap[t.projectId];
         const assignee = userMap[t.assigneeId] || clientMap[t.assigneeId];
 
-        const searchText = `${t.title} ${t.description} ${
-          project?.name || ""
-        } ${assignee?.name || assignee?.clientName || ""}`.toLowerCase();
+        const searchText = `${t.title} ${t.description} ${project?.name || ""
+          } ${assignee?.name || assignee?.clientName || ""}`.toLowerCase();
 
         if (!searchText.includes(s)) return false;
       }
@@ -909,6 +1045,163 @@ function TasksManagement() {
   // Active users list for assignment/reassignment UIs
   const activeUsers = useMemo(() => users.filter(isUserActive), [users]);
 
+  const fileInputRef = useRef(null);
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportExcel = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const toastId = toast.loading("Importing tasks...");
+    try {
+      const ExcelJS = await import("exceljs");
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(file);
+
+      const worksheet = workbook.getWorksheet(1);
+      if (!worksheet) throw new Error("No worksheet found");
+
+      const tasksToCreate = [];
+      const errors = [];
+
+      // Iterate over rows (assuming row 1 is header)
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // Skip header
+
+        // Helper to get cell value safely
+        const getVal = (idx) => {
+          const val = row.getCell(idx).value;
+          // Handle ExcelJS rich text or other object types if necessary
+          if (val && typeof val === "object" && val.text) return val.text;
+          return val;
+        };
+
+        // Mapping (Adjust indices based on expected template)
+        // A: Title, B: Description, C: Status, D: Priority, E: Start Date, F: Due Date, G: Project Name, H: Assignee Email
+        const title = getVal(1);
+        if (!title) return; // Skip empty rows
+
+        const description = getVal(2) || "";
+        const statusRaw = getVal(3);
+        const priorityRaw = getVal(4);
+        const startDateRaw = getVal(5);
+        const dueDateRaw = getVal(6);
+        const projectName = getVal(7);
+        const assigneeEmail = getVal(8);
+
+        // Validation & Resolution
+        let projectId = "";
+        if (projectName) {
+          const proj = projects.find(
+            (p) =>
+              p.name?.toLowerCase() === projectName.toString().toLowerCase()
+          );
+          if (proj) projectId = proj.id;
+        }
+
+        let assigneeId = "";
+        let assigneeType = "user"; // Default
+        if (assigneeEmail) {
+          const usr = users.find(
+            (u) =>
+              u.email?.toLowerCase() === assigneeEmail.toString().toLowerCase()
+          );
+          if (usr) {
+            assigneeId = usr.id;
+          } else {
+            // Try client?
+            const cli = clients.find(
+              (c) =>
+                c.email?.toLowerCase() ===
+                assigneeEmail.toString().toLowerCase()
+            );
+            if (cli) {
+              assigneeId = cli.id;
+              assigneeType = "client";
+            }
+          }
+        }
+
+        // Date parsing
+        const parseDate = (val) => {
+          if (!val) return null;
+          // ExcelJS might return Date object or string
+          if (val instanceof Date) return val.toISOString();
+          const d = new Date(val);
+          return isNaN(d.getTime()) ? null : d.toISOString();
+        };
+
+        tasksToCreate.push({
+          title: title.toString(),
+          description: description.toString(),
+          status: ["To-Do", "In Progress", "Done"].includes(statusRaw)
+            ? statusRaw
+            : "To-Do",
+          priority: ["Low", "Medium", "High"].includes(priorityRaw)
+            ? priorityRaw
+            : "Medium",
+          assignedDate: parseDate(startDateRaw) || new Date().toISOString(),
+          dueDate: parseDate(dueDateRaw),
+          projectId,
+          assigneeId,
+          assigneeType,
+          assignees: assigneeId ? [assigneeId] : [], // For multi-assignee compatibility
+          createdAt: serverTimestamp(),
+          createdBy: user?.uid || "import",
+          isRecurring: false,
+          progressPercent: statusRaw === "Done" ? 100 : 0,
+          archived: false,
+        });
+      });
+
+      if (tasksToCreate.length === 0) {
+        toast.error("No valid tasks found in file", { id: toastId });
+        return;
+      }
+
+      // Batch creation (or parallel promises)
+      let createdCount = 0;
+      await Promise.all(
+        tasksToCreate.map(async (taskData) => {
+          try {
+            const docRef = await addDoc(collection(db, "tasks"), taskData);
+            await logTaskActivity(
+              docRef.id,
+              "created",
+              "Imported via Excel",
+              user
+            );
+            if (taskData.projectId) {
+              updateProjectProgress(taskData.projectId).catch(() => { });
+            }
+            createdCount++;
+          } catch (err) {
+            console.error("Failed to import task", taskData.title, err);
+            errors.push(taskData.title);
+          }
+        })
+      );
+
+      toast.success(`Imported ${createdCount} tasks successfully!`, {
+        id: toastId,
+      });
+      if (errors.length > 0) {
+        toast.error(`Failed to import ${errors.length} tasks`, {
+          duration: 5000,
+        });
+      }
+
+      // Reset input
+      if (e.target) e.target.value = "";
+    } catch (err) {
+      console.error("Import failed", err);
+      toast.error("Import failed: " + err.message, { id: toastId });
+    }
+  };
+
   const handleExportExcel = async () => {
     try {
       const ExcelJS = await import("exceljs");
@@ -973,7 +1266,22 @@ function TasksManagement() {
       toast.error("Failed to export to Excel");
     }
   };
+  // ... inside TasksManagement function, before return
 
+  const todoTasks = useMemo(
+    () => filtered.filter((t) => t.status === "To-Do"),
+    [filtered]
+  );
+  const inProgressTasks = useMemo(
+    () => filtered.filter((t) => t.status === "In Progress"),
+    [filtered]
+  );
+  const doneTasks = useMemo(
+    () => filtered.filter((t) => t.status === "Done"),
+    [filtered]
+  );
+
+  // ...
   return (
     <div>
       <PageHeader
@@ -1037,39 +1345,35 @@ function TasksManagement() {
           </Card>
           <Card
             onClick={applyOverdueQuickFilter}
-            className={`cursor-pointer transition-all duration-300 ${
-              globalOverdueTasks.length > 0
-                ? "bg-red-50 border-red-300 ring-2 ring-red-100 ring-offset-2"
-                : "hover:bg-surface-subtle"
-            }`}
+            className={`cursor-pointer transition-all duration-300 ${globalOverdueTasks.length > 0
+              ? "bg-red-50 border-red-300 ring-2 ring-red-100 ring-offset-2"
+              : "hover:bg-surface-subtle"
+              }`}
           >
             <div className="flex items-center justify-between">
               <div>
                 <div
-                  className={`text-sm ${
-                    globalOverdueTasks.length > 0
-                      ? "text-red-700 font-medium"
-                      : "text-content-secondary"
-                  }`}
+                  className={`text-sm ${globalOverdueTasks.length > 0
+                    ? "text-red-700 font-medium"
+                    : "text-content-secondary"
+                    }`}
                 >
                   Overdue
                 </div>
                 <div
-                  className={`mt-1 text-2xl font-bold ${
-                    globalOverdueTasks.length > 0
-                      ? "text-red-800"
-                      : "text-red-600"
-                  }`}
+                  className={`mt-1 text-2xl font-bold ${globalOverdueTasks.length > 0
+                    ? "text-red-800"
+                    : "text-red-600"
+                    }`}
                 >
                   {globalOverdueTasks.length}
                 </div>
               </div>
               <FaExclamationTriangle
-                className={`h-8 w-8 ${
-                  globalOverdueTasks.length > 0
-                    ? "text-red-600 animate-bounce"
-                    : "text-red-500"
-                }`}
+                className={`h-8 w-8 ${globalOverdueTasks.length > 0
+                  ? "text-red-600 animate-bounce"
+                  : "text-red-500"
+                  }`}
               />
             </div>
           </Card>
@@ -1100,13 +1404,20 @@ function TasksManagement() {
         </Card>
 
         <Card>
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3">
+          {/* Filters Section */}
+          <div className="border-b border-gray-100 pb-4 mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1 h-5 bg-indigo-600 rounded-full"></div>
+              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+                Filters
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
               <input
                 placeholder="Search tasks..."
                 value={filters.search}
                 onChange={(e) => updateFilter("search", e.target.value)}
-                className="flex-1 min-w-[200px] rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary placeholder:text-content-tertiary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                className="lg:col-span-2 rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary placeholder:text-content-tertiary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
                 spellCheck="true"
               />
 
@@ -1140,15 +1451,15 @@ function TasksManagement() {
                 )}
                 {(!filters.assigneeType ||
                   filters.assigneeType === "client") && (
-                  <optgroup label="Clients">
-                    {filteredAssigneeClients.map((c) => (
-                      <option key={c.id} value={`client:${c.id}`}>
-                        {c.clientName}{" "}
-                        {c.companyName ? `(${c.companyName})` : ""}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
+                    <optgroup label="Clients">
+                      {filteredAssigneeClients.map((c) => (
+                        <option key={c.id} value={`client:${c.id}`}>
+                          {c.clientName}{" "}
+                          {c.companyName ? `(${c.companyName})` : ""}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
               </select>
 
               <select
@@ -1161,7 +1472,9 @@ function TasksManagement() {
                 <option>Medium</option>
                 <option>High</option>
               </select>
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mt-3">
               <select
                 value={filters.status}
                 onChange={(e) => updateFilter("status", e.target.value)}
@@ -1173,101 +1486,128 @@ function TasksManagement() {
                 <option>Done</option>
               </select>
 
-              <Button
-                variant="secondary"
-                onClick={clearFilters}
-                className="ml-auto"
-              >
-                Clear Filters
-              </Button>
-              <label className="flex items-center gap-2 text-sm text-content-primary ml-2">
+              <label className="flex items-center gap-2 px-3 py-2 text-sm text-content-primary bg-gray-50 rounded-lg border border-subtle cursor-pointer hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
                   checked={filters.showArchived}
                   onChange={(e) =>
                     updateFilter("showArchived", e.target.checked)
                   }
+                  className="accent-indigo-600"
                 />
-                Show Archived
+                <span className="select-none">Show Archived</span>
               </label>
-            </div>
 
+              <Button
+                variant="secondary"
+                onClick={clearFilters}
+                className="lg:col-start-5 w-full"
+              >
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+
+          {/* Actions Section */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1 h-5 bg-emerald-600 rounded-full"></div>
+              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+                Actions
+              </h3>
+            </div>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Button variant="secondary" onClick={handleExportExcel}>
-                  <FaDownload /> Export Excel
+              <div className="flex items-center gap-2 flex-wrap">
+                <input
+                  type="file"
+                  accept=".xlsx, .xls"
+                  ref={fileInputRef}
+                  onChange={handleImportExcel}
+                  className="hidden"
+                />
+                <Button
+                  variant="secondary"
+                  onClick={handleImportClick}
+                  className="flex items-center gap-2"
+                >
+                  <FaDownload className="rotate-180" /> Import
                 </Button>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="mr-2 flex items-center rounded-lg border border-subtle p-0.5">
+                <Button variant="secondary" onClick={handleExportExcel} className="flex items-center gap-2">
+                  <FaDownload /> Export
+                </Button>
+
+                <div className="h-6 w-px bg-gray-300 mx-1"></div>
+
+                <div className="flex items-center rounded-lg border border-subtle bg-white p-0.5">
                   <button
-                    className={`rounded-md px-3 py-1 text-sm ${
-                      filters.assigneeType === ""
-                        ? "bg-indigo-600 text-white"
-                        : "text-content-primary"
-                    }`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === ""
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-content-primary hover:bg-gray-100"
+                      }`}
                     onClick={() => updateFilter("assigneeType", "")}
                     type="button"
                   >
                     All
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1 text-sm ${
-                      filters.assigneeType === "user"
-                        ? "bg-indigo-600 text-white"
-                        : "text-content-primary"
-                    }`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "user"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-content-primary hover:bg-gray-100"
+                      }`}
                     onClick={() => updateFilter("assigneeType", "user")}
                     type="button"
                   >
                     Resources
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1 text-sm ${
-                      filters.assigneeType === "client"
-                        ? "bg-indigo-600 text-white"
-                        : "text-content-primary"
-                    }`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "client"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-content-primary hover:bg-gray-100"
+                      }`}
                     onClick={() => updateFilter("assigneeType", "client")}
                     type="button"
                   >
                     Clients
                   </button>
                 </div>
-                <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 mr-2">
+
+                <div className="h-6 w-px bg-gray-300 mx-1"></div>
+
+                <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                   <button
                     onClick={() => setView("list")}
-                    className={`p-2 rounded transition-colors ${
-                      view === "list"
-                        ? "bg-white text-indigo-600 shadow"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
+                    className={`p-2 rounded transition-all ${view === "list"
+                      ? "bg-white text-indigo-600 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                      }`}
                     title="List View"
                   >
                     <FaList className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setView("board")}
-                    className={`p-2 rounded transition-colors ${
-                      view === "board"
-                        ? "bg-white text-indigo-600 shadow"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
+                    className={`p-2 rounded transition-all ${view === "board"
+                      ? "bg-white text-indigo-600 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                      }`}
                     title="Kanban View"
                   >
                     <FaTh className="w-4 h-4" />
                   </button>
                 </div>
-                <Button variant="secondary" onClick={handleArchive}>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button variant="secondary" onClick={handleArchive} size="sm">
                   Archive Selected
                 </Button>
-                <Button variant="secondary" onClick={handleUnarchive}>
+                <Button variant="secondary" onClick={handleUnarchive} size="sm">
                   Unarchive Selected
                 </Button>
-                <Button variant="danger" onClick={handleBulkDelete}>
+                <Button variant="danger" onClick={handleBulkDelete} size="sm">
                   Delete Selected
                 </Button>
-                <Button onClick={openCreate} variant="primary">
+                <Button onClick={openCreate} variant="primary" className="font-semibold">
                   + Create Task
                 </Button>
               </div>
@@ -1297,49 +1637,77 @@ function TasksManagement() {
               )}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-8 pb-10">
+              {/* Bulk Select Header (Keep this if you want bulk actions) */}
+              {filtered.length > 0 && (
+                <div className="flex items-center gap-3 px-2 mb-4">
+                  <input
+                    type="checkbox"
+                    checked={
+                      selectedIds.size > 0 &&
+                      selectedIds.size === filtered.length
+                    }
+                    onChange={(e) => selectAll(e.target.checked, filtered)}
+                    className="accent-indigo-600 cursor-pointer"
+                  />
+                  <span className="text-sm text-gray-500">
+                    {selectedIds.size} selected
+                  </span>
+                </div>
+              )}
+
+              {/* Render Groups */}
               {filtered.length === 0 ? (
                 <div className="py-12 text-center text-content-tertiary">
                   No tasks found
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {/* Bulk Select Header */}
-                  <div className="flex items-center gap-3 px-2 py-2 border-b border-subtle">
-                    <input
-                      type="checkbox"
-                      checked={
-                        selectedIds.size > 0 &&
-                        selectedIds.size === filtered.length
-                      }
-                      onChange={(e) => selectAll(e.target.checked, filtered)}
-                      title="Select all visible"
-                    />
-                    <div className="text-sm text-content-secondary">
-                      {selectedIds.size > 0
-                        ? `${selectedIds.size} selected`
-                        : `${filtered.length} tasks`}
-                    </div>
-                  </div>
+                <>
+                  {/* IN PROGRESS Group */}
+                  <TaskGroup
+                    title="In Progress"
+                    tasks={inProgressTasks}
+                    colorClass="bg-blue-500"
+                    onOpenCreate={openCreate}
+                    selectedIds={selectedIds}
+                    onToggleSelect={toggleSelect}
+                    onView={handleView}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onArchive={handleTaskArchive}
+                    resolveAssignees={resolveAssignees}
+                  />
 
-                  {/* The New Clean List Rendering */}
-                  {filtered.map((t) => (
-                    <TaskListItem
-                      key={t.id}
-                      task={t}
-                      project={getProject(t.projectId)}
-                      assignee={getAssignee(t.assigneeId)}
-                      assigneesResolved={resolveAssignees(t)}
-                      isSelected={selectedIds.has(t.id)}
-                      onToggleSelect={toggleSelect}
-                      onView={handleView}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                      onReassign={reassignTask}
-                      activeUsers={activeUsers}
-                    />
-                  ))}
-                </div>
+                  {/* TO DO Group */}
+                  <TaskGroup
+                    title="To Do"
+                    tasks={todoTasks}
+                    colorClass="bg-gray-500"
+                    onOpenCreate={openCreate}
+                    selectedIds={selectedIds}
+                    onToggleSelect={toggleSelect}
+                    onView={handleView}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onArchive={handleTaskArchive}
+                    resolveAssignees={resolveAssignees}
+                  />
+
+                  {/* DONE Group */}
+                  <TaskGroup
+                    title="Done"
+                    tasks={doneTasks}
+                    colorClass="bg-emerald-500"
+                    onOpenCreate={openCreate}
+                    selectedIds={selectedIds}
+                    onToggleSelect={toggleSelect}
+                    onView={handleView}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onArchive={handleTaskArchive}
+                    resolveAssignees={resolveAssignees}
+                  />
+                </>
               )}
             </div>
           )}
@@ -1358,16 +1726,38 @@ function TasksManagement() {
       )}
       {showViewModal && viewingTask && (
         <TaskViewModal
-          task={viewingTask}
+          task={tasks.find((t) => t.id === viewingTask.id) || viewingTask}
           project={getProject(viewingTask.projectId)}
+          projects={projects}
           assignee={getAssignee(viewingTask.assigneeId)}
           assigneesResolved={resolveAssignees(viewingTask)}
           users={users}
           clients={clients}
+          currentUser={user}
           onClose={() => setShowViewModal(false)}
-          onEdit={() => {
+          onEdit={(updatedTask) => {
             setShowViewModal(false);
-            handleEdit(viewingTask);
+            handleEdit(updatedTask || viewingTask);
+          }}
+          onDelete={async (task) => {
+            setShowViewModal(false);
+            if (task.projectId) {
+              try {
+                await updateProjectProgress(task.projectId);
+              } catch (err) {
+                console.error("Failed to update project progress:", err);
+              }
+            }
+          }}
+          onArchive={async (task) => {
+            setShowViewModal(false);
+            if (task.projectId) {
+              try {
+                await updateProjectProgress(task.projectId);
+              } catch (err) {
+                console.error("Failed to update project progress:", err);
+              }
+            }
           }}
         />
       )}

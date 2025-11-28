@@ -1,26 +1,28 @@
 // src/components/TaskModal.jsx
 import React, { useState, useEffect, useMemo } from "react";
-import Card from "./Card";
 import Button from "./Button";
 import toast from "react-hot-toast";
 import { validateTaskForm } from "../utils/formBuilders";
+import { MdReplayCircleFilled } from "react-icons/md";
+import { FaTimes, FaRegCalendarAlt } from "react-icons/fa";
 
 // Inline simple searchable multi-select component
 function SearchMultiSelect({ items, selected, onChange, placeholder }) {
   const [query, setQuery] = useState("");
-  
+
   const filtered = useMemo(
-    () => items.filter((i) => i.label.toLowerCase().includes(query.toLowerCase())),
+    () =>
+      items.filter((i) => i.label.toLowerCase().includes(query.toLowerCase())),
     [items, query]
   );
-  
+
   const toggle = (id) => {
     const set = new Set(selected);
     if (set.has(id)) set.delete(id);
     else set.add(id);
     onChange(Array.from(set));
   };
-  
+
   return (
     <div className="mt-2">
       <input
@@ -31,7 +33,10 @@ function SearchMultiSelect({ items, selected, onChange, placeholder }) {
       />
       <div className="mt-2 max-h-40 overflow-y-auto rounded-md border border-subtle bg-surface">
         {filtered.map((i) => (
-          <label key={i.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
+          <label
+            key={i.id}
+            className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+          >
             <input
               type="checkbox"
               checked={selected.includes(i.id)}
@@ -42,14 +47,23 @@ function SearchMultiSelect({ items, selected, onChange, placeholder }) {
           </label>
         ))}
         {!filtered.length && (
-          <div className="px-3 py-2 text-xs text-content-tertiary">No matches</div>
+          <div className="px-3 py-2 text-xs text-content-tertiary">
+            No matches
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [], clients = [] }) {
+function TaskModal({
+  onClose,
+  onSave,
+  taskToEdit,
+  projects = [],
+  assignees = [],
+  clients = [],
+}) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [projectId, setProjectId] = useState("");
@@ -79,6 +93,10 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
   const [okrObjectiveIndex, setOkrObjectiveIndex] = useState(null);
   const [okrKeyResultIndices, setOkrKeyResultIndices] = useState([]);
 
+  // Subtasks state
+  const [subtasks, setSubtasks] = useState([]);
+  const [newSubtask, setNewSubtask] = useState("");
+
   const [errors, setErrors] = useState({});
 
   // Clear recurring fields when switching to one-time
@@ -97,7 +115,7 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
       setPreviewDates([]);
       return;
     }
-    
+
     const out = [];
     try {
       const start = new Date(dueDate);
@@ -111,7 +129,9 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
         } else if (recurringPattern === "monthly") {
           d.setMonth(start.getMonth() + recurringInterval * (out.length + 1));
         } else if (recurringPattern === "yearly") {
-          d.setFullYear(start.getFullYear() + recurringInterval * (out.length + 1));
+          d.setFullYear(
+            start.getFullYear() + recurringInterval * (out.length + 1)
+          );
         }
         const yyyy = d.getFullYear();
         const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -137,7 +157,9 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
 
       setAssigneeType(taskToEdit.assigneeType || "user");
       setAssigneeId(taskToEdit.assigneeId || "");
-      setAssigneesSelected(Array.isArray(taskToEdit.assignees) ? taskToEdit.assignees : []);
+      setAssigneesSelected(
+        Array.isArray(taskToEdit.assignees) ? taskToEdit.assignees : []
+      );
 
       setAssignedDate(taskToEdit.assignedDate || "");
       setDueDate(taskToEdit.dueDate || "");
@@ -153,17 +175,25 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
       setSkipWeekends(taskToEdit.skipWeekends || false);
 
       setOkrObjectiveIndex(
-        typeof taskToEdit.okrObjectiveIndex === "number" ? taskToEdit.okrObjectiveIndex : null
+        typeof taskToEdit.okrObjectiveIndex === "number"
+          ? taskToEdit.okrObjectiveIndex
+          : null
       );
-      setOkrKeyResultIndices(Array.isArray(taskToEdit.okrKeyResultIndices) ? taskToEdit.okrKeyResultIndices : []);
+      setOkrKeyResultIndices(
+        Array.isArray(taskToEdit.okrKeyResultIndices)
+          ? taskToEdit.okrKeyResultIndices
+          : []
+      );
+
+      setSubtasks(Array.isArray(taskToEdit.subtasks) ? taskToEdit.subtasks : []);
     }
   }, [taskToEdit]);
 
   // Detect changes for edit mode
   const hasChanges = useMemo(() => {
     if (!taskToEdit) return true;
-    
-    const normalize = (v) => (v ?? "");
+
+    const normalize = (v) => v ?? "";
     const fields = [
       normalize(title) === normalize(taskToEdit.title),
       normalize(description) === normalize(taskToEdit.description),
@@ -173,18 +203,25 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
       String(weightage || "") === String(taskToEdit.weightage || ""),
       normalize(assigneeType) === normalize(taskToEdit.assigneeType),
       normalize(assigneeId) === normalize(taskToEdit.assigneeId),
-      JSON.stringify(assigneesSelected) === JSON.stringify(taskToEdit.assignees || []),
+      JSON.stringify(assigneesSelected) ===
+      JSON.stringify(taskToEdit.assignees || []),
       normalize(assignedDate) === normalize(taskToEdit.assignedDate),
       normalize(dueDate) === normalize(taskToEdit.dueDate),
       (taskToEdit.taskType || "one-time") === taskType,
       normalize(recurringPattern) === normalize(taskToEdit.recurringPattern),
-      Number(recurringInterval || 1) === Number(taskToEdit.recurringInterval || 1),
+      Number(recurringInterval || 1) ===
+      Number(taskToEdit.recurringInterval || 1),
       normalize(recurringEndType) === normalize(taskToEdit.recurringEndType),
       normalize(recurringEndDate) === normalize(taskToEdit.recurringEndDate),
-      String(recurringEndAfter || "") === String(taskToEdit.recurringEndAfter || ""),
+      String(recurringEndAfter || "") ===
+      String(taskToEdit.recurringEndAfter || ""),
       (typeof okrObjectiveIndex === "number" ? okrObjectiveIndex : null) ===
-        (typeof taskToEdit.okrObjectiveIndex === "number" ? taskToEdit.okrObjectiveIndex : null),
-      JSON.stringify(okrKeyResultIndices) === JSON.stringify(taskToEdit.okrKeyResultIndices || []),
+      (typeof taskToEdit.okrObjectiveIndex === "number"
+        ? taskToEdit.okrObjectiveIndex
+        : null),
+      JSON.stringify(okrKeyResultIndices) ===
+      JSON.stringify(taskToEdit.okrKeyResultIndices || []),
+      JSON.stringify(subtasks) === JSON.stringify(taskToEdit.subtasks || []),
     ];
     return !fields.every(Boolean);
   }, [
@@ -207,28 +244,32 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
     recurringEndAfter,
     okrObjectiveIndex,
     okrKeyResultIndices,
+    subtasks,
     taskToEdit,
   ]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     // Validate required fields
     const validation = validateTaskForm({
       title,
       projectId,
       dueDate,
-      assigneeId: assigneeType === "client" ? assigneeId : (assigneesSelected[0]?.id || "")
+      assigneeId:
+        assigneeType === "client" ? assigneeId : assigneesSelected[0]?.id || "",
     });
-    
+
     if (!validation.isValid) {
       setErrors(validation.errors || {});
       return;
     }
 
     // Build assigneeIds array for employee queries
-    const assigneeIds = assigneesSelected.filter((a) => a.type === "user").map((a) => a.id);
-    
+    const assigneeIds = assigneesSelected
+      .filter((a) => a.type === "user")
+      .map((a) => a.id);
+
     const payload = {
       title,
       description,
@@ -246,11 +287,19 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
       recurringPattern: isRecurring ? recurringPattern : undefined,
       recurringInterval: isRecurring ? Number(recurringInterval) : undefined,
       recurringEndType: isRecurring ? recurringEndType : undefined,
-      recurringEndDate: isRecurring && recurringEndType === "date" ? recurringEndDate : undefined,
-      recurringEndAfter: isRecurring && recurringEndType === "after" ? Number(recurringEndAfter) : undefined,
+      recurringEndDate:
+        isRecurring && recurringEndType === "date"
+          ? recurringEndDate
+          : undefined,
+      recurringEndAfter:
+        isRecurring && recurringEndType === "after"
+          ? Number(recurringEndAfter)
+          : undefined,
       skipWeekends: isRecurring ? skipWeekends : undefined,
-      okrObjectiveIndex: typeof okrObjectiveIndex === "number" ? okrObjectiveIndex : undefined,
+      okrObjectiveIndex:
+        typeof okrObjectiveIndex === "number" ? okrObjectiveIndex : undefined,
       okrKeyResultIndices: okrKeyResultIndices,
+      subtasks,
     };
 
     onSave(payload);
@@ -259,21 +308,91 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-content-primary">
-              {taskToEdit ? "Edit Task" : "Create Task"}
-            </h2>
-            <Button variant="secondary" onClick={onClose}>
-              Close
-            </Button>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-2xl w-full max-w-[1000px] h-[85vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-3 border-b border-subtle bg-surface shrink-0">
+          <div className="flex items-center gap-3 text-sm text-content-secondary">
+            <span className="px-2 py-0.5 rounded border border-subtle bg-surface text-xs font-mono">
+              {taskToEdit ? "EDIT" : "NEW"}
+            </span>
+            <span className="text-content-tertiary">/</span>
+            <span
+              className="truncate max-w-[220px] text-content-primary"
+              title="Project"
+            >
+              {projects.find((p) => p.id === projectId)?.name ||
+                "Select Project"}
+            </span>
+            {taskType === "recurring" && (
+              <span className="flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full text-xs">
+                <MdReplayCircleFilled /> Recurring
+              </span>
+            )}
           </div>
-          
-          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full text-content-tertiary transition-colors ml-2"
+              type="button"
+            >
+              <FaTimes className="text-lg" />
+            </button>
+          </div>
+        </div>
+
+        {/* Body split view */}
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          className="flex flex-1 overflow-hidden"
+        >
+          {/* Left: Content */}
+          <div className="flex-1 overflow-y-auto p-8 border-r border-subtle bg-surface">
+            {/* Title */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-content-secondary mb-2">
+                Title *
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (errors.title)
+                    setErrors((prev) => ({ ...prev, title: "" }));
+                }}
+                className={`block w-full rounded-md border ${errors.title ? "border-red-500" : "border-subtle"
+                  } bg-surface px-3 py-2 text-sm text-content-primary`}
+              />
+              {errors.title && (
+                <p className="mt-1 text-xs text-red-600">{errors.title}</p>
+              )}
+            </div>
+
+            {/* Description */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-content-secondary">
+                  Description
+                </label>
+              </div>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+                className="w-full rounded-md border border-subtle px-3 py-2 text-sm bg-transparent text-content-primary"
+              />
+            </div>
+
             {/* Project Selection */}
-            <div>
+            <div className="mb-6">
               <label className="block text-sm font-medium text-content-secondary">
                 Project
               </label>
@@ -281,13 +400,13 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
                 value={projectId}
                 onChange={(e) => {
                   setProjectId(e.target.value);
-                  if (errors.projectId) setErrors((prev) => ({ ...prev, projectId: "" }));
+                  if (errors.projectId)
+                    setErrors((prev) => ({ ...prev, projectId: "" }));
                   setOkrObjectiveIndex(null);
                   setOkrKeyResultIndices([]);
                 }}
-                className={`mt-1 block w-full rounded-md border ${
-                  errors.projectId ? "border-red-500" : "border-subtle"
-                } bg-surface px-3 py-2 text-sm text-content-primary`}
+                className={`block w-full rounded-md border ${errors.projectId ? "border-red-500" : "border-subtle"
+                  } bg-surface px-3 py-2 text-sm text-content-primary`}
               >
                 <option value="">Select Project</option>
                 {projects.map((p) => (
@@ -308,23 +427,30 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
                       Objective
                     </label>
                     <select
-                      value={typeof okrObjectiveIndex === "number" ? String(okrObjectiveIndex) : ""}
+                      value={
+                        typeof okrObjectiveIndex === "number"
+                          ? String(okrObjectiveIndex)
+                          : ""
+                      }
                       onChange={(e) => {
-                        const idx = e.target.value === "" ? null : Number(e.target.value);
+                        const idx =
+                          e.target.value === "" ? null : Number(e.target.value);
                         setOkrObjectiveIndex(idx);
                         setOkrKeyResultIndices([]);
                       }}
                       className="block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
                     >
                       <option value="">Select Objective</option>
-                      {(projects.find((p) => p.id === projectId)?.okrs || []).map((okr, idx) => (
+                      {(
+                        projects.find((p) => p.id === projectId)?.okrs || []
+                      ).map((okr, idx) => (
                         <option key={idx} value={idx}>
                           {okr?.objective || `Objective ${idx + 1}`}
                         </option>
                       ))}
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-xs font-medium text-content-secondary mb-1">
                       Key Results (select multiple)
@@ -333,10 +459,11 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
                       {(() => {
                         const proj = projects.find((p) => p.id === projectId);
                         const okrs = proj?.okrs || [];
-                        const krs = typeof okrObjectiveIndex === "number" 
-                          ? okrs[okrObjectiveIndex]?.keyResults || [] 
-                          : [];
-                        
+                        const krs =
+                          typeof okrObjectiveIndex === "number"
+                            ? okrs[okrObjectiveIndex]?.keyResults || []
+                            : [];
+
                         if (!krs.length) {
                           return (
                             <p className="text-xs text-content-tertiary">
@@ -344,7 +471,7 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
                             </p>
                           );
                         }
-                        
+
                         return (
                           <div className="space-y-1">
                             {krs.map((kr, idx) => {
@@ -358,7 +485,9 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
                                     type="checkbox"
                                     className="rounded border-subtle"
                                     checked={checked}
-                                    disabled={typeof okrObjectiveIndex !== "number"}
+                                    disabled={
+                                      typeof okrObjectiveIndex !== "number"
+                                    }
                                     onChange={(e) => {
                                       setOkrKeyResultIndices((prev) => {
                                         const set = new Set(prev);
@@ -381,42 +510,8 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
               )}
             </div>
 
-            {/* Title */}
-            <div>
-              <label className="block text-sm font-medium text-content-secondary">
-                Title *
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  if (errors.title) setErrors((prev) => ({ ...prev, title: "" }));
-                }}
-                className={`mt-1 block w-full rounded-md border ${
-                  errors.title ? "border-red-500" : "border-subtle"
-                } bg-transparent px-3 py-2 text-sm text-content-primary`}
-              />
-              {errors.title && (
-                <p className="mt-1 text-xs text-red-600">{errors.title}</p>
-              )}
-            </div>
-
-            {/* Description */}
-            <div>
-              <label className="block text-sm font-medium text-content-secondary">
-                Description
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
-              />
-            </div>
-
             {/* Assigned To */}
-            <div>
+            <div className="mb-6">
               <label className="block text-sm font-medium text-content-secondary">
                 Assigned To
               </label>
@@ -430,7 +525,8 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
                       const filtered = prev.filter((a) => a.type === nextType);
                       const first = filtered[0] || null;
                       setAssigneeId(first?.id || "");
-                      if (errors.assigneeId) setErrors((p) => ({ ...p, assigneeId: "" }));
+                      if (errors.assigneeId)
+                        setErrors((p) => ({ ...p, assigneeId: "" }));
                       return filtered;
                     });
                   }}
@@ -443,20 +539,25 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
                   Type then search & select below.
                 </div>
               </div>
-              
+
               {assigneeType === "user" ? (
                 <SearchMultiSelect
                   items={assignees.map((u) => ({ id: u.id, label: u.name }))}
-                  selected={assigneesSelected.filter((a) => a.type === "user").map((a) => a.id)}
+                  selected={assigneesSelected
+                    .filter((a) => a.type === "user")
+                    .map((a) => a.id)}
                   onChange={(ids) => {
-                    const others = assigneesSelected.filter((a) => a.type !== "user");
+                    const others = assigneesSelected.filter(
+                      (a) => a.type !== "user"
+                    );
                     const nextSame = ids.map((id) => ({ type: "user", id }));
                     const next = [...nextSame, ...others];
                     setAssigneesSelected(next);
                     const first = nextSame[0] || null;
                     setAssigneeType("user");
                     setAssigneeId(first?.id || "");
-                    if (errors.assigneeId) setErrors((p) => ({ ...p, assigneeId: "" }));
+                    if (errors.assigneeId)
+                      setErrors((p) => ({ ...p, assigneeId: "" }));
                   }}
                   placeholder="Search resources..."
                 />
@@ -468,7 +569,8 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
                     setAssigneeId(id);
                     setAssigneeType("client");
                     setAssigneesSelected(id ? [{ type: "client", id }] : []);
-                    if (errors.assigneeId) setErrors((p) => ({ ...p, assigneeId: "" }));
+                    if (errors.assigneeId)
+                      setErrors((p) => ({ ...p, assigneeId: "" }));
                   }}
                   className="mt-2 block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
                 >
@@ -508,11 +610,11 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
                   value={dueDate}
                   onChange={(e) => {
                     setDueDate(e.target.value);
-                    if (errors.dueDate) setErrors((prev) => ({ ...prev, dueDate: "" }));
+                    if (errors.dueDate)
+                      setErrors((prev) => ({ ...prev, dueDate: "" }));
                   }}
-                  className={`mt-1 block w-full rounded-md border ${
-                    errors.dueDate ? "border-red-500" : "border-subtle"
-                  } bg-transparent px-3 py-2 text-sm text-content-primary`}
+                  className={`mt-1 block w-full rounded-md border ${errors.dueDate ? "border-red-500" : "border-subtle"
+                    } bg-transparent px-3 py-2 text-sm text-content-primary`}
                 />
                 {errors.dueDate && (
                   <p className="mt-1 text-xs text-red-600">{errors.dueDate}</p>
@@ -527,12 +629,16 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
                   type="checkbox"
                   className="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
                   checked={isRecurring}
-                  onChange={(e) => setTaskType(e.target.checked ? "recurring" : "one-time")}
+                  onChange={(e) =>
+                    setTaskType(e.target.checked ? "recurring" : "one-time")
+                  }
                 />
-                <span className="text-sm text-content-secondary">Recurring Task</span>
+                <span className="text-sm text-content-secondary">
+                  Recurring Task
+                </span>
               </label>
             </div>
-            
+
             {/* Recurring Options */}
             {isRecurring && (
               <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 space-y-4">
@@ -546,7 +652,9 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
                         type="number"
                         min="1"
                         value={recurringInterval}
-                        onChange={(e) => setRecurringInterval(parseInt(e.target.value) || 1)}
+                        onChange={(e) =>
+                          setRecurringInterval(parseInt(e.target.value) || 1)
+                        }
                         className="w-20 rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm"
                       />
                       <select
@@ -569,11 +677,13 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
                         onChange={(e) => setSkipWeekends(e.target.checked)}
                         className="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
                       />
-                      <span className="text-sm text-indigo-700">Skip Weekends</span>
+                      <span className="text-sm text-indigo-700">
+                        Skip Weekends
+                      </span>
                     </label>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-indigo-700 mb-1">
@@ -619,10 +729,12 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
                     </div>
                   )}
                 </div>
-                
+
                 {previewDates.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-indigo-200">
-                    <p className="text-xs text-indigo-600 mb-1">Next occurrences (preview):</p>
+                    <p className="text-xs text-indigo-600 mb-1">
+                      Next occurrences (preview):
+                    </p>
                     <div className="flex flex-wrap gap-1">
                       {previewDates.slice(0, 5).map((d) => (
                         <span
@@ -633,7 +745,9 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
                         </span>
                       ))}
                       {previewDates.length > 5 && (
-                        <span className="text-[10px] text-indigo-500 self-center">...</span>
+                        <span className="text-[10px] text-indigo-500 self-center">
+                          ...
+                        </span>
                       )}
                     </div>
                   </div>
@@ -641,6 +755,7 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
               </div>
             )}
 
+            {/* Attributes Row */}
             {/* Attributes Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -686,19 +801,172 @@ function TaskModal({ onClose, onSave, taskToEdit, projects = [], assignees = [],
               </div>
             </div>
 
+            {/* Subtasks Section */}
+            <div className="mt-6 pt-6 border-t border-subtle">
+              <label className="block text-sm font-medium text-content-secondary mb-3">
+                Subtasks
+              </label>
+              <div className="space-y-2 mb-3">
+                {subtasks.map((st, idx) => (
+                  <div key={idx} className="flex items-center gap-2 group">
+                    <input
+                      type="checkbox"
+                      checked={st.completed}
+                      onChange={(e) => {
+                        const next = [...subtasks];
+                        next[idx].completed = e.target.checked;
+                        setSubtasks(next);
+                      }}
+                      className="rounded border-subtle"
+                    />
+                    <input
+                      type="text"
+                      value={st.title}
+                      onChange={(e) => {
+                        const next = [...subtasks];
+                        next[idx].title = e.target.value;
+                        setSubtasks(next);
+                      }}
+                      className="flex-1 bg-transparent border-none text-sm p-0 focus:ring-0"
+                      placeholder="Subtask title"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = subtasks.filter((_, i) => i !== idx);
+                        setSubtasks(next);
+                      }}
+                      className="text-red-400 opacity-0 group-hover:opacity-100 hover:text-red-600 transition-opacity"
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newSubtask}
+                  onChange={(e) => setNewSubtask(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (newSubtask.trim()) {
+                        setSubtasks([
+                          ...subtasks,
+                          {
+                            id: Math.random().toString(36).slice(2),
+                            title: newSubtask.trim(),
+                            completed: false,
+                          },
+                        ]);
+                        setNewSubtask("");
+                      }
+                    }
+                  }}
+                  placeholder="Add a subtask (Press Enter)"
+                  className="flex-1 rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    if (newSubtask.trim()) {
+                      setSubtasks([
+                        ...subtasks,
+                        {
+                          id: Math.random().toString(36).slice(2),
+                          title: newSubtask.trim(),
+                          completed: false,
+                        },
+                      ]);
+                      setNewSubtask("");
+                    }
+                  }}
+                >
+                  Add
+                </Button>
+              </div>
+            </div>
+
             {/* Form Actions */}
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex justify-end gap-3 pt-4">
               <Button onClick={onClose} variant="secondary" type="button">
                 Cancel
               </Button>
-              <Button variant="primary" type="submit" disabled={!!taskToEdit && !hasChanges}>
+              <Button
+                variant="primary"
+                type="submit"
+                disabled={!!taskToEdit && !hasChanges}
+              >
                 {taskToEdit ? "Save Changes" : "Create Task"}
               </Button>
             </div>
-          </form>
-        </Card>
-      </div>
-    </div>
+          </div>
+
+          {/* Right: Metadata panel */}
+          <div className="w-[350px] bg-surface flex flex-col shrink-0 border-l border-subtle">
+            <div className="p-6 border-b border-subtle space-y-5 bg-white">
+              {/* Assignee quick summary */}
+              <div>
+                <label className="block text-sm font-medium text-content-secondary mb-2">
+                  Assignees
+                </label>
+                <div className="flex flex-wrap gap-2 min-h-[32px] items-center">
+                  {assigneesSelected && assigneesSelected.length > 0 ? (
+                    assigneesSelected
+                      .filter((a) => a.type === "user")
+                      .slice(0, 3)
+                      .map((a, i) => {
+                        const u = assignees.find((x) => x.id === a.id);
+                        return (
+                          <div
+                            key={i}
+                            className="flex items-center gap-2 px-2 py-1 bg-white border border-gray-200 rounded-full shadow-sm"
+                          >
+                            <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold">
+                              {u?.name?.[0] || "?"}
+                            </div>
+                            <span className="text-xs text-gray-700 max-w-[80px] truncate">
+                              {u?.name || a.id}
+                            </span>
+                          </div>
+                        );
+                      })
+                  ) : (
+                    <span className="text-xs text-content-tertiary italic">
+                      Empty
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Dates quick view */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-content-secondary">
+                    Assigned
+                  </label>
+                  <div className="flex items-center gap-2 text-xs text-content-secondary">
+                    <FaRegCalendarAlt className="text-content-tertiary" />
+                    {assignedDate || "Empty"}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-content-secondary">
+                    Due
+                  </label>
+                  <div className="flex items-center gap-2 text-xs text-content-secondary">
+                    <FaRegCalendarAlt className="text-content-tertiary" />
+                    {dueDate || "Empty"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div >
+    </div >
   );
 }
 
