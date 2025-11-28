@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { HiXMark } from "react-icons/hi2";
 import { FaEye, FaEyeSlash, FaSpinner } from "react-icons/fa";
 import Button from "./Button";
+import { db } from "../firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 
 function EditResourceModal({
   formData,
@@ -17,6 +19,7 @@ function EditResourceModal({
 }) {
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  const [roleOptions, setRoleOptions] = useState([]);
 
   const emailInUse = (val) =>
     existingEmails.includes((val || "").toLowerCase());
@@ -53,6 +56,33 @@ function EditResourceModal({
         return "";
     }
   };
+
+  useEffect(() => {
+    const ref = doc(db, "settings", "hierarchy");
+    const unsub = onSnapshot(ref, (snap) => {
+      const d = snap.data() || {};
+      const rolesArr = Array.isArray(d.roles) ? d.roles : [];
+      let list = [];
+      if (rolesArr.length > 0) {
+        list = rolesArr
+          .filter((r) => r && r.name && r.role)
+          .map((r) => ({ type: String(r.role).toLowerCase(), name: r.name }));
+      } else {
+        const sup = Array.isArray(d.superior) ? d.superior : [];
+        const inf = Array.isArray(d.inferior) ? d.inferior : [];
+        const adminArr = Array.isArray(d.admin) ? d.admin : [];
+        const memberArr = Array.isArray(d.member) ? d.member : [];
+        const adminSet = new Set([...(adminArr || []), ...(sup || [])]);
+        const memberSet = new Set([...(memberArr || []), ...(inf || [])]);
+        list = [
+          ...Array.from(adminSet).map((v) => ({ type: "admin", name: v })),
+          ...Array.from(memberSet).map((v) => ({ type: "member", name: v })),
+        ];
+      }
+      setRoleOptions(list);
+    });
+    return () => unsub();
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -266,15 +296,20 @@ function EditResourceModal({
                 </label>
                 <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                   Resource Role
-                  <input
-                    type="text"
+                  <select
                     value={formData.resourceRole}
-                    placeholder="e.g. Project Manager"
                     onChange={(e) =>
                       setFormData({ ...formData, resourceRole: e.target.value })
                     }
                     className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                  />
+                  >
+                    <option value="">Select role</option>
+                    {roleOptions.map((opt) => (
+                      <option key={`${opt.type}_${opt.name}`} value={opt.name}>
+                        {opt.name}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                   Status

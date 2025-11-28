@@ -1,7 +1,7 @@
 // src/main.jsx
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import "./index.css";
 
@@ -98,7 +98,7 @@ const router = createBrowserRouter([
         path: "/settings",
         element: <Settings />,
         children: [
-          { index: true, element: <AddHierarchy /> },
+          { index: true, element: <Navigate to="add-hierarchy" replace /> },
           { path: "add-hierarchy", element: <AddHierarchy /> },
           { path: "project-settings", element: <ProjectSettings /> },
         ],

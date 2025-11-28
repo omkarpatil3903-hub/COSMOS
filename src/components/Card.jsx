@@ -1,7 +1,7 @@
 // src/components/Card.jsx
 import React from "react";
 
-function Card({ title, icon, children, actions, className = "", ...props }) {
+function Card({ title, icon, children, actions, className = "", tone = "surface", ...props }) {
   const iconEl =
     icon && React.isValidElement(icon)
       ? React.cloneElement(icon, {
@@ -10,10 +10,12 @@ function Card({ title, icon, children, actions, className = "", ...props }) {
           }`.trim(),
         })
       : icon;
+  const toneClass = tone === "white" ? "bg-white" : tone === "muted" ? "bg-gray-50" : "bg-surface";
+
   return (
     <div
       {...props}
-      className={`bg-surface rounded-xl border border-subtle shadow-soft transition-colors duration-200 max-w-full overflow-hidden ${className}`}
+      className={`${toneClass} rounded-xl border border-subtle shadow-soft transition-colors duration-200 max-w-full overflow-hidden ${className}`}
     >
       {/* Card Header */}
       {(title || icon || actions) && (
