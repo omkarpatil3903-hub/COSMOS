@@ -1,12 +1,61 @@
 // src/components/TaskModal.jsx
-import React, { useState, useEffect, useRef } from "react";
-
-import Card from "./Card";
+import React, { useState, useEffect, useMemo } from "react";
 import Button from "./Button";
 import toast from "react-hot-toast";
 import { validateTaskForm } from "../utils/formBuilders";
+import { MdReplayCircleFilled } from "react-icons/md";
+import { FaTimes, FaRegCalendarAlt } from "react-icons/fa";
 
-// Now receives projects and assignees from parent instead of local samples
+// Inline simple searchable multi-select component
+function SearchMultiSelect({ items, selected, onChange, placeholder }) {
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(
+    () =>
+      items.filter((i) => i.label.toLowerCase().includes(query.toLowerCase())),
+    [items, query]
+  );
+
+  const toggle = (id) => {
+    const set = new Set(selected);
+    if (set.has(id)) set.delete(id);
+    else set.add(id);
+    onChange(Array.from(set));
+  };
+
+  return (
+    <div className="mt-2">
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder={placeholder || "Search..."}
+        className="block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
+      />
+      <div className="mt-2 max-h-40 overflow-y-auto rounded-md border border-subtle bg-surface">
+        {filtered.map((i) => (
+          <label
+            key={i.id}
+            className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+          >
+            <input
+              type="checkbox"
+              checked={selected.includes(i.id)}
+              onChange={() => toggle(i.id)}
+              className="rounded border-subtle"
+            />
+            <span>{i.label}</span>
+          </label>
+        ))}
+        {!filtered.length && (
+          <div className="px-3 py-2 text-xs text-content-tertiary">
+            No matches
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TaskModal({
   onClose,
   onSave,
@@ -17,504 +66,333 @@ function TaskModal({
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [assigneeId, setAssigneeId] = useState("");
-  const [assigneeType, setAssigneeType] = useState("user"); // 'user' | 'client'
   const [projectId, setProjectId] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [assignedDate, setAssignedDate] = useState(
-    new Date().toISOString().slice(0, 10)
-  );
   const [priority, setPriority] = useState("Medium");
   const [status, setStatus] = useState("To-Do");
   const [weightage, setWeightage] = useState("");
-  const [completionComment, setCompletionComment] = useState("");
 
-  // Task Type Toggle
-  const [taskType, setTaskType] = useState("one-time"); // 'one-time' | 'recurring'
+  const [assigneeType, setAssigneeType] = useState("user"); // 'user' | 'client'
+  const [assigneeId, setAssigneeId] = useState("");
+  const [assigneesSelected, setAssigneesSelected] = useState([]); // [{type,id}]
 
-  // Recurring task fields
-  const [recurringPattern, setRecurringPattern] = useState("daily");
+  const [assignedDate, setAssignedDate] = useState("");
+  const [dueDate, setDueDate] = useState("");
+
+  // Recurring task state
+  const [taskType, setTaskType] = useState("one-time");
+  const isRecurring = taskType === "recurring";
+  const [recurringPattern, setRecurringPattern] = useState("weekly");
   const [recurringInterval, setRecurringInterval] = useState(1);
+  const [recurringEndType, setRecurringEndType] = useState("never");
   const [recurringEndDate, setRecurringEndDate] = useState("");
   const [recurringEndAfter, setRecurringEndAfter] = useState("");
-  const [recurringEndType, setRecurringEndType] = useState("never"); // 'never', 'date', 'after'
   const [skipWeekends, setSkipWeekends] = useState(false);
   const [previewDates, setPreviewDates] = useState([]);
-  const [errors, setErrors] = useState({});
-  const [initialTaskState, setInitialTaskState] = useState(null);
 
+  // OKR state
+  const [okrObjectiveIndex, setOkrObjectiveIndex] = useState(null);
+  const [okrKeyResultIndices, setOkrKeyResultIndices] = useState([]);
+
+  // Subtasks state
+  const [subtasks, setSubtasks] = useState([]);
+  const [newSubtask, setNewSubtask] = useState("");
+
+  const [errors, setErrors] = useState({});
+
+  // Clear recurring fields when switching to one-time
+  useEffect(() => {
+    if (!isRecurring) {
+      setRecurringEndType("never");
+      setRecurringEndDate("");
+      setRecurringEndAfter("");
+      setPreviewDates([]);
+    }
+  }, [isRecurring]);
+
+  // Generate preview dates for recurring tasks
+  useEffect(() => {
+    if (!isRecurring || !dueDate) {
+      setPreviewDates([]);
+      return;
+    }
+
+    const out = [];
+    try {
+      const start = new Date(dueDate);
+      let count = 0;
+      while (out.length < 5 && count < 60) {
+        const d = new Date(start);
+        if (recurringPattern === "daily") {
+          d.setDate(start.getDate() + recurringInterval * (out.length + 1));
+        } else if (recurringPattern === "weekly") {
+          d.setDate(start.getDate() + 7 * recurringInterval * (out.length + 1));
+        } else if (recurringPattern === "monthly") {
+          d.setMonth(start.getMonth() + recurringInterval * (out.length + 1));
+        } else if (recurringPattern === "yearly") {
+          d.setFullYear(
+            start.getFullYear() + recurringInterval * (out.length + 1)
+          );
+        }
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        out.push(`${yyyy}-${mm}-${dd}`);
+        count++;
+      }
+    } catch {
+      // Ignore date parsing errors
+    }
+    setPreviewDates(out);
+  }, [isRecurring, dueDate, recurringPattern, recurringInterval]);
+
+  // Initialize form when editing
   useEffect(() => {
     if (taskToEdit) {
-      const initialWeightage =
-        taskToEdit.weightage !== undefined && taskToEdit.weightage !== null
-          ? String(taskToEdit.weightage)
-          : "";
-
       setTitle(taskToEdit.title || "");
       setDescription(taskToEdit.description || "");
-      setAssigneeId(taskToEdit.assigneeId || "");
-      setAssigneeType(taskToEdit.assigneeType || "user");
       setProjectId(taskToEdit.projectId || "");
-      setDueDate(taskToEdit.dueDate || "");
-      setAssignedDate(taskToEdit.assignedDate || "");
       setPriority(taskToEdit.priority || "Medium");
       setStatus(taskToEdit.status || "To-Do");
-      setWeightage(initialWeightage);
-      setCompletionComment(taskToEdit.completionComment || "");
+      setWeightage(String(taskToEdit.weightage || ""));
 
-      // Load recurring task data
-      const isRec = taskToEdit.isRecurring || false;
-      setTaskType(isRec ? "recurring" : "one-time");
-      setRecurringPattern(taskToEdit.recurringPattern || "daily");
+      setAssigneeType(taskToEdit.assigneeType || "user");
+      setAssigneeId(taskToEdit.assigneeId || "");
+      setAssigneesSelected(
+        Array.isArray(taskToEdit.assignees) ? taskToEdit.assignees : []
+      );
+
+      setAssignedDate(taskToEdit.assignedDate || "");
+      setDueDate(taskToEdit.dueDate || "");
+
+      if (taskToEdit.taskType === "recurring") {
+        setTaskType("recurring");
+      }
+      setRecurringPattern(taskToEdit.recurringPattern || "weekly");
       setRecurringInterval(taskToEdit.recurringInterval || 1);
-      setRecurringEndDate(taskToEdit.recurringEndDate || "");
-      setRecurringEndAfter(taskToEdit.recurringEndAfter || "");
       setRecurringEndType(taskToEdit.recurringEndType || "never");
+      setRecurringEndDate(taskToEdit.recurringEndDate || "");
+      setRecurringEndAfter(String(taskToEdit.recurringEndAfter || ""));
       setSkipWeekends(taskToEdit.skipWeekends || false);
-      setErrors({});
 
-      setInitialTaskState({
-        title: taskToEdit.title || "",
-        description: taskToEdit.description || "",
-        assigneeId: taskToEdit.assigneeId || "",
-        assigneeType: taskToEdit.assigneeType || "user",
-        projectId: taskToEdit.projectId || "",
-        dueDate: taskToEdit.dueDate || "",
-        assignedDate: taskToEdit.assignedDate || "",
-        priority: taskToEdit.priority || "Medium",
-        status: taskToEdit.status || "To-Do",
-        weightage: initialWeightage,
-        completionComment: taskToEdit.completionComment || "",
-        isRecurring: taskToEdit.isRecurring || false,
-        recurringPattern: taskToEdit.recurringPattern || "daily",
-        recurringInterval: taskToEdit.recurringInterval || 1,
-        recurringEndDate: taskToEdit.recurringEndDate || "",
-        recurringEndAfter: taskToEdit.recurringEndAfter || "",
-        recurringEndType: taskToEdit.recurringEndType || "never",
-        skipWeekends: taskToEdit.skipWeekends || false,
-      });
-    } else {
-      setInitialTaskState(null);
-      setErrors({});
+      setOkrObjectiveIndex(
+        typeof taskToEdit.okrObjectiveIndex === "number"
+          ? taskToEdit.okrObjectiveIndex
+          : null
+      );
+      setOkrKeyResultIndices(
+        Array.isArray(taskToEdit.okrKeyResultIndices)
+          ? taskToEdit.okrKeyResultIndices
+          : []
+      );
+
+      setSubtasks(Array.isArray(taskToEdit.subtasks) ? taskToEdit.subtasks : []);
     }
   }, [taskToEdit]);
 
-  const isClientLocked =
-    !!taskToEdit && (taskToEdit.assigneeType || "user") === "client";
+  // Detect changes for edit mode
+  const hasChanges = useMemo(() => {
+    if (!taskToEdit) return true;
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const { isValid, errors: validationErrors } = validateTaskForm({
-      title,
-      dueDate,
-      projectId,
-      assigneeId,
-      assignedDate,
-    });
-    setErrors(validationErrors || {});
-    if (!isValid) {
-      const firstError = validationErrors && Object.values(validationErrors)[0];
-      if (firstError) toast.error(firstError);
-      return;
-    }
-    onSave({
-      id: taskToEdit?.id,
-      title,
-      description,
-      assigneeId,
-      assigneeType,
-      projectId,
-      dueDate,
-      assignedDate,
-      priority,
-      status,
-      weightage,
-      completionComment,
-      isRecurring: taskType === "recurring",
-      recurringPattern,
-      recurringInterval,
-      recurringEndDate,
-      recurringEndAfter,
-      recurringEndType,
-      skipWeekends,
-    });
-  };
-
-  // Preview next occurrences (up to N) whenever recurrence settings change
-  useEffect(() => {
-    if (taskType !== "recurring" || !dueDate) {
-      setPreviewDates([]);
-      return;
-    }
-    try {
-      const base = new Date(dueDate + "T00:00:00");
-      const maxPreview = 10;
-      const dates = [];
-      let cursor = new Date(base);
-      let occurrences = 0;
-      let guard = 0; // safety to avoid infinite loops
-      while (occurrences < maxPreview && guard < 1000) {
-        guard++;
-        // Build a lightweight task-like object for occursOnDate logic
-        const simulatedTask = {
-          isRecurring: true,
-          dueDate: dueDate,
-          recurringPattern,
-          recurringInterval,
-          recurringEndType,
-          recurringEndDate,
-          recurringEndAfter,
-          skipWeekends,
-        };
-        // Stop if end-date reached
-        if (recurringEndType === "date" && recurringEndDate) {
-          const end = new Date(recurringEndDate + "T00:00:00");
-          if (cursor > end) break;
-        }
-        // Stop if after occurrences limit reached
-        if (recurringEndType === "after" && recurringEndAfter) {
-          const limit = parseInt(recurringEndAfter);
-          if (dates.length >= limit) break;
-        }
-        // Check if this cursor matches an occurrence
-        if (occursOnCursor(simulatedTask, cursor)) {
-          dates.push(formatYMD(cursor));
-          occurrences++;
-        }
-        // Advance cursor according to smallest step (1 day) and rely on filter logic
-        cursor.setDate(cursor.getDate() + 1);
-      }
-      setPreviewDates(dates);
-    } catch (err) {
-      console.warn("Failed to build preview dates", err);
-      setPreviewDates([]);
-    }
+    const normalize = (v) => v ?? "";
+    const fields = [
+      normalize(title) === normalize(taskToEdit.title),
+      normalize(description) === normalize(taskToEdit.description),
+      normalize(projectId) === normalize(taskToEdit.projectId),
+      normalize(priority) === normalize(taskToEdit.priority),
+      normalize(status) === normalize(taskToEdit.status),
+      String(weightage || "") === String(taskToEdit.weightage || ""),
+      normalize(assigneeType) === normalize(taskToEdit.assigneeType),
+      normalize(assigneeId) === normalize(taskToEdit.assigneeId),
+      JSON.stringify(assigneesSelected) ===
+      JSON.stringify(taskToEdit.assignees || []),
+      normalize(assignedDate) === normalize(taskToEdit.assignedDate),
+      normalize(dueDate) === normalize(taskToEdit.dueDate),
+      (taskToEdit.taskType || "one-time") === taskType,
+      normalize(recurringPattern) === normalize(taskToEdit.recurringPattern),
+      Number(recurringInterval || 1) ===
+      Number(taskToEdit.recurringInterval || 1),
+      normalize(recurringEndType) === normalize(taskToEdit.recurringEndType),
+      normalize(recurringEndDate) === normalize(taskToEdit.recurringEndDate),
+      String(recurringEndAfter || "") ===
+      String(taskToEdit.recurringEndAfter || ""),
+      (typeof okrObjectiveIndex === "number" ? okrObjectiveIndex : null) ===
+      (typeof taskToEdit.okrObjectiveIndex === "number"
+        ? taskToEdit.okrObjectiveIndex
+        : null),
+      JSON.stringify(okrKeyResultIndices) ===
+      JSON.stringify(taskToEdit.okrKeyResultIndices || []),
+      JSON.stringify(subtasks) === JSON.stringify(taskToEdit.subtasks || []),
+    ];
+    return !fields.every(Boolean);
   }, [
-    taskType,
+    title,
+    description,
+    projectId,
+    priority,
+    status,
+    weightage,
+    assigneeType,
+    assigneeId,
+    assigneesSelected,
+    assignedDate,
     dueDate,
+    taskType,
     recurringPattern,
     recurringInterval,
     recurringEndType,
     recurringEndDate,
     recurringEndAfter,
-    skipWeekends,
+    okrObjectiveIndex,
+    okrKeyResultIndices,
+    subtasks,
+    taskToEdit,
   ]);
 
-  // Helper: determine if task occurs on a given date (mirrors logic from recurringTasks.js simplified)
-  const occursOnCursor = (task, dateObj) => {
-    const base = new Date(task.dueDate + "T00:00:00");
-    if (Number.isNaN(base.getTime())) return false;
-    const d = new Date(
-      dateObj.getFullYear(),
-      dateObj.getMonth(),
-      dateObj.getDate()
-    );
-    const b = new Date(base.getFullYear(), base.getMonth(), base.getDate());
-    if (task.skipWeekends && (d.getDay() === 0 || d.getDay() === 6))
-      return false;
-    const diffDays = Math.floor((d - b) / (24 * 60 * 60 * 1000));
-    if (diffDays < 0) return false;
-    const interval = Number(task.recurringInterval || 1);
-    const pattern = task.recurringPattern || "daily";
-    if (pattern === "daily") return diffDays % interval === 0;
-    if (pattern === "weekly") {
-      if (d.getDay() !== b.getDay()) return false;
-      const weeks = Math.floor(diffDays / 7);
-      return weeks % interval === 0;
-    }
-    if (pattern === "monthly") {
-      if (d.getDate() !== b.getDate()) return false;
-      const months =
-        (d.getFullYear() - b.getFullYear()) * 12 +
-        (d.getMonth() - b.getMonth());
-      return months % interval === 0;
-    }
-    if (pattern === "yearly") {
-      if (d.getMonth() !== b.getMonth() || d.getDate() !== b.getDate())
-        return false;
-      const years = d.getFullYear() - b.getFullYear();
-      return years % interval === 0;
-    }
-    return false;
-  };
+  const handleSubmit = (e) => {
+    e.preventDefault();
 
-  const formatYMD = (d) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${dd}`;
-  };
+    // Validate required fields
+    const validation = validateTaskForm({
+      title,
+      projectId,
+      dueDate,
+      assigneeId:
+        assigneeType === "client" ? assigneeId : assigneesSelected[0]?.id || "",
+    });
 
-  const modalRef = useRef(null);
-  const prevFocusedRef = useRef(null);
-
-  useEffect(() => {
-    prevFocusedRef.current = document.activeElement;
-    const root = modalRef.current;
-    if (root) {
-      const el = root.querySelector(
-        'input, select, textarea, button, [tabindex]:not([tabindex="-1"])'
-      );
-      if (el && typeof el.focus === "function") el.focus();
-      else if (typeof root.focus === "function") root.focus();
-    }
-    return () => {
-      if (
-        prevFocusedRef.current &&
-        typeof prevFocusedRef.current.focus === "function"
-      ) {
-        prevFocusedRef.current.focus();
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    const originalPaddingRight = document.body.style.paddingRight;
-    const scrollbarWidth =
-      window.innerWidth - document.documentElement.clientWidth;
-    document.body.style.overflow = "hidden";
-    if (scrollbarWidth > 0) {
-      document.body.style.paddingRight = `${scrollbarWidth}px`;
-    }
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.paddingRight = originalPaddingRight;
-    };
-  }, []);
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      onClose();
+    if (!validation.isValid) {
+      setErrors(validation.errors || {});
       return;
     }
-    if (e.key === "Tab") {
-      const root = modalRef.current;
-      if (!root) return;
-      const selectors =
-        'a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, [contenteditable], [tabindex]:not([tabindex="-1"])';
-      const nodes = Array.from(root.querySelectorAll(selectors)).filter(
-        (el) => el instanceof HTMLElement && !el.hasAttribute("disabled")
-      );
-      if (nodes.length === 0) {
-        e.preventDefault();
-        if (typeof root.focus === "function") root.focus();
-        return;
-      }
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      if (e.shiftKey) {
-        if (
-          document.activeElement === first ||
-          document.activeElement === root
-        ) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    }
-  };
 
-  const hasChanges =
-    !taskToEdit || !initialTaskState
-      ? true
-      : title !== initialTaskState.title ||
-        description !== initialTaskState.description ||
-        assigneeId !== initialTaskState.assigneeId ||
-        assigneeType !== initialTaskState.assigneeType ||
-        projectId !== initialTaskState.projectId ||
-        dueDate !== initialTaskState.dueDate ||
-        assignedDate !== initialTaskState.assignedDate ||
-        priority !== initialTaskState.priority ||
-        status !== initialTaskState.status ||
-        weightage !== initialTaskState.weightage ||
-        completionComment !== initialTaskState.completionComment ||
-        (taskType === "recurring") !== initialTaskState.isRecurring ||
-        recurringPattern !== initialTaskState.recurringPattern ||
-        recurringInterval !== initialTaskState.recurringInterval ||
-        recurringEndDate !== initialTaskState.recurringEndDate ||
-        recurringEndAfter !== initialTaskState.recurringEndAfter ||
-        recurringEndType !== initialTaskState.recurringEndType ||
-        skipWeekends !== initialTaskState.skipWeekends;
+    // Build assigneeIds array for employee queries
+    const assigneeIds = assigneesSelected
+      .filter((a) => a.type === "user")
+      .map((a) => a.id);
+
+    const payload = {
+      title,
+      description,
+      projectId,
+      priority,
+      status,
+      weightage: weightage ? Number(weightage) : undefined,
+      assigneeType,
+      assigneeId, // Legacy single assignee
+      assignees: assigneesSelected, // New multi-assignee array
+      assigneeIds, // Array of user IDs for queries
+      assignedDate,
+      dueDate,
+      taskType,
+      recurringPattern: isRecurring ? recurringPattern : undefined,
+      recurringInterval: isRecurring ? Number(recurringInterval) : undefined,
+      recurringEndType: isRecurring ? recurringEndType : undefined,
+      recurringEndDate:
+        isRecurring && recurringEndType === "date"
+          ? recurringEndDate
+          : undefined,
+      recurringEndAfter:
+        isRecurring && recurringEndType === "after"
+          ? Number(recurringEndAfter)
+          : undefined,
+      skipWeekends: isRecurring ? skipWeekends : undefined,
+      okrObjectiveIndex:
+        typeof okrObjectiveIndex === "number" ? okrObjectiveIndex : undefined,
+      okrKeyResultIndices: okrKeyResultIndices,
+      subtasks,
+    };
+
+    onSave(payload);
+    toast.success(taskToEdit ? "Task updated" : "Task created");
+    onClose();
+  };
 
   return (
     <div
-      ref={modalRef}
-      tabIndex={-1}
-      onKeyDown={handleKeyDown}
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overscroll-contain p-4 sm:p-6"
-      role="dialog"
-      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="z-10 w-full max-w-2xl mx-4 sm:mx-6">
-        <Card className="w-full max-h-[90vh] overflow-y-auto overscroll-contain">
-          <h2 className="text-xl font-semibold mb-4">
-            {taskToEdit ? "Edit Task" : "Create Task"}
-          </h2>
+      <div
+        className="bg-white rounded-xl shadow-2xl w-full max-w-[1000px] h-[85vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-3 border-b border-subtle bg-surface shrink-0">
+          <div className="flex items-center gap-3 text-sm text-content-secondary">
+            <span className="px-2 py-0.5 rounded border border-subtle bg-surface text-xs font-mono">
+              {taskToEdit ? "EDIT" : "NEW"}
+            </span>
+            <span className="text-content-tertiary">/</span>
+            <span
+              className="truncate max-w-[220px] text-content-primary"
+              title="Project"
+            >
+              {projects.find((p) => p.id === projectId)?.name ||
+                "Select Project"}
+            </span>
+            {taskType === "recurring" && (
+              <span className="flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full text-xs">
+                <MdReplayCircleFilled /> Recurring
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full text-content-tertiary transition-colors ml-2"
+              type="button"
+            >
+              <FaTimes className="text-lg" />
+            </button>
+          </div>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-            {/* Task Type Toggle */}
-            <div className="flex p-1 bg-gray-100 rounded-lg">
-              <button
-                type="button"
-                onClick={() => setTaskType("one-time")}
-                className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-                  taskType === "one-time"
-                    ? "bg-white text-indigo-600 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                One-time Task
-              </button>
-              <button
-                type="button"
-                onClick={() => setTaskType("recurring")}
-                className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-                  taskType === "recurring"
-                    ? "bg-white text-indigo-600 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Recurring Task
-              </button>
+        {/* Body split view */}
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          className="flex flex-1 overflow-hidden"
+        >
+          {/* Left: Content */}
+          <div className="flex-1 overflow-y-auto p-8 border-r border-subtle bg-surface">
+            {/* Title */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-content-secondary mb-2">
+                Title *
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (errors.title)
+                    setErrors((prev) => ({ ...prev, title: "" }));
+                }}
+                className={`block w-full rounded-md border ${errors.title ? "border-red-500" : "border-subtle"
+                  } bg-surface px-3 py-2 text-sm text-content-primary`}
+              />
+              {errors.title && (
+                <p className="mt-1 text-xs text-red-600">{errors.title}</p>
+              )}
             </div>
 
-            {/* Recurring Settings (Only visible if Recurring) */}
-            {taskType === "recurring" && (
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 space-y-4">
-                <h3 className="text-sm font-semibold text-blue-800 flex items-center gap-2">
-                  <span className="text-lg">↻</span> Recurrence Settings
-                </h3>
-
-                {/* Interval & Pattern */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-blue-700 mb-1">
-                      Repeat Every
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        min="1"
-                        value={recurringInterval}
-                        onChange={(e) =>
-                          setRecurringInterval(parseInt(e.target.value) || 1)
-                        }
-                        className="w-20 rounded-md border border-blue-200 bg-white px-3 py-2 text-sm"
-                      />
-                      <select
-                        value={recurringPattern}
-                        onChange={(e) => setRecurringPattern(e.target.value)}
-                        className="flex-1 rounded-md border border-blue-200 bg-white px-3 py-2 text-sm"
-                      >
-                        <option value="daily">Day(s)</option>
-                        <option value="weekly">Week(s)</option>
-                        <option value="monthly">Month(s)</option>
-                        <option value="yearly">Year(s)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Skip Weekends */}
-                  <div className="flex items-end pb-2">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={skipWeekends}
-                        onChange={(e) => setSkipWeekends(e.target.checked)}
-                        className="rounded border-blue-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-blue-700">
-                        Skip Weekends
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Ends Logic */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-blue-700 mb-1">
-                      Ends
-                    </label>
-                    <select
-                      value={recurringEndType}
-                      onChange={(e) => setRecurringEndType(e.target.value)}
-                      className="w-full rounded-md border border-blue-200 bg-white px-3 py-2 text-sm"
-                    >
-                      <option value="never">Never</option>
-                      <option value="date">On Date</option>
-                      <option value="after">After Occurrences</option>
-                    </select>
-                  </div>
-
-                  {recurringEndType === "date" && (
-                    <div>
-                      <label className="block text-xs font-medium text-blue-700 mb-1">
-                        End Date
-                      </label>
-                      <input
-                        type="date"
-                        value={recurringEndDate}
-                        onChange={(e) => setRecurringEndDate(e.target.value)}
-                        min={dueDate || undefined}
-                        className="w-full rounded-md border border-blue-200 bg-white px-3 py-2 text-sm"
-                      />
-                    </div>
-                  )}
-
-                  {recurringEndType === "after" && (
-                    <div>
-                      <label className="block text-xs font-medium text-blue-700 mb-1">
-                        Occurrences
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={recurringEndAfter}
-                        onChange={(e) => setRecurringEndAfter(e.target.value)}
-                        placeholder="e.g., 10"
-                        className="w-full rounded-md border border-blue-200 bg-white px-3 py-2 text-sm"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Preview */}
-                {previewDates.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-blue-200">
-                    <p className="text-xs text-blue-600 mb-1">
-                      Next occurrences (preview):
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {previewDates.slice(0, 5).map((d) => (
-                        <span
-                          key={d}
-                          className="inline-block px-2 py-0.5 bg-white text-blue-600 text-[10px] rounded border border-blue-100"
-                        >
-                          {d}
-                        </span>
-                      ))}
-                      {previewDates.length > 5 && (
-                        <span className="text-[10px] text-blue-500 self-center">
-                          ...
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
+            {/* Description */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-content-secondary">
+                  Description
+                </label>
               </div>
-            )}
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+                className="w-full rounded-md border border-subtle px-3 py-2 text-sm bg-transparent text-content-primary"
+              />
+            </div>
 
-            {/* Standard Fields */}
-            <div>
+            {/* Project Selection */}
+            <div className="mb-6">
               <label className="block text-sm font-medium text-content-secondary">
                 Project
               </label>
@@ -522,13 +400,13 @@ function TaskModal({
                 value={projectId}
                 onChange={(e) => {
                   setProjectId(e.target.value);
-                  if (errors.projectId) {
+                  if (errors.projectId)
                     setErrors((prev) => ({ ...prev, projectId: "" }));
-                  }
+                  setOkrObjectiveIndex(null);
+                  setOkrKeyResultIndices([]);
                 }}
-                className={`mt-1 block w-full rounded-md border ${
-                  errors.projectId ? "border-red-500" : "border-subtle"
-                } bg-surface px-3 py-2 text-sm text-content-primary`}
+                className={`block w-full rounded-md border ${errors.projectId ? "border-red-500" : "border-subtle"
+                  } bg-surface px-3 py-2 text-sm text-content-primary`}
               >
                 <option value="">Select Project</option>
                 {projects.map((p) => (
@@ -540,124 +418,178 @@ function TaskModal({
               {errors.projectId && (
                 <p className="mt-1 text-xs text-red-600">{errors.projectId}</p>
               )}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-content-secondary">
-                Title *
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  if (errors.title) {
-                    setErrors((prev) => ({ ...prev, title: "" }));
-                  }
-                }}
-                className={`mt-1 block w-full rounded-md border ${
-                  errors.title ? "border-red-500" : "border-subtle"
-                } bg-transparent px-3 py-2 text-sm text-content-primary`}
-              />
-              {errors.title && (
-                <p className="mt-1 text-xs text-red-600">{errors.title}</p>
+              {/* OKR Selection */}
+              {projectId && (
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-content-secondary mb-1">
+                      Objective
+                    </label>
+                    <select
+                      value={
+                        typeof okrObjectiveIndex === "number"
+                          ? String(okrObjectiveIndex)
+                          : ""
+                      }
+                      onChange={(e) => {
+                        const idx =
+                          e.target.value === "" ? null : Number(e.target.value);
+                        setOkrObjectiveIndex(idx);
+                        setOkrKeyResultIndices([]);
+                      }}
+                      className="block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
+                    >
+                      <option value="">Select Objective</option>
+                      {(
+                        projects.find((p) => p.id === projectId)?.okrs || []
+                      ).map((okr, idx) => (
+                        <option key={idx} value={idx}>
+                          {okr?.objective || `Objective ${idx + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-content-secondary mb-1">
+                      Key Results (select multiple)
+                    </label>
+                    <div className="rounded-md border border-subtle bg-surface p-2 max-h-40 overflow-y-auto">
+                      {(() => {
+                        const proj = projects.find((p) => p.id === projectId);
+                        const okrs = proj?.okrs || [];
+                        const krs =
+                          typeof okrObjectiveIndex === "number"
+                            ? okrs[okrObjectiveIndex]?.keyResults || []
+                            : [];
+
+                        if (!krs.length) {
+                          return (
+                            <p className="text-xs text-content-tertiary">
+                              No key results for selected objective
+                            </p>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-1">
+                            {krs.map((kr, idx) => {
+                              const checked = okrKeyResultIndices.includes(idx);
+                              return (
+                                <label
+                                  key={idx}
+                                  className="flex items-center gap-2 text-sm cursor-pointer"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    className="rounded border-subtle"
+                                    checked={checked}
+                                    disabled={
+                                      typeof okrObjectiveIndex !== "number"
+                                    }
+                                    onChange={(e) => {
+                                      setOkrKeyResultIndices((prev) => {
+                                        const set = new Set(prev);
+                                        if (e.target.checked) set.add(idx);
+                                        else set.delete(idx);
+                                        return Array.from(set);
+                                      });
+                                    }}
+                                  />
+                                  <span>{kr || `Key Result ${idx + 1}`}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
 
-            {status === "Done" && (
-              <div>
-                <label className="block text-sm font-medium text-content-secondary">
-                  Completion Comment
-                </label>
-                <textarea
-                  value={completionComment}
-                  onChange={(e) => setCompletionComment(e.target.value)}
-                  rows={3}
-                  placeholder="Add details about completion..."
-                  className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
-                  maxLength={300}
-                />
-                <div className="mt-1 text-xs text-content-tertiary text-right">
-                  {(completionComment || "").length}/300
-                </div>
-              </div>
-            )}
-
-            <div>
+            {/* Assigned To */}
+            <div className="mb-6">
               <label className="block text-sm font-medium text-content-secondary">
-                Description
+                Assigned To
               </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={4}
-                className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-content-secondary">
-                  Assigned To
-                </label>
-                <div className="mt-1 grid grid-cols-2 gap-2">
-                  <select
-                    value={assigneeType}
-                    onChange={(e) => {
-                      setAssigneeType(e.target.value);
-                      setAssigneeId(""); // reset selection when type changes
-                      if (errors.assigneeId) {
-                        setErrors((prev) => ({ ...prev, assigneeId: "" }));
-                      }
-                    }}
-                    className="block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
-                    disabled={isClientLocked}
-                  >
-                    <option value="user">Resource</option>
-                    <option value="client">Client</option>
-                  </select>
-                  <select
-                    value={assigneeId}
-                    onChange={(e) => {
-                      setAssigneeId(e.target.value);
-                      if (errors.assigneeId) {
-                        setErrors((prev) => ({ ...prev, assigneeId: "" }));
-                      }
-                    }}
-                    className={`block w-full rounded-md border ${
-                      errors.assigneeId ? "border-red-500" : "border-subtle"
-                    } bg-surface px-3 py-2 text-sm text-content-primary`}
-                    disabled={isClientLocked}
-                  >
-                    <option value="">Unassigned</option>
-                    {assigneeType === "user"
-                      ? assignees.map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.name}
-                          </option>
-                        ))
-                      : clients.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.clientName}
-                            {c.companyName ? ` (${c.companyName})` : ""}
-                          </option>
-                        ))}
-                  </select>
-                  {isClientLocked && (
-                    <p className="col-span-2 text-xs text-content-tertiary">
-                      Client-assigned tasks cannot be reassigned here.
-                    </p>
-                  )}
-                  {errors.assigneeId && (
-                    <p className="col-span-2 text-xs text-red-600">
-                      {errors.assigneeId}
-                    </p>
-                  )}
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <select
+                  value={assigneeType}
+                  onChange={(e) => {
+                    const nextType = e.target.value;
+                    setAssigneeType(nextType);
+                    setAssigneesSelected((prev) => {
+                      const filtered = prev.filter((a) => a.type === nextType);
+                      const first = filtered[0] || null;
+                      setAssigneeId(first?.id || "");
+                      if (errors.assigneeId)
+                        setErrors((p) => ({ ...p, assigneeId: "" }));
+                      return filtered;
+                    });
+                  }}
+                  className="block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
+                >
+                  <option value="user">Resource</option>
+                  <option value="client">Client</option>
+                </select>
+                <div className="text-xs text-content-tertiary self-center">
+                  Type then search & select below.
                 </div>
               </div>
+
+              {assigneeType === "user" ? (
+                <SearchMultiSelect
+                  items={assignees.map((u) => ({ id: u.id, label: u.name }))}
+                  selected={assigneesSelected
+                    .filter((a) => a.type === "user")
+                    .map((a) => a.id)}
+                  onChange={(ids) => {
+                    const others = assigneesSelected.filter(
+                      (a) => a.type !== "user"
+                    );
+                    const nextSame = ids.map((id) => ({ type: "user", id }));
+                    const next = [...nextSame, ...others];
+                    setAssigneesSelected(next);
+                    const first = nextSame[0] || null;
+                    setAssigneeType("user");
+                    setAssigneeId(first?.id || "");
+                    if (errors.assigneeId)
+                      setErrors((p) => ({ ...p, assigneeId: "" }));
+                  }}
+                  placeholder="Search resources..."
+                />
+              ) : (
+                <select
+                  value={assigneeId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setAssigneeId(id);
+                    setAssigneeType("client");
+                    setAssigneesSelected(id ? [{ type: "client", id }] : []);
+                    if (errors.assigneeId)
+                      setErrors((p) => ({ ...p, assigneeId: "" }));
+                  }}
+                  className="mt-2 block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
+                >
+                  <option value="">Select Client</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.clientName}
+                      {c.companyName ? ` (${c.companyName})` : ""}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {errors.assigneeId && (
+                <p className="mt-1 text-xs text-red-600">{errors.assigneeId}</p>
+              )}
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            {/* Dates Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-content-secondary">
                   Assigned Date
@@ -671,70 +603,161 @@ function TaskModal({
               </div>
               <div>
                 <label className="block text-sm font-medium text-content-secondary">
-                  {taskType === "recurring" ? "Start Date (Due)" : "Due Date"}
+                  {isRecurring ? "Start Date (Due)" : "Due Date"}
                 </label>
                 <input
                   type="date"
                   value={dueDate}
                   onChange={(e) => {
                     setDueDate(e.target.value);
-                    if (errors.dueDate) {
+                    if (errors.dueDate)
                       setErrors((prev) => ({ ...prev, dueDate: "" }));
-                    }
                   }}
-                  className={`mt-1 block w-full rounded-md border ${
-                    errors.dueDate ? "border-red-500" : "border-subtle"
-                  } bg-transparent px-3 py-2 text-sm text-content-primary`}
+                  className={`mt-1 block w-full rounded-md border ${errors.dueDate ? "border-red-500" : "border-subtle"
+                    } bg-transparent px-3 py-2 text-sm text-content-primary`}
                 />
                 {errors.dueDate && (
                   <p className="mt-1 text-xs text-red-600">{errors.dueDate}</p>
                 )}
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-content-secondary">
-                  {status === "Done" && taskToEdit?.completedAt
-                    ? (() => {
-                        const due = taskToEdit.dueDate
-                          ? new Date(taskToEdit.dueDate)
-                          : null;
-                        const comp = taskToEdit.completedAt
-                          ? new Date(taskToEdit.completedAt)
-                          : null;
-                        if (!comp) return "Completion Date";
-                        const compD = new Date(
-                          comp.getFullYear(),
-                          comp.getMonth(),
-                          comp.getDate()
-                        );
-                        const dueD = due
-                          ? new Date(
-                              due.getFullYear(),
-                              due.getMonth(),
-                              due.getDate()
-                            )
-                          : null;
-                        const late = dueD
-                          ? compD.getTime() > dueD.getTime()
-                          : false;
-                        return late ? "Delayed Completion" : "Completed At";
-                      })()
-                    : "Completion Date"}
-                </label>
-                <input
-                  type="text"
-                  value={
-                    status === "Done" && taskToEdit?.completedAt
-                      ? new Date(taskToEdit.completedAt).toLocaleDateString()
-                      : "—"
-                  }
-                  disabled
-                  className="mt-1 block w-full rounded-md border border-subtle bg-gray-100 px-3 py-2 text-sm text-content-secondary cursor-not-allowed"
-                />
-              </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            {/* Recurring Toggle */}
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
+                  checked={isRecurring}
+                  onChange={(e) =>
+                    setTaskType(e.target.checked ? "recurring" : "one-time")
+                  }
+                />
+                <span className="text-sm text-content-secondary">
+                  Recurring Task
+                </span>
+              </label>
+            </div>
+
+            {/* Recurring Options */}
+            {isRecurring && (
+              <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-indigo-700 mb-1">
+                      Repeat Every
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        value={recurringInterval}
+                        onChange={(e) =>
+                          setRecurringInterval(parseInt(e.target.value) || 1)
+                        }
+                        className="w-20 rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm"
+                      />
+                      <select
+                        value={recurringPattern}
+                        onChange={(e) => setRecurringPattern(e.target.value)}
+                        className="flex-1 rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm"
+                      >
+                        <option value="daily">Day(s)</option>
+                        <option value="weekly">Week(s)</option>
+                        <option value="monthly">Month(s)</option>
+                        <option value="yearly">Year(s)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex items-end pb-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={skipWeekends}
+                        onChange={(e) => setSkipWeekends(e.target.checked)}
+                        className="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm text-indigo-700">
+                        Skip Weekends
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-indigo-700 mb-1">
+                      Ends
+                    </label>
+                    <select
+                      value={recurringEndType}
+                      onChange={(e) => setRecurringEndType(e.target.value)}
+                      className="w-full rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm"
+                    >
+                      <option value="never">Never</option>
+                      <option value="date">On Date</option>
+                      <option value="after">After Occurrences</option>
+                    </select>
+                  </div>
+                  {recurringEndType === "date" && (
+                    <div>
+                      <label className="block text-xs font-medium text-indigo-700 mb-1">
+                        End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={recurringEndDate}
+                        onChange={(e) => setRecurringEndDate(e.target.value)}
+                        min={dueDate || undefined}
+                        className="w-full rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                  )}
+                  {recurringEndType === "after" && (
+                    <div>
+                      <label className="block text-xs font-medium text-indigo-700 mb-1">
+                        Occurrences
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={recurringEndAfter}
+                        onChange={(e) => setRecurringEndAfter(e.target.value)}
+                        placeholder="e.g., 10"
+                        className="w-full rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {previewDates.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-indigo-200">
+                    <p className="text-xs text-indigo-600 mb-1">
+                      Next occurrences (preview):
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {previewDates.slice(0, 5).map((d) => (
+                        <span
+                          key={d}
+                          className="inline-block px-2 py-0.5 bg-white text-indigo-600 text-[10px] rounded border border-indigo-100"
+                        >
+                          {d}
+                        </span>
+                      ))}
+                      {previewDates.length > 5 && (
+                        <span className="text-[10px] text-indigo-500 self-center">
+                          ...
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Attributes Row */}
+            {/* Attributes Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-content-secondary">
                   Priority
@@ -744,12 +767,11 @@ function TaskModal({
                   onChange={(e) => setPriority(e.target.value)}
                   className="mt-1 block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
                 >
-                  <option>Low</option>
-                  <option>Medium</option>
-                  <option>High</option>
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
                 </select>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-content-secondary">
                   Status
@@ -759,48 +781,192 @@ function TaskModal({
                   onChange={(e) => setStatus(e.target.value)}
                   className="mt-1 block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
                 >
-                  <option>To-Do</option>
-                  <option>In Progress</option>
-                  <option>Done</option>
+                  <option value="To-Do">To-Do</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Done">Done</option>
                 </select>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-content-secondary">
                   Weightage
                 </label>
                 <input
                   type="number"
+                  min="0"
                   value={weightage}
                   onChange={(e) => setWeightage(e.target.value)}
-                  min="0"
-                  step="1"
+                  placeholder="1-10 (Story Points)"
                   className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
-                  placeholder="e.g., 5"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-4 pt-4">
+            {/* Subtasks Section */}
+            <div className="mt-6 pt-6 border-t border-subtle">
+              <label className="block text-sm font-medium text-content-secondary mb-3">
+                Subtasks
+              </label>
+              <div className="space-y-2 mb-3">
+                {subtasks.map((st, idx) => (
+                  <div key={idx} className="flex items-center gap-2 group">
+                    <input
+                      type="checkbox"
+                      checked={st.completed}
+                      onChange={(e) => {
+                        const next = [...subtasks];
+                        next[idx].completed = e.target.checked;
+                        setSubtasks(next);
+                      }}
+                      className="rounded border-subtle"
+                    />
+                    <input
+                      type="text"
+                      value={st.title}
+                      onChange={(e) => {
+                        const next = [...subtasks];
+                        next[idx].title = e.target.value;
+                        setSubtasks(next);
+                      }}
+                      className="flex-1 bg-transparent border-none text-sm p-0 focus:ring-0"
+                      placeholder="Subtask title"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = subtasks.filter((_, i) => i !== idx);
+                        setSubtasks(next);
+                      }}
+                      className="text-red-400 opacity-0 group-hover:opacity-100 hover:text-red-600 transition-opacity"
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newSubtask}
+                  onChange={(e) => setNewSubtask(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (newSubtask.trim()) {
+                        setSubtasks([
+                          ...subtasks,
+                          {
+                            id: Math.random().toString(36).slice(2),
+                            title: newSubtask.trim(),
+                            completed: false,
+                          },
+                        ]);
+                        setNewSubtask("");
+                      }
+                    }
+                  }}
+                  placeholder="Add a subtask (Press Enter)"
+                  className="flex-1 rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    if (newSubtask.trim()) {
+                      setSubtasks([
+                        ...subtasks,
+                        {
+                          id: Math.random().toString(36).slice(2),
+                          title: newSubtask.trim(),
+                          completed: false,
+                        },
+                      ]);
+                      setNewSubtask("");
+                    }
+                  }}
+                >
+                  Add
+                </Button>
+              </div>
+            </div>
+
+            {/* Form Actions */}
+            <div className="flex justify-end gap-3 pt-4">
               <Button onClick={onClose} variant="secondary" type="button">
                 Cancel
               </Button>
               <Button
-                type="submit"
                 variant="primary"
+                type="submit"
                 disabled={!!taskToEdit && !hasChanges}
               >
-                {taskToEdit
-                  ? hasChanges
-                    ? "Save Changes"
-                    : "No changes"
-                  : "Save Task"}
+                {taskToEdit ? "Save Changes" : "Create Task"}
               </Button>
             </div>
-          </form>
-        </Card>
-      </div>
-    </div>
+          </div>
+
+          {/* Right: Metadata panel */}
+          <div className="w-[350px] bg-surface flex flex-col shrink-0 border-l border-subtle">
+            <div className="p-6 border-b border-subtle space-y-5 bg-white">
+              {/* Assignee quick summary */}
+              <div>
+                <label className="block text-sm font-medium text-content-secondary mb-2">
+                  Assignees
+                </label>
+                <div className="flex flex-wrap gap-2 min-h-[32px] items-center">
+                  {assigneesSelected && assigneesSelected.length > 0 ? (
+                    assigneesSelected
+                      .filter((a) => a.type === "user")
+                      .slice(0, 3)
+                      .map((a, i) => {
+                        const u = assignees.find((x) => x.id === a.id);
+                        return (
+                          <div
+                            key={i}
+                            className="flex items-center gap-2 px-2 py-1 bg-white border border-gray-200 rounded-full shadow-sm"
+                          >
+                            <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold">
+                              {u?.name?.[0] || "?"}
+                            </div>
+                            <span className="text-xs text-gray-700 max-w-[80px] truncate">
+                              {u?.name || a.id}
+                            </span>
+                          </div>
+                        );
+                      })
+                  ) : (
+                    <span className="text-xs text-content-tertiary italic">
+                      Empty
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Dates quick view */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-content-secondary">
+                    Assigned
+                  </label>
+                  <div className="flex items-center gap-2 text-xs text-content-secondary">
+                    <FaRegCalendarAlt className="text-content-tertiary" />
+                    {assignedDate || "Empty"}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-content-secondary">
+                    Due
+                  </label>
+                  <div className="flex items-center gap-2 text-xs text-content-secondary">
+                    <FaRegCalendarAlt className="text-content-tertiary" />
+                    {dueDate || "Empty"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div >
+    </div >
   );
 }
 
