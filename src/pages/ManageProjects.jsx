@@ -643,6 +643,7 @@ function ManageProjects() {
         <div className="space-y-6">
           <Card
             title="Search & Actions"
+            tone="white"
             actions={
               <div className="flex items-center gap-3">
                 <span
@@ -727,12 +728,17 @@ function ManageProjects() {
           </Card>
 
           {viewMode === "table" ? (
-            <Card title="Project List">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-2">
-                <div className="text-sm text-content-secondary">
-                  Page {Math.min(currentPage, totalPages)} of {totalPages}
-                </div>
+            <Card
+              title="Project List"
+              tone="muted"
+              actions={
                 <div className="flex items-center gap-3">
+                  <span
+                    className="text-sm font-medium text-content-secondary"
+                    aria-live="polite"
+                  >
+                    Page {Math.min(currentPage, totalPages)} of {totalPages}
+                  </span>
                   <label className="text-sm font-medium text-content-secondary">
                     Rows per page
                   </label>
@@ -769,7 +775,8 @@ function ManageProjects() {
                     </Button>
                   </div>
                 </div>
-              </div>
+              }
+            >
 
               <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
                 <table className="min-w-full divide-y divide-gray-200 bg-white">
