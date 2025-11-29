@@ -124,13 +124,15 @@ const TaskGroup = ({
           ))}
 
           {/* Quick Add Button */}
-          <div
-            onClick={onOpenCreate}
-            className="flex items-center gap-2 px-10 py-2 text-sm text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 cursor-pointer transition-colors border-t border-gray-50"
-          >
-            <FaPlus className="text-xs" />
-            <span>New Task</span>
-          </div>
+          {onOpenCreate && (
+            <div
+              onClick={onOpenCreate}
+              className="flex items-center gap-2 px-10 py-2 text-sm text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 cursor-pointer transition-colors border-t border-gray-50"
+            >
+              <FaPlus className="text-xs" />
+              <span>New Task</span>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -15,6 +15,7 @@ import {
   getDoc,
   serverTimestamp,
   arrayUnion,
+  limit,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { tsToDate } from "../utils/dateUtils";
@@ -24,8 +25,8 @@ import { tsToDate } from "../utils/dateUtils";
  * @param {function} callback - Called with tasks array
  * @returns {function} - Unsubscribe function
  */
-export const subscribeToTasks = (callback) => {
-  const q = query(collection(db, "tasks"), orderBy("dueDate", "asc"));
+export const subscribeToTasks = (callback, limitCount = 50) => {
+  const q = query(collection(db, "tasks"), orderBy("dueDate", "asc"), limit(limitCount));
 
   return onSnapshot(q, (snap) => {
     const tasks = snap.docs.map((d) => {
@@ -55,8 +56,8 @@ export const subscribeToTasks = (callback) => {
  * @param {object} taskData
  * @returns {Promise<string>} - Document ID
  */
-export const createTask = async (taskData) => {
-  const docRef = await addDoc(collection(db, "tasks"), {
+export const createTask = async (taskData, collectionName = "tasks") => {
+  const docRef = await addDoc(collection(db, collectionName), {
     ...taskData,
     createdAt: serverTimestamp(),
     archived: false,
@@ -70,8 +71,8 @@ export const createTask = async (taskData) => {
  * @param {object} updates
  * @returns {Promise<void>}
  */
-export const updateTask = async (taskId, updates) => {
-  await updateDoc(doc(db, "tasks", taskId), updates);
+export const updateTask = async (taskId, updates, collectionName = "tasks") => {
+  await updateDoc(doc(db, collectionName, taskId), updates);
 };
 
 /**
@@ -79,7 +80,7 @@ export const updateTask = async (taskId, updates) => {
  * @param {string} taskId
  * @param {string} title
  */
-export const addSubtask = async (taskId, title) => {
+export const addSubtask = async (taskId, title, collectionName = "tasks") => {
   const subtask = {
     id: crypto.randomUUID
       ? crypto.randomUUID()
@@ -87,7 +88,7 @@ export const addSubtask = async (taskId, title) => {
     title,
     completed: false,
   };
-  await updateDoc(doc(db, "tasks", taskId), {
+  await updateDoc(doc(db, collectionName, taskId), {
     subtasks: arrayUnion(subtask),
   });
 };
@@ -97,14 +98,14 @@ export const addSubtask = async (taskId, title) => {
  * @param {string} taskId
  * @param {string} subtaskId
  */
-export const toggleSubtask = async (taskId, subtaskId) => {
-  const ref = doc(db, "tasks", taskId);
+export const toggleSubtask = async (taskId, subtaskId, completed, collectionName = "tasks") => {
+  const ref = doc(db, collectionName, taskId);
   const snap = await getDoc(ref);
   if (!snap.exists()) return;
   const data = snap.data();
   const list = Array.isArray(data.subtasks) ? data.subtasks : [];
   const next = list.map((s) =>
-    s.id === subtaskId ? { ...s, completed: !s.completed } : s
+    s.id === subtaskId ? { ...s, completed: completed } : s
   );
   await updateDoc(ref, { subtasks: next });
 };
@@ -114,8 +115,8 @@ export const toggleSubtask = async (taskId, subtaskId) => {
  * @param {string} taskId
  * @param {string} subtaskId
  */
-export const deleteSubtask = async (taskId, subtaskId) => {
-  const ref = doc(db, "tasks", taskId);
+export const deleteSubtask = async (taskId, subtaskId, collectionName = "tasks") => {
+  const ref = doc(db, collectionName, taskId);
   const snap = await getDoc(ref);
   if (!snap.exists()) return;
   const data = snap.data();
@@ -130,8 +131,8 @@ export const deleteSubtask = async (taskId, subtaskId) => {
  * @param {string} text
  * @param {{uid:string, displayName:string}} user
  */
-export const addTaskComment = async (taskId, text, user) => {
-  const ref = collection(doc(db, "tasks", taskId), "comments");
+export const addTaskComment = async (taskId, text, user, collectionName = "tasks") => {
+  const ref = collection(doc(db, collectionName, taskId), "comments");
   await addDoc(ref, {
     text,
     userId: user?.uid || "system",
@@ -146,9 +147,9 @@ export const addTaskComment = async (taskId, text, user) => {
  * @param {function} callback
  * @returns {function} unsubscribe
  */
-export const subscribeToTaskComments = (taskId, callback) => {
-  const ref = collection(doc(db, "tasks", taskId), "comments");
-  const q = query(ref, orderBy("createdAt", "desc"));
+export const subscribeToTaskComments = (taskId, callback, limitCount = 20, collectionName = "tasks") => {
+  const ref = collection(doc(db, collectionName, taskId), "comments");
+  const q = query(ref, orderBy("createdAt", "desc"), limit(limitCount));
   return onSnapshot(q, (snap) => {
     const items = snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
     callback(items);
@@ -160,8 +161,8 @@ export const subscribeToTaskComments = (taskId, callback) => {
  * @param {string} taskId
  * @returns {Promise<void>}
  */
-export const deleteTask = async (taskId) => {
-  await deleteDoc(doc(db, "tasks", taskId));
+export const deleteTask = async (taskId, collectionName = "tasks") => {
+  await deleteDoc(doc(db, collectionName, taskId));
 };
 
 /**
@@ -169,8 +170,8 @@ export const deleteTask = async (taskId) => {
  * @param {string} taskId
  * @returns {Promise<void>}
  */
-export const completeTask = async (taskId) => {
-  await updateDoc(doc(db, "tasks", taskId), {
+export const completeTask = async (taskId, collectionName = "tasks") => {
+  await updateDoc(doc(db, collectionName, taskId), {
     status: "Done",
     completedAt: serverTimestamp(),
   });
@@ -181,8 +182,8 @@ export const completeTask = async (taskId) => {
  * @param {string} taskId
  * @returns {Promise<void>}
  */
-export const archiveTask = async (taskId) => {
-  await updateDoc(doc(db, "tasks", taskId), {
+export const archiveTask = async (taskId, collectionName = "tasks") => {
+  await updateDoc(doc(db, collectionName, taskId), {
     archived: true,
   });
 };
@@ -194,9 +195,9 @@ export const archiveTask = async (taskId) => {
  * @param {string} details - Human readable details
  * @param {object} user - { uid, displayName }
  */
-export const logTaskActivity = async (taskId, action, details, user) => {
+export const logTaskActivity = async (taskId, action, details, user, collectionName = "tasks") => {
   try {
-    const ref = collection(doc(db, "tasks", taskId), "activities");
+    const ref = collection(doc(db, collectionName, taskId), "activities");
     await addDoc(ref, {
       action,
       details,
@@ -215,9 +216,9 @@ export const logTaskActivity = async (taskId, action, details, user) => {
  * @param {function} callback
  * @returns {function} unsubscribe
  */
-export const subscribeToTaskActivities = (taskId, callback) => {
-  const ref = collection(doc(db, "tasks", taskId), "activities");
-  const q = query(ref, orderBy("createdAt", "desc"));
+export const subscribeToTaskActivities = (taskId, callback, limitCount = 20, collectionName = "tasks") => {
+  const ref = collection(doc(db, collectionName, taskId), "activities");
+  const q = query(ref, orderBy("createdAt", "desc"), limit(limitCount));
   return onSnapshot(q, (snap) => {
     const items = snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
     callback(items);

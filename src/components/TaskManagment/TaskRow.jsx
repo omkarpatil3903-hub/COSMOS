@@ -94,7 +94,7 @@ const TaskRow = ({
           <>
             <FaRegCalendarAlt className="text-gray-400" />
             <span className="text-xs">
-              {new Date(task.assignedDate).toLocaleDateString(undefined, {
+              {(task.assignedDate?.toDate ? task.assignedDate.toDate() : new Date(task.assignedDate)).toLocaleDateString(undefined, {
                 month: "numeric",
                 day: "numeric",
                 year: "2-digit",
@@ -122,12 +122,12 @@ const TaskRow = ({
             {/* Date Text */}
             <span
               className={
-                new Date(task.dueDate) < new Date() && task.status !== "Done"
+                (task.dueDate?.toDate ? task.dueDate.toDate() : new Date(task.dueDate)) < new Date() && task.status !== "Done"
                   ? "text-red-500 font-medium text-xs"
                   : "text-xs"
               }
             >
-              {new Date(task.dueDate).toLocaleDateString(undefined, {
+              {(task.dueDate?.toDate ? task.dueDate.toDate() : new Date(task.dueDate)).toLocaleDateString(undefined, {
                 month: "numeric",
                 day: "numeric",
                 year: "2-digit",

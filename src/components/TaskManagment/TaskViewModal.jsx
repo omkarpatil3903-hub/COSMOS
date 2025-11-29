@@ -37,13 +37,15 @@ import {
   subscribeToTaskActivities,
   deleteTask,
   archiveTask,
+  logTaskActivity,
 } from "../../services/taskService";
 import { getStatusBadge, getPriorityBadge } from "../../utils/colorMaps"; // Adjust path
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase";
 import TagInput from "./TagInput";
 import TimeEstimateInput from "./TimeEstimateInput";
 import toast from "react-hot-toast";
+import CompletionCommentModal from "../CompletionCommentModal"; // Adjust path if needed
 
 const TaskViewModal = ({
   task: initialTask,
@@ -57,7 +59,11 @@ const TaskViewModal = ({
   onEdit,
   currentUser,
   onDelete,
+
   onArchive,
+  canDelete = true,
+  canArchive = true,
+  canEdit = true,
 }) => {
   const [task, setTask] = useState(initialTask);
 
@@ -75,14 +81,16 @@ const TaskViewModal = ({
   const [isEditingDesc, setIsEditingDesc] = useState(false);
   const [descValue, setDescValue] = useState(initialTask?.description || "");
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
-  const [resolvedUserNames, setResolvedUserNames] = useState({});
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [deletingSubtaskId, setDeletingSubtaskId] = useState(null);
+  const [visibleItems, setVisibleItems] = useState(20);
 
   const [showAssigneePopover, setShowAssigneePopover] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
 
   // Resolve assignees locally to ensure real-time updates
   const localAssigneesResolved = useMemo(() => {
@@ -128,14 +136,19 @@ const TaskViewModal = ({
       assignees: current,
       assigneeId: primary.id || "",
       assigneeType: primary.type || "user"
-    });
+    }, task.collectionName);
   };
 
   useEffect(() => {
     if (!initialTask?.id) return;
-    const unsub = onSnapshot(doc(db, "tasks", initialTask.id), (doc) => {
+    const unsub = onSnapshot(doc(db, initialTask.collectionName || "tasks", initialTask.id), (doc) => {
       if (doc.exists()) {
-        setTask({ id: doc.id, ...doc.data() });
+        setTask({
+          id: doc.id,
+          ...doc.data(),
+          collectionName: initialTask.collectionName || "tasks",
+          source: initialTask.source
+        });
       }
     });
     return () => unsub();
@@ -147,13 +160,13 @@ const TaskViewModal = ({
 
   useEffect(() => {
     if (!task?.id) return;
-    const unsubComments = subscribeToTaskComments(task.id, setComments);
-    const unsubActivities = subscribeToTaskActivities(task.id, setActivities);
+    const unsubComments = subscribeToTaskComments(task.id, setComments, visibleItems, task.collectionName);
+    const unsubActivities = subscribeToTaskActivities(task.id, setActivities, visibleItems, task.collectionName);
     return () => {
       if (unsubComments) unsubComments();
       if (unsubActivities) unsubActivities();
     };
-  }, [task?.id]);
+  }, [task?.id, visibleItems]);
 
   const timeline = useMemo(() => {
     const comms = comments.map((c) => ({ ...c, type: "comment" }));
@@ -162,7 +175,7 @@ const TaskViewModal = ({
     // Add Creation Event
     if (task.createdAt) {
       acts.push({
-        id: "created",
+        id: `created-${task.id}`,
         type: "created",
         createdAt: task.createdAt,
         userId: task.createdBy || "system",
@@ -170,10 +183,11 @@ const TaskViewModal = ({
       });
     }
 
-    // Add Completion Event
-    if (task.status === "Done" && task.completedAt) {
+    // Add Completion Event (only if not already in activities)
+    const hasCompletedActivity = activities.some(a => a.type === "completed");
+    if (task.status === "Done" && task.completedAt && !hasCompletedActivity) {
       acts.push({
-        id: "completed",
+        id: `completed-${task.id}`,
         type: "completed",
         createdAt: task.completedAt,
         userId: task.completedBy || "system",
@@ -192,66 +206,34 @@ const TaskViewModal = ({
     });
   }, [comments, activities, task.createdAt, task.completedAt, task.status, task.completionComment, task.createdBy, task.completedBy]);
 
-  // Fetch user names for IDs found in timeline
-  useEffect(() => {
-    const fetchUserNames = async () => {
-      const userIdsToFetch = new Set();
-      timeline.forEach((item) => {
-        // If userName looks like a UID (long alphanumeric) or is missing, fetch it
-        // Simple heuristic: if it contains numbers and is > 15 chars, likely an ID
-        // Or just fetch if we don't have it in resolvedUserNames
-        if (
-          item.userId &&
-          item.userId !== "system" &&
-          !resolvedUserNames[item.userId]
-        ) {
-          userIdsToFetch.add(item.userId);
-        }
-      });
 
-      // Also check task.completedBy
-      if (
-        task.completedBy &&
-        task.completedBy !== "system" &&
-        !resolvedUserNames[task.completedBy]
-      ) {
-        userIdsToFetch.add(task.completedBy);
-      }
 
-      if (userIdsToFetch.size === 0) return;
+  const handleCompletionSubmit = async (comment) => {
+    try {
+      await updateTask(task.id, {
+        status: "Done",
+        completedAt: serverTimestamp(),
+        progressPercent: 100,
+        completedBy: currentUser?.uid || "",
+        completedByType: "user",
+        completionComment: comment,
+      }, task.collectionName);
 
-      const newResolved = { ...resolvedUserNames };
-      await Promise.all(
-        Array.from(userIdsToFetch).map(async (uid) => {
-          try {
-            // Try users collection
-            let docSnap = await getDoc(doc(db, "users", uid));
-            if (docSnap.exists()) {
-              newResolved[uid] =
-                docSnap.data().name ||
-                docSnap.data().displayName ||
-                "Unknown User";
-            } else {
-              // Try clients collection
-              docSnap = await getDoc(doc(db, "clients", uid));
-              if (docSnap.exists()) {
-                newResolved[uid] =
-                  docSnap.data().clientName || "Unknown Client";
-              } else {
-                newResolved[uid] = "Unknown User";
-              }
-            }
-          } catch (e) {
-            console.error("Error fetching user name for", uid, e);
-            newResolved[uid] = "Unknown";
-          }
-        })
+      await logTaskActivity(
+        task.id,
+        "completed",
+        comment ? `Completed: ${comment}` : "Marked as complete",
+        currentUser,
+        task.collectionName
       );
-      setResolvedUserNames(newResolved);
-    };
 
-    fetchUserNames();
-  }, [timeline, task.completedBy, resolvedUserNames]);
+      toast.success("Task marked as complete!");
+      setShowCompletionModal(false);
+    } catch (error) {
+      console.error("Error completing task:", error);
+      toast.error("Failed to complete task");
+    }
+  };
 
   const handleQuickUpdate = async (field, value) => {
     console.log("handleQuickUpdate called", { taskId: task?.id, field, value });
@@ -260,8 +242,18 @@ const TaskViewModal = ({
       return;
     }
     try {
-      await updateTask(task.id, { [field]: value });
+      await updateTask(task.id, { [field]: value }, task.collectionName);
       console.log("updateTask success");
+
+      if (field === "status") {
+        await logTaskActivity(
+          task.id,
+          "status_updated",
+          `Changed status to ${value}`,
+          currentUser,
+          task.collectionName
+        );
+      }
     } catch (err) {
       console.error("updateTask failed", err);
       toast.error("Failed to update task");
@@ -271,7 +263,7 @@ const TaskViewModal = ({
   const handleDeleteTask = async () => {
     if (!task?.id) return;
     try {
-      await deleteTask(task.id);
+      await deleteTask(task.id, task.collectionName);
       toast.success("Task deleted successfully!");
       if (onDelete) onDelete(task);
       onClose();
@@ -284,7 +276,7 @@ const TaskViewModal = ({
   const handleArchiveTask = async () => {
     if (!task?.id) return;
     try {
-      await archiveTask(task.id);
+      await archiveTask(task.id, task.collectionName);
       toast.success("Task archived successfully!");
       if (onArchive) onArchive(task);
       onClose();
@@ -313,7 +305,7 @@ const TaskViewModal = ({
 
   const handleDeleteSubtask = async (subtaskId) => {
     try {
-      await deleteSubtask(task.id, subtaskId);
+      await deleteSubtask(task.id, subtaskId, task.collectionName);
       setDeletingSubtaskId(null);
       toast.success("Subtask deleted");
     } catch (err) {
@@ -325,7 +317,8 @@ const TaskViewModal = ({
   // Helpers
   const formatDate = (dateString) => {
     if (!dateString) return "Empty";
-    return new Date(dateString).toLocaleDateString(undefined, {
+    const d = dateString?.toDate ? dateString.toDate() : new Date(dateString);
+    return d.toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",
     });
@@ -343,9 +336,18 @@ const TaskViewModal = ({
   };
 
   const getUserDisplayName = (item) => {
-    if (item.userId === "system") return "System";
-    // Prefer resolved name, then item.userName (if it's not an ID), then fallback
-    return resolvedUserNames[item.userId] || item.userName || "System";
+    if (!item?.userId || item.userId === "system") return "System";
+
+    // Check users prop
+    const user = users.find(u => u.id === item.userId);
+    if (user) return user.name || user.displayName || "Unknown User";
+
+    // Check clients prop
+    const client = clients.find(c => c.id === item.userId);
+    if (client) return client.clientName || "Unknown Client";
+
+    // Fallback to existing name or ID
+    return item.userName || "Unknown";
   };
 
   return (
@@ -375,37 +377,33 @@ const TaskViewModal = ({
           </div>
 
           <div className="flex items-center gap-1 lg:gap-2 shrink-0">
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
-                toast.success("Link copied!");
-              }}
-              className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors"
-              title="Copy Link"
-            >
-              <FaLink className="text-sm" />
-            </button>
-            <button
-              onClick={() => onEdit(task)}
-              className="p-2 hover:bg-indigo-50 hover:text-indigo-600 rounded-full text-gray-400 transition-colors"
-              title="Edit task"
-            >
-              <FaEdit className="text-sm" />
-            </button>
-            <button
-              onClick={() => setShowArchiveConfirm(true)}
-              className="p-2 hover:bg-orange-50 hover:text-orange-600 rounded-full text-gray-400 transition-colors"
-              title="Archive task"
-            >
-              <FaArchive className="text-sm" />
-            </button>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="p-2 hover:bg-red-50 hover:text-red-600 rounded-full text-gray-400 transition-colors"
-              title="Delete task"
-            >
-              <FaTrash className="text-sm" />
-            </button>
+            {canEdit && task.source !== "self" && (
+              <button
+                onClick={() => onEdit(task)}
+                className="p-2 hover:bg-indigo-50 hover:text-indigo-600 rounded-full text-gray-400 transition-colors"
+                title="Edit task"
+              >
+                <FaEdit className="text-sm" />
+              </button>
+            )}
+            {canArchive && (
+              <button
+                onClick={() => setShowArchiveConfirm(true)}
+                className="p-2 hover:bg-orange-50 hover:text-orange-600 rounded-full text-gray-400 transition-colors"
+                title="Archive task"
+              >
+                <FaArchive className="text-sm" />
+              </button>
+            )}
+            {canDelete && (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="p-2 hover:bg-red-50 hover:text-red-600 rounded-full text-gray-400 transition-colors"
+                title="Delete task"
+              >
+                <FaTrash className="text-sm" />
+              </button>
+            )}
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors ml-2"
@@ -430,12 +428,14 @@ const TaskViewModal = ({
                 <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">
                   Description
                 </h3>
-                <button
-                  onClick={() => setIsEditingDesc(!isEditingDesc)}
-                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  {isEditingDesc ? "Cancel" : "Edit"}
-                </button>
+                {canEdit && (
+                  <button
+                    onClick={() => setIsEditingDesc(!isEditingDesc)}
+                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    {isEditingDesc ? "Cancel" : "Edit"}
+                  </button>
+                )}
               </div>
               {isEditingDesc ? (
                 <div className="space-y-2">
@@ -469,8 +469,8 @@ const TaskViewModal = ({
                 </div>
               ) : (
                 <div
-                  className="prose prose-sm max-w-none text-gray-600 bg-gray-50/50 p-4 rounded-xl border border-gray-100/50 min-h-[60px] cursor-pointer hover:bg-gray-50 transition-colors"
-                  onClick={() => setIsEditingDesc(true)}
+                  className={`prose prose-sm max-w-none text-gray-600 bg-gray-50/50 p-4 rounded-xl border border-gray-100/50 min-h-[60px] transition-colors ${canEdit ? "cursor-pointer hover:bg-gray-50" : ""}`}
+                  onClick={() => canEdit && setIsEditingDesc(true)}
                 >
                   {task.description ? (
                     <p className="whitespace-pre-wrap">{task.description}</p>
@@ -514,7 +514,8 @@ const TaskViewModal = ({
                             await toggleSubtask(
                               task.id,
                               sub.id,
-                              !sub.completed
+                              !sub.completed,
+                              task.collectionName
                             );
                           }}
                           className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${sub.completed
@@ -532,23 +533,25 @@ const TaskViewModal = ({
                         >
                           {sub.title}
                         </span>
-                        <button
-                          onClick={() => {
-                            if (deletingSubtaskId === sub.id) {
-                              handleDeleteSubtask(sub.id);
-                            } else {
-                              setDeletingSubtaskId(sub.id);
-                              setTimeout(() => setDeletingSubtaskId(null), 3000);
-                            }
-                          }}
-                          className={`opacity-0 group-hover:opacity-100 p-1.5 rounded transition-all ${deletingSubtaskId === sub.id
-                            ? "bg-red-100 text-red-600"
-                            : "hover:bg-red-50 text-gray-400 hover:text-red-500"
-                            }`}
-                          title={deletingSubtaskId === sub.id ? "Click again to confirm" : "Delete subtask"}
-                        >
-                          <FaTrash className="text-xs" />
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => {
+                              if (deletingSubtaskId === sub.id) {
+                                handleDeleteSubtask(sub.id);
+                              } else {
+                                setDeletingSubtaskId(sub.id);
+                                setTimeout(() => setDeletingSubtaskId(null), 3000);
+                              }
+                            }}
+                            className={`opacity-0 group-hover:opacity-100 p-1.5 rounded transition-all ${deletingSubtaskId === sub.id
+                              ? "bg-red-100 text-red-600"
+                              : "hover:bg-red-50 text-gray-400 hover:text-red-500"
+                              }`}
+                            title={deletingSubtaskId === sub.id ? "Click again to confirm" : "Delete subtask"}
+                          >
+                            <FaTrash className="text-xs" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -557,34 +560,36 @@ const TaskViewModal = ({
                     No subtasks yet
                   </div>
                 )}
-                <div className="p-3 bg-gray-50 border-t border-gray-100">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Add a subtask..."
-                      className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500"
-                      value={newSubtaskTitle}
-                      onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                      onKeyDown={async (e) => {
-                        if (e.key === "Enter" && newSubtaskTitle.trim()) {
-                          await addSubtask(task.id, newSubtaskTitle.trim());
-                          setNewSubtaskTitle("");
-                        }
-                      }}
-                    />
-                    <button
-                      onClick={async () => {
-                        if (newSubtaskTitle.trim()) {
-                          await addSubtask(task.id, newSubtaskTitle.trim());
-                          setNewSubtaskTitle("");
-                        }
-                      }}
-                      className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100 hover:text-indigo-600 transition-colors"
-                    >
-                      Add
-                    </button>
+                {canEdit && (
+                  <div className="p-3 bg-gray-50 border-t border-gray-100">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Add a subtask..."
+                        className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500"
+                        value={newSubtaskTitle}
+                        onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                        onKeyDown={async (e) => {
+                          if (e.key === "Enter" && newSubtaskTitle.trim()) {
+                            await addSubtask(task.id, newSubtaskTitle.trim(), task.collectionName);
+                            setNewSubtaskTitle("");
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={async () => {
+                          if (newSubtaskTitle.trim()) {
+                            await addSubtask(task.id, newSubtaskTitle.trim(), task.collectionName);
+                            setNewSubtaskTitle("");
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100 hover:text-indigo-600 transition-colors"
+                      >
+                        Add
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -699,8 +704,13 @@ const TaskViewModal = ({
                           <button
                             key={status}
                             onClick={() => {
-                              handleQuickUpdate("status", status);
-                              setShowStatusDropdown(false);
+                              if (status === "Done") {
+                                setShowCompletionModal(true);
+                                setShowStatusDropdown(false);
+                              } else {
+                                handleQuickUpdate("status", status);
+                                setShowStatusDropdown(false);
+                              }
                             }}
                             className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between ${task.status === status ? "bg-indigo-50 text-indigo-700 font-medium" : "text-gray-700"}`}
                           >
@@ -771,12 +781,14 @@ const TaskViewModal = ({
                   ) : (
                     <span className="text-xs text-gray-400 italic">Unassigned</span>
                   )}
-                  <button
-                    onClick={() => setShowAssigneePopover(!showAssigneePopover)}
-                    className={`w-6 h-6 flex items-center justify-center rounded-full border border-dashed transition-all ${showAssigneePopover ? "border-indigo-500 text-indigo-600 bg-indigo-50" : "border-gray-300 text-gray-400 hover:text-indigo-600 hover:border-indigo-400"}`}
-                  >
-                    +
-                  </button>
+                  {canEdit && task.source !== "self" ? (
+                    <button
+                      onClick={() => setShowAssigneePopover(!showAssigneePopover)}
+                      className={`w-6 h-6 flex items-center justify-center rounded-full border border-dashed transition-all ${showAssigneePopover ? "border-indigo-500 text-indigo-600 bg-indigo-50" : "border-gray-300 text-gray-400 hover:text-indigo-600 hover:border-indigo-400"}`}
+                    >
+                      +
+                    </button>
+                  ) : null}
                 </div>
 
                 {/* Quick Assign Popover */}
@@ -849,18 +861,20 @@ const TaskViewModal = ({
                     Start Date
                   </label>
                   <div className="relative">
-                    <div className="flex items-center gap-2 text-xs text-gray-600 hover:text-gray-900 cursor-pointer">
+                    <div className={`flex items-center gap-2 text-xs ${canEdit ? "text-gray-600 hover:text-gray-900 cursor-pointer" : "text-gray-500"}`}>
                       <FaRegCalendarAlt className="text-gray-400" />
                       {formatDate(task.assignedDate)}
                     </div>
-                    <input
-                      type="date"
-                      value={task.assignedDate || ""}
-                      onChange={(e) =>
-                        handleQuickUpdate("assignedDate", e.target.value)
-                      }
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                    />
+                    {canEdit && (
+                      <input
+                        type="date"
+                        value={task.assignedDate?.toDate ? task.assignedDate.toDate().toISOString().split('T')[0] : (task.assignedDate || "")}
+                        onChange={(e) =>
+                          handleQuickUpdate("assignedDate", e.target.value)
+                        }
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                    )}
                   </div>
                 </div>
                 <div>
@@ -873,7 +887,7 @@ const TaskViewModal = ({
                         new Date(task.dueDate) < new Date() &&
                         task.status !== "Done"
                         ? "text-red-600 font-bold"
-                        : "text-gray-600 hover:text-gray-900"
+                        : canEdit ? "text-gray-600 hover:text-gray-900 cursor-pointer" : "text-gray-500"
                         }`}
                     >
                       <FaRegCalendarAlt
@@ -887,14 +901,16 @@ const TaskViewModal = ({
                       />
                       {formatDate(task.dueDate)}
                     </div>
-                    <input
-                      type="date"
-                      value={task.dueDate || ""}
-                      onChange={(e) =>
-                        handleQuickUpdate("dueDate", e.target.value)
-                      }
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                    />
+                    {canEdit && (
+                      <input
+                        type="date"
+                        value={task.dueDate?.toDate ? task.dueDate.toDate().toISOString().split('T')[0] : (task.dueDate || "")}
+                        onChange={(e) =>
+                          handleQuickUpdate("dueDate", e.target.value)
+                        }
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                    )}
                   </div>
                 </div>
               </div>
@@ -909,6 +925,7 @@ const TaskViewModal = ({
                     tags={task.tags || []}
                     onAdd={handleAddTag}
                     onRemove={handleRemoveTag}
+                    readOnly={!canEdit}
                   />
                 </div>
                 <div>
@@ -918,6 +935,7 @@ const TaskViewModal = ({
                   <TimeEstimateInput
                     value={task.timeEstimate || 0}
                     onChange={handleUpdateTimeEstimate}
+                    readOnly={!canEdit}
                   />
                 </div>
               </div>
@@ -958,7 +976,7 @@ const TaskViewModal = ({
                   }
 
                   return (
-                    <div key={item.id || Math.random()} className={`flex gap-3 ${isComment ? "" : "opacity-75"}`}>
+                    <div key={item.id} className={`flex gap-3 ${isComment ? "" : "opacity-75"}`}>
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${iconBg} shadow-sm`}>
                         <Icon className="text-xs" />
                       </div>
@@ -986,10 +1004,20 @@ const TaskViewModal = ({
                     </div>
                   );
                 })}
+                {(comments.length === visibleItems || activities.length === visibleItems) && (
+                  <div className="text-center pt-2">
+                    <button
+                      onClick={() => setVisibleItems(prev => prev + 20)}
+                      className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                    >
+                      Load more activity
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Comment Input Footer */}
-              <div className="p-4 border-t border-gray-200 bg-white">
+              <div className="p-4 border-t border-gray-200 bg-white sticky bottom-0 z-10">
                 <div className="flex gap-2 items-end">
                   <textarea
                     placeholder="Write a comment..."
@@ -1003,7 +1031,8 @@ const TaskViewModal = ({
                           await addTaskComment(
                             task.id,
                             commentText.trim(),
-                            currentUser || { uid: "system", displayName: "System" }
+                            currentUser || { uid: "system", displayName: "System" },
+                            task.collectionName
                           );
                           setCommentText("");
                         }
@@ -1016,7 +1045,8 @@ const TaskViewModal = ({
                         await addTaskComment(
                           task.id,
                           commentText.trim(),
-                          currentUser || { uid: "system", displayName: "System" }
+                          currentUser || { uid: "system", displayName: "System" },
+                          task.collectionName
                         );
                         setCommentText("");
                       }
@@ -1092,6 +1122,16 @@ const TaskViewModal = ({
             </div>
           </div>
         )}
+
+        {/* Completion Comment Modal */}
+        <CompletionCommentModal
+          open={showCompletionModal}
+          onClose={() => setShowCompletionModal(false)}
+          onSubmit={handleCompletionSubmit}
+          title="Complete Task"
+          placeholder="Required: Add a comment about this completion..."
+          minLength={5}
+        />
       </div>
     </div>
   );
