@@ -318,14 +318,21 @@ function AddResourceModal({
                   Resource Role
                   <select
                     value={formData.resourceRole}
-                    onChange={(e) =>
-                      setFormData({ ...formData, resourceRole: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const name = e.target.value;
+                      const type =
+                        e.target.selectedOptions?.[0]?.getAttribute("data-type") || "";
+                      setFormData({
+                        ...formData,
+                        resourceRole: name,
+                        resourceRoleType: type,
+                      });
+                    }}
                     className="w-full rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
                   >
                     <option value="">Select role</option>
                     {roleOptions.map((opt) => (
-                      <option key={`${opt.type}_${opt.name}`} value={opt.name}>
+                      <option key={`${opt.type}_${opt.name}`} value={opt.name} data-type={opt.type}>
                         {opt.name}
                       </option>
                     ))}

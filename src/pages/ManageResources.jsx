@@ -93,6 +93,7 @@ function ManageResources() {
     resourceType: "In-house",
     employmentType: "Full-time",
     resourceRole: "",
+    resourceRoleType: "",
     status: "Active",
     imageUrl: "",
   });
@@ -133,6 +134,7 @@ function ManageResources() {
         status: u.status || "Active",
         employmentType: u.employmentType || "Full-time",
         resourceRole: u.resourceRole || "",
+        resourceRoleType: u.resourceRoleType || "",
         imageUrl: u.imageUrl || "",
         devPassword: u.devPassword || "",
       }));
@@ -230,6 +232,7 @@ function ManageResources() {
       "resourceType",
       "employmentType",
       "resourceRole",
+      "resourceRoleType",
       "status",
       "imageUrl",
     ];
@@ -364,8 +367,8 @@ function ManageResources() {
         mobile: formData.mobile,
         resourceType: formData.resourceType,
         employmentType: formData.employmentType,
-        role: "resource",
         resourceRole: formData.resourceRole,
+        resourceRoleType: formData.resourceRoleType,
         status: formData.status,
         imageUrl: imageFile || "",
         joinDate: new Date().toISOString().slice(0, 10),
@@ -386,6 +389,7 @@ function ManageResources() {
         resourceType: "In-house",
         employmentType: "Full-time",
         resourceRole: "",
+        resourceRoleType: "",
         status: "Active",
         imageUrl: "",
       });
@@ -435,6 +439,7 @@ function ManageResources() {
       resourceType: resource.resourceType,
       employmentType: resource.employmentType || "Full-time",
       resourceRole: resource.resourceRole || "",
+      resourceRoleType: resource.resourceRoleType || "",
       status: resource.status || "Active",
       imageUrl: resource.imageUrl || "",
     });
@@ -445,6 +450,7 @@ function ManageResources() {
       resourceType: resource.resourceType || "In-house",
       employmentType: resource.employmentType || "Full-time",
       resourceRole: resource.resourceRole || "",
+      resourceRoleType: resource.resourceRoleType || "",
       status: resource.status || "Active",
       imageUrl: resource.imageUrl || "",
     });
@@ -471,7 +477,9 @@ function ManageResources() {
         mobile: formData.mobile,
         resourceType: formData.resourceType,
         employmentType: formData.employmentType,
+        role: formData.resourceRole || "",
         resourceRole: formData.resourceRole,
+        resourceRoleType: formData.resourceRoleType,
         status: formData.status,
         imageUrl: imageFile || formData.imageUrl || "",
       });
@@ -483,6 +491,7 @@ function ManageResources() {
         resourceType: "In-house",
         employmentType: "Full-time",
         resourceRole: "",
+        resourceRoleType: "",
         status: "Active",
         imageUrl: "",
       });
