@@ -43,6 +43,7 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  limit,
 } from "firebase/firestore";
 import { useAuthContext } from "../context/AuthContext";
 import { logTaskActivity } from "../services/taskService";
@@ -88,6 +89,8 @@ function TasksManagement() {
   const [completionTaskId, setCompletionTaskId] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
+  const [taskLimit, setTaskLimit] = useState(50);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const [view, setView] = useState("list");
 
@@ -256,7 +259,7 @@ function TasksManagement() {
 
   useEffect(() => {
     const unsubTasks = onSnapshot(
-      query(collection(db, "tasks"), orderBy("createdAt", "desc")),
+      query(collection(db, "tasks"), orderBy("createdAt", "desc"), limit(taskLimit)),
       (snap) => {
         const list = snap.docs.map((d) => {
           const data = d.data() || {};
@@ -1760,6 +1763,31 @@ function TasksManagement() {
             }
           }}
         />
+      )}
+
+      {/* Load More Button */}
+      {tasks.length >= taskLimit && (
+        <div className="flex justify-center mt-6 mb-8">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setLoadingMore(true);
+              setTaskLimit((prev) => prev + 50);
+              // Loading state will be cleared by the snapshot listener update
+              setTimeout(() => setLoadingMore(false), 1000);
+            }}
+            disabled={loadingMore}
+            className="flex items-center gap-2 px-6 py-2"
+          >
+            {loadingMore ? (
+              <>
+                <FaSpinner className="animate-spin" /> Loading...
+              </>
+            ) : (
+              "Load More Tasks"
+            )}
+          </Button>
+        </div>
       )}
 
       <CompletionCommentModal

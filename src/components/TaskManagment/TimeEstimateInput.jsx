@@ -19,7 +19,7 @@ const formatHours = (hours) => {
     return `${days}d ${remainingHours}h`;
 };
 
-const TimeEstimateInput = ({ value, onChange }) => {
+const TimeEstimateInput = ({ value, onChange, readOnly = false }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [inputValue, setInputValue] = useState("");
 
@@ -61,12 +61,14 @@ const TimeEstimateInput = ({ value, onChange }) => {
                         {formatHours(value)}
                     </span>
                 </div>
-                <button
-                    onClick={() => setIsEditing(true)}
-                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                    {value ? "Edit" : "Set"}
-                </button>
+                {!readOnly && (
+                    <button
+                        onClick={() => setIsEditing(true)}
+                        className="text-xs text-indigo-600 hover:text-indigo-700 font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                        {value ? "Edit" : "Set"}
+                    </button>
+                )}
             </div>
         );
     }
@@ -90,8 +92,8 @@ const TimeEstimateInput = ({ value, onChange }) => {
                         key={preset.label}
                         onClick={() => handlePresetClick(preset.hours)}
                         className={`px-3 py-1.5 text-xs rounded-md border transition-all ${value === preset.hours
-                                ? "bg-indigo-600 text-white border-indigo-600"
-                                : "bg-white text-gray-700 border-gray-300 hover:border-indigo-500 hover:text-indigo-600"
+                            ? "bg-indigo-600 text-white border-indigo-600"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-indigo-500 hover:text-indigo-600"
                             }`}
                     >
                         {preset.label}

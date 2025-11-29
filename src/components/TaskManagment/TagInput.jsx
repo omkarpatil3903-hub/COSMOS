@@ -13,7 +13,7 @@ const TAG_COLORS = [
     "bg-red-100 text-red-700 border-red-200",
 ];
 
-const TagInput = ({ tags = [], onAdd, onRemove, placeholder = "Add tag..." }) => {
+const TagInput = ({ tags = [], onAdd, onRemove, placeholder = "Add tag...", readOnly = false }) => {
     const [inputValue, setInputValue] = useState("");
     const [isAdding, setIsAdding] = useState(false);
 
@@ -22,6 +22,7 @@ const TagInput = ({ tags = [], onAdd, onRemove, placeholder = "Add tag..." }) =>
     };
 
     const handleAdd = () => {
+        if (readOnly) return;
         const trimmed = inputValue.trim();
         if (trimmed && !tags.includes(trimmed)) {
             onAdd(trimmed);
@@ -50,46 +51,50 @@ const TagInput = ({ tags = [], onAdd, onRemove, placeholder = "Add tag..." }) =>
                     )}`}
                 >
                     {tag}
-                    <button
-                        onClick={() => onRemove(tag)}
-                        className="hover:bg-black/10 rounded-full p-0.5 transition-colors"
-                    >
-                        <FaTimes className="text-[10px]" />
-                    </button>
+                    {!readOnly && (
+                        <button
+                            onClick={() => onRemove(tag)}
+                            className="hover:bg-black/10 rounded-full p-0.5 transition-colors"
+                        >
+                            <FaTimes className="text-[10px]" />
+                        </button>
+                    )}
                 </span>
             ))}
 
-            {isAdding ? (
-                <div className="flex items-center gap-1">
-                    <input
-                        type="text"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        onBlur={() => {
-                            if (!inputValue.trim()) {
-                                setIsAdding(false);
-                            }
-                        }}
-                        placeholder={placeholder}
-                        className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 w-32"
-                        autoFocus
-                    />
+            {!readOnly && (
+                isAdding ? (
+                    <div className="flex items-center gap-1">
+                        <input
+                            type="text"
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            onBlur={() => {
+                                if (!inputValue.trim()) {
+                                    setIsAdding(false);
+                                }
+                            }}
+                            placeholder={placeholder}
+                            className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 w-32"
+                            autoFocus
+                        />
+                        <button
+                            onClick={handleAdd}
+                            className="p-1 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                        >
+                            <FaPlus className="text-xs" />
+                        </button>
+                    </div>
+                ) : (
                     <button
-                        onClick={handleAdd}
-                        className="p-1 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                        onClick={() => setIsAdding(true)}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 border border-dashed border-gray-300 hover:border-indigo-400 rounded-full transition-all"
                     >
-                        <FaPlus className="text-xs" />
+                        <FaPlus className="text-[10px]" />
+                        Add tag
                     </button>
-                </div>
-            ) : (
-                <button
-                    onClick={() => setIsAdding(true)}
-                    className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 border border-dashed border-gray-300 hover:border-indigo-400 rounded-full transition-all"
-                >
-                    <FaPlus className="text-[10px]" />
-                    Add tag
-                </button>
+                )
             )}
         </div>
     );

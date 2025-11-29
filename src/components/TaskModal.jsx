@@ -81,12 +81,13 @@ function TaskModal({
   // Recurring task state
   const [taskType, setTaskType] = useState("one-time");
   const isRecurring = taskType === "recurring";
-  const [recurringPattern, setRecurringPattern] = useState("weekly");
+  const [recurringPattern, setRecurringPattern] = useState("daily");
   const [recurringInterval, setRecurringInterval] = useState(1);
   const [recurringEndType, setRecurringEndType] = useState("never");
   const [recurringEndDate, setRecurringEndDate] = useState("");
   const [recurringEndAfter, setRecurringEndAfter] = useState("");
-  const [skipWeekends, setSkipWeekends] = useState(false);
+  const [selectedWeekDays, setSelectedWeekDays] = useState([0, 1, 2, 3, 4, 5, 6]); // All days default
+  const [isCustomDays, setIsCustomDays] = useState(false);
   const [previewDates, setPreviewDates] = useState([]);
 
   // OKR state
@@ -120,30 +121,58 @@ function TaskModal({
     try {
       const start = new Date(dueDate);
       let count = 0;
-      while (out.length < 5 && count < 60) {
-        const d = new Date(start);
-        if (recurringPattern === "daily") {
-          d.setDate(start.getDate() + recurringInterval * (out.length + 1));
-        } else if (recurringPattern === "weekly") {
-          d.setDate(start.getDate() + 7 * recurringInterval * (out.length + 1));
-        } else if (recurringPattern === "monthly") {
-          d.setMonth(start.getMonth() + recurringInterval * (out.length + 1));
-        } else if (recurringPattern === "yearly") {
-          d.setFullYear(
-            start.getFullYear() + recurringInterval * (out.length + 1)
-          );
+      let current = new Date(start);
+      // Start from next day for preview
+      current.setDate(current.getDate() + 1);
+
+      while (out.length < 5 && count < 365) { // Limit iterations to prevent infinite loop
+        const d = new Date(current);
+        let include = false;
+
+        // Check if day is allowed
+        const isAllowedDay = !isCustomDays || selectedWeekDays.includes(d.getDay());
+
+        if (isAllowedDay) {
+          if (recurringPattern === "daily") {
+            // Daily: Every N days
+            // Check interval from start date
+            const diffTime = Math.abs(d - start);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays % recurringInterval === 0) {
+              include = true;
+            }
+          } else if (recurringPattern === "weekly") {
+            // Weekly: Every N weeks
+            const diffTime = Math.abs(d - start);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            const weekNum = Math.floor(diffDays / 7);
+            if (weekNum % recurringInterval === 0) {
+              include = true;
+            }
+          } else if (recurringPattern === "monthly") {
+            if (d.getDate() === start.getDate()) {
+              const monthDiff = (d.getFullYear() - start.getFullYear()) * 12 + (d.getMonth() - start.getMonth());
+              if (monthDiff > 0 && monthDiff % recurringInterval === 0) include = true;
+            }
+          }
         }
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        out.push(`${yyyy}-${mm}-${dd}`);
+
+        if (include) {
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, "0");
+          const dd = String(d.getDate()).padStart(2, "0");
+          out.push(`${yyyy}-${mm}-${dd}`);
+        }
+
+        // Advance one day
+        current.setDate(current.getDate() + 1);
         count++;
       }
     } catch {
       // Ignore date parsing errors
     }
     setPreviewDates(out);
-  }, [isRecurring, dueDate, recurringPattern, recurringInterval]);
+  }, [isRecurring, dueDate, recurringPattern, recurringInterval, selectedWeekDays, isCustomDays]);
 
   // Initialize form when editing
   useEffect(() => {
@@ -167,12 +196,23 @@ function TaskModal({
       if (taskToEdit.taskType === "recurring") {
         setTaskType("recurring");
       }
-      setRecurringPattern(taskToEdit.recurringPattern || "weekly");
+      setRecurringPattern(taskToEdit.recurringPattern || "daily");
       setRecurringInterval(taskToEdit.recurringInterval || 1);
       setRecurringEndType(taskToEdit.recurringEndType || "never");
       setRecurringEndDate(taskToEdit.recurringEndDate || "");
       setRecurringEndAfter(String(taskToEdit.recurringEndAfter || ""));
-      setSkipWeekends(taskToEdit.skipWeekends || false);
+
+      // Map legacy skipWeekends to selectedWeekDays if needed
+      if (taskToEdit.selectedWeekDays) {
+        setSelectedWeekDays(taskToEdit.selectedWeekDays);
+        setIsCustomDays(true);
+      } else if (taskToEdit.skipWeekends) {
+        setSelectedWeekDays([1, 2, 3, 4, 5]);
+        setIsCustomDays(true);
+      } else {
+        setSelectedWeekDays([0, 1, 2, 3, 4, 5, 6]);
+        setIsCustomDays(false);
+      }
 
       setOkrObjectiveIndex(
         typeof taskToEdit.okrObjectiveIndex === "number"
@@ -215,6 +255,7 @@ function TaskModal({
       normalize(recurringEndDate) === normalize(taskToEdit.recurringEndDate),
       String(recurringEndAfter || "") ===
       String(taskToEdit.recurringEndAfter || ""),
+      JSON.stringify(selectedWeekDays) === JSON.stringify(taskToEdit.selectedWeekDays || [0, 1, 2, 3, 4, 5, 6]),
       (typeof okrObjectiveIndex === "number" ? okrObjectiveIndex : null) ===
       (typeof taskToEdit.okrObjectiveIndex === "number"
         ? taskToEdit.okrObjectiveIndex
@@ -242,6 +283,7 @@ function TaskModal({
     recurringEndType,
     recurringEndDate,
     recurringEndAfter,
+    selectedWeekDays,
     okrObjectiveIndex,
     okrKeyResultIndices,
     subtasks,
@@ -295,7 +337,7 @@ function TaskModal({
         isRecurring && recurringEndType === "after"
           ? Number(recurringEndAfter)
           : undefined,
-      skipWeekends: isRecurring ? skipWeekends : undefined,
+      selectedWeekDays: isRecurring && isCustomDays ? selectedWeekDays : undefined,
       okrObjectiveIndex:
         typeof okrObjectiveIndex === "number" ? okrObjectiveIndex : undefined,
       okrKeyResultIndices: okrKeyResultIndices,
@@ -309,664 +351,557 @@ function TaskModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-[1000px] h-[85vh] flex flex-col overflow-hidden"
+        className="relative w-full max-w-[90vw] xl:max-w-7xl max-h-[90vh] flex flex-col bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl shadow-indigo-500/20 overflow-hidden border border-white/20"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-subtle bg-surface shrink-0">
-          <div className="flex items-center gap-3 text-sm text-content-secondary">
-            <span className="px-2 py-0.5 rounded border border-subtle bg-surface text-xs font-mono">
-              {taskToEdit ? "EDIT" : "NEW"}
-            </span>
-            <span className="text-content-tertiary">/</span>
-            <span
-              className="truncate max-w-[220px] text-content-primary"
-              title="Project"
-            >
-              {projects.find((p) => p.id === projectId)?.name ||
-                "Select Project"}
-            </span>
-            {taskType === "recurring" && (
-              <span className="flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full text-xs">
-                <MdReplayCircleFilled /> Recurring
-              </span>
-            )}
+        {/* Header - Clean Style */}
+        <div className="shrink-0 px-6 py-4 border-b border-gray-100/50 bg-white/80 backdrop-blur-md flex items-center justify-between z-10">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${taskToEdit ? "bg-indigo-50 text-indigo-600" : "bg-gray-100 text-gray-500"}`}>
+              <MdReplayCircleFilled className="text-xl" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-800 tracking-tight">
+                {taskToEdit ? "Edit Task" : "Create New Task"}
+              </h2>
+              <p className="text-xs text-gray-500 font-medium">
+                {taskToEdit ? "Update task details" : "Add a new task to project"}
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full text-content-tertiary transition-colors ml-2"
-              type="button"
-            >
-              <FaTimes className="text-lg" />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-all duration-200 text-gray-400 hover:text-gray-600"
+          >
+            <FaTimes className="text-lg" />
+          </button>
         </div>
 
-        {/* Body split view */}
-        <form
-          onSubmit={handleSubmit}
-          noValidate
-          className="flex flex-1 overflow-hidden"
-        >
-          {/* Left: Content */}
-          <div className="flex-1 overflow-y-auto p-8 border-r border-subtle bg-surface">
-            {/* Title */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-content-secondary mb-2">
-                Title *
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  if (errors.title)
-                    setErrors((prev) => ({ ...prev, title: "" }));
-                }}
-                className={`block w-full rounded-md border ${errors.title ? "border-red-500" : "border-subtle"
-                  } bg-surface px-3 py-2 text-sm text-content-primary`}
-              />
-              {errors.title && (
-                <p className="mt-1 text-xs text-red-600">{errors.title}</p>
-              )}
-            </div>
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <form onSubmit={handleSubmit} noValidate className="p-6 lg:p-8 space-y-8">
 
-            {/* Description */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-content-secondary">
-                  Description
-                </label>
-              </div>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={4}
-                className="w-full rounded-md border border-subtle px-3 py-2 text-sm bg-transparent text-content-primary"
-              />
-            </div>
+            {/* 3-Column Grid Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            {/* Project Selection */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-content-secondary">
-                Project
-              </label>
-              <select
-                value={projectId}
-                onChange={(e) => {
-                  setProjectId(e.target.value);
-                  if (errors.projectId)
-                    setErrors((prev) => ({ ...prev, projectId: "" }));
-                  setOkrObjectiveIndex(null);
-                  setOkrKeyResultIndices([]);
-                }}
-                className={`block w-full rounded-md border ${errors.projectId ? "border-red-500" : "border-subtle"
-                  } bg-surface px-3 py-2 text-sm text-content-primary`}
-              >
-                <option value="">Select Project</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-              {errors.projectId && (
-                <p className="mt-1 text-xs text-red-600">{errors.projectId}</p>
-              )}
+              {/* Column 1: Details & Classification */}
+              <div className="space-y-6">
+                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2 uppercase tracking-wider">
+                  Details & Classification
+                </h3>
 
-              {/* OKR Selection */}
-              {projectId && (
-                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-content-secondary mb-1">
-                      Objective
-                    </label>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Task Title</label>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => {
+                      setTitle(e.target.value);
+                      if (errors.title) setErrors((prev) => ({ ...prev, title: "" }));
+                    }}
+                    placeholder="Enter task title..."
+                    className={`block w-full rounded-xl border-0 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all ${errors.title ? "ring-red-300 focus:ring-red-500 bg-red-50" : ""
+                      }`}
+                  />
+                  {errors.title && (
+                    <p className="mt-1.5 text-xs text-red-600 font-medium flex items-center gap-1">
+                      <FaTimes className="text-[10px]" /> {errors.title}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Description</label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={6}
+                    placeholder="Add a detailed description..."
+                    className="block w-full rounded-xl border-0 bg-gray-50 px-4 py-3 text-sm text-gray-700 shadow-sm ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Project</label>
                     <select
-                      value={
-                        typeof okrObjectiveIndex === "number"
-                          ? String(okrObjectiveIndex)
-                          : ""
-                      }
+                      value={projectId}
                       onChange={(e) => {
-                        const idx =
-                          e.target.value === "" ? null : Number(e.target.value);
-                        setOkrObjectiveIndex(idx);
+                        setProjectId(e.target.value);
+                        if (errors.projectId) setErrors((prev) => ({ ...prev, projectId: "" }));
+                        setOkrObjectiveIndex(null);
                         setOkrKeyResultIndices([]);
                       }}
-                      className="block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
+                      className={`block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${errors.projectId ? "ring-red-300 bg-red-50" : ""
+                        }`}
                     >
-                      <option value="">Select Objective</option>
-                      {(
-                        projects.find((p) => p.id === projectId)?.okrs || []
-                      ).map((okr, idx) => (
-                        <option key={idx} value={idx}>
-                          {okr?.objective || `Objective ${idx + 1}`}
-                        </option>
+                      <option value="">Select Project</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
                       ))}
                     </select>
+                    {errors.projectId && (
+                      <p className="mt-1 text-xs text-red-600">{errors.projectId}</p>
+                    )}
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-content-secondary mb-1">
-                      Key Results (select multiple)
-                    </label>
-                    <div className="rounded-md border border-subtle bg-surface p-2 max-h-40 overflow-y-auto">
-                      {(() => {
-                        const proj = projects.find((p) => p.id === projectId);
-                        const okrs = proj?.okrs || [];
-                        const krs =
-                          typeof okrObjectiveIndex === "number"
-                            ? okrs[okrObjectiveIndex]?.keyResults || []
-                            : [];
-
-                        if (!krs.length) {
-                          return (
-                            <p className="text-xs text-content-tertiary">
-                              No key results for selected objective
-                            </p>
-                          );
-                        }
-
-                        return (
-                          <div className="space-y-1">
-                            {krs.map((kr, idx) => {
-                              const checked = okrKeyResultIndices.includes(idx);
-                              return (
-                                <label
-                                  key={idx}
-                                  className="flex items-center gap-2 text-sm cursor-pointer"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    className="rounded border-subtle"
-                                    checked={checked}
-                                    disabled={
-                                      typeof okrObjectiveIndex !== "number"
-                                    }
-                                    onChange={(e) => {
-                                      setOkrKeyResultIndices((prev) => {
-                                        const set = new Set(prev);
-                                        if (e.target.checked) set.add(idx);
-                                        else set.delete(idx);
-                                        return Array.from(set);
-                                      });
-                                    }}
-                                  />
-                                  <span>{kr || `Key Result ${idx + 1}`}</span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Assigned To */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-content-secondary">
-                Assigned To
-              </label>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <select
-                  value={assigneeType}
-                  onChange={(e) => {
-                    const nextType = e.target.value;
-                    setAssigneeType(nextType);
-                    setAssigneesSelected((prev) => {
-                      const filtered = prev.filter((a) => a.type === nextType);
-                      const first = filtered[0] || null;
-                      setAssigneeId(first?.id || "");
-                      if (errors.assigneeId)
-                        setErrors((p) => ({ ...p, assigneeId: "" }));
-                      return filtered;
-                    });
-                  }}
-                  className="block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
-                >
-                  <option value="user">Resource</option>
-                  <option value="client">Client</option>
-                </select>
-                <div className="text-xs text-content-tertiary self-center">
-                  Type then search & select below.
-                </div>
-              </div>
-
-              {assigneeType === "user" ? (
-                <SearchMultiSelect
-                  items={assignees.map((u) => ({ id: u.id, label: u.name }))}
-                  selected={assigneesSelected
-                    .filter((a) => a.type === "user")
-                    .map((a) => a.id)}
-                  onChange={(ids) => {
-                    const others = assigneesSelected.filter(
-                      (a) => a.type !== "user"
-                    );
-                    const nextSame = ids.map((id) => ({ type: "user", id }));
-                    const next = [...nextSame, ...others];
-                    setAssigneesSelected(next);
-                    const first = nextSame[0] || null;
-                    setAssigneeType("user");
-                    setAssigneeId(first?.id || "");
-                    if (errors.assigneeId)
-                      setErrors((p) => ({ ...p, assigneeId: "" }));
-                  }}
-                  placeholder="Search resources..."
-                />
-              ) : (
-                <select
-                  value={assigneeId}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    setAssigneeId(id);
-                    setAssigneeType("client");
-                    setAssigneesSelected(id ? [{ type: "client", id }] : []);
-                    if (errors.assigneeId)
-                      setErrors((p) => ({ ...p, assigneeId: "" }));
-                  }}
-                  className="mt-2 block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
-                >
-                  <option value="">Select Client</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.clientName}
-                      {c.companyName ? ` (${c.companyName})` : ""}
-                    </option>
-                  ))}
-                </select>
-              )}
-              {errors.assigneeId && (
-                <p className="mt-1 text-xs text-red-600">{errors.assigneeId}</p>
-              )}
-            </div>
-
-            {/* Dates Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-content-secondary">
-                  Assigned Date
-                </label>
-                <input
-                  type="date"
-                  value={assignedDate}
-                  onChange={(e) => setAssignedDate(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-content-secondary">
-                  {isRecurring ? "Start Date (Due)" : "Due Date"}
-                </label>
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => {
-                    setDueDate(e.target.value);
-                    if (errors.dueDate)
-                      setErrors((prev) => ({ ...prev, dueDate: "" }));
-                  }}
-                  className={`mt-1 block w-full rounded-md border ${errors.dueDate ? "border-red-500" : "border-subtle"
-                    } bg-transparent px-3 py-2 text-sm text-content-primary`}
-                />
-                {errors.dueDate && (
-                  <p className="mt-1 text-xs text-red-600">{errors.dueDate}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Recurring Toggle */}
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
-                  checked={isRecurring}
-                  onChange={(e) =>
-                    setTaskType(e.target.checked ? "recurring" : "one-time")
-                  }
-                />
-                <span className="text-sm text-content-secondary">
-                  Recurring Task
-                </span>
-              </label>
-            </div>
-
-            {/* Recurring Options */}
-            {isRecurring && (
-              <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-indigo-700 mb-1">
-                      Repeat Every
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        min="1"
-                        value={recurringInterval}
-                        onChange={(e) =>
-                          setRecurringInterval(parseInt(e.target.value) || 1)
-                        }
-                        className="w-20 rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm"
-                      />
-                      <select
-                        value={recurringPattern}
-                        onChange={(e) => setRecurringPattern(e.target.value)}
-                        className="flex-1 rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm"
-                      >
-                        <option value="daily">Day(s)</option>
-                        <option value="weekly">Week(s)</option>
-                        <option value="monthly">Month(s)</option>
-                        <option value="yearly">Year(s)</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="flex items-end pb-2">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={skipWeekends}
-                        onChange={(e) => setSkipWeekends(e.target.checked)}
-                        className="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <span className="text-sm text-indigo-700">
-                        Skip Weekends
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-indigo-700 mb-1">
-                      Ends
-                    </label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Priority</label>
                     <select
-                      value={recurringEndType}
-                      onChange={(e) => setRecurringEndType(e.target.value)}
-                      className="w-full rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm"
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value)}
+                      className="block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
                     >
-                      <option value="never">Never</option>
-                      <option value="date">On Date</option>
-                      <option value="after">After Occurrences</option>
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
                     </select>
                   </div>
-                  {recurringEndType === "date" && (
-                    <div>
-                      <label className="block text-xs font-medium text-indigo-700 mb-1">
-                        End Date
-                      </label>
-                      <input
-                        type="date"
-                        value={recurringEndDate}
-                        onChange={(e) => setRecurringEndDate(e.target.value)}
-                        min={dueDate || undefined}
-                        className="w-full rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm"
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Status</label>
+                    <select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      className="block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                    >
+                      <option value="To-Do">To-Do</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Done">Done</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Column 2: Assignment & Schedule */}
+              <div className="space-y-6">
+                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2 uppercase tracking-wider">
+                  Assignment & Schedule
+                </h3>
+
+                <div className="space-y-4">
+                  {/* Assignee Type Toggle */}
+                  <div className="flex bg-gray-100 p-1 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAssigneeType("user");
+                        setAssigneesSelected([]);
+                        setAssigneeId("");
+                      }}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "user" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                        }`}
+                    >
+                      Resource
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAssigneeType("client");
+                        setAssigneesSelected([]);
+                        setAssigneeId("");
+                      }}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "client" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                        }`}
+                    >
+                      Client
+                    </button>
+                  </div>
+
+                  {/* Assignee Selector */}
+                  <div>
+                    {assigneeType === "user" ? (
+                      <SearchMultiSelect
+                        items={assignees.map((u) => ({ id: u.id, label: u.name }))}
+                        selected={assigneesSelected.filter((a) => a.type === "user").map((a) => a.id)}
+                        onChange={(ids) => {
+                          const others = assigneesSelected.filter((a) => a.type !== "user");
+                          const nextSame = ids.map((id) => ({ type: "user", id }));
+                          const next = [...nextSame, ...others];
+                          setAssigneesSelected(next);
+                          setAssigneeId(nextSame[0]?.id || "");
+                          if (errors.assigneeId) setErrors((p) => ({ ...p, assigneeId: "" }));
+                        }}
+                        placeholder="Select resources..."
                       />
-                    </div>
-                  )}
-                  {recurringEndType === "after" && (
+                    ) : (
+                      <select
+                        value={assigneeId}
+                        onChange={(e) => {
+                          const id = e.target.value;
+                          setAssigneeId(id);
+                          setAssigneesSelected(id ? [{ type: "client", id }] : []);
+                          if (errors.assigneeId) setErrors((p) => ({ ...p, assigneeId: "" }));
+                        }}
+                        className="block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                      >
+                        <option value="">Select Client</option>
+                        {clients.map((c) => (
+                          <option key={c.id} value={c.id}>{c.clientName}</option>
+                        ))}
+                      </select>
+                    )}
+                    {errors.assigneeId && (
+                      <p className="mt-1 text-xs text-red-600">{errors.assigneeId}</p>
+                    )}
+                  </div>
+
+                  {/* Dates */}
+                  <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <label className="block text-xs font-medium text-indigo-700 mb-1">
-                        Occurrences
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={recurringEndAfter}
-                        onChange={(e) => setRecurringEndAfter(e.target.value)}
-                        placeholder="e.g., 10"
-                        className="w-full rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm"
-                      />
+                      <label className="block text-xs font-medium text-gray-500 mb-1.5">Assigned Date</label>
+                      <div className="relative">
+                        <input
+                          type="date"
+                          value={assignedDate}
+                          onChange={(e) => setAssignedDate(e.target.value)}
+                          className="block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                        />
+                      </div>
                     </div>
-                  )}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1.5">Due Date</label>
+                      <div className="relative">
+                        <input
+                          type="date"
+                          value={dueDate}
+                          onChange={(e) => {
+                            setDueDate(e.target.value);
+                            if (errors.dueDate) setErrors((prev) => ({ ...prev, dueDate: "" }));
+                          }}
+                          className={`block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${errors.dueDate ? "ring-red-300 bg-red-50" : ""
+                            }`}
+                        />
+                      </div>
+                      {errors.dueDate && (
+                        <p className="mt-1 text-xs text-red-600">{errors.dueDate}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Column 3: Advanced & Subtasks */}
+              <div className="space-y-6">
+                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2 uppercase tracking-wider">
+                  Advanced & Subtasks
+                </h3>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Weightage (Points)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={weightage}
+                    onChange={(e) => setWeightage(e.target.value)}
+                    placeholder="e.g. 5"
+                    className="block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                  />
                 </div>
 
-                {previewDates.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-indigo-200">
-                    <p className="text-xs text-indigo-600 mb-1">
-                      Next occurrences (preview):
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {previewDates.slice(0, 5).map((d) => (
-                        <span
-                          key={d}
-                          className="inline-block px-2 py-0.5 bg-white text-indigo-600 text-[10px] rounded border border-indigo-100"
+                {/* Recurring Toggle */}
+                <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 rounded-lg ${isRecurring ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-500"}`}>
+                      <MdReplayCircleFilled className="text-lg" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-gray-900">Recurring</h4>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={isRecurring}
+                      onChange={(e) => setTaskType(e.target.checked ? "recurring" : "one-time")}
+                    />
+                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </label>
+                </div>
+
+                {/* Recurring Options Panel */}
+                {isRecurring && (
+                  <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Repeat Every</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min="1"
+                            value={recurringInterval}
+                            onChange={(e) => setRecurringInterval(parseInt(e.target.value) || 1)}
+                            className="w-16 rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
+                          />
+                          <select
+                            value={recurringPattern}
+                            onChange={(e) => setRecurringPattern(e.target.value)}
+                            className="flex-1 rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
+                          >
+                            <option value="daily">Day(s)</option>
+                            <option value="weekly">Week(s)</option>
+                            <option value="monthly">Month(s)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="col-span-2 flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-medium text-gray-500">Allowed Days</label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isCustomDays}
+                              onChange={(e) => {
+                                setIsCustomDays(e.target.checked);
+                                if (!e.target.checked) {
+                                  setSelectedWeekDays([0, 1, 2, 3, 4, 5, 6]);
+                                }
+                              }}
+                              className="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 h-3 w-3"
+                            />
+                            <span className="text-[10px] text-indigo-600 font-medium">Customize</span>
+                          </label>
+                        </div>
+
+                        {isCustomDays && (
+                          <div className="flex gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                            {["S", "M", "T", "W", "T", "F", "S"].map((day, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedWeekDays(prev =>
+                                    prev.includes(idx) ? prev.filter(d => d !== idx) : [...prev, idx]
+                                  );
+                                }}
+                                className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-all ${selectedWeekDays.includes(idx)
+                                  ? "bg-indigo-600 text-white shadow-sm"
+                                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                                  }`}
+                              >
+                                {day}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="col-span-2">
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Ends</label>
+                        <select
+                          value={recurringEndType}
+                          onChange={(e) => setRecurringEndType(e.target.value)}
+                          className="w-full rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
                         >
-                          {d}
-                        </span>
-                      ))}
-                      {previewDates.length > 5 && (
-                        <span className="text-[10px] text-indigo-500 self-center">
-                          ...
-                        </span>
+                          <option value="never">Never</option>
+                          <option value="date">On Date</option>
+                          <option value="after">After Occurrences</option>
+                        </select>
+                      </div>
+
+                      {recurringEndType === "date" && (
+                        <div className="col-span-2">
+                          <label className="block text-xs font-medium text-gray-500 mb-1">End Date</label>
+                          <input
+                            type="date"
+                            value={recurringEndDate}
+                            onChange={(e) => setRecurringEndDate(e.target.value)}
+                            min={dueDate || undefined}
+                            className="w-full rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
+                          />
+                        </div>
+                      )}
+
+                      {recurringEndType === "after" && (
+                        <div className="col-span-2">
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Count</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={recurringEndAfter}
+                            onChange={(e) => setRecurringEndAfter(e.target.value)}
+                            placeholder="e.g. 10"
+                            className="w-full rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
+                          />
+                        </div>
                       )}
                     </div>
                   </div>
                 )}
-              </div>
-            )}
 
-            {/* Attributes Row */}
-            {/* Attributes Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-content-secondary">
-                  Priority
-                </label>
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
-                >
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-content-secondary">
-                  Status
-                </label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="mt-1 block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
-                >
-                  <option value="To-Do">To-Do</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Done">Done</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-content-secondary">
-                  Weightage
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={weightage}
-                  onChange={(e) => setWeightage(e.target.value)}
-                  placeholder="1-10 (Story Points)"
-                  className="mt-1 block w-full rounded-md border border-subtle bg-transparent px-3 py-2 text-sm text-content-primary"
-                />
-              </div>
-            </div>
+                {/* OKRs */}
+                {projectId && (
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <h4 className="text-xs font-bold text-gray-900 mb-3">OKR</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Objective</label>
+                        <select
+                          value={typeof okrObjectiveIndex === "number" ? String(okrObjectiveIndex) : ""}
+                          onChange={(e) => {
+                            const idx = e.target.value === "" ? null : Number(e.target.value);
+                            setOkrObjectiveIndex(idx);
+                            setOkrKeyResultIndices([]);
+                          }}
+                          className="block w-full rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
+                        >
+                          <option value="">Select Objective</option>
+                          {(projects.find((p) => p.id === projectId)?.okrs || []).map((okr, idx) => (
+                            <option key={idx} value={idx}>{okr?.objective || `Objective ${idx + 1}`}</option>
+                          ))}
+                        </select>
+                      </div>
 
-            {/* Subtasks Section */}
-            <div className="mt-6 pt-6 border-t border-subtle">
-              <label className="block text-sm font-medium text-content-secondary mb-3">
-                Subtasks
-              </label>
-              <div className="space-y-2 mb-3">
-                {subtasks.map((st, idx) => (
-                  <div key={idx} className="flex items-center gap-2 group">
-                    <input
-                      type="checkbox"
-                      checked={st.completed}
-                      onChange={(e) => {
-                        const next = [...subtasks];
-                        next[idx].completed = e.target.checked;
-                        setSubtasks(next);
-                      }}
-                      className="rounded border-subtle"
-                    />
-                    <input
-                      type="text"
-                      value={st.title}
-                      onChange={(e) => {
-                        const next = [...subtasks];
-                        next[idx].title = e.target.value;
-                        setSubtasks(next);
-                      }}
-                      className="flex-1 bg-transparent border-none text-sm p-0 focus:ring-0"
-                      placeholder="Subtask title"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = subtasks.filter((_, i) => i !== idx);
-                        setSubtasks(next);
-                      }}
-                      className="text-red-400 opacity-0 group-hover:opacity-100 hover:text-red-600 transition-opacity"
-                    >
-                      <FaTimes />
-                    </button>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Key Results</label>
+                        <div className="bg-white rounded-lg border border-gray-200 p-2 max-h-24 overflow-y-auto">
+                          {(() => {
+                            const proj = projects.find((p) => p.id === projectId);
+                            const okrs = proj?.okrs || [];
+                            const krs = typeof okrObjectiveIndex === "number" ? okrs[okrObjectiveIndex]?.keyResults || [] : [];
+
+                            if (!krs.length) return <p className="text-xs text-gray-400 italic">No key results available</p>;
+
+                            return (
+                              <div className="space-y-1">
+                                {krs.map((kr, idx) => (
+                                  <label key={idx} className="flex items-start gap-2 text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
+                                    <input
+                                      type="checkbox"
+                                      className="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                      checked={okrKeyResultIndices.includes(idx)}
+                                      onChange={(e) => {
+                                        setOkrKeyResultIndices((prev) => {
+                                          const set = new Set(prev);
+                                          if (e.target.checked) set.add(idx);
+                                          else set.delete(idx);
+                                          return Array.from(set);
+                                        });
+                                      }}
+                                    />
+                                    <span className="text-gray-700 text-xs leading-tight">{kr}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={newSubtask}
-                  onChange={(e) => setNewSubtask(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (newSubtask.trim()) {
-                        setSubtasks([
-                          ...subtasks,
-                          {
-                            id: Math.random().toString(36).slice(2),
-                            title: newSubtask.trim(),
-                            completed: false,
-                          },
-                        ]);
-                        setNewSubtask("");
-                      }
-                    }
-                  }}
-                  placeholder="Add a subtask (Press Enter)"
-                  className="flex-1 rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => {
-                    if (newSubtask.trim()) {
-                      setSubtasks([
-                        ...subtasks,
-                        {
-                          id: Math.random().toString(36).slice(2),
-                          title: newSubtask.trim(),
-                          completed: false,
-                        },
-                      ]);
-                      setNewSubtask("");
-                    }
-                  }}
-                >
-                  Add
-                </Button>
-              </div>
-            </div>
+                )}
 
-            {/* Form Actions */}
-            <div className="flex justify-end gap-3 pt-4">
-              <Button onClick={onClose} variant="secondary" type="button">
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                type="submit"
-                disabled={!!taskToEdit && !hasChanges}
-              >
-                {taskToEdit ? "Save Changes" : "Create Task"}
-              </Button>
-            </div>
-          </div>
-
-          {/* Right: Metadata panel */}
-          <div className="w-[350px] bg-surface flex flex-col shrink-0 border-l border-subtle">
-            <div className="p-6 border-b border-subtle space-y-5 bg-white">
-              {/* Assignee quick summary */}
-              <div>
-                <label className="block text-sm font-medium text-content-secondary mb-2">
-                  Assignees
-                </label>
-                <div className="flex flex-wrap gap-2 min-h-[32px] items-center">
-                  {assigneesSelected && assigneesSelected.length > 0 ? (
-                    assigneesSelected
-                      .filter((a) => a.type === "user")
-                      .slice(0, 3)
-                      .map((a, i) => {
-                        const u = assignees.find((x) => x.id === a.id);
-                        return (
-                          <div
-                            key={i}
-                            className="flex items-center gap-2 px-2 py-1 bg-white border border-gray-200 rounded-full shadow-sm"
-                          >
-                            <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold">
-                              {u?.name?.[0] || "?"}
-                            </div>
-                            <span className="text-xs text-gray-700 max-w-[80px] truncate">
-                              {u?.name || a.id}
-                            </span>
-                          </div>
-                        );
-                      })
-                  ) : (
-                    <span className="text-xs text-content-tertiary italic">
-                      Empty
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Dates quick view */}
-              <div className="grid grid-cols-2 gap-4">
+                {/* Subtasks */}
                 <div>
-                  <label className="block text-sm font-medium text-content-secondary">
-                    Assigned
-                  </label>
-                  <div className="flex items-center gap-2 text-xs text-content-secondary">
-                    <FaRegCalendarAlt className="text-content-tertiary" />
-                    {assignedDate || "Empty"}
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Subtasks</h3>
+                    <span className="text-[10px] text-gray-500">{subtasks.length} items</span>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-content-secondary">
-                    Due
-                  </label>
-                  <div className="flex items-center gap-2 text-xs text-content-secondary">
-                    <FaRegCalendarAlt className="text-content-tertiary" />
-                    {dueDate || "Empty"}
+
+                  <div className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                    {subtasks.map((st, idx) => (
+                      <div key={idx} className="flex items-center gap-2 group bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                        <input
+                          type="checkbox"
+                          checked={st.completed}
+                          onChange={(e) => {
+                            const next = [...subtasks];
+                            next[idx].completed = e.target.checked;
+                            setSubtasks(next);
+                          }}
+                          className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <input
+                          type="text"
+                          value={st.title}
+                          onChange={(e) => {
+                            const next = [...subtasks];
+                            next[idx].title = e.target.value;
+                            setSubtasks(next);
+                          }}
+                          className="flex-1 bg-transparent border-none text-xs p-0 focus:ring-0 text-gray-700 placeholder:text-gray-400"
+                          placeholder="Subtask title..."
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = subtasks.filter((_, i) => i !== idx);
+                            setSubtasks(next);
+                          }}
+                          className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          <FaTimes className="text-xs" />
+                        </button>
+                      </div>
+                    ))}
+
+                    <div className="flex items-center gap-2 mt-2">
+                      <input
+                        type="text"
+                        value={newSubtask}
+                        onChange={(e) => setNewSubtask(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (newSubtask.trim()) {
+                              setSubtasks([...subtasks, { id: Math.random().toString(36).slice(2), title: newSubtask.trim(), completed: false }]);
+                              setNewSubtask("");
+                            }
+                          }
+                        }}
+                        placeholder="New subtask..."
+                        className="flex-1 rounded-lg border-0 bg-white px-2 py-1.5 text-xs ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600 shadow-sm"
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => {
+                          if (newSubtask.trim()) {
+                            setSubtasks([...subtasks, { id: Math.random().toString(36).slice(2), title: newSubtask.trim(), completed: false }]);
+                            setNewSubtask("");
+                          }
+                        }}
+                        className="whitespace-nowrap text-xs px-2 py-1.5"
+                      >
+                        Add
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
+
             </div>
+
+          </form>
+        </div>
+
+        {/* Footer */}
+        <div className="shrink-0 px-8 py-5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+          <div className="text-xs text-gray-500 font-medium">
+            {hasChanges ? "Unsaved changes" : "No changes made"}
           </div>
-        </form>
-      </div >
-    </div >
+          <div className="flex gap-3">
+            <Button onClick={onClose} variant="secondary" type="button" className="px-6">
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleSubmit}
+              disabled={!!taskToEdit && !hasChanges}
+              className="px-8 shadow-lg shadow-indigo-200"
+            >
+              {taskToEdit ? "Save Changes" : "Create Task"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
