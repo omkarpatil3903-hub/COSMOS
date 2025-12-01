@@ -100,7 +100,13 @@ function EmployeeLayout() {
       text: "Calendar",
       icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
     },
-
+    // Expenses will let employees submit and track reimbursements
+    // Icon kept consistent with finance-related pages
+    {
+      to: "/employee/expenses",
+      text: "My Expenses",
+      icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
+    },
   ];
 
   useEffect(() => {

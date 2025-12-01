@@ -68,6 +68,7 @@ function MainLayout() {
       "/task-management": "Task Management - Admin Panel",
       "/documents": "Documents - Admin Panel",
       "/reports": "Reports - Admin Panel",
+      "/expenses": "Expense Management - Admin Panel",
       "/calendar": "Calendar - Admin Panel",
       "/settings": "Settings - Admin Panel",
       "/settings/add-hierarchy": "Settings - Add Hierarchy - Admin Panel",
@@ -108,6 +109,12 @@ function MainLayout() {
       to: "/documents",
       text: "Documents",
       icon: <FaFileAlt className="h-4 w-4" aria-hidden="true" />,
+    },
+
+    {
+      to: "/expenses",
+      text: "Expenses",
+      icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
     },
 
     {

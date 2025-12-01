@@ -40,6 +40,8 @@ import MomGeneratorPro from "./pages/MomGeneratorPro.jsx";
 import TaskManagment from "./pages/TaskManagment.jsx";
 import Calendar from "./pages/Calendar.jsx";
 
+import ExpenseManagement from "./pages/ExpenseManagement.jsx";
+
 import Settings from "./pages/Settings.jsx";
 import AddHierarchy from "./pages/AddHierarchy.jsx";
 import ProjectSettings from "./pages/ProjectSettings.jsx";
@@ -105,6 +107,7 @@ const router = createBrowserRouter([
       { path: "/mom-pro", element: <MomGeneratorPro /> },
       { path: "/task-management", element: <TaskManagment /> },
       { path: "/reports", element: <ReportsPage /> },
+      { path: "/expenses", element: <ExpenseManagement /> },
       { path: "/calendar", element: <Calendar /> },
       {
         path: "/settings",

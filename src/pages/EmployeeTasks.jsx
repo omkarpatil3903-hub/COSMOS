@@ -50,7 +50,6 @@ import {
 import { logTaskActivity } from "../services/taskService";
 import TaskViewModal from "../components/TaskManagment/TaskViewModal";
 
-
 const EmployeeTasks = () => {
   const { user } = useAuthContext();
   const [searchParams] = useSearchParams();
@@ -119,9 +118,10 @@ const EmployeeTasks = () => {
     () => tasks.filter((t) => t.status === "To-Do" || !t.status),
     [tasks]
   );
-  const doneTasks = useMemo(() => tasks.filter((t) => t.status === "Done"), [
-    tasks,
-  ]);
+  const doneTasks = useMemo(
+    () => tasks.filter((t) => t.status === "Done"),
+    [tasks]
+  );
 
   const toggleSelect = (id) => {
     setSelectedIds((prev) => {
@@ -752,7 +752,6 @@ const EmployeeTasks = () => {
         description="View and manage your assigned tasks"
         icon={<FaTasks />}
       />
-
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
@@ -780,7 +779,6 @@ const EmployeeTasks = () => {
           color="amber"
         />
       </div>
-
       {/* View Mode Tabs */}
       <Card>
         <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -789,19 +787,21 @@ const EmployeeTasks = () => {
             <div className="flex bg-gray-100 p-1 rounded-lg mr-4">
               <button
                 onClick={() => setTaskSource("admin")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${taskSource === "admin"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-                  }`}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  taskSource === "admin"
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
               >
                 Assigned Tasks
               </button>
               <button
                 onClick={() => setTaskSource("self")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${taskSource === "self"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-                  }`}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  taskSource === "self"
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
               >
                 My Tasks
               </button>
@@ -809,38 +809,42 @@ const EmployeeTasks = () => {
 
             <button
               onClick={() => setViewMode("all")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "all"
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                viewMode === "all"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
             >
               All Tasks
             </button>
             <button
               onClick={() => setViewMode("today")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "today"
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                viewMode === "today"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
             >
               <FaCalendar className="inline mr-1" />
               Due Today
             </button>
             <button
               onClick={() => setViewMode("week")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "week"
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                viewMode === "week"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
             >
               This Week
             </button>
             <button
               onClick={() => setViewMode("overdue")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "overdue"
-                ? "bg-red-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                viewMode === "overdue"
+                  ? "bg-red-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
             >
               <FaExclamationTriangle className="inline mr-1" />
               Overdue
@@ -851,20 +855,22 @@ const EmployeeTasks = () => {
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setDisplayMode("list")}
-              className={`p-2 rounded transition-colors ${displayMode === "list"
-                ? "bg-white text-indigo-600 shadow"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
+              className={`p-2 rounded transition-colors ${
+                displayMode === "list"
+                  ? "bg-white text-indigo-600 shadow"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
               title="List View"
             >
               <FaList className="w-4 h-4" />
             </button>
             <button
               onClick={() => setDisplayMode("kanban")}
-              className={`p-2 rounded transition-colors ${displayMode === "kanban"
-                ? "bg-white text-indigo-600 shadow"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
+              className={`p-2 rounded transition-colors ${
+                displayMode === "kanban"
+                  ? "bg-white text-indigo-600 shadow"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
               title="Kanban View"
             >
               <FaTh className="w-4 h-4" />
@@ -872,7 +878,6 @@ const EmployeeTasks = () => {
           </div>
         </div>
       </Card>
-
       {/* Search and Filters */}
       <Card>
         <div className="space-y-4">
@@ -920,8 +925,6 @@ const EmployeeTasks = () => {
               </button>
             )}
           </div>
-
-
 
           {/* Filter Row */}
           <div className="flex items-center gap-4 flex-wrap">
@@ -996,65 +999,64 @@ const EmployeeTasks = () => {
             priorityFilter !== "all" ||
             projectFilter !== "all" ||
             viewMode !== "all") && (
-              <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
-                <span className="text-sm text-gray-600">Active filters:</span>
-                {searchQuery && (
-                  <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full flex items-center gap-1">
-                    Search: "{searchQuery}"
-                    <button onClick={() => setSearchQuery("")}>
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </span>
-                )}
-                {statusFilter !== "all" && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
-                    Status: {statusFilter}
-                    <button onClick={() => setStatusFilter("all")}>
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </span>
-                )}
-                {priorityFilter !== "all" && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
-                    Priority: {priorityFilter}
-                    <button onClick={() => setPriorityFilter("all")}>
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </span>
-                )}
-                {projectFilter !== "all" && (
-                  <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full flex items-center gap-1">
-                    Project:{" "}
-                    {projectFilter === "no-project"
-                      ? "No Project"
-                      : projectFilter}
-                    <button onClick={() => setProjectFilter("all")}>
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </span>
-                )}
-                {viewMode !== "all" && (
-                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center gap-1">
-                    View: {viewMode}
-                    <button onClick={() => setViewMode("all")}>
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </span>
-                )}
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setStatusFilter("all");
-                    setPriorityFilter("all");
-                    setViewMode("all");
-                  }}
-                  className="text-xs text-red-600 hover:text-red-800 font-medium ml-2"
-                >
-                  Clear All
-                </button>
-              </div>
-            )}
-
+            <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
+              <span className="text-sm text-gray-600">Active filters:</span>
+              {searchQuery && (
+                <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full flex items-center gap-1">
+                  Search: "{searchQuery}"
+                  <button onClick={() => setSearchQuery("")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              {statusFilter !== "all" && (
+                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
+                  Status: {statusFilter}
+                  <button onClick={() => setStatusFilter("all")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              {priorityFilter !== "all" && (
+                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
+                  Priority: {priorityFilter}
+                  <button onClick={() => setPriorityFilter("all")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              {projectFilter !== "all" && (
+                <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full flex items-center gap-1">
+                  Project:{" "}
+                  {projectFilter === "no-project"
+                    ? "No Project"
+                    : projectFilter}
+                  <button onClick={() => setProjectFilter("all")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              {viewMode !== "all" && (
+                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center gap-1">
+                  View: {viewMode}
+                  <button onClick={() => setViewMode("all")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter("all");
+                  setPriorityFilter("all");
+                  setViewMode("all");
+                }}
+                className="text-xs text-red-600 hover:text-red-800 font-medium ml-2"
+              >
+                Clear All
+              </button>
+            </div>
+          )}
 
           {/* Add Self Task Modal (UI matched to provided screenshot) */}
           {showAddSelfTaskModal && (
@@ -1125,9 +1127,7 @@ const EmployeeTasks = () => {
                       <input
                         type="date"
                         value={newTaskAssignedDate}
-                        onChange={(e) =>
-                          setNewTaskAssignedDate(e.target.value)
-                        }
+                        onChange={(e) => setNewTaskAssignedDate(e.target.value)}
                         className="mt-2 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                       />
                     </div>
@@ -1328,122 +1328,120 @@ const EmployeeTasks = () => {
             </div>
           )}
         </div>
-      </Card >
-
+      </Card>
       {/* Tasks List or Kanban View */}
-      {
-        displayMode === "kanban" ? (
-          <Card>
-            {filteredTasks.length === 0 ? (
-              <div className="text-center py-12">
-                <FaTasks className="text-gray-300 text-5xl mx-auto mb-4" />
-                <p className="text-gray-500 text-lg">
-                  No tasks found matching the filters.
-                </p>
-                <p className="text-gray-400 text-sm mt-2">
-                  Try adjusting your filters or search query
-                </p>
-              </div>
-            ) : (
-              <KanbanBoard
-                tasks={filteredTasks}
-                onMove={handleStatusChange}
-                onEdit={(task) => setSelectedTask(task)}
-                getProject={() => ({ name: "—", color: "#6b7280" })}
-                getAssignee={() => ({ name: "You", role: "Employee" })}
-              />
-            )}
-          </Card>
-        ) : (
-          <Card>
-            {/* Render Groups */}
-            {filteredTasks.length === 0 ? (
-              <div className="py-12 text-center text-content-tertiary">
-                No tasks found
-              </div>
-            ) : (
+      {displayMode === "kanban" ? (
+        <Card>
+          {filteredTasks.length === 0 ? (
+            <div className="text-center py-12">
+              <FaTasks className="text-gray-300 text-5xl mx-auto mb-4" />
+              <p className="text-gray-500 text-lg">
+                No tasks found matching the filters.
+              </p>
+              <p className="text-gray-400 text-sm mt-2">
+                Try adjusting your filters or search query
+              </p>
+            </div>
+          ) : (
+            <KanbanBoard
+              tasks={filteredTasks}
+              onMove={handleStatusChange}
+              onEdit={(task) => setSelectedTask(task)}
+              getProject={() => ({ name: "—", color: "#6b7280" })}
+              getAssignee={() => ({ name: "You", role: "Employee" })}
+            />
+          )}
+        </Card>
+      ) : (
+        <Card>
+          {/* Render Groups */}
+          {filteredTasks.length === 0 ? (
+            <div className="py-12 text-center text-content-tertiary">
+              No tasks found
+            </div>
+          ) : (
+            <>
               <>
-                <>
-                  {taskSource === "self" ? (
-                    // --- SELF TASKS VIEW (Group by Status) ---
-                    <>
-                      {/* IN PROGRESS Group */}
-                      <TaskGroup
-                        title="In Progress"
-                        tasks={filteredTasks.filter(
-                          (t) => t.status === "In Progress" || t.status === "In Review"
-                        )}
-                        colorClass="bg-blue-500"
-                        onOpenCreate={() => setShowAddSelfTaskModal(true)}
-                        selectedIds={selectedSelfTaskIds}
-                        onToggleSelect={toggleSelectSelfTask}
-                        onView={(task) => setSelectedTask(task)}
-                        onDelete={async (task) => {
-                          if (
-                            window.confirm(
-                              `Are you sure you want to delete "${task.title}"?`
-                            )
-                          ) {
-                            try {
-                              await deleteDoc(doc(db, "selfTasks", task.id));
-                              toast.success("Self task deleted");
-                            } catch (e) {
-                              toast.error("Failed to delete self task");
-                            }
+                {taskSource === "self" ? (
+                  // --- SELF TASKS VIEW (Group by Status) ---
+                  <>
+                    {/* IN PROGRESS Group */}
+                    <TaskGroup
+                      title="In Progress"
+                      tasks={filteredTasks.filter(
+                        (t) =>
+                          t.status === "In Progress" || t.status === "In Review"
+                      )}
+                      colorClass="bg-blue-500"
+                      onOpenCreate={() => setShowAddSelfTaskModal(true)}
+                      selectedIds={selectedSelfTaskIds}
+                      onToggleSelect={toggleSelectSelfTask}
+                      onView={(task) => setSelectedTask(task)}
+                      onDelete={async (task) => {
+                        if (
+                          window.confirm(
+                            `Are you sure you want to delete "${task.title}"?`
+                          )
+                        ) {
+                          try {
+                            await deleteDoc(doc(db, "selfTasks", task.id));
+                            toast.success("Self task deleted");
+                          } catch (e) {
+                            toast.error("Failed to delete self task");
                           }
-                        }}
-                        resolveAssignees={resolveAssignees}
-                      />
+                        }
+                      }}
+                      resolveAssignees={resolveAssignees}
+                    />
 
-                      {/* TO DO Group */}
-                      <TaskGroup
-                        title="To Do"
-                        tasks={filteredTasks.filter(
-                          (t) => t.status === "To-Do" || !t.status
-                        )}
-                        colorClass="bg-gray-500"
-                        onOpenCreate={() => setShowAddSelfTaskModal(true)}
-                        selectedIds={selectedSelfTaskIds}
-                        onToggleSelect={toggleSelectSelfTask}
-                        onView={(task) => setSelectedTask(task)}
-                        onDelete={async (task) => {
-                          if (
-                            window.confirm(
-                              `Are you sure you want to delete "${task.title}"?`
-                            )
-                          ) {
-                            try {
-                              await deleteDoc(doc(db, "selfTasks", task.id));
-                              toast.success("Self task deleted");
-                            } catch (e) {
-                              toast.error("Failed to delete self task");
-                            }
+                    {/* TO DO Group */}
+                    <TaskGroup
+                      title="To Do"
+                      tasks={filteredTasks.filter(
+                        (t) => t.status === "To-Do" || !t.status
+                      )}
+                      colorClass="bg-gray-500"
+                      onOpenCreate={() => setShowAddSelfTaskModal(true)}
+                      selectedIds={selectedSelfTaskIds}
+                      onToggleSelect={toggleSelectSelfTask}
+                      onView={(task) => setSelectedTask(task)}
+                      onDelete={async (task) => {
+                        if (
+                          window.confirm(
+                            `Are you sure you want to delete "${task.title}"?`
+                          )
+                        ) {
+                          try {
+                            await deleteDoc(doc(db, "selfTasks", task.id));
+                            toast.success("Self task deleted");
+                          } catch (e) {
+                            toast.error("Failed to delete self task");
                           }
-                        }}
-                        resolveAssignees={resolveAssignees}
-                      />
+                        }
+                      }}
+                      resolveAssignees={resolveAssignees}
+                    />
 
-                      {/* DONE Group */}
-                      <TaskGroup
-                        title="Done"
-                        tasks={filteredTasks.filter((t) => t.status === "Done")}
-                        colorClass="bg-emerald-500"
-                        onOpenCreate={() => setShowAddSelfTaskModal(true)}
-                        selectedIds={selectedSelfTaskIds}
-                        onToggleSelect={toggleSelectSelfTask}
-                        onView={(task) => setSelectedTask(task)}
-                        onDelete={async (task) => {
-                          if (
-                            window.confirm(
-                              `Are you sure you want to delete "${task.title}"?`
-                            )
-                          ) {
-                            try {
-                              await deleteDoc(doc(db, "selfTasks", task.id));
-                              toast.success("Self task deleted");
-                            } catch (e) {
-                              toast.error("Failed to delete self task");
-                            }
+                    {/* DONE Group */}
+                    <TaskGroup
+                      title="Done"
+                      tasks={filteredTasks.filter((t) => t.status === "Done")}
+                      colorClass="bg-emerald-500"
+                      onOpenCreate={() => setShowAddSelfTaskModal(true)}
+                      selectedIds={selectedSelfTaskIds}
+                      onToggleSelect={toggleSelectSelfTask}
+                      onView={(task) => setSelectedTask(task)}
+                      onDelete={async (task) => {
+                        if (
+                          window.confirm(
+                            `Are you sure you want to delete "${task.title}"?`
+                          )
+                        ) {
+                          try {
+                            await deleteDoc(doc(db, "selfTasks", task.id));
+                            toast.success("Self task deleted");
+                          } catch (e) {
+                            toast.error("Failed to delete self task");
                           }
                         }}
                         resolveAssignees={resolveAssignees}
@@ -1467,111 +1465,106 @@ const EmployeeTasks = () => {
                         resolveAssignees={resolveAssignees}
                       />
 
-                      {/* TO DO Group */}
-                      <TaskGroup
-                        title="To Do"
-                        tasks={filteredTasks.filter(
-                          (t) => t.status === "To-Do" || !t.status
-                        )}
-                        colorClass="bg-gray-500"
-                        selectedIds={selectedIds}
-                        onToggleSelect={toggleSelect}
-                        onView={(task) => setSelectedTask(task)}
-                        showActions={false}
-                        resolveAssignees={resolveAssignees}
-                      />
+                    {/* TO DO Group */}
+                    <TaskGroup
+                      title="To Do"
+                      tasks={filteredTasks.filter(
+                        (t) => t.status === "To-Do" || !t.status
+                      )}
+                      colorClass="bg-gray-500"
+                      selectedIds={selectedIds}
+                      onToggleSelect={toggleSelect}
+                      onView={(task) => setSelectedTask(task)}
+                      showActions={false}
+                      resolveAssignees={resolveAssignees}
+                    />
 
-                      {/* DONE Group */}
-                      <TaskGroup
-                        title="Done"
-                        tasks={filteredTasks.filter((t) => t.status === "Done")}
-                        colorClass="bg-emerald-500"
-                        selectedIds={selectedIds}
-                        onToggleSelect={toggleSelect}
-                        onView={(task) => setSelectedTask(task)}
-                        showActions={false}
-                        resolveAssignees={resolveAssignees}
-                      />
-                    </>
-                  )}
-                </>
+                    {/* DONE Group */}
+                    <TaskGroup
+                      title="Done"
+                      tasks={filteredTasks.filter((t) => t.status === "Done")}
+                      colorClass="bg-emerald-500"
+                      selectedIds={selectedIds}
+                      onToggleSelect={toggleSelect}
+                      onView={(task) => setSelectedTask(task)}
+                      showActions={false}
+                      resolveAssignees={resolveAssignees}
+                    />
+                  </>
+                )}
               </>
-            )}
-          </Card>
-        )
-      }
-
+            </>
+          )}
+        </Card>
+      )}
       {/* Load More Button */}
-      {
-        (tasks.length >= taskLimit || selfTasks.length >= taskLimit) && (
-          <div className="flex justify-center mt-6 mb-8">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setLoadingMore(true);
-                setTaskLimit((prev) => prev + 50);
-                // Loading state will be cleared by the snapshot listener update
-                setTimeout(() => setLoadingMore(false), 1000);
-              }}
-              disabled={loadingMore}
-              className="flex items-center gap-2 px-6 py-2"
-            >
-              {loadingMore ? (
-                <>
-                  <FaSpinner className="animate-spin" /> Loading...
-                </>
-              ) : (
-                "Load More Tasks"
-              )}
-            </Button>
-          </div>
-        )
-      } {/* Task Detail Modal */}
-      {
-        selectedTask && (
-          <TaskViewModal
-            task={selectedTask}
-            project={getProject(selectedTask.projectId)}
-            projects={projects}
-            assignee={getAssignee(selectedTask.assigneeId)}
-            assigneesResolved={resolveAssignees(selectedTask)}
-            users={users}
-            clients={clients}
-            currentUser={user}
-            onClose={() => setSelectedTask(null)}
-            onEdit={(updatedTask) => {
-              setSelectedTask(null);
-              handleStatusChange(updatedTask.id, updatedTask.status);
+      {(tasks.length >= taskLimit || selfTasks.length >= taskLimit) && (
+        <div className="flex justify-center mt-6 mb-8">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setLoadingMore(true);
+              setTaskLimit((prev) => prev + 50);
+              // Loading state will be cleared by the snapshot listener update
+              setTimeout(() => setLoadingMore(false), 1000);
             }}
-            onDelete={async (task) => {
-              if (
-                window.confirm(`Are you sure you want to delete "${task.title}"?`)
-              ) {
-                try {
-                  await deleteDoc(doc(db, "tasks", task.id));
-                  toast.success("Task deleted");
-                  setSelectedTask(null);
-                } catch (e) {
-                  toast.error("Failed to delete task");
-                }
-              }
-            }}
-            onArchive={async (task) => {
+            disabled={loadingMore}
+            className="flex items-center gap-2 px-6 py-2"
+          >
+            {loadingMore ? (
+              <>
+                <FaSpinner className="animate-spin" /> Loading...
+              </>
+            ) : (
+              "Load More Tasks"
+            )}
+          </Button>
+        </div>
+      )}{" "}
+      {/* Task Detail Modal */}
+      {selectedTask && (
+        <TaskViewModal
+          task={selectedTask}
+          project={getProject(selectedTask.projectId)}
+          projects={projects}
+          assignee={getAssignee(selectedTask.assigneeId)}
+          assigneesResolved={resolveAssignees(selectedTask)}
+          users={users}
+          clients={clients}
+          currentUser={user}
+          onClose={() => setSelectedTask(null)}
+          onEdit={(updatedTask) => {
+            setSelectedTask(null);
+            handleStatusChange(updatedTask.id, updatedTask.status);
+          }}
+          onDelete={async (task) => {
+            if (
+              window.confirm(`Are you sure you want to delete "${task.title}"?`)
+            ) {
               try {
-                await updateDoc(doc(db, "tasks", task.id), { archived: true });
-                toast.success("Task archived");
+                await deleteDoc(doc(db, "tasks", task.id));
+                toast.success("Task deleted");
                 setSelectedTask(null);
               } catch (e) {
-                toast.error("Failed to archive task");
+                toast.error("Failed to delete task");
               }
-            }}
-            canDelete={selectedTask.source === 'self'}
-            canArchive={selectedTask.source === 'self'}
-            canEdit={selectedTask.source === 'self'}
-          />
-        )
-      }
-    </div >
+            }
+          }}
+          onArchive={async (task) => {
+            try {
+              await updateDoc(doc(db, "tasks", task.id), { archived: true });
+              toast.success("Task archived");
+              setSelectedTask(null);
+            } catch (e) {
+              toast.error("Failed to archive task");
+            }
+          }}
+          canDelete={selectedTask.source === "self"}
+          canArchive={selectedTask.source === "self"}
+          canEdit={selectedTask.source === "self"}
+        />
+      )}
+    </div>
   );
 };
 
