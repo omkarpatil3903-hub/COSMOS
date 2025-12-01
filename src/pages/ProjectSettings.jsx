@@ -5,8 +5,15 @@ import Card from "../components/Card";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import toast from "react-hot-toast";
 import { db } from "../firebase";
-import { doc, setDoc, serverTimestamp, arrayUnion, arrayRemove, onSnapshot } from "firebase/firestore";
-import { FaTimes, FaEdit, FaTrash, FaPlus, FaSearch, FaEye } from "react-icons/fa";
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  arrayUnion,
+  arrayRemove,
+  onSnapshot,
+} from "firebase/firestore";
+import { FaTimes, FaEdit, FaTrash, FaPlus, FaSearch } from "react-icons/fa";
 
 export default function ProjectSettings() {
   const location = useLocation();
@@ -20,7 +27,11 @@ export default function ProjectSettings() {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [deleteModal, setDeleteModal] = useState({ open: false, item: null, loading: false });
+  const [deleteModal, setDeleteModal] = useState({
+    open: false,
+    item: null,
+    loading: false,
+  });
   const [level, setLevel] = useState("");
   const [levelError, setLevelError] = useState("");
 
@@ -32,7 +43,12 @@ export default function ProjectSettings() {
       const levels = Array.isArray(d.levels) ? d.levels : [];
       const list = levels
         .filter((r) => r && r.name)
-        .map((r) => ({ id: `lvl_${(r.level ?? "")}_${r.name}`.replace(/\s+/g, "-"), type: "level", name: r.name, level: r.level ?? "" }));
+        .map((r) => ({
+          id: `lvl_${r.level ?? ""}_${r.name}`.replace(/\s+/g, "-"),
+          type: "level",
+          name: r.name,
+          level: r.level ?? "",
+        }));
       setItems(list);
     });
     return () => unsub();
@@ -42,7 +58,13 @@ export default function ProjectSettings() {
     const p = new URLSearchParams(location.search);
     if (p.has("add")) {
       p.delete("add");
-      navigate({ pathname: location.pathname, search: p.toString() ? `?${p.toString()}` : "" }, { replace: true });
+      navigate(
+        {
+          pathname: location.pathname,
+          search: p.toString() ? `?${p.toString()}` : "",
+        },
+        { replace: true }
+      );
     }
     setOpen(false);
     setValue("");
@@ -64,13 +86,17 @@ export default function ProjectSettings() {
       return;
     }
     const normalizeLevel = (s) => {
-      const t = String(s ?? '').trim();
+      const t = String(s ?? "").trim();
       const num = Number(t);
-      if (!Number.isNaN(num) && /^[-+]?\d*(?:\.\d+)?$/.test(t)) return String(num);
+      if (!Number.isNaN(num) && /^[-+]?\d*(?:\.\d+)?$/.test(t))
+        return String(num);
       return t.toLowerCase();
     };
     const lv = normalizeLevel(lvInput);
-    const exists = items.some((it) => normalizeLevel(it.level) === lv && (!editing || it.id !== editing.id));
+    const exists = items.some(
+      (it) =>
+        normalizeLevel(it.level) === lv && (!editing || it.id !== editing.id)
+    );
     if (exists) {
       setLevelError("Level already exists");
       return;
@@ -80,11 +106,23 @@ export default function ProjectSettings() {
       const ref = doc(db, "settings", "project-levels");
       if (editing) {
         // remove both possible legacy and new shapes
-        await setDoc(ref, { levels: arrayRemove({ name: editing.name, level: editing.level }, { name: editing.name }) }, { merge: true });
+        await setDoc(
+          ref,
+          {
+            levels: arrayRemove(
+              { name: editing.name, level: editing.level },
+              { name: editing.name }
+            ),
+          },
+          { merge: true }
+        );
       }
       await setDoc(
         ref,
-        { levels: arrayUnion({ name: v, level: lv }), updatedAt: serverTimestamp() },
+        {
+          levels: arrayUnion({ name: v, level: lv }),
+          updatedAt: serverTimestamp(),
+        },
         { merge: true }
       );
       toast.success("Saved");
@@ -108,7 +146,13 @@ export default function ProjectSettings() {
       const ref = doc(db, "settings", "project-levels");
       await setDoc(
         ref,
-        { levels: arrayRemove({ name: item.name, level: item.level }, { name: item.name }), updatedAt: serverTimestamp() },
+        {
+          levels: arrayRemove(
+            { name: item.name, level: item.level },
+            { name: item.name }
+          ),
+          updatedAt: serverTimestamp(),
+        },
         { merge: true }
       );
       toast.success("Deleted");
@@ -128,7 +172,9 @@ export default function ProjectSettings() {
     const s = query.trim().toLowerCase();
     const base = s
       ? items.filter(
-          (x) => (x.name || "").toLowerCase().includes(s) || (x.level || "").toLowerCase().includes(s)
+          (x) =>
+            (x.name || "").toLowerCase().includes(s) ||
+            (x.level || "").toLowerCase().includes(s)
         )
       : [...items];
     const getNum = (val) => {
@@ -160,8 +206,25 @@ export default function ProjectSettings() {
   const openCreate = () => {
     const p = new URLSearchParams(location.search);
     p.set("add", "1");
-    navigate({ pathname: location.pathname, search: `?${p.toString()}` }, { replace: true });
+    navigate(
+      { pathname: location.pathname, search: `?${p.toString()}` },
+      { replace: true }
+    );
     setOpen(true);
+  };
+
+  const handleRowClick = (item) => {
+    setPreview(item);
+  };
+
+  const handleEditClick = (item, e) => {
+    e.stopPropagation();
+    startEdit(item);
+  };
+
+  const handleDeleteClick = (item, e) => {
+    e.stopPropagation();
+    setDeleteModal({ open: true, item });
   };
 
   return (
@@ -171,7 +234,9 @@ export default function ProjectSettings() {
         tone="white"
         actions={
           <div className="flex items-center gap-3">
-            <span className="text-sm text-content-secondary">Showing {filtered.length} records</span>
+            <span className="text-sm text-content-secondary">
+              Showing {filtered.length} records
+            </span>
             <Button variant="primary" onClick={openCreate} className="shrink-0">
               <FaPlus /> Add Project Level
             </Button>
@@ -197,7 +262,9 @@ export default function ProjectSettings() {
 
       <Card title="Project Level" tone="muted">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-2">
-          <div className="text-sm text-content-secondary">Page {Math.min(page, totalPages)} of {totalPages}</div>
+          <div className="text-sm text-content-secondary">
+            Page {Math.min(page, totalPages)} of {totalPages}
+          </div>
           <div className="flex items-center gap-3">
             <select
               value={pageSize}
@@ -234,54 +301,70 @@ export default function ProjectSettings() {
           <table className="min-w-full divide-y divide-gray-200 bg-white">
             <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">Sr. No.</th>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">Level</th>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">Name</th>
-                <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 sticky right-0 z-10 bg-gray-50">Actions</th>
+                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                  Sr. No.
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                  Level
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                  Name
+                </th>
+                <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 sticky right-0 z-10 bg-gray-50">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
               {pageItems.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-sm text-content-tertiary">No items</td>
+                  <td
+                    colSpan={4}
+                    className="px-6 py-8 text-center text-sm text-content-tertiary"
+                  >
+                    No items
+                  </td>
                 </tr>
               ) : (
                 pageItems.map((item, idx) => (
-                  <tr key={item.id}>
+                  <tr
+                    key={item.id}
+                    onClick={() => handleRowClick(item)}
+                    className="cursor-pointer transition-colors group"
+                  >
                     <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-500">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 transition-colors">
                         {(page - 1) * pageSize + idx + 1}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="max-w-[100px] text-sm font-semibold text-gray-900 truncate" title={item.level || "-"}>
+                      <div
+                        className="max-w-[100px] text-sm font-semibold text-gray-900 group-hover:text-blue-600 truncate transition-colors"
+                        title={item.level || "-"}
+                      >
                         {item.level || "-"}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="max-w-[200px] text-sm font-semibold text-gray-900 truncate" title={item.name}>
+                      <div
+                        className="max-w-[200px] text-sm font-semibold text-gray-900 group-hover:text-blue-600 truncate transition-colors"
+                        title={item.name}
+                      >
                         {item.name}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm sticky right-0 z-10 bg-white">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm sticky right-0 z-10 bg-white transition-colors">
                       <div className="flex items-center justify-center space-x-3">
                         <button
-                          onClick={() => setPreview(item)}
-                          className="flex items-center justify-center p-2 rounded-full text-indigo-600 hover:bg-indigo-100 shadow-md"
-                          title="View Details"
-                        >
-                          <FaEye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => startEdit(item)}
-                          className="flex items-center justify-center p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md"
+                          onClick={(e) => handleEditClick(item, e)}
+                          className="flex items-center justify-center p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md transition-colors"
                           title="Edit"
                         >
                           <FaEdit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => setDeleteModal({ open: true, item })}
-                          className="flex items-center justify-center p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md"
+                          onClick={(e) => handleDeleteClick(item, e)}
+                          className="flex items-center justify-center p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md transition-colors"
                           title="Delete"
                         >
                           <FaTrash className="h-4 w-4" />
@@ -301,7 +384,10 @@ export default function ProjectSettings() {
           <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between px-6 pt-6">
               <h3 className="text-xl font-semibold">Create Project Level</h3>
-              <button onClick={close} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={close}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <FaTimes />
               </button>
             </div>
@@ -318,10 +404,16 @@ export default function ProjectSettings() {
                       setLevel(e.target.value);
                       if (levelError) setLevelError("");
                     }}
-                    className={`mt-1 w-full rounded border px-3 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${levelError ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`mt-1 w-full rounded border px-3 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                      levelError ? "border-red-500" : "border-gray-300"
+                    }`}
                     placeholder="e.g., 1, 2, 3..."
                   />
-                  {levelError && <div className="mt-1 text-xs text-red-600">{levelError}</div>}
+                  {levelError && (
+                    <div className="mt-1 text-xs text-red-600">
+                      {levelError}
+                    </div>
+                  )}
                 </label>
                 <label className="block text-sm font-medium">
                   Name
@@ -337,7 +429,9 @@ export default function ProjectSettings() {
             </div>
 
             <div className="flex items-center justify-end gap-3 px-6 pb-6">
-              <Button variant="ghost" onClick={close}>Cancel</Button>
+              <Button variant="ghost" onClick={close}>
+                Cancel
+              </Button>
               <Button onClick={save} disabled={saving} variant="primary">
                 {saving ? "Saving..." : "Save"}
               </Button>
@@ -349,11 +443,15 @@ export default function ProjectSettings() {
       {deleteModal.open && (
         <div
           className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/30"
-          onClick={() => setDeleteModal({ open: false, item: null, loading: false })}
+          onClick={() =>
+            setDeleteModal({ open: false, item: null, loading: false })
+          }
         >
           <div onClick={(e) => e.stopPropagation()}>
             <DeleteConfirmationModal
-              onClose={() => setDeleteModal({ open: false, item: null, loading: false })}
+              onClose={() =>
+                setDeleteModal({ open: false, item: null, loading: false })
+              }
               onConfirm={handleConfirmDelete}
               itemType="project level"
               title="Delete Project Level"
@@ -371,7 +469,10 @@ export default function ProjectSettings() {
           <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between px-6 pt-6">
               <h3 className="text-xl font-semibold">Preview</h3>
-              <button onClick={() => setPreview(null)} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={() => setPreview(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <FaTimes />
               </button>
             </div>
@@ -388,7 +489,9 @@ export default function ProjectSettings() {
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 px-6 pb-6">
-              <Button variant="ghost" onClick={() => setPreview(null)}>Close</Button>
+              <Button variant="ghost" onClick={() => setPreview(null)}>
+                Close
+              </Button>
             </div>
           </div>
         </div>

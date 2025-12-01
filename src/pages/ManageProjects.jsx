@@ -46,6 +46,7 @@ const tableHeaders = [
   { key: "srNo", label: "Sr. No.", sortable: false },
   { key: "projectName", label: "Project Name", sortable: true },
   { key: "clientName", label: "Client Name", sortable: true },
+  { key: "projectManagerName", label: "Project Manager", sortable: true },
   { key: "progress", label: "Progress", sortable: true },
   { key: "startDate", label: "Start Date", sortable: true },
   { key: "endDate", label: "End Date", sortable: true },
@@ -57,6 +58,7 @@ function ManageProjects() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [clients, setClients] = useState([]);
+  const [managers, setManagers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -83,6 +85,8 @@ function ManageProjects() {
     projectName: "",
     clientId: "",
     clientName: "",
+    projectManagerId: "",
+    projectManagerName: "",
     startDate: "",
     endDate: "",
     okrs: [
@@ -104,6 +108,8 @@ function ManageProjects() {
           projectName: data.projectName || "",
           clientName: data.clientName || "",
           clientId: data.clientId || "",
+          projectManagerId: data.projectManagerId || "",
+          projectManagerName: data.projectManagerName || "",
           // Firestore progress is not used for display; we'll compute from tasks below
           progress: typeof data.progress === "number" ? data.progress : 0,
           startDate: data.startDate?.toDate
@@ -120,6 +126,24 @@ function ManageProjects() {
       });
       setProjects(list);
       setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  // Load managers from users where resource role type is admin
+  useEffect(() => {
+    const uq = query(collection(db, "users"), orderBy("name", "asc"));
+    const unsub = onSnapshot(uq, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+      const admins = list
+        .map((u) => ({
+          id: u.id,
+          name: u.name || u.fullName || "",
+          resourceRoleType: String(u.resourceRoleType || "").toLowerCase(),
+          status: u.status || "Active",
+        }))
+        .filter((u) => u.resourceRoleType === "admin");
+      setManagers(admins);
     });
     return () => unsub();
   }, []);
@@ -285,6 +309,10 @@ function ManageProjects() {
       errors.clientId = "Company is required";
     }
 
+    if (!data.projectManagerId) {
+      errors.projectManagerId = "Project manager is required";
+    }
+
     if (!data.startDate) {
       errors.startDate = "Start date is required";
     }
@@ -327,10 +355,17 @@ function ManageProjects() {
       const selectedClient = clients.find((c) => c.id === formData.clientId);
       const clientName =
         selectedClient?.companyName || formData.clientName || "";
+      const selectedManager = managers.find(
+        (m) => m.id === formData.projectManagerId
+      );
+      const projectManagerName =
+        selectedManager?.name || formData.projectManagerName || "";
       await addDoc(collection(db, "projects"), {
         projectName: formData.projectName,
         clientName,
         clientId: formData.clientId,
+        projectManagerId: formData.projectManagerId,
+        projectManagerName,
         progress: parseInt(formData.progress) || 0,
         startDate: formData.startDate
           ? Timestamp.fromDate(new Date(formData.startDate))
@@ -345,6 +380,8 @@ function ManageProjects() {
         projectName: "",
         clientId: "",
         clientName: "",
+        projectManagerId: "",
+        projectManagerName: "",
         progress: 0,
         startDate: "",
         endDate: "",
@@ -365,6 +402,8 @@ function ManageProjects() {
       projectName: project.projectName,
       clientId: project.clientId || "",
       clientName: project.clientName,
+      projectManagerId: project.projectManagerId || "",
+      projectManagerName: project.projectManagerName || "",
       startDate: project.startDate,
       endDate: project.endDate,
       okrs: project.okrs || [{ objective: "", keyResults: [""] }],
@@ -406,10 +445,17 @@ function ManageProjects() {
       const selectedClient = clients.find((c) => c.id === formData.clientId);
       const clientName =
         selectedClient?.companyName || formData.clientName || "";
+      const selectedManager = managers.find(
+        (m) => m.id === formData.projectManagerId
+      );
+      const projectManagerName =
+        selectedManager?.name || formData.projectManagerName || "";
       await updateDoc(ref, {
         projectName: formData.projectName,
         clientName,
         clientId: formData.clientId,
+        projectManagerId: formData.projectManagerId,
+        projectManagerName,
         startDate: formData.startDate
           ? Timestamp.fromDate(new Date(formData.startDate))
           : null,
@@ -422,6 +468,8 @@ function ManageProjects() {
         projectName: "",
         clientId: "",
         clientName: "",
+        projectManagerId: "",
+        projectManagerName: "",
         startDate: "",
         endDate: "",
         okrs: [{ objective: "", keyResults: [""] }],
@@ -778,8 +826,8 @@ function ManageProjects() {
               }
             >
 
-              <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
-                <table className="min-w-full divide-y divide-gray-200 bg-white">
+              <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                <table className="min-w-[1100px] divide-y divide-gray-200 bg-white">
                   <caption className="sr-only">
                     Filtered project records with search and pagination controls
                   </caption>
@@ -800,7 +848,9 @@ function ManageProjects() {
                             key={header.key}
                             scope="col"
                             aria-sort={ariaSort}
-                            className="group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200"
+                            className={`group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 ${
+                              header.key === "actions" ? "sticky right-0 z-10 bg-gray-50" : ""
+                            }`}
                           >
                             {header.sortable ? (
                               <button
@@ -834,6 +884,14 @@ function ManageProjects() {
                         </td>
                         <td className="px-6 py-4 text-sm font-semibold text-gray-900">
                           <span>{project.clientName}</span>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                          <span
+                            title={project.projectManagerName || "-"}
+                            className="block max-w-[160px] truncate"
+                          >
+                            {project.projectManagerName || "-"}
+                          </span>
                         </td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm">
                           <div className="flex items-center">
@@ -870,7 +928,7 @@ function ManageProjects() {
                             {project.endDate}
                           </div>
                         </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm">
+                        <td className="whitespace-nowrap px-6 py-4 text-sm sticky right-0 z-10 bg-white">
                           <div className="flex items-center space-x-3">
                             <button
                               onClick={() => handleView(project.id)}
@@ -952,6 +1010,7 @@ function ManageProjects() {
             formData={formData}
             setFormData={setFormData}
             clients={clients}
+            managers={managers}
             handleFormSubmit={handleFormSubmit}
             addErrors={addErrors}
             setAddErrors={setAddErrors}
@@ -965,6 +1024,7 @@ function ManageProjects() {
             formData={formData}
             setFormData={setFormData}
             clients={clients}
+            managers={managers}
             handleEditSubmit={handleEditSubmit}
             editErrors={editErrors}
             setEditErrors={setEditErrors}

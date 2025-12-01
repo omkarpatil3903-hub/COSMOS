@@ -18,6 +18,7 @@ import {
   FaTimes,
   FaChevronLeft,
 } from "react-icons/fa";
+import { FaFileAlt } from "react-icons/fa";
 
 // Reusable sidebar link component matching admin panel
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
@@ -62,6 +63,7 @@ export default function ClientLayout() {
       "/client/tasks": "My Tasks - Client Portal",
       "/client/calendar": "Calendar - Client Portal",
       "/client/reports": "Reports - Client Portal",
+      "/client/documents": "Documents - Client Portal",
     };
 
     const title = pathToTitle[location.pathname] || "Client Portal";
@@ -88,6 +90,11 @@ export default function ClientLayout() {
       to: "/client/calendar",
       text: "Calendar",
       icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/client/documents",
+      text: "Documents",
+      icon: <FaFileAlt className="h-4 w-4" aria-hidden="true" />,
     },
     // {
     //   to: "/client/reports",

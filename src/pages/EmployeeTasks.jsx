@@ -1443,28 +1443,27 @@ const EmployeeTasks = () => {
                           } catch (e) {
                             toast.error("Failed to delete self task");
                           }
-                        }
-                      }}
-                      resolveAssignees={resolveAssignees}
-                    />
-                  </>
-                ) : (
-                  // --- ADMIN TASKS VIEW (Group by Status) ---
-                  <>
-                    {/* IN PROGRESS Group */}
-                    <TaskGroup
-                      title="In Progress"
-                      tasks={filteredTasks.filter(
-                        (t) =>
-                          t.status === "In Progress" || t.status === "In Review"
-                      )}
-                      colorClass="bg-blue-500"
-                      selectedIds={selectedIds}
-                      onToggleSelect={toggleSelect}
-                      onView={(task) => setSelectedTask(task)}
-                      showActions={false}
-                      resolveAssignees={resolveAssignees}
-                    />
+                        }}
+                        resolveAssignees={resolveAssignees}
+                      />
+                    </>
+                  ) : (
+                    // --- ADMIN TASKS VIEW (Group by Status) ---
+                    <>
+                      {/* IN PROGRESS Group */}
+                      <TaskGroup
+                        title="In Progress"
+                        tasks={filteredTasks.filter(
+                          (t) => t.status === "In Progress" || t.status === "In Review"
+                        )}
+                        colorClass="bg-blue-500"
+                       
+                        selectedIds={selectedIds}
+                        onToggleSelect={toggleSelect}
+                        onView={(task) => setSelectedTask(task)}
+                        showActions={false}
+                        resolveAssignees={resolveAssignees}
+                      />
 
                     {/* TO DO Group */}
                     <TaskGroup

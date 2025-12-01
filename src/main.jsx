@@ -23,7 +23,12 @@ import EmployeeTasks from "./pages/EmployeeTasks.jsx";
 import EmployeeProjects from "./pages/EmployeeProjects.jsx";
 import EmployeeCalendar from "./pages/EmployeeCalendar.jsx";
 import EmployeeReports from "./pages/EmployeeReports.jsx";
-import EmployeeExpenses from "./pages/EmployeeExpenses.jsx";
+import Documents from "./pages/Documents.jsx";
+import EmployeeDocuments from "./pages/EmployeeDocuments.jsx";
+import ClientDocuments from "./pages/ClientDocuments.jsx";
+import ManageDocument from "./pages/ManageDocument.jsx";
+import ClientManageDocument from "./pages/ClientManageDocument.jsx";
+import EmployeeManageDocument from "./pages/EmployeeManageDocument.jsx";
 import Unauthorized from "./pages/Unauthorized";
 
 import ManageResources from "./pages/ManageResources.jsx";
@@ -59,6 +64,8 @@ const router = createBrowserRouter([
       { path: "/client/tasks", element: <ClientTasks /> },
       { path: "/client/calendar", element: <ClientCalendar /> },
       { path: "/client/reports", element: <ClientReports /> },
+      { path: "/client/documents", element: <ClientDocuments /> },
+      { path: "/client/manage-documents", element: <ClientManageDocument /> },
     ],
   },
 
@@ -76,7 +83,8 @@ const router = createBrowserRouter([
       { path: "/employee/projects", element: <EmployeeProjects /> },
       { path: "/employee/calendar", element: <EmployeeCalendar /> },
       { path: "/employee/reports", element: <EmployeeReports /> },
-      { path: "/employee/expenses", element: <EmployeeExpenses /> },
+      { path: "/employee/documents", element: <EmployeeDocuments /> },
+      { path: "/employee/manage-documents", element: <EmployeeManageDocument /> },
     ],
   },
 
@@ -93,6 +101,8 @@ const router = createBrowserRouter([
       { path: "/manage-resources", element: <ManageResources /> },
       { path: "/manage-clients", element: <ManageClients /> },
       { path: "/manage-projects", element: <ManageProjects /> },
+      { path: "/documents", element: <Documents /> },
+      { path: "/manage-documents", element: <ManageDocument /> },
       { path: "/mom", element: <MomNew /> },
       { path: "/mom-pro", element: <MomGeneratorPro /> },
       { path: "/task-management", element: <TaskManagment /> },
