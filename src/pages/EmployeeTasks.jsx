@@ -192,11 +192,13 @@ const EmployeeTasks = () => {
           return {
             id: doc.id,
             ...data,
-            status: myStatus.status ||
+            status:
+              myStatus.status ||
               (data.status === "In Review"
                 ? "In Progress"
                 : data.status || "To-Do"),
-            progressPercent: myStatus.progressPercent ?? data.progressPercent ?? 0,
+            progressPercent:
+              myStatus.progressPercent ?? data.progressPercent ?? 0,
             completedAt: myStatus.completedAt || data.completedAt,
             source: "admin",
             collectionName: "tasks",
@@ -224,11 +226,13 @@ const EmployeeTasks = () => {
           return {
             id: doc.id,
             ...data,
-            status: myStatus.status ||
+            status:
+              myStatus.status ||
               (data.status === "In Review"
                 ? "In Progress"
                 : data.status || "To-Do"),
-            progressPercent: myStatus.progressPercent ?? data.progressPercent ?? 0,
+            progressPercent:
+              myStatus.progressPercent ?? data.progressPercent ?? 0,
             completedAt: myStatus.completedAt || data.completedAt,
             source: "admin",
             collectionName: "tasks",
@@ -429,7 +433,8 @@ const EmployeeTasks = () => {
         if (newStatus !== "Done") {
           updates[`${updateKey}.completedAt`] = null;
           updates[`${updateKey}.completedBy`] = null;
-          updates[`${updateKey}.progressPercent`] = newStatus === "In Progress" ? 0 : null;
+          updates[`${updateKey}.progressPercent`] =
+            newStatus === "In Progress" ? 0 : null;
         }
       } else {
         // Self task
@@ -481,7 +486,7 @@ const EmployeeTasks = () => {
           [`${updateKey}.completedAt`]: serverTimestamp(),
           [`${updateKey}.progressPercent`]: 100,
           [`${updateKey}.completedBy`]: user?.uid || "",
-          [`${updateKey}.completionComment`]: comment || ""
+          [`${updateKey}.completionComment`]: comment || "",
         });
       } else {
         await updateDoc(doc(db, col, completionTaskId), {
@@ -495,13 +500,13 @@ const EmployeeTasks = () => {
       }
 
       // If this is an admin recurring task, create the next instance (same rules as Task Management)
-      // NOTE: For multi-assignee, we might need to decide when to create next instance. 
-      // Assuming if ANYONE completes it, or if ALL complete it? 
-      // Current logic: if it's recurring and marked done. 
+      // NOTE: For multi-assignee, we might need to decide when to create next instance.
+      // Assuming if ANYONE completes it, or if ALL complete it?
+      // Current logic: if it's recurring and marked done.
       // For multi-assignee, maybe we only recur if ALL are done? Or if the "main" status is done?
       // For now, let's keep it simple: if the individual completes it, we don't necessarily recur the whole task unless we update the main status.
       // But we are NOT updating the main status here anymore for admin tasks.
-      // So recurring logic might need to be revisited. 
+      // So recurring logic might need to be revisited.
       // However, the requirement was "when one assignee marks it done the tasks in other assine panel also gets done".
       // We fixed that. Now, does the recurring task recur when ONE person finishes? Probably not.
       // It should probably recur when the "main" task is marked done by Admin, or if we implement logic to check if ALL are done.
@@ -809,19 +814,21 @@ const EmployeeTasks = () => {
             <div className="flex bg-gray-100 p-1 rounded-lg mr-4">
               <button
                 onClick={() => setTaskSource("admin")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${taskSource === "admin"
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  taskSource === "admin"
                     ? "bg-white text-indigo-600 shadow-sm"
                     : "text-gray-500 hover:text-gray-700"
-                  }`}
+                }`}
               >
                 Assigned Tasks
               </button>
               <button
                 onClick={() => setTaskSource("self")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${taskSource === "self"
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  taskSource === "self"
                     ? "bg-white text-indigo-600 shadow-sm"
                     : "text-gray-500 hover:text-gray-700"
-                  }`}
+                }`}
               >
                 My Tasks
               </button>
@@ -829,38 +836,42 @@ const EmployeeTasks = () => {
 
             <button
               onClick={() => setViewMode("all")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "all"
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                viewMode === "all"
                   ? "bg-indigo-600 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+              }`}
             >
               All Tasks
             </button>
             <button
               onClick={() => setViewMode("today")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "today"
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                viewMode === "today"
                   ? "bg-indigo-600 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+              }`}
             >
               <FaCalendar className="inline mr-1" />
               Due Today
             </button>
             <button
               onClick={() => setViewMode("week")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "week"
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                viewMode === "week"
                   ? "bg-indigo-600 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+              }`}
             >
               This Week
             </button>
             <button
               onClick={() => setViewMode("overdue")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "overdue"
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                viewMode === "overdue"
                   ? "bg-red-600 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+              }`}
             >
               <FaExclamationTriangle className="inline mr-1" />
               Overdue
@@ -871,20 +882,22 @@ const EmployeeTasks = () => {
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setDisplayMode("list")}
-              className={`p-2 rounded transition-colors ${displayMode === "list"
+              className={`p-2 rounded transition-colors ${
+                displayMode === "list"
                   ? "bg-white text-indigo-600 shadow"
                   : "text-gray-600 hover:text-gray-900"
-                }`}
+              }`}
               title="List View"
             >
               <FaList className="w-4 h-4" />
             </button>
             <button
               onClick={() => setDisplayMode("kanban")}
-              className={`p-2 rounded transition-colors ${displayMode === "kanban"
+              className={`p-2 rounded transition-colors ${
+                displayMode === "kanban"
                   ? "bg-white text-indigo-600 shadow"
                   : "text-gray-600 hover:text-gray-900"
-                }`}
+              }`}
               title="Kanban View"
             >
               <FaTh className="w-4 h-4" />
@@ -1013,64 +1026,64 @@ const EmployeeTasks = () => {
             priorityFilter !== "all" ||
             projectFilter !== "all" ||
             viewMode !== "all") && (
-              <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
-                <span className="text-sm text-gray-600">Active filters:</span>
-                {searchQuery && (
-                  <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full flex items-center gap-1">
-                    Search: "{searchQuery}"
-                    <button onClick={() => setSearchQuery("")}>
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </span>
-                )}
-                {statusFilter !== "all" && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
-                    Status: {statusFilter}
-                    <button onClick={() => setStatusFilter("all")}>
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </span>
-                )}
-                {priorityFilter !== "all" && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
-                    Priority: {priorityFilter}
-                    <button onClick={() => setPriorityFilter("all")}>
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </span>
-                )}
-                {projectFilter !== "all" && (
-                  <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full flex items-center gap-1">
-                    Project:{" "}
-                    {projectFilter === "no-project"
-                      ? "No Project"
-                      : projectFilter}
-                    <button onClick={() => setProjectFilter("all")}>
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </span>
-                )}
-                {viewMode !== "all" && (
-                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center gap-1">
-                    View: {viewMode}
-                    <button onClick={() => setViewMode("all")}>
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </span>
-                )}
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setStatusFilter("all");
-                    setPriorityFilter("all");
-                    setViewMode("all");
-                  }}
-                  className="text-xs text-red-600 hover:text-red-800 font-medium ml-2"
-                >
-                  Clear All
-                </button>
-              </div>
-            )}
+            <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
+              <span className="text-sm text-gray-600">Active filters:</span>
+              {searchQuery && (
+                <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full flex items-center gap-1">
+                  Search: "{searchQuery}"
+                  <button onClick={() => setSearchQuery("")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              {statusFilter !== "all" && (
+                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
+                  Status: {statusFilter}
+                  <button onClick={() => setStatusFilter("all")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              {priorityFilter !== "all" && (
+                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
+                  Priority: {priorityFilter}
+                  <button onClick={() => setPriorityFilter("all")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              {projectFilter !== "all" && (
+                <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full flex items-center gap-1">
+                  Project:{" "}
+                  {projectFilter === "no-project"
+                    ? "No Project"
+                    : projectFilter}
+                  <button onClick={() => setProjectFilter("all")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              {viewMode !== "all" && (
+                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center gap-1">
+                  View: {viewMode}
+                  <button onClick={() => setViewMode("all")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter("all");
+                  setPriorityFilter("all");
+                  setViewMode("all");
+                }}
+                className="text-xs text-red-600 hover:text-red-800 font-medium ml-2"
+              >
+                Clear All
+              </button>
+            </div>
+          )}
 
           {/* Add Self Task Modal (UI matched to provided screenshot) */}
           {showAddSelfTaskModal && (
@@ -1457,27 +1470,28 @@ const EmployeeTasks = () => {
                           } catch (e) {
                             toast.error("Failed to delete self task");
                           }
-                        }}
-                        resolveAssignees={resolveAssignees}
-                      />
-                    </>
-                  ) : (
-                    // --- ADMIN TASKS VIEW (Group by Status) ---
-                    <>
-                      {/* IN PROGRESS Group */}
-                      <TaskGroup
-                        title="In Progress"
-                        tasks={filteredTasks.filter(
-                          (t) => t.status === "In Progress" || t.status === "In Review"
-                        )}
-                        colorClass="bg-blue-500"
-                       
-                        selectedIds={selectedIds}
-                        onToggleSelect={toggleSelect}
-                        onView={(task) => setSelectedTask(task)}
-                        showActions={false}
-                        resolveAssignees={resolveAssignees}
-                      />
+                        }
+                      }}
+                      resolveAssignees={resolveAssignees}
+                    />
+                  </>
+                ) : (
+                  // --- ADMIN TASKS VIEW (Group by Status) ---
+                  <>
+                    {/* IN PROGRESS Group */}
+                    <TaskGroup
+                      title="In Progress"
+                      tasks={filteredTasks.filter(
+                        (t) =>
+                          t.status === "In Progress" || t.status === "In Review"
+                      )}
+                      colorClass="bg-blue-500"
+                      selectedIds={selectedIds}
+                      onToggleSelect={toggleSelect}
+                      onView={(task) => setSelectedTask(task)}
+                      showActions={false}
+                      resolveAssignees={resolveAssignees}
+                    />
 
                     {/* TO DO Group */}
                     <TaskGroup
