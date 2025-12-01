@@ -24,14 +24,18 @@ export function AuthProvider({ children }) {
           // If user is in 'users' collection but doesn't have a role, default to 'admin'
           setUserData({
             ...data,
-            role: data.role || "admin",
+            role: data.role ? data.role.trim() : "admin",
           });
         } else {
           // If not in users, check clients collection
           const clientDocRef = doc(db, "clients", currentUser.uid);
           const clientDoc = await getDoc(clientDocRef);
           if (clientDoc.exists()) {
-            setUserData(clientDoc.data());
+            const data = clientDoc.data();
+            setUserData({
+              ...data,
+              role: data.role ? data.role.trim() : "client",
+            });
           } else {
             // User exists in Auth but not in Firestore - treat as admin (for manually created admin accounts)
             setUserData({

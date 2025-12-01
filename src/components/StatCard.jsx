@@ -2,13 +2,14 @@
 import React from "react";
 import Card from "./Card"; // Assuming Card is in the same folder
 
-const StatCard = ({ icon, label, value, color = "indigo" }) => {
+const StatCard = ({ icon, label, value, subValue, color = "indigo" }) => {
   const colors = {
     blue: "bg-blue-100 text-blue-600",
     green: "bg-emerald-100 text-emerald-600",
     indigo: "bg-indigo-100 text-indigo-600",
     sky: "bg-sky-100 text-sky-600",
     amber: "bg-amber-100 text-amber-600",
+    purple: "bg-purple-100 text-purple-600",
   };
 
   return (
@@ -23,9 +24,16 @@ const StatCard = ({ icon, label, value, color = "indigo" }) => {
           <p className="text-xs font-medium uppercase tracking-wide text-content-tertiary">
             {label}
           </p>
-          <p className="text-3xl font-semibold text-content-primary sm:text-3xl">
-            {value}
-          </p>
+          <div className="flex flex-col">
+            <div className="text-2xl font-bold text-content-primary">
+              {value}
+            </div>
+            {subValue && (
+              <p className="text-xs font-medium text-content-secondary mt-0.5">
+                {subValue}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </Card>

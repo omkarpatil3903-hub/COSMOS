@@ -61,6 +61,7 @@ function EmployeeLayout() {
       "/employee/projects": "My Projects - Employee Portal",
       "/employee/calendar": "Calendar - Employee Portal",
       "/employee/reports": "Reports - Employee Portal",
+      "/employee/expenses": "My Expenses - Employee Portal",
     };
 
     const title = pathToTitle[location.pathname] || "Employee Portal";
@@ -93,7 +94,13 @@ function EmployeeLayout() {
       text: "Calendar",
       icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
     },
-
+    // Expenses will let employees submit and track reimbursements
+    // Icon kept consistent with finance-related pages
+    {
+      to: "/employee/expenses",
+      text: "My Expenses",
+      icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
+    },
   ];
 
   useEffect(() => {

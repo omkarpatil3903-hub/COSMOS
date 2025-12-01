@@ -23,6 +23,7 @@ import EmployeeTasks from "./pages/EmployeeTasks.jsx";
 import EmployeeProjects from "./pages/EmployeeProjects.jsx";
 import EmployeeCalendar from "./pages/EmployeeCalendar.jsx";
 import EmployeeReports from "./pages/EmployeeReports.jsx";
+import EmployeeExpenses from "./pages/EmployeeExpenses.jsx";
 import Unauthorized from "./pages/Unauthorized";
 
 import ManageResources from "./pages/ManageResources.jsx";
@@ -33,6 +34,8 @@ import MomNew from "./pages/MomNew.jsx";
 import MomGeneratorPro from "./pages/MomGeneratorPro.jsx";
 import TaskManagment from "./pages/TaskManagment.jsx";
 import Calendar from "./pages/Calendar.jsx";
+
+import ExpenseManagement from "./pages/ExpenseManagement.jsx";
 
 import Settings from "./pages/Settings.jsx";
 import AddHierarchy from "./pages/AddHierarchy.jsx";
@@ -73,6 +76,7 @@ const router = createBrowserRouter([
       { path: "/employee/projects", element: <EmployeeProjects /> },
       { path: "/employee/calendar", element: <EmployeeCalendar /> },
       { path: "/employee/reports", element: <EmployeeReports /> },
+      { path: "/employee/expenses", element: <EmployeeExpenses /> },
     ],
   },
 
@@ -93,6 +97,7 @@ const router = createBrowserRouter([
       { path: "/mom-pro", element: <MomGeneratorPro /> },
       { path: "/task-management", element: <TaskManagment /> },
       { path: "/reports", element: <ReportsPage /> },
+      { path: "/expenses", element: <ExpenseManagement /> },
       { path: "/calendar", element: <Calendar /> },
       {
         path: "/settings",
