@@ -15,6 +15,7 @@ import {
   FaBars,
   FaTimes,
 } from "react-icons/fa";
+import { FaFileAlt } from "react-icons/fa";
 import { useAuthContext } from "../../context/useAuthContext";
 
 // Reusable sidebar link component matching admin panel exactly
@@ -61,6 +62,7 @@ function EmployeeLayout() {
       "/employee/projects": "My Projects - Employee Portal",
       "/employee/calendar": "Calendar - Employee Portal",
       "/employee/reports": "Reports - Employee Portal",
+      "/employee/documents": "Documents - Employee Portal",
     };
 
     const title = pathToTitle[location.pathname] || "Employee Portal";
@@ -87,6 +89,11 @@ function EmployeeLayout() {
       to: "/employee/reports",
       text: "Reports",
       icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/employee/documents",
+      text: "Documents",
+      icon: <FaFileAlt className="h-4 w-4" aria-hidden="true" />,
     },
     {
       to: "/employee/calendar",

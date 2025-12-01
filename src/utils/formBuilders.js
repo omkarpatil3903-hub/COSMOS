@@ -45,10 +45,6 @@ export const validateTaskForm = (form) => {
     errors.title = "Task title is required";
   }
 
-  if (!form.dueDate) {
-    errors.dueDate = "Due date is required";
-  }
-
   // Ensure due date is not before assigned date when both are provided
   if (form.dueDate && form.assignedDate) {
     const assigned = new Date(form.assignedDate + "T00:00:00");

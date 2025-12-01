@@ -8,6 +8,7 @@ const AddProjectModal = ({
   formData,
   setFormData,
   clients,
+  managers = [],
   handleFormSubmit,
   addErrors,
   setAddErrors,
@@ -106,6 +107,53 @@ const AddProjectModal = ({
                   {addErrors.clientId}
                 </p>
               )}
+              <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                Project Manager *
+                <select
+                  value={
+                    formData.projectManagerId ||
+                    managers.find((m) => m.name === formData.projectManagerName)
+                      ?.id ||
+                    ""
+                  }
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const m = managers.find((mm) => mm.id === id);
+                    setFormData({
+                      ...formData,
+                      projectManagerId: id,
+                      projectManagerName: m?.name || "",
+                    });
+                    if (addErrors.projectManagerId) {
+                      setAddErrors((prev) => ({
+                        ...prev,
+                        projectManagerId: "",
+                      }));
+                    }
+                  }}
+                  className={`w-full rounded-lg border truncate ${
+                    addErrors.projectManagerId ? "border-red-500" : "border-subtle"
+                  } bg-surface py-2 px-3 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                  required
+                >
+                  <option value="" disabled>
+                    Select a project manager
+                  </option>
+                  {managers.map((m) => {
+                    const label = (m.name || "").length > 24 ? `${(m.name || "").slice(0, 24)}…` : (m.name || "");
+                    return (
+                      <option key={m.id} value={m.id} title={m.name || ""}>
+                        {label}
+                      </option>
+                    );
+                  })}
+                </select>
+                {addErrors.projectManagerId && (
+                  <p className="text-xs text-red-600 mt-1">
+                    {addErrors.projectManagerId}
+                  </p>
+                )}
+              </label>
               <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                 Start Date *
                 <input

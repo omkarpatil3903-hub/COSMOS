@@ -1459,7 +1459,7 @@ const EmployeeTasks = () => {
                           (t) => t.status === "In Progress" || t.status === "In Review"
                         )}
                         colorClass="bg-blue-500"
-                        colorClass="bg-blue-500"
+                       
                         selectedIds={selectedIds}
                         onToggleSelect={toggleSelect}
                         onView={(task) => setSelectedTask(task)}
