@@ -101,15 +101,27 @@ const TaskViewModal = ({
     }
 
     return list.map(item => {
+      let resolved = {};
       if (item.type === 'client') {
         const c = clients.find(c => c.id === item.id);
-        return c ? { ...c, name: c.clientName, id: c.id, type: 'client' } : { name: 'Unknown Client', id: item.id };
+        resolved = c ? { ...c, name: c.clientName, id: c.id, type: 'client' } : { name: 'Unknown Client', id: item.id };
       } else {
         const u = users.find(u => u.id === item.id);
-        return u ? { ...u, type: 'user' } : { name: 'Unknown User', id: item.id };
+        resolved = u ? { ...u, type: 'user' } : { name: 'Unknown User', id: item.id };
       }
+
+      // Attach status
+      const statusData = task.assigneeStatus?.[item.id];
+      if (statusData) {
+        resolved.status = statusData.status;
+        resolved.progressPercent = statusData.progressPercent;
+      } else {
+        // Fallback to global status if not found (legacy)
+        resolved.status = task.status;
+      }
+      return resolved;
     });
-  }, [task.assignees, task.assigneeId, task.assigneeType, users, clients]);
+  }, [task.assignees, task.assigneeId, task.assigneeType, task.assigneeStatus, task.status, users, clients]);
 
   const handleToggleAssignee = async (item, type) => {
     let current = [...(task.assignees || [])];
@@ -210,21 +222,37 @@ const TaskViewModal = ({
 
   const handleCompletionSubmit = async (comment) => {
     try {
-      await updateTask(task.id, {
-        status: "Done",
-        completedAt: serverTimestamp(),
-        progressPercent: 100,
-        completedBy: currentUser?.uid || "",
-        completedByType: "user",
-        completionComment: comment,
-      }, task.collectionName);
+      const isAssignee = task.assigneeIds?.includes(currentUser?.uid);
+      const col = task.collectionName || "tasks";
+
+      if (col === "tasks" && isAssignee) {
+        // Update individual status
+        const updateKey = `assigneeStatus.${currentUser.uid}`;
+        await updateTask(task.id, {
+          [`${updateKey}.status`]: "Done",
+          [`${updateKey}.completedAt`]: serverTimestamp(),
+          [`${updateKey}.progressPercent`]: 100,
+          [`${updateKey}.completedBy`]: currentUser?.uid || "",
+          [`${updateKey}.completionComment`]: comment || ""
+        }, col);
+      } else {
+        // Update global status (Admin or Self Task)
+        await updateTask(task.id, {
+          status: "Done",
+          completedAt: serverTimestamp(),
+          progressPercent: 100,
+          completedBy: currentUser?.uid || "",
+          completedByType: "user",
+          completionComment: comment,
+        }, col);
+      }
 
       await logTaskActivity(
         task.id,
         "completed",
         comment ? `Completed: ${comment}` : "Marked as complete",
         currentUser,
-        task.collectionName
+        col
       );
 
       toast.success("Task marked as complete!");
@@ -242,7 +270,42 @@ const TaskViewModal = ({
       return;
     }
     try {
-      await updateTask(task.id, { [field]: value }, task.collectionName);
+      const isAssignee = task.assigneeIds?.includes(currentUser?.uid);
+      const col = task.collectionName || "tasks";
+
+      if (col === "tasks" && isAssignee && (field === "status" || field === "progressPercent")) {
+        // Update individual status/progress
+        const updateKey = `assigneeStatus.${currentUser.uid}`;
+        const updates = {};
+
+        if (field === "status") {
+          updates[`${updateKey}.status`] = value;
+          if (value === "Done") {
+            updates[`${updateKey}.completedAt`] = serverTimestamp();
+            updates[`${updateKey}.progressPercent`] = 100;
+            updates[`${updateKey}.completedBy`] = currentUser?.uid;
+          } else if (value === "In Progress") {
+            updates[`${updateKey}.progressPercent`] = 0;
+            updates[`${updateKey}.completedAt`] = null;
+          } else {
+            updates[`${updateKey}.completedAt`] = null;
+            updates[`${updateKey}.progressPercent`] = 0;
+          }
+        } else if (field === "progressPercent") {
+          updates[`${updateKey}.progressPercent`] = value;
+          if (value === 100) {
+            updates[`${updateKey}.status`] = "Done";
+            updates[`${updateKey}.completedAt`] = serverTimestamp();
+            updates[`${updateKey}.completedBy`] = currentUser?.uid;
+          }
+        }
+
+        await updateTask(task.id, updates, col);
+      } else {
+        // Global update
+        await updateTask(task.id, { [field]: value }, col);
+      }
+
       console.log("updateTask success");
 
       if (field === "status") {
@@ -251,7 +314,7 @@ const TaskViewModal = ({
           "status_updated",
           `Changed status to ${value}`,
           currentUser,
-          task.collectionName
+          col
         );
       }
     } catch (err) {
@@ -773,9 +836,14 @@ const TaskViewModal = ({
                         <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold">
                           {u.name?.[0]}
                         </div>
-                        <span className="text-xs text-gray-700 max-w-[80px] truncate">
-                          {u.name}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-xs text-gray-700 max-w-[80px] truncate leading-none">
+                            {u.name}
+                          </span>
+                          <span className={`text-[9px] font-medium ${u.status === 'Done' ? 'text-green-600' : 'text-gray-400'}`}>
+                            {u.status || 'To-Do'}
+                          </span>
+                        </div>
                       </div>
                     ))
                   ) : (

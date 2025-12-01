@@ -185,17 +185,23 @@ const EmployeeTasks = () => {
 
     const unsubscribePrimary = onSnapshot(qPrimary, (snapshot) => {
       const taskData = snapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          status:
-            doc.data().status === "In Review"
-              ? "In Progress"
-              : doc.data().status || "To-Do",
-          progressPercent: doc.data().progressPercent ?? 0,
-          source: "admin",
-          collectionName: "tasks",
-        }))
+        .map((doc) => {
+          const data = doc.data();
+          // For primary assignee (legacy), we might still use top-level, but check map first
+          const myStatus = data.assigneeStatus?.[user.uid] || {};
+          return {
+            id: doc.id,
+            ...data,
+            status: myStatus.status ||
+              (data.status === "In Review"
+                ? "In Progress"
+                : data.status || "To-Do"),
+            progressPercent: myStatus.progressPercent ?? data.progressPercent ?? 0,
+            completedAt: myStatus.completedAt || data.completedAt,
+            source: "admin",
+            collectionName: "tasks",
+          };
+        })
         .filter((task) => task.assigneeType === "user")
         .sort((a, b) => {
           const dateA = a.dueDate?.toDate?.() || new Date(a.dueDate || 0);
@@ -203,15 +209,7 @@ const EmployeeTasks = () => {
           return dateA - dateB;
         });
       console.log("🔍 Tasks loaded:", taskData.length, "tasks");
-      console.log(
-        "🔍 Sample task with projectId:",
-        taskData.find((t) => t.projectId) || "No tasks with projectId found"
-      );
-      console.log("🔍 All projectIds in tasks:", [
-        ...new Set(taskData.map((t) => t.projectId).filter(Boolean)),
-      ]);
       setTasks((prev) => {
-        // Merge with existing and de-duplicate by id (will be finalized after multi subscription)
         const map = new Map(prev.map((t) => [t.id, t]));
         taskData.forEach((t) => map.set(t.id, t));
         return Array.from(map.values());
@@ -220,17 +218,22 @@ const EmployeeTasks = () => {
 
     const unsubscribeMulti = onSnapshot(qMulti, (snapshot) => {
       const taskData = snapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          status:
-            doc.data().status === "In Review"
-              ? "In Progress"
-              : doc.data().status || "To-Do",
-          progressPercent: doc.data().progressPercent ?? 0,
-          source: "admin",
-          collectionName: "tasks",
-        }))
+        .map((doc) => {
+          const data = doc.data();
+          const myStatus = data.assigneeStatus?.[user.uid] || {};
+          return {
+            id: doc.id,
+            ...data,
+            status: myStatus.status ||
+              (data.status === "In Review"
+                ? "In Progress"
+                : data.status || "To-Do"),
+            progressPercent: myStatus.progressPercent ?? data.progressPercent ?? 0,
+            completedAt: myStatus.completedAt || data.completedAt,
+            source: "admin",
+            collectionName: "tasks",
+          };
+        })
         .filter((task) => task.assigneeType === "user")
         .sort((a, b) => {
           const dateA = a.dueDate?.toDate?.() || new Date(a.dueDate || 0);
@@ -407,22 +410,42 @@ const EmployeeTasks = () => {
         setShowCompletionModal(true);
         return;
       }
-      let updates = { status: newStatus };
-      if (newStatus === "In Progress") {
-        updates.progressPercent = 0;
-      }
-      // If reverting from Done status, remove completion data
-      if (newStatus !== "Done") {
-        updates.completedAt = null;
-        updates.completedBy = null;
-        updates.completedByType = null;
-        updates.completionComment = null;
-        updates.progressPercent = newStatus === "In Progress" ? 0 : null;
-      }
+
       const current =
         tasks.find((t) => t.id === taskId) ||
         selfTasks.find((t) => t.id === taskId);
       const col = current?.collectionName || "tasks";
+
+      let updates = {};
+
+      if (col === "tasks") {
+        // Admin task - update individual status
+        const updateKey = `assigneeStatus.${user.uid}`;
+        updates[`${updateKey}.status`] = newStatus;
+
+        if (newStatus === "In Progress") {
+          updates[`${updateKey}.progressPercent`] = 0;
+        }
+        if (newStatus !== "Done") {
+          updates[`${updateKey}.completedAt`] = null;
+          updates[`${updateKey}.completedBy`] = null;
+          updates[`${updateKey}.progressPercent`] = newStatus === "In Progress" ? 0 : null;
+        }
+      } else {
+        // Self task
+        updates = { status: newStatus };
+        if (newStatus === "In Progress") {
+          updates.progressPercent = 0;
+        }
+        if (newStatus !== "Done") {
+          updates.completedAt = null;
+          updates.completedBy = null;
+          updates.completedByType = null;
+          updates.completionComment = null;
+          updates.progressPercent = newStatus === "In Progress" ? 0 : null;
+        }
+      }
+
       await updateDoc(doc(db, col, taskId), updates);
 
       logTaskActivity(
@@ -450,37 +473,45 @@ const EmployeeTasks = () => {
         tasks.find((t) => t.id === completionTaskId) ||
         selfTasks.find((t) => t.id === completionTaskId);
       const col = current?.collectionName || "tasks";
-      await updateDoc(doc(db, col, completionTaskId), {
-        status: "Done",
-        completedAt: serverTimestamp(),
-        progressPercent: 100,
-        completedBy: user?.uid || "",
-        completedByType: "user",
-        ...(comment ? { completionComment: comment } : {}),
-      });
-      // If this is an admin recurring task, create the next instance (same rules as Task Management)
-      if (col === "tasks" && current?.isRecurring) {
-        try {
-          let due = current.dueDate;
-          if (current?.dueDate?.toDate) {
-            due = current.dueDate.toDate().toISOString().slice(0, 10);
-          }
-          const checkTask = {
-            ...current,
-            status: "Done",
-            completedAt: new Date(),
-            dueDate: due,
-          };
-          if (await shouldCreateNextInstanceAsync(checkTask)) {
-            await createNextRecurringInstance(checkTask);
-          }
-        } catch (e) {
-          console.warn(
-            "Recurring continuation failed (employee completion)",
-            e
-          );
-        }
+
+      if (col === "tasks") {
+        const updateKey = `assigneeStatus.${user.uid}`;
+        await updateDoc(doc(db, col, completionTaskId), {
+          [`${updateKey}.status`]: "Done",
+          [`${updateKey}.completedAt`]: serverTimestamp(),
+          [`${updateKey}.progressPercent`]: 100,
+          [`${updateKey}.completedBy`]: user?.uid || "",
+          [`${updateKey}.completionComment`]: comment || ""
+        });
+      } else {
+        await updateDoc(doc(db, col, completionTaskId), {
+          status: "Done",
+          completedAt: serverTimestamp(),
+          progressPercent: 100,
+          completedBy: user?.uid || "",
+          completedByType: "user",
+          ...(comment ? { completionComment: comment } : {}),
+        });
       }
+
+      // If this is an admin recurring task, create the next instance (same rules as Task Management)
+      // NOTE: For multi-assignee, we might need to decide when to create next instance. 
+      // Assuming if ANYONE completes it, or if ALL complete it? 
+      // Current logic: if it's recurring and marked done. 
+      // For multi-assignee, maybe we only recur if ALL are done? Or if the "main" status is done?
+      // For now, let's keep it simple: if the individual completes it, we don't necessarily recur the whole task unless we update the main status.
+      // But we are NOT updating the main status here anymore for admin tasks.
+      // So recurring logic might need to be revisited. 
+      // However, the requirement was "when one assignee marks it done the tasks in other assine panel also gets done".
+      // We fixed that. Now, does the recurring task recur when ONE person finishes? Probably not.
+      // It should probably recur when the "main" task is marked done by Admin, or if we implement logic to check if ALL are done.
+      // For now, I will disable recurring trigger from individual completion to avoid spamming instances.
+
+      /* 
+      if (col === "tasks" && current?.isRecurring) {
+        // ... logic disabled for individual completion to prevent premature recurrence
+      }
+      */
 
       logTaskActivity(
         completionTaskId,
@@ -510,44 +541,35 @@ const EmployeeTasks = () => {
       if (current && (current.progressPercent ?? 0) === value) return;
       const col = current?.collectionName || "tasks";
 
-      // Prepare update object
-      let updateData = { progressPercent: value };
+      let updateData = {};
 
-      // If progress is 100%, automatically set status to Done
-      if (value === 100) {
-        updateData.status = "Done";
-        updateData.completedAt = serverTimestamp();
-        updateData.completedBy = user?.uid || "";
-        updateData.completedByType = "user";
+      if (col === "tasks") {
+        const updateKey = `assigneeStatus.${user.uid}`;
+        updateData[`${updateKey}.progressPercent`] = value;
+
+        if (value === 100) {
+          updateData[`${updateKey}.status`] = "Done";
+          updateData[`${updateKey}.completedAt`] = serverTimestamp();
+          updateData[`${updateKey}.completedBy`] = user?.uid || "";
+        }
+      } else {
+        updateData = { progressPercent: value };
+        if (value === 100) {
+          updateData.status = "Done";
+          updateData.completedAt = serverTimestamp();
+          updateData.completedBy = user?.uid || "";
+          updateData.completedByType = "user";
+        }
       }
 
       await updateDoc(doc(db, col, taskId), updateData);
 
-      // For admin recurring tasks, reaching 100% should also create the next instance
+      // Recurring logic disabled for individual completion
+      /*
       if (value === 100 && col === "tasks" && current?.isRecurring) {
-        try {
-          let due = current.dueDate;
-          if (current?.dueDate?.toDate) {
-            due = current.dueDate.toDate().toISOString().slice(0, 10);
-          }
-          const checkTask = {
-            ...current,
-            ...updateData,
-            id: taskId,
-            status: "Done",
-            completedAt: new Date(),
-            dueDate: due,
-          };
-          if (await shouldCreateNextInstanceAsync(checkTask)) {
-            await createNextRecurringInstance(checkTask);
-          }
-        } catch (e) {
-          console.warn(
-            "Recurring continuation failed (employee progress completion)",
-            e
-          );
-        }
+         // ...
       }
+      */
 
       if (value === 100) {
         toast.success("Task completed automatically!");
@@ -787,21 +809,19 @@ const EmployeeTasks = () => {
             <div className="flex bg-gray-100 p-1 rounded-lg mr-4">
               <button
                 onClick={() => setTaskSource("admin")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  taskSource === "admin"
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${taskSource === "admin"
                     ? "bg-white text-indigo-600 shadow-sm"
                     : "text-gray-500 hover:text-gray-700"
-                }`}
+                  }`}
               >
                 Assigned Tasks
               </button>
               <button
                 onClick={() => setTaskSource("self")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  taskSource === "self"
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${taskSource === "self"
                     ? "bg-white text-indigo-600 shadow-sm"
                     : "text-gray-500 hover:text-gray-700"
-                }`}
+                  }`}
               >
                 My Tasks
               </button>
@@ -809,42 +829,38 @@ const EmployeeTasks = () => {
 
             <button
               onClick={() => setViewMode("all")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                viewMode === "all"
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "all"
                   ? "bg-indigo-600 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+                }`}
             >
               All Tasks
             </button>
             <button
               onClick={() => setViewMode("today")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                viewMode === "today"
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "today"
                   ? "bg-indigo-600 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+                }`}
             >
               <FaCalendar className="inline mr-1" />
               Due Today
             </button>
             <button
               onClick={() => setViewMode("week")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                viewMode === "week"
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "week"
                   ? "bg-indigo-600 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+                }`}
             >
               This Week
             </button>
             <button
               onClick={() => setViewMode("overdue")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                viewMode === "overdue"
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "overdue"
                   ? "bg-red-600 text-white"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+                }`}
             >
               <FaExclamationTriangle className="inline mr-1" />
               Overdue
@@ -855,22 +871,20 @@ const EmployeeTasks = () => {
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setDisplayMode("list")}
-              className={`p-2 rounded transition-colors ${
-                displayMode === "list"
+              className={`p-2 rounded transition-colors ${displayMode === "list"
                   ? "bg-white text-indigo-600 shadow"
                   : "text-gray-600 hover:text-gray-900"
-              }`}
+                }`}
               title="List View"
             >
               <FaList className="w-4 h-4" />
             </button>
             <button
               onClick={() => setDisplayMode("kanban")}
-              className={`p-2 rounded transition-colors ${
-                displayMode === "kanban"
+              className={`p-2 rounded transition-colors ${displayMode === "kanban"
                   ? "bg-white text-indigo-600 shadow"
                   : "text-gray-600 hover:text-gray-900"
-              }`}
+                }`}
               title="Kanban View"
             >
               <FaTh className="w-4 h-4" />
@@ -999,64 +1013,64 @@ const EmployeeTasks = () => {
             priorityFilter !== "all" ||
             projectFilter !== "all" ||
             viewMode !== "all") && (
-            <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
-              <span className="text-sm text-gray-600">Active filters:</span>
-              {searchQuery && (
-                <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full flex items-center gap-1">
-                  Search: "{searchQuery}"
-                  <button onClick={() => setSearchQuery("")}>
-                    <FaTimes className="text-xs" />
-                  </button>
-                </span>
-              )}
-              {statusFilter !== "all" && (
-                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
-                  Status: {statusFilter}
-                  <button onClick={() => setStatusFilter("all")}>
-                    <FaTimes className="text-xs" />
-                  </button>
-                </span>
-              )}
-              {priorityFilter !== "all" && (
-                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
-                  Priority: {priorityFilter}
-                  <button onClick={() => setPriorityFilter("all")}>
-                    <FaTimes className="text-xs" />
-                  </button>
-                </span>
-              )}
-              {projectFilter !== "all" && (
-                <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full flex items-center gap-1">
-                  Project:{" "}
-                  {projectFilter === "no-project"
-                    ? "No Project"
-                    : projectFilter}
-                  <button onClick={() => setProjectFilter("all")}>
-                    <FaTimes className="text-xs" />
-                  </button>
-                </span>
-              )}
-              {viewMode !== "all" && (
-                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center gap-1">
-                  View: {viewMode}
-                  <button onClick={() => setViewMode("all")}>
-                    <FaTimes className="text-xs" />
-                  </button>
-                </span>
-              )}
-              <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setStatusFilter("all");
-                  setPriorityFilter("all");
-                  setViewMode("all");
-                }}
-                className="text-xs text-red-600 hover:text-red-800 font-medium ml-2"
-              >
-                Clear All
-              </button>
-            </div>
-          )}
+              <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
+                <span className="text-sm text-gray-600">Active filters:</span>
+                {searchQuery && (
+                  <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full flex items-center gap-1">
+                    Search: "{searchQuery}"
+                    <button onClick={() => setSearchQuery("")}>
+                      <FaTimes className="text-xs" />
+                    </button>
+                  </span>
+                )}
+                {statusFilter !== "all" && (
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
+                    Status: {statusFilter}
+                    <button onClick={() => setStatusFilter("all")}>
+                      <FaTimes className="text-xs" />
+                    </button>
+                  </span>
+                )}
+                {priorityFilter !== "all" && (
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
+                    Priority: {priorityFilter}
+                    <button onClick={() => setPriorityFilter("all")}>
+                      <FaTimes className="text-xs" />
+                    </button>
+                  </span>
+                )}
+                {projectFilter !== "all" && (
+                  <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full flex items-center gap-1">
+                    Project:{" "}
+                    {projectFilter === "no-project"
+                      ? "No Project"
+                      : projectFilter}
+                    <button onClick={() => setProjectFilter("all")}>
+                      <FaTimes className="text-xs" />
+                    </button>
+                  </span>
+                )}
+                {viewMode !== "all" && (
+                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center gap-1">
+                    View: {viewMode}
+                    <button onClick={() => setViewMode("all")}>
+                      <FaTimes className="text-xs" />
+                    </button>
+                  </span>
+                )}
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStatusFilter("all");
+                    setPriorityFilter("all");
+                    setViewMode("all");
+                  }}
+                  className="text-xs text-red-600 hover:text-red-800 font-medium ml-2"
+                >
+                  Clear All
+                </button>
+              </div>
+            )}
 
           {/* Add Self Task Modal (UI matched to provided screenshot) */}
           {showAddSelfTaskModal && (

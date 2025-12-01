@@ -3,7 +3,10 @@ import { FaEdit, FaEye, FaTrash } from "react-icons/fa";
 
 const ClientTableRow = ({ client, index, onEdit, onDelete, onView }) => {
     return (
-        <tr className="bg-white hover:bg-gray-50">
+        <tr
+            className="bg-white hover:bg-gray-50 cursor-pointer transition-colors"
+            onClick={() => onView(client.id)}
+        >
             <td className="whitespace-nowrap px-3 py-3 text-sm font-medium text-gray-500">
                 <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-xs">
                     {index + 1}
@@ -64,21 +67,20 @@ const ClientTableRow = ({ client, index, onEdit, onDelete, onView }) => {
             <td className="whitespace-nowrap px-3 py-2 text-sm sticky right-0 z-10 bg-white">
                 <div className="flex items-center space-x-2">
                     <button
-                        onClick={() => onView(client.id)}
-                        className="p-2 rounded-full text-indigo-600 hover:bg-indigo-100 shadow-md"
-                        title="View Details"
-                    >
-                        <FaEye className="h-4 w-4" />
-                    </button>
-                    <button
-                        onClick={() => onEdit(client.id)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(client.id);
+                        }}
                         className="p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md"
                         title="Edit Client"
                     >
                         <FaEdit className="h-4 w-4" />
                     </button>
                     <button
-                        onClick={() => onDelete(client.id)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(client.id);
+                        }}
                         className="p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md"
                         title="Delete Client"
                     >
