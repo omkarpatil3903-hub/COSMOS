@@ -228,8 +228,8 @@ function ManageProjects() {
           (project.progress === 0
             ? "Not Started"
             : project.progress === 100
-            ? "Completed"
-            : "In Progress") || "";
+              ? "Completed"
+              : "In Progress") || "";
         return (
           (project.projectName || "").toLowerCase().includes(normalisedTerm) ||
           (project.clientName || "").toLowerCase().includes(normalisedTerm) ||
@@ -292,12 +292,6 @@ function ManageProjects() {
     });
   };
 
-  // const handleReset = () => {
-  //   setSearchTerm("");
-  //   setSortConfig({ key: "projectName", direction: "asc" });
-  //   setRowsPerPage(10);
-  //   setCurrentPage(1);
-  // };
   const validateProjectForm = (data) => {
     const errors = {};
 
@@ -323,12 +317,12 @@ function ManageProjects() {
 
     const hasValidOKR = Array.isArray(data.okrs)
       ? data.okrs.some(
-          (okr) =>
-            okr.objective &&
-            okr.objective.trim() &&
-            Array.isArray(okr.keyResults) &&
-            okr.keyResults.some((kr) => kr && kr.trim())
-        )
+        (okr) =>
+          okr.objective &&
+          okr.objective.trim() &&
+          Array.isArray(okr.keyResults) &&
+          okr.keyResults.some((kr) => kr && kr.trim())
+      )
       : false;
 
     if (!hasValidOKR) {
@@ -561,11 +555,10 @@ function ManageProjects() {
               </span>
             </h3>
             <div
-              className={`space-y-3 ${
-                projects.length > 4
-                  ? "max-h-[750px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
-                  : ""
-              }`}
+              className={`space-y-3 ${projects.length > 4
+                ? "max-h-[750px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+                : ""
+                }`}
             >
               {projects.map((project) => (
                 <div
@@ -593,8 +586,8 @@ function ManageProjects() {
                     </div>
                   </div>
                   <div className="text-xs text-gray-500 mb-3">
-                    <div>Start: {project.startDate}</div>
-                    <div>End: {project.endDate}</div>
+                    <div>Start: {formatDate(project.startDate)}</div>
+                    <div>End: {formatDate(project.endDate)}</div>
                     <div className="mt-1 text-gray-600 text-xs">
                       <strong>Obj:</strong>{" "}
                       {project.okrs?.[0]?.objective?.substring(0, 30) ||
@@ -702,11 +695,10 @@ function ManageProjects() {
                 </span>
                 <button
                   onClick={() => setShowCompleted(!showCompleted)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    showCompleted
-                      ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
-                      : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
-                  }`}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${showCompleted
+                    ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
+                    : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
+                    }`}
                   title={
                     showCompleted
                       ? "Hide completed projects"
@@ -721,22 +713,20 @@ function ManageProjects() {
                 <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                   <button
                     onClick={() => setViewMode("table")}
-                    className={`p-2 rounded transition-colors ${
-                      viewMode === "table"
-                        ? "bg-white text-indigo-600 shadow"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
+                    className={`p-2 rounded transition-colors ${viewMode === "table"
+                      ? "bg-white text-indigo-600 shadow"
+                      : "text-gray-600 hover:text-gray-900"
+                      }`}
                     title="List View"
                   >
                     <FaList className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setViewMode("kanban")}
-                    className={`p-2 rounded transition-colors ${
-                      viewMode === "kanban"
-                        ? "bg-white text-indigo-600 shadow"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
+                    className={`p-2 rounded transition-colors ${viewMode === "kanban"
+                      ? "bg-white text-indigo-600 shadow"
+                      : "text-gray-600 hover:text-gray-900"
+                      }`}
                     title="Kanban View"
                   >
                     <FaTh className="w-4 h-4" />
@@ -838,10 +828,10 @@ function ManageProjects() {
                         const ariaSort = !header.sortable
                           ? "none"
                           : isActive
-                          ? sortConfig.direction === "asc"
-                            ? "ascending"
-                            : "descending"
-                          : "none";
+                            ? sortConfig.direction === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : "none";
 
                         return (
                           <th
@@ -873,7 +863,11 @@ function ManageProjects() {
                   </thead>
                   <tbody className="divide-y divide-gray-100 bg-white">
                     {currentRows.map((project, index) => (
-                      <tr key={project.id} className="bg-white">
+                      <tr
+                        key={project.id}
+                        className="bg-white cursor-pointer hover:bg-gray-50 transition-colors"
+                        onClick={() => handleView(project.id)}
+                      >
                         <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-500">
                           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
                             {indexOfFirstRow + index + 1}
@@ -897,17 +891,16 @@ function ManageProjects() {
                           <div className="flex items-center">
                             <div className="flex-1 bg-gray-200 rounded-full h-3 mr-3 min-w-[120px]">
                               <div
-                                className={`h-3 rounded-full transition-all duration-300 ${
-                                  project.progress === 0
-                                    ? "bg-gray-400"
-                                    : project.progress < 30
+                                className={`h-3 rounded-full transition-all duration-300 ${project.progress === 0
+                                  ? "bg-gray-400"
+                                  : project.progress < 30
                                     ? "bg-red-500"
                                     : project.progress < 70
-                                    ? "bg-yellow-500"
-                                    : project.progress < 100
-                                    ? "bg-blue-500"
-                                    : "bg-green-500"
-                                }`}
+                                      ? "bg-yellow-500"
+                                      : project.progress < 100
+                                        ? "bg-blue-500"
+                                        : "bg-green-500"
+                                  }`}
                                 style={{ width: `${project.progress}%` }}
                               ></div>
                             </div>
@@ -919,33 +912,32 @@ function ManageProjects() {
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
                           <div className="flex items-center">
                             <div className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-2"></div>
-                            {project.startDate}
+                            {formatDate(project.startDate)}
                           </div>
                         </td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
                           <div className="flex items-center bg-gray-50 rounded-lg px-3 py-1">
                             <div className="w-1.5 h-1.5 rounded-full bg-red-400 mr-2"></div>
-                            {project.endDate}
+                            {formatDate(project.endDate)}
                           </div>
                         </td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm sticky right-0 z-10 bg-white">
                           <div className="flex items-center space-x-3">
                             <button
-                              onClick={() => handleView(project.id)}
-                              className="p-2 rounded-full text-indigo-600 hover:bg-indigo-100 shadow-md"
-                              title="View Details"
-                            >
-                              <FaEye className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleEdit(project.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(project.id);
+                              }}
                               className="p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md"
                               title="Edit Project"
                             >
                               <FaEdit className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => handleDeleteClick(project.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(project.id);
+                              }}
                               className="p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md"
                               title="Delete Project"
                             >

@@ -412,6 +412,35 @@ function TasksManagement() {
             taskData.weightage === null
             ? null
             : Number(taskData.weightage);
+
+        const current = tasks.find((t) => t.id === taskData.id);
+
+        // Calculate new assignee IDs
+        const newAssigneeIds = Array.isArray(taskData.assignees)
+          ? taskData.assignees.map((a) => a.id).filter(Boolean)
+          : taskData.assigneeId
+            ? [taskData.assigneeId]
+            : [];
+
+        // Build or update assigneeStatus map
+        const currentStatusMap = current?.assigneeStatus || {};
+        const updatedAssigneeStatus = {};
+
+        newAssigneeIds.forEach(id => {
+          if (currentStatusMap[id]) {
+            // Preserve existing status
+            updatedAssigneeStatus[id] = currentStatusMap[id];
+          } else {
+            // Initialize for new assignee
+            updatedAssigneeStatus[id] = {
+              status: "To-Do",
+              progressPercent: 0,
+              completedAt: null,
+              completedBy: null
+            };
+          }
+        });
+
         const update = {
           title: taskData.title,
           description: taskData.description || "",
@@ -420,11 +449,8 @@ function TasksManagement() {
           assignees: Array.isArray(taskData.assignees)
             ? taskData.assignees
             : [],
-          assigneeIds: Array.isArray(taskData.assignees)
-            ? taskData.assignees.map((a) => a.id).filter(Boolean)
-            : taskData.assigneeId
-              ? [taskData.assigneeId]
-              : [],
+          assigneeIds: newAssigneeIds,
+          assigneeStatus: updatedAssigneeStatus, // Save the map
           projectId: taskData.projectId || "",
           assignedDate: taskData.assignedDate || "",
           dueDate: taskData.dueDate || "",
@@ -447,7 +473,7 @@ function TasksManagement() {
           okrKeyResultIndices: taskData.okrKeyResultIndices || [],
           subtasks: taskData.subtasks || [],
         };
-        const current = tasks.find((t) => t.id === taskData.id);
+
         // Enforce WIP on status change (only for active columns)
         if (
           update.status &&
@@ -562,6 +588,24 @@ function TasksManagement() {
             taskData.weightage === null
             ? null
             : Number(taskData.weightage);
+
+        const assigneeIds = Array.isArray(taskData.assignees)
+          ? taskData.assignees.map((a) => a.id).filter(Boolean)
+          : taskData.assigneeId
+            ? [taskData.assigneeId]
+            : [];
+
+        // Initialize assigneeStatus map
+        const initialAssigneeStatus = {};
+        assigneeIds.forEach(id => {
+          initialAssigneeStatus[id] = {
+            status: initialStatus,
+            progressPercent: initialStatus === "Done" ? 100 : 0,
+            completedAt: initialStatus === "Done" ? new Date() : null, // Use Date for local, serverTimestamp for DB
+            completedBy: initialStatus === "Done" ? user?.uid : null
+          };
+        });
+
         const payload = {
           title: taskData.title,
           description: taskData.description || "",
@@ -570,11 +614,8 @@ function TasksManagement() {
           assignees: Array.isArray(taskData.assignees)
             ? taskData.assignees
             : [],
-          assigneeIds: Array.isArray(taskData.assignees)
-            ? taskData.assignees.map((a) => a.id).filter(Boolean)
-            : taskData.assigneeId
-              ? [taskData.assigneeId]
-              : [],
+          assigneeIds: assigneeIds,
+          assigneeStatus: initialAssigneeStatus,
           projectId: taskData.projectId || "",
           assignedDate:
             taskData.assignedDate || new Date().toISOString().slice(0, 10),

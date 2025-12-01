@@ -1,136 +1,169 @@
 import React from "react";
 import { HiXMark } from "react-icons/hi2";
+import {
+  FaUser,
+  FaEnvelope,
+  FaPhone,
+  FaBriefcase,
+  FaCalendarAlt,
+  FaLock,
+  FaIdBadge,
+} from "react-icons/fa";
 import Button from "./Button";
 
 function ViewResourceModal({ resource, onClose }) {
+  if (!resource) return null;
+
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/10">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-content-primary">
-              Resource Details
-            </h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <HiXMark className="h-6 w-6" />
-            </button>
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative z-[10000] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50 sticky top-0 z-10 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+              <FaUser className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 leading-tight">
+                Resource Details
+              </h2>
+              <p className="text-xs text-gray-500 font-medium">
+                View complete profile information
+              </p>
+            </div>
           </div>
-          <div className="space-y-6">
-            {/* Profile Image Section */}
-            <div className="flex items-center justify-center pb-4 border-b border-gray-200">
-              {resource.imageUrl ? (
-                <img
-                  src={resource.imageUrl}
-                  alt="Profile"
-                  className="h-24 w-24 object-cover rounded-full border-4 border-indigo-100 shadow-lg"
-                />
-              ) : (
-                <div className="h-24 w-24 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-3xl shadow-lg">
-                  {resource.fullName?.charAt(0)?.toUpperCase() || "R"}
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
+          >
+            <HiXMark className="h-6 w-6" />
+          </button>
+        </div>
+
+        <div className="p-6">
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* Left Column: Profile Card */}
+            <div className="w-full md:w-1/3 flex flex-col items-center text-center space-y-4">
+              <div className="relative">
+                {resource.imageUrl ? (
+                  <img
+                    src={resource.imageUrl}
+                    alt={resource.fullName}
+                    className="h-32 w-32 object-cover rounded-full border-4 border-white shadow-xl"
+                  />
+                ) : (
+                  <div className="h-32 w-32 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-4xl border-4 border-white shadow-xl">
+                    {resource.fullName?.charAt(0)?.toUpperCase()}
+                  </div>
+                )}
+                <span
+                  className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 border-white ${resource.status === "Active" ? "bg-green-500" : "bg-gray-400"
+                    }`}
+                  title={resource.status}
+                ></span>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  {resource.fullName}
+                </h3>
+                <p className="text-sm text-gray-500 font-medium mt-1">
+                  {resource.resourceRole || "No Role Assigned"}
+                </p>
+                <div className="mt-3 flex flex-wrap justify-center gap-2">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                    {resource.resourceType}
+                  </span>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">
+                    {resource.employmentType}
+                  </span>
                 </div>
-              )}
+              </div>
             </div>
 
-            {/* Resource Information Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Full Name
-                </label>
-                <p className="text-gray-900 font-semibold">
-                  {resource.fullName}
-                </p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Email
-                </label>
-                <p className="text-gray-900 break-all text-sm">
-                  {resource.email}
-                </p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Mobile
-                </label>
-                <p className="text-gray-900 font-medium">{resource.mobile}</p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Employment Type
-                </label>
-                <span
-                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    resource.employmentType === "Full-time"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-purple-100 text-purple-800"
-                  }`}
-                >
-                  {resource.employmentType || "Full-time"}
-                </span>
-              </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Resource Type
-                </label>
-                <span
-                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    resource.resourceType === "In-house"
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-orange-100 text-orange-800"
-                  }`}
-                >
-                  {resource.resourceType}
-                </span>
-              </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Resource Role
-                </label>
-                <p className="text-gray-900">
-                  {resource.resourceRole || "Not specified"}
-                </p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Status
-                </label>
-                <span
-                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    resource.status === "Active"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
-                >
-                  {resource.status || "Active"}
-                </span>
-              </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Join Date
-                </label>
-                <p className="text-gray-900">
-                  {resource.joinDate || "Not provided"}
-                </p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Password
-                </label>
-                <p className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
-                  {resource.devPassword || "Not provided"}
-                </p>
+            {/* Right Column: Details Grid */}
+            <div className="w-full md:w-2/3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                {/* Contact Info */}
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:border-indigo-100 transition-colors">
+                  <div className="flex items-center gap-2 mb-2 text-indigo-600">
+                    <FaEnvelope className="h-4 w-4" />
+                    <span className="text-xs font-bold uppercase tracking-wide">Email</span>
+                  </div>
+                  <p className="text-sm font-medium text-gray-900 break-all">
+                    {resource.email}
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:border-indigo-100 transition-colors">
+                  <div className="flex items-center gap-2 mb-2 text-indigo-600">
+                    <FaPhone className="h-4 w-4" />
+                    <span className="text-xs font-bold uppercase tracking-wide">Mobile</span>
+                  </div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {resource.mobile}
+                  </p>
+                </div>
+
+                {/* Role Info */}
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:border-indigo-100 transition-colors">
+                  <div className="flex items-center gap-2 mb-2 text-indigo-600">
+                    <FaIdBadge className="h-4 w-4" />
+                    <span className="text-xs font-bold uppercase tracking-wide">Role Type</span>
+                  </div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {resource.resourceRoleType || "N/A"}
+                  </p>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:border-indigo-100 transition-colors">
+                  <div className="flex items-center gap-2 mb-2 text-indigo-600">
+                    <FaCalendarAlt className="h-4 w-4" />
+                    <span className="text-xs font-bold uppercase tracking-wide">Join Date</span>
+                  </div>
+                  <p className="text-sm font-medium text-gray-900">
+                    {resource.joinDate || "Not provided"}
+                  </p>
+                </div>
+
+                {/* Account Info */}
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:border-indigo-100 transition-colors sm:col-span-2">
+                  <div className="flex items-center gap-2 mb-2 text-indigo-600">
+                    <FaLock className="h-4 w-4" />
+                    <span className="text-xs font-bold uppercase tracking-wide">Current Password</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-mono bg-white px-2 py-1 rounded border border-gray-200 text-gray-600">
+                      {resource.devPassword || "Not provided"}
+                    </p>
+                    <span className="text-xs text-gray-400 italic">
+                      Visible to admins only
+                    </span>
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
-          <div className="flex justify-end pt-6 border-t border-gray-200 mt-6">
-            <Button type="button" variant="ghost" onClick={onClose}>
-              Close
-            </Button>
-          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3 rounded-b-xl sticky bottom-0 backdrop-blur-md">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+            className="text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+          >
+            Close
+          </Button>
         </div>
       </div>
     </div>
