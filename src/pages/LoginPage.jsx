@@ -78,10 +78,12 @@ function LoginPage() {
         try {
           const uSnap = await getDoc(doc(db, "users", cred.user.uid));
           if (uSnap.exists() && uSnap.data()?.role) {
-            role = uSnap.data().role;
+            role = uSnap.data().role?.trim();
           } else {
             const cSnap = await getDoc(doc(db, "clients", cred.user.uid));
-            if (cSnap.exists() && cSnap.data()?.role) role = cSnap.data().role;
+            if (cSnap.exists() && cSnap.data()?.role) {
+              role = cSnap.data().role?.trim();
+            }
           }
         } catch {
           // ignore
