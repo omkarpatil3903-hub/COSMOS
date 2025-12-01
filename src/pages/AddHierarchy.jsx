@@ -5,8 +5,23 @@ import Card from "../components/Card";
 import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
 import toast from "react-hot-toast";
 import { db } from "../firebase";
-import { doc, setDoc, serverTimestamp, arrayUnion, arrayRemove, onSnapshot } from "firebase/firestore";
-import { FaTimes, FaEdit, FaTrash, FaChevronLeft, FaChevronRight, FaPlus, FaSearch, FaEye } from "react-icons/fa";
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  arrayUnion,
+  arrayRemove,
+  onSnapshot,
+} from "firebase/firestore";
+import {
+  FaTimes,
+  FaEdit,
+  FaTrash,
+  FaChevronLeft,
+  FaChevronRight,
+  FaPlus,
+  FaSearch,
+} from "react-icons/fa";
 
 export default function AddHierarchy() {
   const location = useLocation();
@@ -21,7 +36,11 @@ export default function AddHierarchy() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [preview, setPreview] = useState(null);
-  const [deleteModal, setDeleteModal] = useState({ open: false, item: null, loading: false });
+  const [deleteModal, setDeleteModal] = useState({
+    open: false,
+    item: null,
+    loading: false,
+  });
 
   useEffect(() => {
     const p = new URLSearchParams(location.search);
@@ -37,7 +56,11 @@ export default function AddHierarchy() {
       if (roles.length > 0) {
         list = roles
           .filter((r) => r && r.name && r.role)
-          .map((r) => ({ id: `${(r.role || "r").charAt(0)}_${r.name}`, type: (r.role || '').toLowerCase(), name: r.name }));
+          .map((r) => ({
+            id: `${(r.role || "r").charAt(0)}_${r.name}`,
+            type: (r.role || "").toLowerCase(),
+            name: r.name,
+          }));
       } else {
         // Legacy fallback for existing data
         const sup = Array.isArray(d.superior) ? d.superior : [];
@@ -47,8 +70,16 @@ export default function AddHierarchy() {
         const adminSet = new Set([...(adminArr || []), ...(sup || [])]);
         const memberSet = new Set([...(memberArr || []), ...(inf || [])]);
         list = [
-          ...Array.from(adminSet).map((v) => ({ id: `a_${v}`, type: "admin", name: v })),
-          ...Array.from(memberSet).map((v) => ({ id: `m_${v}`, type: "member", name: v })),
+          ...Array.from(adminSet).map((v) => ({
+            id: `a_${v}`,
+            type: "admin",
+            name: v,
+          })),
+          ...Array.from(memberSet).map((v) => ({
+            id: `m_${v}`,
+            type: "member",
+            name: v,
+          })),
         ];
       }
       setItems(list);
@@ -60,7 +91,13 @@ export default function AddHierarchy() {
     const p = new URLSearchParams(location.search);
     if (p.has("add")) {
       p.delete("add");
-      navigate({ pathname: location.pathname, search: p.toString() ? `?${p.toString()}` : "" }, { replace: true });
+      navigate(
+        {
+          pathname: location.pathname,
+          search: p.toString() ? `?${p.toString()}` : "",
+        },
+        { replace: true }
+      );
     }
     setOpen(false);
     setValue("");
@@ -85,7 +122,10 @@ export default function AddHierarchy() {
       }
       await setDoc(
         ref,
-        { roles: arrayUnion({ name: v, role: field }), updatedAt: serverTimestamp() },
+        {
+          roles: arrayUnion({ name: v, role: field }),
+          updatedAt: serverTimestamp(),
+        },
         { merge: true }
       );
       toast.success("Saved");
@@ -110,7 +150,10 @@ export default function AddHierarchy() {
       const ref = doc(db, "settings", "hierarchy");
       await setDoc(
         ref,
-        { roles: arrayRemove({ name: item.name, role: item.type }), updatedAt: serverTimestamp() },
+        {
+          roles: arrayRemove({ name: item.name, role: item.type }),
+          updatedAt: serverTimestamp(),
+        },
         { merge: true }
       );
       toast.success("Deleted");
@@ -130,7 +173,8 @@ export default function AddHierarchy() {
     const s = query.trim().toLowerCase();
     if (!s) return items;
     return items.filter(
-      (x) => x.name.toLowerCase().includes(s) || x.type.toLowerCase().includes(s)
+      (x) =>
+        x.name.toLowerCase().includes(s) || x.type.toLowerCase().includes(s)
     );
   }, [items, query]);
   const ordered = useMemo(() => {
@@ -155,8 +199,25 @@ export default function AddHierarchy() {
   const openCreate = () => {
     const p = new URLSearchParams(location.search);
     p.set("add", "1");
-    navigate({ pathname: location.pathname, search: `?${p.toString()}` }, { replace: true });
+    navigate(
+      { pathname: location.pathname, search: `?${p.toString()}` },
+      { replace: true }
+    );
     setOpen(true);
+  };
+
+  const handleRowClick = (item) => {
+    setPreview(item);
+  };
+
+  const handleEditClick = (item, e) => {
+    e.stopPropagation();
+    startEdit(item);
+  };
+
+  const handleDeleteClick = (item, e) => {
+    e.stopPropagation();
+    setDeleteModal({ open: true, item });
   };
 
   return (
@@ -166,7 +227,9 @@ export default function AddHierarchy() {
         tone="white"
         actions={
           <div className="flex items-center gap-3">
-            <span className="text-sm text-content-secondary">Showing {filtered.length} records</span>
+            <span className="text-sm text-content-secondary">
+              Showing {filtered.length} records
+            </span>
             <Button variant="primary" onClick={openCreate} className="shrink-0">
               <FaPlus /> Add Hierarchy
             </Button>
@@ -192,7 +255,9 @@ export default function AddHierarchy() {
 
       <Card title="Hierarchy List" tone="muted">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-2">
-          <div className="text-sm text-content-secondary">Page {Math.min(page, totalPages)} of {totalPages}</div>
+          <div className="text-sm text-content-secondary">
+            Page {Math.min(page, totalPages)} of {totalPages}
+          </div>
           <div className="flex items-center gap-3">
             <select
               value={pageSize}
@@ -229,58 +294,74 @@ export default function AddHierarchy() {
           <table className="min-w-full divide-y divide-gray-200 bg-white">
             <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">Sr. No.</th>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">Name</th>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">Type</th>
-                <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 sticky right-0 z-10 bg-gray-50">Actions</th>
+                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                  Sr. No.
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                  Name
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                  Type
+                </th>
+                <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 sticky right-0 z-10 bg-gray-50">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
               {pageItems.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-sm text-content-tertiary">No items</td>
+                  <td
+                    colSpan={4}
+                    className="px-6 py-8 text-center text-sm text-content-tertiary"
+                  >
+                    No items
+                  </td>
                 </tr>
               ) : (
                 pageItems.map((item, idx) => (
-                  <tr key={item.id}>
+                  <tr
+                    key={item.id}
+                    onClick={() => handleRowClick(item)}
+                    className="cursor-pointer transition-colors group"
+                  >
                     <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-500">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 transition-colors">
                         {(page - 1) * pageSize + idx + 1}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
                       <div className="max-w-[240px] truncate">{item.name}</div>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        item.type === "admin"
-                          ? "bg-indigo-50 text-indigo-700"
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                          item.type === "admin"
+                            ? "bg-indigo-50 text-indigo-700"
+                            : item.type === "superadmin"
+                            ? "bg-purple-50 text-purple-700"
+                            : "bg-rose-50 text-rose-700"
+                        }`}
+                      >
+                        {item.type === "admin"
+                          ? "Admin Role"
                           : item.type === "superadmin"
-                          ? "bg-purple-50 text-purple-700"
-                          : "bg-rose-50 text-rose-700"
-                      }`}>
-                        {item.type === "admin" ? "Admin Role" : item.type === "superadmin" ? "Super Admin Role" : "Member Role"}
+                          ? "Super Admin Role"
+                          : "Member Role"}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm sticky right-0 z-10 bg-white">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm sticky right-0 z-10 bg-white transition-colors">
                       <div className="flex items-center justify-center space-x-3">
                         <button
-                          onClick={() => setPreview(item)}
-                          className="flex items-center justify-center p-2 rounded-full text-indigo-600 hover:bg-indigo-100 shadow-md"
-                          title="View Details"
-                        >
-                          <FaEye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => startEdit(item)}
-                          className="flex items-center justify-center p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md"
+                          onClick={(e) => handleEditClick(item, e)}
+                          className="flex items-center justify-center p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md transition-colors"
                           title="Edit"
                         >
                           <FaEdit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => setDeleteModal({ open: true, item })}
-                          className="flex items-center justify-center p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md"
+                          onClick={(e) => handleDeleteClick(item, e)}
+                          className="flex items-center justify-center p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md transition-colors"
                           title="Delete"
                         >
                           <FaTrash className="h-4 w-4" />
@@ -300,7 +381,10 @@ export default function AddHierarchy() {
           <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between px-6 pt-6">
               <h3 className="text-xl font-semibold">Create Hierarchy</h3>
-              <button onClick={close} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={close}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <FaTimes />
               </button>
             </div>
@@ -310,7 +394,9 @@ export default function AddHierarchy() {
                 <button
                   onClick={() => setType("superadmin")}
                   className={`rounded-full px-4 py-2 transition ${
-                    type === "superadmin" ? "bg-white shadow-sm" : "text-gray-500"
+                    type === "superadmin"
+                      ? "bg-white shadow-sm"
+                      : "text-gray-500"
                   }`}
                 >
                   Super Admin Role
@@ -336,19 +422,31 @@ export default function AddHierarchy() {
 
             <div className="px-6 py-4">
               <label className="block text-sm font-medium mb-1">
-                {type === "admin" ? "Add Admin Role" : type === "superadmin" ? "Add Super Admin Role" : "Add Member Role"}
+                {type === "admin"
+                  ? "Add Admin Role"
+                  : type === "superadmin"
+                  ? "Add Super Admin Role"
+                  : "Add Member Role"}
               </label>
               <input
                 type="text"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 className="w-full rounded border border-gray-300 px-3 py-2"
-                placeholder={type === "admin" ? "e.g., Admin" : type === "superadmin" ? "e.g., Super Admin" : "e.g., Member"}
+                placeholder={
+                  type === "admin"
+                    ? "e.g., Admin"
+                    : type === "superadmin"
+                    ? "e.g., Super Admin"
+                    : "e.g., Member"
+                }
               />
             </div>
 
             <div className="flex items-center justify-end gap-3 px-6 pb-6">
-              <Button variant="ghost" onClick={close}>Cancel</Button>
+              <Button variant="ghost" onClick={close}>
+                Cancel
+              </Button>
               <Button onClick={save} disabled={saving} variant="primary">
                 {saving ? "Saving..." : "Save"}
               </Button>
@@ -360,17 +458,27 @@ export default function AddHierarchy() {
       {deleteModal.open && (
         <div
           className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/30"
-          onClick={() => setDeleteModal({ open: false, item: null, loading: false })}
+          onClick={() =>
+            setDeleteModal({ open: false, item: null, loading: false })
+          }
         >
           <div onClick={(e) => e.stopPropagation()}>
             <DeleteConfirmationModal
-              onClose={() => setDeleteModal({ open: false, item: null, loading: false })}
+              onClose={() =>
+                setDeleteModal({ open: false, item: null, loading: false })
+              }
               onConfirm={handleConfirmDelete}
               itemType="hierarchy role"
               title="Delete Hierarchy"
               description="Are you sure you want to delete this role from the hierarchy?"
               itemTitle={deleteModal.item?.name}
-              itemSubtitle={deleteModal.item?.type === 'admin' ? 'Admin Role' : deleteModal.item?.type === 'superadmin' ? 'Super Admin Role' : 'Member Role'}
+              itemSubtitle={
+                deleteModal.item?.type === "admin"
+                  ? "Admin Role"
+                  : deleteModal.item?.type === "superadmin"
+                  ? "Super Admin Role"
+                  : "Member Role"
+              }
               confirmLabel="Delete"
               isLoading={deleteModal.loading}
             />
@@ -383,7 +491,10 @@ export default function AddHierarchy() {
           <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between px-6 pt-6">
               <h3 className="text-xl font-semibold">Preview</h3>
-              <button onClick={() => setPreview(null)} className="text-gray-400 hover:text-gray-600">
+              <button
+                onClick={() => setPreview(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
                 <FaTimes />
               </button>
             </div>
@@ -394,11 +505,19 @@ export default function AddHierarchy() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-content-secondary">Type</span>
-                <span className="font-medium">{preview.type === 'admin' ? 'Admin Role' : preview.type === 'superadmin' ? 'Super Admin Role' : 'Member Role'}</span>
+                <span className="font-medium">
+                  {preview.type === "admin"
+                    ? "Admin Role"
+                    : preview.type === "superadmin"
+                    ? "Super Admin Role"
+                    : "Member Role"}
+                </span>
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 px-6 pb-6">
-              <Button variant="ghost" onClick={() => setPreview(null)}>Close</Button>
+              <Button variant="ghost" onClick={() => setPreview(null)}>
+                Close
+              </Button>
             </div>
           </div>
         </div>

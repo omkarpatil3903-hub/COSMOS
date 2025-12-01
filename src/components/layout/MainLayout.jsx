@@ -19,6 +19,7 @@ import {
   FaBars,
   FaTimes,
   FaCog,
+  FaFileAlt,
 } from "react-icons/fa";
 
 // NEW: A reusable link component to keep our code clean
@@ -65,6 +66,7 @@ function MainLayout() {
       "/manage-projects": "Manage Projects - Admin Panel",
       "/mom": "Meeting Minutes - Admin Panel",
       "/task-management": "Task Management - Admin Panel",
+      "/documents": "Documents - Admin Panel",
       "/reports": "Reports - Admin Panel",
       "/expenses": "Expense Management - Admin Panel",
       "/calendar": "Calendar - Admin Panel",
@@ -102,6 +104,11 @@ function MainLayout() {
       to: "/task-management",
       text: "Task Management",
       icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/documents",
+      text: "Documents",
+      icon: <FaFileAlt className="h-4 w-4" aria-hidden="true" />,
     },
 
     {

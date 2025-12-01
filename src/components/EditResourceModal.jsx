@@ -279,8 +279,11 @@ function EditResourceModal({
                     type="tel"
                     value={formData.mobile}
                     placeholder="10-digit mobile number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={10}
                     onChange={(e) => {
-                      const v = e.target.value;
+                      const v = e.target.value.replace(/\D/g, "").slice(0, 10);
                       setFormData({ ...formData, mobile: v });
                       setErrors((prev) => ({
                         ...prev,

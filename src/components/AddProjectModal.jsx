@@ -17,6 +17,7 @@ const AddProjectModal = ({
   formData,
   setFormData,
   clients,
+  managers = [],
   handleFormSubmit,
   addErrors,
   setAddErrors,

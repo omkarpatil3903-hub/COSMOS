@@ -20,6 +20,7 @@ const EditProjectModal = ({
   formData,
   setFormData,
   clients,
+  managers = [],
   handleEditSubmit,
   editErrors,
   setEditErrors,

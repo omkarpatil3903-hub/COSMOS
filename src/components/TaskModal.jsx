@@ -297,7 +297,9 @@ function TaskModal({
     const validation = validateTaskForm({
       title,
       projectId,
+      assignedDate,
       dueDate,
+  
       assigneeId:
         assigneeType === "client" ? assigneeId : assigneesSelected[0]?.id || "",
     });
@@ -313,6 +315,7 @@ function TaskModal({
       .map((a) => a.id);
 
     const payload = {
+      id: taskToEdit?.id,
       title,
       description,
       projectId,
