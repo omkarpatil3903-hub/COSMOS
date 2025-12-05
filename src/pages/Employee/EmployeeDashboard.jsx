@@ -8,14 +8,14 @@ import {
   doc,
   serverTimestamp,
 } from "firebase/firestore";
-import { db } from "../firebase";
-import { useAuthContext } from "../context/useAuthContext";
+import { db } from "../../firebase";
+import { useAuthContext } from "../../context/useAuthContext";
 import { useNavigate } from "react-router-dom";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import StatCard from "../components/StatCard";
-import Button from "../components/Button";
-import CompletionCommentModal from "../components/CompletionCommentModal";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import StatCard from "../../components/StatCard";
+import Button from "../../components/Button";
+import CompletionCommentModal from "../../components/CompletionCommentModal";
 import {
   FaTasks,
   FaCheckCircle,

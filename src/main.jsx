@@ -6,51 +6,49 @@ import {
   RouterProvider,
   Navigate,
 } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext.jsx";
+import { AuthProvider } from "./context/AuthContext";
 import "./index.css";
 
 // Import all your components
 import LoginPage from "./pages/LoginPage";
 import MainLayout from "./components/layout/MainLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
-import DashboardPage from "./pages/DashboardPage.jsx";
-import ReportsPage from "./pages/ReportsPage.jsx";
+import DashboardPage from "./pages/SuperAdmin/DashboardPage.jsx";
+import ReportsPage from "./pages/SuperAdmin/ReportsPage.jsx";
 import ClientLayout from "./components/layout/ClientLayout";
-import ClientDashboard from "./pages/ClientDashboard.jsx";
-import ClientProjects from "./pages/ClientProjects.jsx";
-import ClientTasks from "./pages/ClientTasks.jsx";
-import ClientCalendar from "./pages/ClientCalendar.jsx";
-import ClientReports from "./pages/ClientReports.jsx";
+import ClientDashboard from "./pages/Client/ClientDashboard.jsx";
+import ClientProjects from "./pages/Client/ClientProjects.jsx";
+import ClientTasks from "./pages/Client/ClientTasks.jsx";
+import ClientCalendar from "./pages/Client/ClientCalendar.jsx";
+import ClientReports from "./pages/Client/ClientReports.jsx";
 import EmployeeLayout from "./components/layout/EmployeeLayout";
-import EmployeeDashboard from "./pages/EmployeeDashboard.jsx";
-import EmployeeTasks from "./pages/EmployeeTasks.jsx";
-import EmployeeProjects from "./pages/EmployeeProjects.jsx";
-import EmployeeCalendar from "./pages/EmployeeCalendar.jsx";
-import EmployeeReports from "./pages/EmployeeReports.jsx";
-import Documents from "./pages/Documents.jsx";
-import EmployeeDocuments from "./pages/EmployeeDocuments.jsx";
-import ClientDocuments from "./pages/ClientDocuments.jsx";
-import ManageDocument from "./pages/ManageDocument.jsx";
-import ClientManageDocument from "./pages/ClientManageDocument.jsx";
-import EmployeeManageDocument from "./pages/EmployeeManageDocument.jsx";
+import EmployeeDashboard from "./pages/Employee/EmployeeDashboard.jsx";
+import EmployeeTasks from "./pages/Employee/EmployeeTasks.jsx";
+import EmployeeProjects from "./pages/Employee/EmployeeProjects.jsx";
+import EmployeeCalendar from "./pages/Employee/EmployeeCalendar.jsx";
+import EmployeeReports from "./pages/Employee/EmployeeReports.jsx";
+import Documents from "./pages/SuperAdmin/Documents.jsx";
+import EmployeeDocuments from "./pages/Employee/EmployeeDocuments.jsx";
+import ClientDocuments from "./pages/Client/ClientDocuments.jsx";
+import ManageDocument from "./pages/SuperAdmin/ManageDocument.jsx";
+import ClientManageDocument from "./pages/Client/ClientManageDocument.jsx";
+import EmployeeManageDocument from "./pages/Employee/EmployeeManageDocument.jsx";
 import Unauthorized from "./pages/Unauthorized";
 
-import ManageResources from "./pages/ManageResources.jsx";
-import ManageClients from "./pages/ManageClients.jsx";
-import ManageProjects from "./pages/ManageProjects.jsx";
-import Mom from "./pages/Mom.jsx";
-import MomNew from "./pages/MomNew.jsx";
-import MomGeneratorPro from "./pages/MomGeneratorPro.jsx";
-import TaskManagment from "./pages/TaskManagment.jsx";
-import Calendar from "./pages/Calendar.jsx";
-import EmployeeExpenses from "./pages/EmployeeExpenses";
+import ManageResources from "./pages/SuperAdmin/ManageResources.jsx";
+import ManageClients from "./pages/SuperAdmin/ManageClients.jsx";
+import ManageProjects from "./pages/SuperAdmin/ManageProjects.jsx";
+// import Mom from "./pages/SuperAdmin/Mom.jsx"; // TODO: Verify correct filename
+import MomGeneratorPro from "./pages/SuperAdmin/MomGeneratorPro.jsx";
+import TaskManagment from "./pages/SuperAdmin/TaskManagment.jsx";
+import Calendar from "./pages/SuperAdmin/Calendar.jsx";
+import EmployeeExpenses from "./pages/Employee/EmployeeExpenses.jsx";
 
-import ExpenseManagement from "./pages/ExpenseManagement.jsx";
+import ExpenseManagement from "./pages/SuperAdmin/ExpenseManagement.jsx";
 
-import Settings from "./pages/Settings.jsx";
-import AddHierarchy from "./pages/AddHierarchy.jsx";
-import ProjectSettings from "./pages/ProjectSettings.jsx";
-
+import Settings from "./pages/SuperAdmin/Settings.jsx";
+import AddHierarchy from "./pages/SuperAdmin/AddHierarchy.jsx";
+import ProjectSettings from "./pages/SuperAdmin/ProjectSettings.jsx"; // TODO: Verify path
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/unauthorized", element: <Unauthorized /> },
@@ -64,36 +62,33 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { path: "/client", element: <ClientDashboard /> },
-      { path: "/client/projects", element: <ClientProjects /> },
-      { path: "/client/tasks", element: <ClientTasks /> },
-      { path: "/client/calendar", element: <ClientCalendar /> },
-      { path: "/client/reports", element: <ClientReports /> },
-      { path: "/client/documents", element: <ClientDocuments /> },
-      { path: "/client/manage-documents", element: <ClientManageDocument /> },
+      { index: true, element: <ClientDashboard /> },
+      { path: "projects", element: <ClientProjects /> },
+      { path: "tasks", element: <ClientTasks /> },
+      { path: "calendar", element: <ClientCalendar /> },
+      { path: "reports", element: <ClientReports /> },
+      { path: "documents", element: <ClientDocuments /> },
+      { path: "manage-documents", element: <ClientManageDocument /> },
     ],
   },
 
-  // Employee Portal Routes (using "resource" role)
+  // Employee Portal Routes (using "member" role)
   {
     path: "/employee",
     element: (
-      <ProtectedRoute allowedRoles={["resource"]}>
+      <ProtectedRoute allowedRoles={["member"]}>
         <EmployeeLayout />
       </ProtectedRoute>
     ),
     children: [
-      { path: "/employee", element: <EmployeeDashboard /> },
-      { path: "/employee/tasks", element: <EmployeeTasks /> },
-      { path: "/employee/projects", element: <EmployeeProjects /> },
-      { path: "/employee/calendar", element: <EmployeeCalendar /> },
-      { path: "/employee/reports", element: <EmployeeReports /> },
-      { path: "/employee/documents", element: <EmployeeDocuments /> },
-      {
-        path: "/employee/manage-documents",
-        element: <EmployeeManageDocument />,
-      },
-      { path: "/employee/expenses", element: <EmployeeExpenses /> },
+      { index: true, element: <EmployeeDashboard /> },
+      { path: "tasks", element: <EmployeeTasks /> },
+      { path: "projects", element: <EmployeeProjects /> },
+      { path: "calendar", element: <EmployeeCalendar /> },
+      { path: "reports", element: <EmployeeReports /> },
+      { path: "documents", element: <EmployeeDocuments /> },
+      { path: "manage-documents", element: <EmployeeManageDocument /> },
+      { path: "expenses", element: <EmployeeExpenses /> },
     ],
   },
 
@@ -106,20 +101,20 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { path: "/", element: <DashboardPage /> },
-      { path: "/manage-resources", element: <ManageResources /> },
-      { path: "/manage-clients", element: <ManageClients /> },
-      { path: "/manage-projects", element: <ManageProjects /> },
-      { path: "/documents", element: <Documents /> },
-      { path: "/manage-documents", element: <ManageDocument /> },
-      { path: "/mom", element: <MomNew /> },
-      { path: "/mom-pro", element: <MomGeneratorPro /> },
-      { path: "/task-management", element: <TaskManagment /> },
-      { path: "/reports", element: <ReportsPage /> },
-      { path: "/expenses", element: <ExpenseManagement /> },
-      { path: "/calendar", element: <Calendar /> },
+      { index: true, element: <DashboardPage /> },
+      { path: "manage-resources", element: <ManageResources /> },
+      { path: "manage-clients", element: <ManageClients /> },
+      { path: "manage-projects", element: <ManageProjects /> },
+      { path: "documents", element: <Documents /> },
+      { path: "manage-documents", element: <ManageDocument /> },
+      // { path: "mom", element: <Mom /> }, // TODO: Verify correct filename
+      { path: "mom-pro", element: <MomGeneratorPro /> },
+      { path: "task-management", element: <TaskManagment /> },
+      { path: "reports", element: <ReportsPage /> },
+      { path: "expenses", element: <ExpenseManagement /> },
+      { path: "calendar", element: <Calendar /> },
       {
-        path: "/settings",
+        path: "settings",
         element: <Settings />,
         children: [
           { index: true, element: <Navigate to="add-hierarchy" replace /> },

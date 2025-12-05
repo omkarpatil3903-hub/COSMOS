@@ -1,8 +1,7 @@
 import React, { useMemo } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
- 
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
 
 export default function Settings() {
   const tabs = [
@@ -14,7 +13,11 @@ export default function Settings() {
 
   const activeTab = useMemo(() => {
     if (location.pathname.endsWith("/project-settings")) return "project";
-    if (location.pathname.endsWith("/add-hierarchy") || location.pathname.endsWith("/settings")) return "hierarchy";
+    if (
+      location.pathname.endsWith("/add-hierarchy") ||
+      location.pathname.endsWith("/settings")
+    )
+      return "hierarchy";
     return "hierarchy";
   }, [location.pathname]);
 
@@ -29,7 +32,9 @@ export default function Settings() {
       <div className="space-y-6">
         <Card className="p-4" tone="white">
           <div className="mb-2">
-            <h3 className="text-base font-semibold">{activeTab === "project" ? "Project Level" : "Hierarchy"}</h3>
+            <h3 className="text-base font-semibold">
+              {activeTab === "project" ? "Project Level" : "Hierarchy"}
+            </h3>
           </div>
           <hr className="my-3 border-subtle" />
           <div className="flex items-center gap-2">

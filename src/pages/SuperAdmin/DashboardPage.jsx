@@ -1,23 +1,20 @@
 // src/pages/DashboardPage.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthContext } from "../context/useAuthContext"; // To get the user's name
+import { useAuthContext } from "../../context/useAuthContext"; // To get the user's name
 import {
   FaUsers,
   FaUserTie,
   FaProjectDiagram,
   FaCalendarCheck,
 } from "react-icons/fa";
-import { db } from "../firebase";
-import { TYPE_HEX, PRIORITY_HEX, getTypeHex } from "../utils/colorMaps";
+import { db } from "../../firebase";
+import { TYPE_HEX, PRIORITY_HEX, getTypeHex } from "../../utils/colorMaps";
 import { collection, onSnapshot } from "firebase/firestore";
-
-// Reusable UI Components
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import StatCard from "../components/StatCard"; // The new external component
-import DashboardSkeleton from "../components/DashboardSkeleton"; // The new skeleton loader
-
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import StatCard from "../../components/StatCard";
+import DashboardSkeleton from "../../components/DashboardSkeleton";
 function DashboardPage() {
   const navigate = useNavigate();
   const { userData } = useAuthContext(); // Get user data for personalization

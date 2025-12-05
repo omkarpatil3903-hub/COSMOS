@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import Card from "../components/Card";
-import PageHeader from "../components/PageHeader";
-import StatCard from "../components/StatCard";
-import { useAuthContext } from "../context/useAuthContext";
-import { db } from "../firebase";
+import Card from "../../components/Card";
+import PageHeader from "../../components/PageHeader";
+import StatCard from "../../components/StatCard";
+import { useAuthContext } from "../../context/useAuthContext";
+import { db } from "../../firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import {
   FaProjectDiagram,

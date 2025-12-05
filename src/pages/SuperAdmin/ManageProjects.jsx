@@ -17,12 +17,12 @@ import {
 } from "react-icons/fa";
 // Excel export not used on this page currently
 import toast from "react-hot-toast";
-import { db } from "../firebase";
-import AddProjectModal from "../components/AddProjectModal";
-import EditProjectModal from "../components/EditProjectModal";
-import ViewProjectModal from "../components/ViewProjectModal";
-import DeleteProjectModal from "../components/DeleteProjectModal";
-import { formatDate } from "../utils/formatDate";
+import { db } from "../../firebase";
+import AddProjectModal from "../../components/AddProjectModal";
+import EditProjectModal from "../../components/EditProjectModal";
+import ViewProjectModal from "../../components/ViewProjectModal";
+import DeleteProjectModal from "../../components/DeleteProjectModal";
+import { formatDate } from "../../utils/formatDate";
 import {
   addDoc,
   collection,
@@ -37,12 +37,12 @@ import {
 } from "firebase/firestore";
 
 // Reusable UI Components
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import Button from "../components/Button";
-import SkeletonRow from "../components/SkeletonRow";
-import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
-import SevenStageProjectKanban from "../components/SevenStageProjectKanban";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import SkeletonRow from "../../components/SkeletonRow";
+import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
+import SevenStageProjectKanban from "../../components/SevenStageProjectKanban";
 
 // Removed placeholder data; now loading projects from Firestore
 

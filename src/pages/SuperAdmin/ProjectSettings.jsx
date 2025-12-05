@@ -1,10 +1,10 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import Button from "../components/Button";
-import Card from "../components/Card";
-import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
+import Button from "../../components/Button";
+import Card from "../../components/Card";
+import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 import toast from "react-hot-toast";
-import { db } from "../firebase";
+import { db } from "../../firebase";
 import {
   doc,
   setDoc,

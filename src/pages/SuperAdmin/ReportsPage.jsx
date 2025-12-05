@@ -17,16 +17,13 @@ import {
   FaSpinner,
 } from "react-icons/fa";
 import { FaArrowsRotate } from "react-icons/fa6";
-import GanttChart from "../components/GanttChart";
-
+import GanttChart from "../../components/GanttChart";
 import toast from "react-hot-toast";
-
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import Button from "../components/Button";
-import SkeletonRow from "../components/SkeletonRow";
-
-import { db } from "../firebase";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import SkeletonRow from "../../components/SkeletonRow";
+import { db } from "../../firebase";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 
 import {
@@ -36,8 +33,7 @@ import {
   PRIORITY_HEX,
   STATUS_HEX,
   TYPE_HEX,
-} from "../utils/colorMaps";
-
+} from "../../utils/colorMaps";
 import {
   ResponsiveContainer,
   PieChart,

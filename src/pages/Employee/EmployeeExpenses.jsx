@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAuthContext } from "../context/useAuthContext";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import Button from "../components/Button";
-import StatCard from "../components/StatCard";
+import { useAuthContext } from "../../context/useAuthContext";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import StatCard from "../../components/StatCard";
 import {
   FaMoneyBillWave,
   FaMoneyCheckAlt,
@@ -24,9 +24,9 @@ import {
   uploadReceipt,
   updateExpense,
   deleteExpense,
-} from "../services/expenseService";
+} from "../../services/expenseService";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase";
+import { db } from "../../firebase";
 import toast from "react-hot-toast";
 
 const statusColors = {

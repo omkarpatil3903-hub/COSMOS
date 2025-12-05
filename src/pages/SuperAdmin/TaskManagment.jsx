@@ -6,19 +6,19 @@ import React, {
   useRef,
 } from "react";
 import toast from "react-hot-toast";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import Button from "../components/Button";
-import KanbanBoard from "../components/KanbanBoard";
-import TaskModal from "../components/TaskModal";
-import TaskGroup from "../components/TaskManagment/TaskGroup";
-import TaskViewModal from "../components/TaskManagment/TaskViewModal";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import KanbanBoard from "../../components/KanbanBoard";
+import TaskModal from "../../components/TaskModal";
+import TaskGroup from "../../components/TaskManagment/TaskGroup";
+import TaskViewModal from "../../components/TaskManagment/TaskViewModal";
 import {
   shouldCreateNextInstanceAsync,
   createNextRecurringInstance,
-} from "../utils/recurringTasks";
-import CompletionCommentModal from "../components/CompletionCommentModal";
-import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
+} from "../../utils/recurringTasks";
+import CompletionCommentModal from "../../components/CompletionCommentModal";
+import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 import {
   FaDownload,
   FaExclamationTriangle,
@@ -31,8 +31,8 @@ import {
   FaSpinner,
 } from "react-icons/fa";
 
-import { db } from "../firebase";
-import { updateProjectProgress } from "../utils/projectProgress";
+import { db } from "../../firebase";
+import { updateProjectProgress } from "../../utils/projectProgress";
 import {
   addDoc,
   collection,
@@ -45,8 +45,8 @@ import {
   updateDoc,
   limit,
 } from "firebase/firestore";
-import { useAuthContext } from "../context/AuthContext";
-import { logTaskActivity } from "../services/taskService";
+import { useAuthContext } from "../../context/AuthContext";
+import { logTaskActivity } from "../../services/taskService";
 
 // Determine if a user/resource is active based on common fields
 const isUserActive = (u) => {
@@ -259,7 +259,11 @@ function TasksManagement() {
 
   useEffect(() => {
     const unsubTasks = onSnapshot(
-      query(collection(db, "tasks"), orderBy("createdAt", "desc"), limit(taskLimit)),
+      query(
+        collection(db, "tasks"),
+        orderBy("createdAt", "desc"),
+        limit(taskLimit)
+      ),
       (snap) => {
         const list = snap.docs.map((d) => {
           const data = d.data() || {};
@@ -294,8 +298,8 @@ function TasksManagement() {
                 : typeof data.weightage === "string" &&
                   data.weightage.trim() !== "" &&
                   !isNaN(Number(data.weightage))
-                  ? Number(data.weightage)
-                  : null,
+                ? Number(data.weightage)
+                : null,
             archived: !!data.archived,
             isRecurring: data.isRecurring || false,
             recurringPattern: data.recurringPattern || "daily",
@@ -408,8 +412,8 @@ function TasksManagement() {
         const ref = doc(db, "tasks", taskData.id);
         const wt =
           taskData.weightage === "" ||
-            taskData.weightage === undefined ||
-            taskData.weightage === null
+          taskData.weightage === undefined ||
+          taskData.weightage === null
             ? null
             : Number(taskData.weightage);
 
@@ -419,14 +423,14 @@ function TasksManagement() {
         const newAssigneeIds = Array.isArray(taskData.assignees)
           ? taskData.assignees.map((a) => a.id).filter(Boolean)
           : taskData.assigneeId
-            ? [taskData.assigneeId]
-            : [];
+          ? [taskData.assigneeId]
+          : [];
 
         // Build or update assigneeStatus map
         const currentStatusMap = current?.assigneeStatus || {};
         const updatedAssigneeStatus = {};
 
-        newAssigneeIds.forEach(id => {
+        newAssigneeIds.forEach((id) => {
           if (currentStatusMap[id]) {
             // Preserve existing status
             updatedAssigneeStatus[id] = currentStatusMap[id];
@@ -436,7 +440,7 @@ function TasksManagement() {
               status: "To-Do",
               progressPercent: 0,
               completedAt: null,
-              completedBy: null
+              completedBy: null,
             };
           }
         });
@@ -584,25 +588,25 @@ function TasksManagement() {
         }
         const wt =
           taskData.weightage === "" ||
-            taskData.weightage === undefined ||
-            taskData.weightage === null
+          taskData.weightage === undefined ||
+          taskData.weightage === null
             ? null
             : Number(taskData.weightage);
 
         const assigneeIds = Array.isArray(taskData.assignees)
           ? taskData.assignees.map((a) => a.id).filter(Boolean)
           : taskData.assigneeId
-            ? [taskData.assigneeId]
-            : [];
+          ? [taskData.assigneeId]
+          : [];
 
         // Initialize assigneeStatus map
         const initialAssigneeStatus = {};
-        assigneeIds.forEach(id => {
+        assigneeIds.forEach((id) => {
           initialAssigneeStatus[id] = {
             status: initialStatus,
             progressPercent: initialStatus === "Done" ? 100 : 0,
             completedAt: initialStatus === "Done" ? new Date() : null, // Use Date for local, serverTimestamp for DB
-            completedBy: initialStatus === "Done" ? user?.uid : null
+            completedBy: initialStatus === "Done" ? user?.uid : null,
           };
         });
 
@@ -760,7 +764,7 @@ function TasksManagement() {
       // refresh project progress for affected projects
       await Promise.all(
         Array.from(affectedProjects).map((pid) =>
-          updateProjectProgress(pid).catch(() => { })
+          updateProjectProgress(pid).catch(() => {})
         )
       );
     } catch (err) {
@@ -785,7 +789,7 @@ function TasksManagement() {
             .filter(Boolean)
         );
         affected.forEach((pid) => {
-          updateProjectProgress(pid).catch(() => { });
+          updateProjectProgress(pid).catch(() => {});
         });
       })
       .catch((err) => {
@@ -809,7 +813,7 @@ function TasksManagement() {
             .filter(Boolean)
         );
         affected.forEach((pid) => {
-          updateProjectProgress(pid).catch(() => { });
+          updateProjectProgress(pid).catch(() => {});
         });
       })
       .catch((err) => {
@@ -856,7 +860,8 @@ function TasksManagement() {
         assigneeType: newType || (newRes ? "user" : newCli ? "client" : "user"),
       });
       toast.success(
-        `Task reassigned from ${oldRes?.name || oldCli?.clientName || "Unassigned"
+        `Task reassigned from ${
+          oldRes?.name || oldCli?.clientName || "Unassigned"
         } to ${newRes?.name || newCli?.clientName || "Unassigned"}`
       );
       logTaskActivity(
@@ -887,13 +892,13 @@ function TasksManagement() {
         progressPercent: willBeDone
           ? 100
           : wasDone
-            ? 0
-            : t.progressPercent ?? 0,
+          ? 0
+          : t.progressPercent ?? 0,
         completedAt: willBeDone
           ? serverTimestamp()
           : wasDone
-            ? null
-            : t.completedAt || null,
+          ? null
+          : t.completedAt || null,
       });
       if (t.projectId) {
         try {
@@ -1008,8 +1013,9 @@ function TasksManagement() {
         const project = projectMap[t.projectId];
         const assignee = userMap[t.assigneeId] || clientMap[t.assigneeId];
 
-        const searchText = `${t.title} ${t.description} ${project?.name || ""
-          } ${assignee?.name || assignee?.clientName || ""}`.toLowerCase();
+        const searchText = `${t.title} ${t.description} ${
+          project?.name || ""
+        } ${assignee?.name || assignee?.clientName || ""}`.toLowerCase();
 
         if (!searchText.includes(s)) return false;
       }
@@ -1219,7 +1225,7 @@ function TasksManagement() {
               user
             );
             if (taskData.projectId) {
-              updateProjectProgress(taskData.projectId).catch(() => { });
+              updateProjectProgress(taskData.projectId).catch(() => {});
             }
             createdCount++;
           } catch (err) {
@@ -1389,35 +1395,39 @@ function TasksManagement() {
           </Card>
           <Card
             onClick={applyOverdueQuickFilter}
-            className={`cursor-pointer transition-all duration-300 ${globalOverdueTasks.length > 0
-              ? "bg-red-50 border-red-300 ring-2 ring-red-100 ring-offset-2"
-              : "hover:bg-surface-subtle"
-              }`}
+            className={`cursor-pointer transition-all duration-300 ${
+              globalOverdueTasks.length > 0
+                ? "bg-red-50 border-red-300 ring-2 ring-red-100 ring-offset-2"
+                : "hover:bg-surface-subtle"
+            }`}
           >
             <div className="flex items-center justify-between">
               <div>
                 <div
-                  className={`text-sm ${globalOverdueTasks.length > 0
-                    ? "text-red-700 font-medium"
-                    : "text-content-secondary"
-                    }`}
+                  className={`text-sm ${
+                    globalOverdueTasks.length > 0
+                      ? "text-red-700 font-medium"
+                      : "text-content-secondary"
+                  }`}
                 >
                   Overdue
                 </div>
                 <div
-                  className={`mt-1 text-2xl font-bold ${globalOverdueTasks.length > 0
-                    ? "text-red-800"
-                    : "text-red-600"
-                    }`}
+                  className={`mt-1 text-2xl font-bold ${
+                    globalOverdueTasks.length > 0
+                      ? "text-red-800"
+                      : "text-red-600"
+                  }`}
                 >
                   {globalOverdueTasks.length}
                 </div>
               </div>
               <FaExclamationTriangle
-                className={`h-8 w-8 ${globalOverdueTasks.length > 0
-                  ? "text-red-600 animate-bounce"
-                  : "text-red-500"
-                  }`}
+                className={`h-8 w-8 ${
+                  globalOverdueTasks.length > 0
+                    ? "text-red-600 animate-bounce"
+                    : "text-red-500"
+                }`}
               />
             </div>
           </Card>
@@ -1495,15 +1505,15 @@ function TasksManagement() {
                 )}
                 {(!filters.assigneeType ||
                   filters.assigneeType === "client") && (
-                    <optgroup label="Clients">
-                      {filteredAssigneeClients.map((c) => (
-                        <option key={c.id} value={`client:${c.id}`}>
-                          {c.clientName}{" "}
-                          {c.companyName ? `(${c.companyName})` : ""}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
+                  <optgroup label="Clients">
+                    {filteredAssigneeClients.map((c) => (
+                      <option key={c.id} value={`client:${c.id}`}>
+                        {c.clientName}{" "}
+                        {c.companyName ? `(${c.companyName})` : ""}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
 
               <select
@@ -1576,7 +1586,11 @@ function TasksManagement() {
                 >
                   <FaDownload className="rotate-180" /> Import
                 </Button>
-                <Button variant="secondary" onClick={handleExportExcel} className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={handleExportExcel}
+                  className="flex items-center gap-2"
+                >
                   <FaDownload /> Export
                 </Button>
 
@@ -1584,30 +1598,33 @@ function TasksManagement() {
 
                 <div className="flex items-center rounded-lg border border-subtle bg-white p-0.5">
                   <button
-                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === ""
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-content-primary hover:bg-gray-100"
-                      }`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                      filters.assigneeType === ""
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "text-content-primary hover:bg-gray-100"
+                    }`}
                     onClick={() => updateFilter("assigneeType", "")}
                     type="button"
                   >
                     All
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "user"
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-content-primary hover:bg-gray-100"
-                      }`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                      filters.assigneeType === "user"
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "text-content-primary hover:bg-gray-100"
+                    }`}
                     onClick={() => updateFilter("assigneeType", "user")}
                     type="button"
                   >
                     Resources
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "client"
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-content-primary hover:bg-gray-100"
-                      }`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                      filters.assigneeType === "client"
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "text-content-primary hover:bg-gray-100"
+                    }`}
                     onClick={() => updateFilter("assigneeType", "client")}
                     type="button"
                   >
@@ -1620,20 +1637,22 @@ function TasksManagement() {
                 <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                   <button
                     onClick={() => setView("list")}
-                    className={`p-2 rounded transition-all ${view === "list"
-                      ? "bg-white text-indigo-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
-                      }`}
+                    className={`p-2 rounded transition-all ${
+                      view === "list"
+                        ? "bg-white text-indigo-600 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                    }`}
                     title="List View"
                   >
                     <FaList className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setView("board")}
-                    className={`p-2 rounded transition-all ${view === "board"
-                      ? "bg-white text-indigo-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
-                      }`}
+                    className={`p-2 rounded transition-all ${
+                      view === "board"
+                        ? "bg-white text-indigo-600 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                    }`}
                     title="Kanban View"
                   >
                     <FaTh className="w-4 h-4" />
@@ -1651,7 +1670,11 @@ function TasksManagement() {
                 <Button variant="danger" onClick={handleBulkDelete} size="sm">
                   Delete Selected
                 </Button>
-                <Button onClick={openCreate} variant="primary" className="font-semibold">
+                <Button
+                  onClick={openCreate}
+                  variant="primary"
+                  className="font-semibold"
+                >
                   + Create Task
                 </Button>
               </div>

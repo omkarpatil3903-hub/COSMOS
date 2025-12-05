@@ -1,24 +1,24 @@
 // src/pages/ClientProjects.jsx
 import React, { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import Card from "../components/Card";
-import PageHeader from "../components/PageHeader";
-import { useAuthContext } from "../context/useAuthContext";
-import { db } from "../firebase";
+import Card from "../../components/Card";
+import PageHeader from "../../components/PageHeader";
+import { useAuthContext } from "../../context/useAuthContext";
+import { db } from "../../firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
-import { 
-  FaProjectDiagram, 
-  FaCalendarAlt, 
-  FaCalendarPlus, 
-  FaSearch, 
-  FaSortAmountDown, 
-  FaSortAmountUp, 
-  FaEye, 
-  FaEyeSlash, 
-  FaCalendarCheck, 
-  FaClock, 
-  FaFlag, 
-  FaCheckCircle 
+import {
+  FaProjectDiagram,
+  FaCalendarAlt,
+  FaCalendarPlus,
+  FaSearch,
+  FaSortAmountDown,
+  FaSortAmountUp,
+  FaEye,
+  FaEyeSlash,
+  FaCalendarCheck,
+  FaClock,
+  FaFlag,
+  FaCheckCircle,
 } from "react-icons/fa";
 
 export default function ClientProjects() {
@@ -27,10 +27,10 @@ export default function ClientProjects() {
   const uid = user?.uid || userData?.uid;
   // Utility function to format dates in dd/mm/yyyy format
   const formatDateToDDMMYYYY = (date) => {
-    if (!date) return '';
-    const d = date instanceof Date ? date : (date?.toDate?.() || new Date(date));
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
+    if (!date) return "";
+    const d = date instanceof Date ? date : date?.toDate?.() || new Date(date);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
     const year = d.getFullYear();
     return `${day}/${month}/${year}`;
   };
@@ -77,17 +77,18 @@ export default function ClientProjects() {
 
   // Filter and sort projects
   const filteredAndSortedProjects = projects
-    .filter(project => {
+    .filter((project) => {
       const progress = getProjectProgress(project);
-      
+
       // Filter by search term
-      const matchesSearch = project.projectName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           project.description?.toLowerCase().includes(searchTerm.toLowerCase());
-      
+      const matchesSearch =
+        project.projectName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.description?.toLowerCase().includes(searchTerm.toLowerCase());
+
       // Filter by completion status
       const isCompleted = progress === 100;
       const shouldShow = showCompleted ? isCompleted : !isCompleted;
-      
+
       return matchesSearch && shouldShow;
     })
     .sort((a, b) => {
@@ -95,13 +96,13 @@ export default function ClientProjects() {
       if (sortBy === "none") {
         return 0;
       }
-      
+
       let aValue, bValue;
-      
+
       switch (sortBy) {
         case "name":
-          aValue = a.projectName?.toLowerCase() || '';
-          bValue = b.projectName?.toLowerCase() || '';
+          aValue = a.projectName?.toLowerCase() || "";
+          bValue = b.projectName?.toLowerCase() || "";
           break;
         case "progress":
           aValue = getProjectProgress(a);
@@ -115,7 +116,7 @@ export default function ClientProjects() {
         default:
           return 0;
       }
-      
+
       if (sortOrder === "asc") {
         return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
       } else {
@@ -124,7 +125,7 @@ export default function ClientProjects() {
     });
 
   // Count completed projects
-  const completedProjectsCount = projects.filter(project => {
+  const completedProjectsCount = projects.filter((project) => {
     const progress = getProjectProgress(project);
     return progress === 100;
   }).length;
@@ -182,7 +183,9 @@ export default function ClientProjects() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             {/* Sort Controls */}
             <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700 whitespace-nowrap">Sort by:</label>
+              <label className="text-sm text-gray-700 whitespace-nowrap">
+                Sort by:
+              </label>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
@@ -194,11 +197,19 @@ export default function ClientProjects() {
                 <option value="dueDate">Due Date</option>
               </select>
               <button
-                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                onClick={() =>
+                  setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+                }
                 className="p-2 text-gray-500 hover:text-gray-700 transition-colors border border-gray-300 rounded-lg"
-                title={`Sort ${sortOrder === "asc" ? "Descending" : "Ascending"}`}
+                title={`Sort ${
+                  sortOrder === "asc" ? "Descending" : "Ascending"
+                }`}
               >
-                {sortOrder === "asc" ? <FaSortAmountUp className="h-4 w-4" /> : <FaSortAmountDown className="h-4 w-4" />}
+                {sortOrder === "asc" ? (
+                  <FaSortAmountUp className="h-4 w-4" />
+                ) : (
+                  <FaSortAmountDown className="h-4 w-4" />
+                )}
               </button>
             </div>
 
@@ -212,14 +223,20 @@ export default function ClientProjects() {
           <button
             onClick={() => setShowCompleted(!showCompleted)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              showCompleted 
-                ? 'bg-green-100 text-green-800 border border-green-300 hover:bg-green-200' 
-                : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+              showCompleted
+                ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
+                : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
             }`}
-            title={showCompleted ? 'Hide completed projects' : 'Show completed projects'}
+            title={
+              showCompleted
+                ? "Hide completed projects"
+                : "Show completed projects"
+            }
           >
             <FaEye className="h-4 w-4" />
-            {showCompleted ? 'Hide Completed' : `View Completed (${completedProjectsCount})`}
+            {showCompleted
+              ? "Hide Completed"
+              : `View Completed (${completedProjectsCount})`}
           </button>
         </div>
       </div>
@@ -235,13 +252,18 @@ export default function ClientProjects() {
               )}
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {searchTerm ? 'No Projects Found' : 
-               showCompleted ? 'No Completed Projects' : 'No Active Projects'}
+              {searchTerm
+                ? "No Projects Found"
+                : showCompleted
+                ? "No Completed Projects"
+                : "No Active Projects"}
             </h3>
             <p className="text-gray-500 max-w-md mx-auto">
-              {searchTerm ? `No projects match your search "${searchTerm}". Try adjusting your search terms.` : 
-               showCompleted ? 'You don\'t have any completed projects yet. Keep working on your current projects to see them here once completed.' : 
-               'You don\'t have any active projects assigned at the moment. New projects will appear here when assigned to you.'}
+              {searchTerm
+                ? `No projects match your search "${searchTerm}". Try adjusting your search terms.`
+                : showCompleted
+                ? "You don't have any completed projects yet. Keep working on your current projects to see them here once completed."
+                : "You don't have any active projects assigned at the moment. New projects will appear here when assigned to you."}
             </p>
           </div>
         </Card>
@@ -258,15 +280,19 @@ export default function ClientProjects() {
               <div key={project.id} className="w-full min-w-0">
                 <Card
                   className="hover:shadow-lg transition-shadow h-full w-full flex-shrink-0"
-                  style={{ minWidth: '280px', width: '100%', minHeight: '420px' }}
+                  style={{
+                    minWidth: "280px",
+                    width: "100%",
+                    minHeight: "420px",
+                  }}
                 >
                   <div className="flex flex-col h-full">
                     {/* Top Content - Project Name and OKRs */}
                     <div className="flex-1 min-h-0">
                       <div className="mb-4">
-                        <h3 
+                        <h3
                           className="text-lg font-semibold text-gray-900 truncate min-w-0 flex-shrink-0"
-                          style={{ minHeight: '1.75rem', width: '100%' }}
+                          style={{ minHeight: "1.75rem", width: "100%" }}
                           onMouseEnter={(e) => {
                             setHoveredProject(project);
                             setMousePosition({ x: e.clientX, y: e.clientY });
@@ -278,7 +304,9 @@ export default function ClientProjects() {
                             }
                           }}
                         >
-                          {project.projectName || project.name || "Untitled Project"}
+                          {project.projectName ||
+                            project.name ||
+                            "Untitled Project"}
                         </h3>
                       </div>
 
@@ -291,17 +319,22 @@ export default function ClientProjects() {
                           <div className="max-h-32 overflow-y-auto scrollbar-hide">
                             <div className="space-y-2">
                               {project.okrs.map((okr, index) => (
-                                <div key={index} className="bg-gray-50 p-2 rounded">
+                                <div
+                                  key={index}
+                                  className="bg-gray-50 p-2 rounded"
+                                >
                                   <p className="text-xs font-medium text-gray-900 mb-1">
-                                    {index + 1}. {okr.objective || "No objective"}
+                                    {index + 1}.{" "}
+                                    {okr.objective || "No objective"}
                                   </p>
-                                  {okr.keyResults && okr.keyResults.length > 0 && (
-                                    <ul className="list-disc list-inside text-xs text-gray-600 space-y-0.5 ml-2">
-                                      {okr.keyResults.map((kr, krIndex) => (
-                                        <li key={krIndex}>{kr}</li>
-                                      ))}
-                                    </ul>
-                                  )}
+                                  {okr.keyResults &&
+                                    okr.keyResults.length > 0 && (
+                                      <ul className="list-disc list-inside text-xs text-gray-600 space-y-0.5 ml-2">
+                                        {okr.keyResults.map((kr, krIndex) => (
+                                          <li key={krIndex}>{kr}</li>
+                                        ))}
+                                      </ul>
+                                    )}
                                 </div>
                               ))}
                             </div>
@@ -375,14 +408,19 @@ export default function ClientProjects() {
         <div
           className="fixed z-[9999] pointer-events-none"
           style={{
-            left: Math.min(mousePosition.x + 15, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 250),
+            left: Math.min(
+              mousePosition.x + 15,
+              (typeof window !== "undefined" ? window.innerWidth : 1200) - 250
+            ),
             top: mousePosition.y - 45,
-            transform: 'translateZ(0)', // Force hardware acceleration
+            transform: "translateZ(0)", // Force hardware acceleration
           }}
         >
           <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl max-w-xs border border-gray-700">
             <p className="text-sm font-medium break-words whitespace-nowrap overflow-hidden text-ellipsis">
-              {hoveredProject.projectName || hoveredProject.name || "Untitled Project"}
+              {hoveredProject.projectName ||
+                hoveredProject.name ||
+                "Untitled Project"}
             </p>
           </div>
         </div>

@@ -67,6 +67,7 @@ function LoginPage() {
       // Determine role and resource role type for redirect
       let role = null;
       let resourceRoleType = null;
+      
       try {
         const tokenRes = await cred.user.getIdTokenResult();
         role = tokenRes?.claims?.role || null;
@@ -80,43 +81,41 @@ function LoginPage() {
           const uData = uSnap.data();
           if (!role && uData?.role) role = uData.role?.trim();
           if (uData?.resourceRoleType)
-            resourceRoleType = String(uData.resourceRoleType).trim().toLowerCase();
+            resourceRoleType = String(uData.resourceRoleType)
+              .trim()
+              .toLowerCase();
         } else {
           const cSnap = await getDoc(doc(db, "clients", cred.user.uid));
           if (cSnap.exists() && cSnap.data()?.role) {
             role = cSnap.data().role?.trim();
           }
         }
-      } catch {
-        // ignore
+      } catch (err) {
+        console.error("Error fetching user data:", err);
       }
 
-      // Redirect using Resource role type (admin/member) for staff; keep client logic unchanged
-      setTimeout(() => {
-        if (role === "client") {
-          navigate("/client");
-        } else if (resourceRoleType === "member") {
-          navigate("/employee");
-        } else if (resourceRoleType === "admin") {
-          navigate("/");
-        } else if (role === "resource") {
-          // Fallback for older data
-          navigate("/employee");
-        } else if (role === "member") {
-          // Additional fallback for older data
-          navigate("/employee");
-        } else {
-          navigate("/");
-        }
-      }, 700);
+      // Wait for auth state to update
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Redirect based on role priority: client > resourceRoleType > role
+      if (role === "client") {
+        navigate("/client", { replace: true });
+      } else if (resourceRoleType === "member" || role === "member") {
+        navigate("/employee", { replace: true });
+      } else if (resourceRoleType === "admin" || role === "admin") {
+        navigate("/", { replace: true });
+      } else {
+        // Default fallback
+        navigate("/", { replace: true });
+      }
     } catch (err) {
       const message = friendlyAuthError(err?.code);
       setErrorMsg(message);
       toast.error(message);
       console.error("Login failed:", err);
+    } finally {
       setLoading(false);
     }
-    // We don't set loading to false in the success case because the page will navigate away
   };
 
   const togglePasswordVisibility = () => {

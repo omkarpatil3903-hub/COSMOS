@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import Card from "../components/Card";
-import Button from "../components/Button";
-import PageHeader from "../components/PageHeader";
-import { useAuthContext } from "../context/useAuthContext";
-import { db } from "../firebase";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import PageHeader from "../../components/PageHeader";
+import { useAuthContext } from "../../context/useAuthContext";
+import { db } from "../../firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import {
   FaChartBar,
