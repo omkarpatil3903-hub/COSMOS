@@ -1,16 +1,5 @@
 import React from "react";
-import { HiXMark } from "react-icons/hi2";
-import {
-  FaLayerGroup,
-  FaBuilding,
-  FaCalendarAlt,
-  FaBullseye,
-  FaPlus,
-  FaTrash,
-  FaTimes,
-  FaEdit,
-} from "react-icons/fa";
-import Button from "./Button";
+import { FaTimes, FaPlus, FaEdit } from "react-icons/fa";
 
 const EditProjectModal = ({
   showEditForm,
@@ -20,30 +9,64 @@ const EditProjectModal = ({
   formData,
   setFormData,
   clients,
-  managers = [],
+  managers,
   handleEditSubmit,
   editErrors,
   setEditErrors,
 }) => {
-  if (!showEditForm || !selectedProject) return null;
+  if (!showEditForm) return null;
+
+  const handleOKRChange = (index, field, value) => {
+    const newOKRs = [...formData.okrs];
+    newOKRs[index][field] = value;
+    setFormData({ ...formData, okrs: newOKRs });
+  };
+
+  const handleKeyResultChange = (okrIndex, krIndex, value) => {
+    const newOKRs = [...formData.okrs];
+    newOKRs[okrIndex].keyResults[krIndex] = value;
+    setFormData({ ...formData, okrs: newOKRs });
+  };
+
+  const addKeyResult = (okrIndex) => {
+    const newOKRs = [...formData.okrs];
+    newOKRs[okrIndex].keyResults.push("");
+    setFormData({ ...formData, okrs: newOKRs });
+  };
+
+  const removeKeyResult = (okrIndex, krIndex) => {
+    const newOKRs = [...formData.okrs];
+    newOKRs[okrIndex].keyResults.splice(krIndex, 1);
+    setFormData({ ...formData, okrs: newOKRs });
+  };
+
+  const addOKR = () => {
+    setFormData({
+      ...formData,
+      okrs: [...formData.okrs, { objective: "", keyResults: [""] }],
+    });
+  };
+
+  const removeOKR = (index) => {
+    const newOKRs = formData.okrs.filter((_, i) => i !== index);
+    setFormData({ ...formData, okrs: newOKRs });
+  };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-[90vw] xl:max-w-7xl max-h-[90vh] overflow-y-auto relative z-[10000] flex flex-col"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50 sticky top-0 z-10 backdrop-blur-md">
+        <div className="flex items-start justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-              <FaEdit className="h-5 w-5" />
+            <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
+              <FaEdit className="w-6 h-6 text-indigo-600" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900 leading-tight">
-                Edit Project
-              </h2>
-              <p className="text-xs text-gray-500 font-medium">
+              <h2 className="text-2xl font-bold text-gray-900">Edit Project</h2>
+              <p className="text-sm text-gray-500 mt-1">
                 Update project details and OKRs
               </p>
             </div>
@@ -52,380 +75,294 @@ const EditProjectModal = ({
             onClick={() => {
               setShowEditForm(false);
               setSelectedProject(null);
-              setFormData({
-                projectName: "",
-                clientName: "",
-                status: "Planning",
-                startDate: "",
-                endDate: "",
-                okrs: [{ objective: "", keyResults: [""] }],
-              });
             }}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-lg hover:bg-gray-100"
           >
-            <HiXMark className="h-6 w-6" />
+            <FaTimes className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6">
-          <form onSubmit={handleEditSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-8" noValidate>
+        {/* Content */}
+        <div className="overflow-y-auto max-h-[calc(90vh-180px)]">
+          <form onSubmit={handleEditSubmit} className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left Column - Project Details */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs">
+                    📋
+                  </span>
+                  PROJECT DETAILS
+                </h3>
 
-            {/* Column 1: Project Details & Timeline */}
-            <div className="space-y-8">
-              {/* Project Details Section */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                  <FaLayerGroup className="text-indigo-500" />
-                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
-                    Project Details
-                  </h3>
+                {/* Project Name */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Project Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Website Redesign"
+                    value={formData.projectName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, projectName: e.target.value })
+                    }
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${
+                      editErrors.projectName
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
+                  />
+                  {editErrors.projectName && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {editErrors.projectName}
+                    </p>
+                  )}
                 </div>
 
-                <div className="space-y-4">
-                  {/* Project Name */}
-                  <div className="space-y-1.5">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                      <FaLayerGroup className="text-gray-400" />
-                      Project Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.projectName}
-                      onChange={(e) => {
-                        setFormData({
-                          ...formData,
-                          projectName: e.target.value,
-                        });
-                        if (editErrors.projectName) {
-                          setEditErrors((prev) => ({
-                            ...prev,
-                            projectName: "",
-                          }));
-                        }
-                      }}
-                      className={`w-full rounded-lg border ${editErrors.projectName
-                        ? "border-red-500 focus:ring-red-100"
-                        : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                        } bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
-                      required
-                    />
-                    {editErrors.projectName && (
-                      <p className="text-xs text-red-600 font-medium">
-                        {editErrors.projectName}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Company Name */}
-                  <div className="space-y-1.5">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                      <FaBuilding className="text-gray-400" />
-                      Company Name <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={
-                          formData.clientId ||
-                          clients.find((c) => c.companyName === formData.clientName)
-                            ?.id ||
-                          ""
-                        }
-                        onChange={(e) => {
-                          const id = e.target.value;
-                          const c = clients.find((cl) => cl.id === id);
-                          setFormData({
-                            ...formData,
-                            clientId: id,
-                            clientName: c?.companyName || "",
-                          });
-                          if (editErrors.clientId) {
-                            setEditErrors((prev) => ({
-                              ...prev,
-                              clientId: "",
-                            }));
-                          }
-                        }}
-                        className={`w-full rounded-lg border ${editErrors.clientId
-                          ? "border-red-500 focus:ring-red-100"
-                          : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                          } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200 appearance-none`}
-                        required
-                      >
-                        <option value="" disabled>
-                          Select a company
-                        </option>
-                        {clients.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.companyName}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M19 9l-7 7-7-7"
-                          ></path>
-                        </svg>
-                      </div>
-                    </div>
-                    {editErrors.clientId && (
-                      <p className="text-xs text-red-600 font-medium">
-                        {editErrors.clientId}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Timeline Section */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                  <FaCalendarAlt className="text-indigo-500" />
-                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
-                    Timeline
-                  </h3>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Start Date */}
-                  <div className="space-y-1.5">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                      <FaCalendarAlt className="text-gray-400" />
-                      Start Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.startDate}
-                      onChange={(e) => {
-                        setFormData({
-                          ...formData,
-                          startDate: e.target.value,
-                        });
-                        if (editErrors.startDate) {
-                          setEditErrors((prev) => ({
-                            ...prev,
-                            startDate: "",
-                          }));
-                        }
-                      }}
-                      className={`w-full rounded-lg border ${editErrors.startDate
-                        ? "border-red-500 focus:ring-red-100"
-                        : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                        } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200`}
-                      required
-                    />
-                  </div>
-
-                  {/* End Date */}
-                  <div className="space-y-1.5">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                      <FaCalendarAlt className="text-gray-400" />
-                      End Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.endDate}
-                      onChange={(e) => {
-                        setFormData({
-                          ...formData,
-                          endDate: e.target.value,
-                        });
-                        if (editErrors.endDate) {
-                          setEditErrors((prev) => ({
-                            ...prev,
-                            endDate: "",
-                          }));
-                        }
-                      }}
-                      className={`w-full rounded-lg border ${editErrors.endDate
-                        ? "border-red-500 focus:ring-red-100"
-                        : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                        } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200`}
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Column 2: OKRs */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-                <div className="flex items-center gap-2">
-                  <FaBullseye className="text-indigo-500" />
-                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
-                    OKRs
-                  </h3>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    setFormData({
-                      ...formData,
-                      okrs: [
-                        ...formData.okrs,
-                        { objective: "", keyResults: [""] },
-                      ],
-                    });
-                  }}
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-2 py-1"
-                >
-                  <FaPlus className="mr-1.5 h-3 w-3" /> Add
-                </Button>
-              </div>
-              {editErrors.okrs && (
-                <p className="text-xs text-red-600 font-medium bg-red-50 p-2 rounded-lg border border-red-100">
-                  {editErrors.okrs}
-                </p>
-              )}
-
-              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                {formData.okrs.map((okr, okrIndex) => (
-                  <div
-                    key={okrIndex}
-                    className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 hover:border-indigo-200 transition-colors duration-200"
+                {/* Company Name */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Company Name <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.clientId}
+                    onChange={(e) =>
+                      setFormData({ ...formData, clientId: e.target.value })
+                    }
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${
+                      editErrors.clientId ? "border-red-500" : "border-gray-300"
+                    }`}
                   >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-bold">
+                    <option value="">Select a company</option>
+                    {clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.companyName}
+                      </option>
+                    ))}
+                  </select>
+                  {editErrors.clientId && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {editErrors.clientId}
+                    </p>
+                  )}
+                </div>
+
+                {/* Project Manager */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Project Manager <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.projectManagerId}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        projectManagerId: e.target.value,
+                      })
+                    }
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${
+                      editErrors.projectManagerId
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
+                  >
+                    <option value="">Select a project manager</option>
+                    {managers.map((manager) => (
+                      <option key={manager.id} value={manager.id}>
+                        {manager.name}
+                      </option>
+                    ))}
+                  </select>
+                  {editErrors.projectManagerId && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {editErrors.projectManagerId}
+                    </p>
+                  )}
+                </div>
+
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4 mt-6 flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs">
+                    📅
+                  </span>
+                  TIMELINE
+                </h3>
+
+                {/* Start Date */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Start Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) =>
+                      setFormData({ ...formData, startDate: e.target.value })
+                    }
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${
+                      editErrors.startDate
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
+                  />
+                  {editErrors.startDate && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {editErrors.startDate}
+                    </p>
+                  )}
+                </div>
+
+                {/* End Date */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    End Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) =>
+                      setFormData({ ...formData, endDate: e.target.value })
+                    }
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${
+                      editErrors.endDate ? "border-red-500" : "border-gray-300"
+                    }`}
+                  />
+                  {editErrors.endDate && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {editErrors.endDate}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column - OKRs */}
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs">
+                      🎯
+                    </span>
+                    OKRS
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={addOKR}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                  >
+                    <FaPlus className="w-3 h-3" />
+                    Add
+                  </button>
+                </div>
+
+                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                  {formData.okrs.map((okr, okrIndex) => (
+                    <div
+                      key={okrIndex}
+                      className="bg-gray-50 p-4 rounded-lg border border-gray-200"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-bold">
                           {okrIndex + 1}
                         </span>
-                        <label className="text-xs font-bold text-gray-700 uppercase">
-                          Objective
-                        </label>
+                        {formData.okrs.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeOKR(okrIndex)}
+                            className="text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+                          >
+                            <FaTimes className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
-                      {formData.okrs.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newOkrs = formData.okrs.filter(
-                              (_, i) => i !== okrIndex
-                            );
-                            setFormData({ ...formData, okrs: newOkrs });
-                          }}
-                          className="text-gray-400 hover:text-red-600 transition-colors p-1"
-                          title="Remove Objective"
-                        >
-                          <FaTrash className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
 
-                    <input
-                      type="text"
-                      value={okr.objective}
-                      onChange={(e) => {
-                        const newOkrs = [...formData.okrs];
-                        newOkrs[okrIndex].objective = e.target.value;
-                        setFormData({ ...formData, okrs: newOkrs });
-                        if (editErrors.okrs) {
-                          setEditErrors((prev) => ({
-                            ...prev,
-                            okrs: "",
-                          }));
+                      <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
+                        OBJECTIVE
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Objective..."
+                        value={okr.objective}
+                        onChange={(e) =>
+                          handleOKRChange(okrIndex, "objective", e.target.value)
                         }
-                      }}
-                      placeholder="e.g., Launch new product feature successfully"
-                      className="w-full rounded-lg border border-gray-200 bg-white py-2 px-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none transition-all duration-200 mb-3"
-                    />
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-3"
+                      />
 
-                    <div className="space-y-2 pl-2 border-l-2 border-indigo-100">
-                      <label className="text-xs font-semibold text-gray-500 block">
+                      <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
                         Key Results
                       </label>
-                      {okr.keyResults.map((kr, krIndex) => (
-                        <div key={krIndex} className="flex gap-2">
-                          <input
-                            type="text"
-                            value={kr}
-                            onChange={(e) => {
-                              const newOkrs = [...formData.okrs];
-                              newOkrs[okrIndex].keyResults[krIndex] =
-                                e.target.value;
-                              setFormData({ ...formData, okrs: newOkrs });
-                            }}
-                            placeholder={`Key Result ${krIndex + 1}...`}
-                            className="flex-1 rounded-md border border-gray-200 bg-white py-1.5 px-3 text-xs text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 focus:outline-none"
-                          />
-                          <div className="flex flex-col gap-1">
-                            {formData.okrs[okrIndex].keyResults.length > 1 && (
+                      <div className="space-y-2">
+                        {okr.keyResults.map((kr, krIndex) => (
+                          <div
+                            key={krIndex}
+                            className="flex items-center gap-2"
+                          >
+                            <input
+                              type="text"
+                              placeholder={`Result ${krIndex + 1}...`}
+                              value={kr}
+                              onChange={(e) =>
+                                handleKeyResultChange(
+                                  okrIndex,
+                                  krIndex,
+                                  e.target.value
+                                )
+                              }
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                            {okr.keyResults.length > 1 && (
                               <button
                                 type="button"
-                                onClick={() => {
-                                  const newOkrs = [...formData.okrs];
-                                  newOkrs[okrIndex].keyResults.length > 1 &&
-                                    (newOkrs[okrIndex].keyResults = newOkrs[
-                                      okrIndex
-                                    ].keyResults.filter((_, i) => i !== krIndex));
-                                  setFormData({ ...formData, okrs: newOkrs });
-                                }}
-                                className="text-gray-400 hover:text-red-500"
+                                onClick={() =>
+                                  removeKeyResult(okrIndex, krIndex)
+                                }
+                                className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
                               >
-                                <FaTimes className="h-3 w-3" />
+                                <FaTimes className="w-3 h-3" />
                               </button>
                             )}
-                            {krIndex ===
-                              formData.okrs[okrIndex].keyResults.length - 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const newOkrs = [...formData.okrs];
-                                    newOkrs[okrIndex].keyResults.push("");
-                                    setFormData({ ...formData, okrs: newOkrs });
-                                  }}
-                                  className="text-indigo-400 hover:text-indigo-600"
-                                >
-                                  <FaPlus className="h-3 w-3" />
-                                </button>
-                              )}
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => addKeyResult(okrIndex)}
+                          className="flex items-center gap-2 px-3 py-1.5 text-xs text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        >
+                          <FaPlus className="w-3 h-3" />
+                          Add Key Result
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+
+                {editErrors.okrs && (
+                  <p className="mt-2 text-sm text-red-600">{editErrors.okrs}</p>
+                )}
               </div>
             </div>
           </form>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3 rounded-b-xl sticky bottom-0 backdrop-blur-md">
-          <Button
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
+          <button
             type="button"
-            variant="ghost"
             onClick={() => {
               setShowEditForm(false);
               setSelectedProject(null);
-              setFormData({
-                projectName: "",
-                clientName: "",
-                status: "Planning",
-                startDate: "",
-                endDate: "",
-                okrs: [{ objective: "", keyResults: [""] }],
-              });
             }}
-            className="text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+            className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             Cancel
-          </Button>
-          <Button
+          </button>
+          <button
             type="submit"
             onClick={handleEditSubmit}
-            className="shadow-lg shadow-indigo-200"
+            className="px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
           >
             Update Project
-          </Button>
+          </button>
         </div>
       </div>
     </div>

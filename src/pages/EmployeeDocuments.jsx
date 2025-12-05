@@ -10,10 +10,14 @@ export default function EmployeeDocuments() {
     <div className="space-y-6">
       <PageHeader title="Documents">All docs shared with you.</PageHeader>
       <Card title="Search & Actions" tone="muted">
-        <SearchActions value={search} onChange={setSearch} placeholder="Search documents" />
+        <SearchActions
+          value={search}
+          onChange={setSearch}
+          placeholder="Search documents"
+        />
       </Card>
       <Card title="Document List" tone="muted">
-        <DocumentsTable query={search} />
+        <DocumentsTable query={search} showActions={false} />
       </Card>
     </div>
   );

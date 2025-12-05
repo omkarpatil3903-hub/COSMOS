@@ -4,20 +4,94 @@ import { db } from "../firebase";
 import { useAuthContext } from "../context/useAuthContext";
 import PageHeader from "../components/PageHeader";
 import Card from "../components/Card";
-import { FaProjectDiagram, FaCalendarAlt, FaCalendarPlus, FaSearch, FaSortAmountDown, FaSortAmountUp, FaEye, FaEyeSlash, FaCalendarCheck, FaClock, FaFlag, FaCheckCircle } from "react-icons/fa";
+import {
+  FaProjectDiagram,
+  FaCalendarAlt,
+  FaCalendarPlus,
+  FaSearch,
+  FaSortAmountDown,
+  FaSortAmountUp,
+  FaEye,
+  FaEyeSlash,
+  FaCalendarCheck,
+  FaClock,
+  FaFlag,
+  FaCheckCircle,
+  FaTasks,
+} from "react-icons/fa";
 
 const EmployeeProjects = () => {
   const { user } = useAuthContext();
 
   // Utility function to format dates in dd/mm/yyyy format
   const formatDateToDDMMYYYY = (date) => {
-    if (!date) return '';
-    const d = date instanceof Date ? date : (date?.toDate?.() || new Date(date));
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
+    if (!date) return "";
+    const d = date instanceof Date ? date : date?.toDate?.() || new Date(date);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
     const year = d.getFullYear();
     return `${day}/${month}/${year}`;
   };
+
+  // Color palette for project cards - smooth, professional colors
+  const projectColors = [
+    {
+      bg: "bg-gradient-to-br from-blue-50 to-blue-100",
+      text: "text-blue-900",
+      border: "border-blue-200",
+    },
+    {
+      bg: "bg-gradient-to-br from-purple-50 to-purple-100",
+      text: "text-purple-900",
+      border: "border-purple-200",
+    },
+    {
+      bg: "bg-gradient-to-br from-green-50 to-green-100",
+      text: "text-green-900",
+      border: "border-green-200",
+    },
+    {
+      bg: "bg-gradient-to-br from-amber-50 to-amber-100",
+      text: "text-amber-900",
+      border: "border-amber-200",
+    },
+    {
+      bg: "bg-gradient-to-br from-rose-50 to-rose-100",
+      text: "text-rose-900",
+      border: "border-rose-200",
+    },
+    {
+      bg: "bg-gradient-to-br from-cyan-50 to-cyan-100",
+      text: "text-cyan-900",
+      border: "border-cyan-200",
+    },
+    {
+      bg: "bg-gradient-to-br from-indigo-50 to-indigo-100",
+      text: "text-indigo-900",
+      border: "border-indigo-200",
+    },
+    {
+      bg: "bg-gradient-to-br from-teal-50 to-teal-100",
+      text: "text-teal-900",
+      border: "border-teal-200",
+    },
+    {
+      bg: "bg-gradient-to-br from-orange-50 to-orange-100",
+      text: "text-orange-900",
+      border: "border-orange-200",
+    },
+    {
+      bg: "bg-gradient-to-br from-pink-50 to-pink-100",
+      text: "text-pink-900",
+      border: "border-pink-200",
+    },
+  ];
+
+  // Function to get color for a project based on its index
+  const getProjectColor = (index) => {
+    return projectColors[index % projectColors.length];
+  };
+
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -93,24 +167,24 @@ const EmployeeProjects = () => {
     return Math.round((completedTasks / projectTasks.length) * 100);
   };
 
-
   // Filter and sort projects
   const filteredAndSortedProjects = projects
-    .filter(project => {
+    .filter((project) => {
       const progress = getProjectProgress(project.id);
       const projectTasks = getProjectTasks(project.id);
-      
+
       // Only show projects where user has tasks
       const hasUserTasks = projectTasks.length > 0;
-      
+
       // Filter by search term
-      const matchesSearch = project.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           project.description?.toLowerCase().includes(searchTerm.toLowerCase());
-      
+      const matchesSearch =
+        project.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        project.description?.toLowerCase().includes(searchTerm.toLowerCase());
+
       // Filter by completion status
       const isCompleted = progress === 100;
       const shouldShow = showCompleted ? isCompleted : !isCompleted;
-      
+
       return hasUserTasks && matchesSearch && shouldShow;
     })
     .sort((a, b) => {
@@ -118,9 +192,9 @@ const EmployeeProjects = () => {
       if (sortBy === "none") {
         return 0;
       }
-      
+
       let aValue, bValue;
-      
+
       switch (sortBy) {
         case "name":
           aValue = a.projectName.toLowerCase();
@@ -138,7 +212,7 @@ const EmployeeProjects = () => {
         default:
           return 0;
       }
-      
+
       if (sortOrder === "asc") {
         return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
       } else {
@@ -147,11 +221,19 @@ const EmployeeProjects = () => {
     });
 
   // Count completed projects where user has tasks
-  const completedProjectsCount = projects.filter(project => {
+  const completedProjectsCount = projects.filter((project) => {
     const progress = getProjectProgress(project.id);
     const projectTasks = getProjectTasks(project.id);
     return progress === 100 && projectTasks.length > 0;
   }).length;
+
+  // New statistics calculations
+  const totalProjects = projects.length;
+  const totalTasks = tasks.length;
+  const completedTasks = tasks.filter((t) => t.status === "Done").length;
+  const inProgressTasks = tasks.filter(
+    (t) => t.status === "In Progress"
+  ).length;
 
   if (loading) {
     return (
@@ -186,6 +268,75 @@ const EmployeeProjects = () => {
         icon={<FaProjectDiagram />}
       />
 
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Projects Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-500 mb-1">
+                Total Projects
+              </p>
+              <p className="text-3xl font-bold text-gray-900">
+                {totalProjects}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <FaProjectDiagram className="text-blue-500 text-xl" />
+            </div>
+          </div>
+        </div>
+
+        {/* Total Tasks Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-purple-500 p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-500 mb-1">
+                Total Tasks
+              </p>
+              <p className="text-3xl font-bold text-gray-900">{tasks.length}</p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0">
+              <FaTasks className="text-purple-500 text-xl" />
+            </div>
+          </div>
+        </div>
+
+        {/* Completed Tasks Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-500 mb-1">
+                Completed
+              </p>
+              <p className="text-3xl font-bold text-gray-900">
+                {tasks.filter((t) => t.status === "Done").length}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+              <FaCheckCircle className="text-green-500 text-xl" />
+            </div>
+          </div>
+        </div>
+
+        {/* In Progress Tasks Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-amber-500 p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-500 mb-1">
+                In Progress
+              </p>
+              <p className="text-3xl font-bold text-gray-900">
+                {tasks.filter((t) => t.status === "In Progress").length}
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
+              <FaClock className="text-amber-500 text-xl" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Search and Filter Controls */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
         {/* Search Bar - Full Width */}
@@ -206,7 +357,9 @@ const EmployeeProjects = () => {
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             {/* Sort Controls */}
             <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700 whitespace-nowrap">Sort by:</label>
+              <label className="text-sm text-gray-700 whitespace-nowrap">
+                Sort by:
+              </label>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
@@ -218,11 +371,19 @@ const EmployeeProjects = () => {
                 <option value="dueDate">Due Date</option>
               </select>
               <button
-                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                onClick={() =>
+                  setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+                }
                 className="p-2 text-gray-500 hover:text-gray-700 transition-colors border border-gray-300 rounded-lg"
-                title={`Sort ${sortOrder === "asc" ? "Descending" : "Ascending"}`}
+                title={`Sort ${
+                  sortOrder === "asc" ? "Descending" : "Ascending"
+                }`}
               >
-                {sortOrder === "asc" ? <FaSortAmountUp className="h-4 w-4" /> : <FaSortAmountDown className="h-4 w-4" />}
+                {sortOrder === "asc" ? (
+                  <FaSortAmountUp className="h-4 w-4" />
+                ) : (
+                  <FaSortAmountDown className="h-4 w-4" />
+                )}
               </button>
             </div>
 
@@ -236,17 +397,22 @@ const EmployeeProjects = () => {
           <button
             onClick={() => setShowCompleted(!showCompleted)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              showCompleted 
-                ? 'bg-green-100 text-green-800 border border-green-300 hover:bg-green-200' 
-                : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+              showCompleted
+                ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
+                : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
             }`}
-            title={showCompleted ? 'Hide completed projects' : 'Show completed projects'}
+            title={
+              showCompleted
+                ? "Hide completed projects"
+                : "Show completed projects"
+            }
           >
             <FaEye className="h-4 w-4" />
-            {showCompleted ? 'Hide Completed' : `View Completed (${completedProjectsCount})`}
+            {showCompleted
+              ? "Hide Completed"
+              : `View Completed (${completedProjectsCount})`}
           </button>
         </div>
-
       </div>
 
       {filteredAndSortedProjects.length === 0 ? (
@@ -260,39 +426,51 @@ const EmployeeProjects = () => {
               )}
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {searchTerm ? 'No Projects Found' : 
-               showCompleted ? 'No Completed Projects' : 'No Active Projects'}
+              {searchTerm
+                ? "No Projects Found"
+                : showCompleted
+                ? "No Completed Projects"
+                : "No Active Projects"}
             </h3>
             <p className="text-gray-500 max-w-md mx-auto">
-              {searchTerm ? `No projects match your search "${searchTerm}". Try adjusting your search terms.` : 
-               showCompleted ? 'You don\'t have any completed projects yet. Keep working on your current projects to see them here once completed.' : 
-               'You don\'t have any active projects assigned at the moment. New projects will appear here when assigned to you.'}
+              {searchTerm
+                ? `No projects match your search "${searchTerm}". Try adjusting your search terms.`
+                : showCompleted
+                ? "You don't have any completed projects yet. Keep working on your current projects to see them here once completed."
+                : "You don't have any active projects assigned at the moment. New projects will appear here when assigned to you."}
             </p>
           </div>
         </Card>
       ) : (
         <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-          {filteredAndSortedProjects.map((project) => {
+          {filteredAndSortedProjects.map((project, index) => {
             const projectTasks = getProjectTasks(project.id);
             const progress = getProjectProgress(project.id);
             const startDate =
               project.startDate?.toDate?.() || new Date(project.startDate);
             const endDate =
               project.endDate?.toDate?.() || new Date(project.endDate);
+            const colorScheme = getProjectColor(index);
 
             return (
               <div key={project.id} className="w-full min-w-0">
                 <Card
-                  className="hover:shadow-lg transition-shadow h-full w-full flex-shrink-0"
-                  style={{ minWidth: '280px', width: '100%', minHeight: '420px' }}
+                  className="hover:shadow-lg transition-shadow h-full w-full flex-shrink-0 overflow-hidden"
+                  style={{
+                    minWidth: "280px",
+                    width: "100%",
+                    minHeight: "420px",
+                  }}
                 >
                   <div className="flex flex-col h-full">
-                    {/* Top Content - Project Name and OKRs */}
+                    {/* Top Content - Project Name Header with Color */}
                     <div className="flex-1 min-h-0">
-                      <div className="mb-4">
-                        <h3 
-                          className="text-lg font-semibold text-gray-900 truncate min-w-0 flex-shrink-0"
-                          style={{ minHeight: '1.75rem', width: '100%' }}
+                      <div
+                        className={`mb-4 -mx-6 -mt-6 px-6 py-4 ${colorScheme.bg} border-b-2 ${colorScheme.border}`}
+                      >
+                        <h3
+                          className={`text-lg font-semibold ${colorScheme.text} truncate min-w-0 flex-shrink-0`}
+                          style={{ minHeight: "1.75rem", width: "100%" }}
                           onMouseEnter={(e) => {
                             setHoveredProject(project);
                             setMousePosition({ x: e.clientX, y: e.clientY });
@@ -306,6 +484,22 @@ const EmployeeProjects = () => {
                         >
                           {project.projectName}
                         </h3>
+
+                        {/* Project Manager directly under project name */}
+                        {project.projectManagerName && (
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className="w-6 h-6 rounded-full bg-white/40 flex items-center justify-center">
+                              <span className="text-xs font-semibold text-gray-700">
+                                {project.projectManagerName
+                                  .charAt(0)
+                                  .toUpperCase()}
+                              </span>
+                            </div>
+                            <span className="text-xs font-medium text-gray-700">
+                              Manager: {project.projectManagerName}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* OKRs (Objectives and Key Results) - Scrollable */}
@@ -316,18 +510,23 @@ const EmployeeProjects = () => {
                           </p>
                           <div className="max-h-32 overflow-y-auto scrollbar-hide">
                             <div className="space-y-2">
-                              {project.okrs.map((okr, index) => (
-                                <div key={index} className="bg-gray-50 p-2 rounded">
+                              {project.okrs.map((okr, okrIndex) => (
+                                <div
+                                  key={okrIndex}
+                                  className="bg-gray-50 p-2 rounded"
+                                >
                                   <p className="text-xs font-medium text-gray-900 mb-1">
-                                    {index + 1}. {okr.objective || "No objective"}
+                                    {okrIndex + 1}.{" "}
+                                    {okr.objective || "No objective"}
                                   </p>
-                                  {okr.keyResults && okr.keyResults.length > 0 && (
-                                    <ul className="list-disc list-inside text-xs text-gray-600 space-y-0.5 ml-2">
-                                      {okr.keyResults.map((kr, krIndex) => (
-                                        <li key={krIndex}>{kr}</li>
-                                      ))}
-                                    </ul>
-                                  )}
+                                  {okr.keyResults &&
+                                    okr.keyResults.length > 0 && (
+                                      <ul className="list-disc list-inside text-xs text-gray-600 space-y-0.5 ml-2">
+                                        {okr.keyResults.map((kr, krIndex) => (
+                                          <li key={krIndex}>{kr}</li>
+                                        ))}
+                                      </ul>
+                                    )}
                                 </div>
                               ))}
                             </div>
@@ -365,7 +564,10 @@ const EmployeeProjects = () => {
                         <div className="text-center">
                           <p className="text-gray-500 text-xs">Completed</p>
                           <p className="font-semibold text-green-600 text-lg">
-                            {projectTasks.filter((t) => t.status === "Done").length}
+                            {
+                              projectTasks.filter((t) => t.status === "Done")
+                                .length
+                            }
                           </p>
                         </div>
                       </div>
@@ -397,9 +599,12 @@ const EmployeeProjects = () => {
         <div
           className="fixed z-[9999] pointer-events-none"
           style={{
-            left: Math.min(mousePosition.x + 15, (typeof window !== 'undefined' ? window.innerWidth : 1200) - 250),
+            left: Math.min(
+              mousePosition.x + 15,
+              (typeof window !== "undefined" ? window.innerWidth : 1200) - 250
+            ),
             top: mousePosition.y - 45,
-            transform: 'translateZ(0)', // Force hardware acceleration
+            transform: "translateZ(0)", // Force hardware acceleration
           }}
         >
           <div className="bg-gray-900 text-white px-3 py-2 rounded-lg shadow-xl max-w-xs border border-gray-700">

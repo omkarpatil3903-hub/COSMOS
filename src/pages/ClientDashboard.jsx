@@ -42,7 +42,9 @@ export default function ClientDashboard() {
             id: d.id,
             ...data,
             status:
-              data.status === "In Review" ? "In Progress" : data.status || "To-Do",
+              data.status === "In Review"
+                ? "In Progress"
+                : data.status || "To-Do",
           };
         })
       );
@@ -81,7 +83,9 @@ export default function ClientDashboard() {
     (t) => t.status === "To-Do" || t.status === "In Progress"
   ).length;
   const totalProjects = projects.length;
-  const completedProjects = projects.filter((p) => p.progress === 100 || p.status === "Completed").length;
+  const completedProjects = projects.filter(
+    (p) => p.progress === 100 || p.status === "Completed"
+  ).length;
   const upcomingEvents = events.filter((e) => {
     const eventDate = new Date(e.date || e.startDate || e.dueDate);
     return eventDate >= new Date();
@@ -89,21 +93,21 @@ export default function ClientDashboard() {
 
   // Navigation handlers for KPI cards
   const handleProjectsClick = () => {
-    navigate('/client/projects');
+    navigate("/client/projects");
   };
 
   const handleTasksClick = () => {
-    navigate('/client/tasks');
+    navigate("/client/tasks");
   };
 
   const handleCompletedClick = () => {
     // Navigate to projects page with completed filter
-    navigate('/client/projects', { state: { showCompleted: true } });
+    navigate("/client/projects", { state: { showCompleted: true } });
   };
 
   const handlePendingClick = () => {
     // Navigate to tasks page with pending filter
-    navigate('/client/tasks', { state: { filterStatus: 'pending' } });
+    navigate("/client/tasks", { state: { filterStatus: "pending" } });
   };
 
   if (loading || loadingData) {
@@ -117,7 +121,11 @@ export default function ClientDashboard() {
     );
   }
 
-  const welcomeTitle = `Welcome${userData?.name ? ", " + userData.name : ""}!`;
+  const welcomeTitle = `Welcome${
+    userData?.clientName || userData?.name || userData?.companyName
+      ? ", " + (userData?.clientName || userData?.name || userData?.companyName)
+      : ""
+  }!`;
 
   return (
     <div>

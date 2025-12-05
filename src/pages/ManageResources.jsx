@@ -9,12 +9,14 @@ import {
   FaEye,
   FaFilter,
   FaTimes,
+  FaCheckCircle,
+  FaUsers,
+  FaUserTie,
 } from "react-icons/fa";
 import { HiOutlineArrowDownTray, HiMiniArrowPath } from "react-icons/hi2";
 // Excel export not used on this page currently
 import toast from "react-hot-toast";
-import { db } from "../firebase";
-import { app as primaryApp } from "../firebase";
+import { db, app as primaryApp } from "../firebase";
 import { getApps, getApp, initializeApp as initApp } from "firebase/app";
 import {
   getAuth as getAuthMod,
@@ -103,6 +105,9 @@ function ManageResources() {
   // Server-side field errors for add resource flow
   const [createFieldErrors, setCreateFieldErrors] = useState({});
 
+  // Add new state for active stat filter
+  const [activeStatFilter, setActiveStatFilter] = useState(null);
+
   const anyModalOpen =
     showAddForm || showEditForm || showViewModal || showDeleteModal;
 
@@ -143,8 +148,22 @@ function ManageResources() {
     return () => unsub();
   }, []);
 
+  // Update filteredResources useMemo to include stat filter
   const filteredResources = useMemo(() => {
     let result = [...resources];
+
+    // Apply active stat filter first
+    if (activeStatFilter === "active") {
+      result = result.filter((resource) => resource.status === "Active");
+    } else if (activeStatFilter === "in-house") {
+      result = result.filter(
+        (resource) => resource.resourceType === "In-house"
+      );
+    } else if (activeStatFilter === "outsourced") {
+      result = result.filter(
+        (resource) => resource.resourceType === "Outsourced"
+      );
+    }
 
     // Filter by search term
     if (searchTerm) {
@@ -200,7 +219,20 @@ function ManageResources() {
     employmentTypeFilter,
     statusFilter,
     sortConfig,
+    activeStatFilter,
   ]);
+
+  // Clear active stat filter when other filters change
+  useEffect(() => {
+    if (
+      searchTerm ||
+      resourceTypeFilter !== "all" ||
+      employmentTypeFilter !== "all" ||
+      statusFilter !== "all"
+    ) {
+      setActiveStatFilter(null);
+    }
+  }, [searchTerm, resourceTypeFilter, employmentTypeFilter, statusFilter]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -310,24 +342,19 @@ function ManageResources() {
     setCreateFieldErrors({});
 
     try {
-      // 1. Create Authentication User
-      // We need a secondary app instance to create user without logging out current admin
+      // Use the existing Firebase app configuration
       let secondaryApp;
+
+      // Get the config from the primary app
+      const primaryAppConfig = primaryApp.options;
+
       try {
         secondaryApp = getApp("secondary");
       } catch (err) {
-        secondaryApp = initApp(
-          {
-            apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-            authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-            projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-            storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-            messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-            appId: import.meta.env.VITE_FIREBASE_APP_ID,
-          },
-          "secondary"
-        );
+        // Initialize secondary app with the same config as primary
+        secondaryApp = initApp(primaryAppConfig, "secondary");
       }
+
       const secondaryAuth = getAuthMod(secondaryApp);
 
       const userCredential = await createUserWithEmailAndPassword(
@@ -350,11 +377,11 @@ function ManageResources() {
         resourceRole: formData.resourceRole,
         resourceRoleType: formData.resourceRoleType,
         status: formData.status,
-        imageUrl: imageFile || "", // Save base64 string
-        role: "member", // Default role
+        imageUrl: imageFile || "",
+        role: "member",
         createdAt: serverTimestamp(),
         joinDate: new Date().toISOString().split("T")[0],
-        devPassword: formData.password, // Storing for admin reference as per request
+        devPassword: formData.password,
       };
 
       await setDoc(doc(db, "users", user.uid), newUser);
@@ -379,7 +406,6 @@ function ManageResources() {
       console.error("Error adding resource:", error);
       if (error.code && error.code.startsWith("auth/")) {
         const msg = mapAuthError(error.code);
-        // Map specific auth errors to fields if possible
         if (error.code === "auth/email-already-in-use") {
           setCreateFieldErrors((prev) => ({ ...prev, email: msg }));
         } else if (error.code === "auth/invalid-email") {
@@ -447,9 +473,12 @@ function ManageResources() {
         updates.devPassword = formData.password;
         // Note: Updating Auth password requires admin SDK or re-auth,
         // which is complex on client. For now just updating Firestore ref.
-        toast("Password updated in record only (Auth update requires re-login)", {
-          icon: "ℹ️",
-        });
+        toast(
+          "Password updated in record only (Auth update requires re-login)",
+          {
+            icon: "ℹ️",
+          }
+        );
       }
 
       await updateDoc(userRef, updates);
@@ -513,95 +542,241 @@ function ManageResources() {
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6">
       <PageHeader
-        title="Resource Management"
-        subtitle="Manage your team members, their roles, and access permissions."
+        title="Manage Resources"
+        description="Search and manage all company resources and team members."
       />
 
-      <div className="grid grid-cols-1 gap-6">
-        {/* Stats or Summary could go here */}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Resources Card */}
+        <div
+          onClick={() => {
+            setActiveStatFilter(null);
+            setSearchTerm("");
+            setResourceTypeFilter("all");
+            setEmploymentTypeFilter("all");
+            setStatusFilter("all");
+          }}
+          className="cursor-pointer"
+        >
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-600">
+                  Total Resources
+                </p>
+                <p className="text-3xl font-bold text-blue-900 mt-1">
+                  {resources.length}
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-blue-200/50 flex items-center justify-center">
+                <FaPlus className="text-blue-600 text-xl" />
+              </div>
+            </div>
+          </div>
+        </div>
 
+        {/* Active Card */}
+        <div
+          onClick={() => {
+            setActiveStatFilter("active");
+            setSearchTerm("");
+            setResourceTypeFilter("all");
+            setEmploymentTypeFilter("all");
+            setStatusFilter("all");
+          }}
+          className="cursor-pointer"
+        >
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-green-600">Active</p>
+                <p className="text-3xl font-bold text-green-900 mt-1">
+                  {resources.filter((r) => r.status === "Active").length}
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-green-200/50 flex items-center justify-center">
+                <FaCheckCircle className="text-green-600 text-xl" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* In-house Card */}
+        <div
+          onClick={() => {
+            setActiveStatFilter("in-house");
+            setSearchTerm("");
+            setResourceTypeFilter("all");
+            setEmploymentTypeFilter("all");
+            setStatusFilter("all");
+          }}
+          className="cursor-pointer"
+        >
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-purple-500 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-purple-600">In-house</p>
+                <p className="text-3xl font-bold text-purple-900 mt-1">
+                  {
+                    resources.filter((r) => r.resourceType === "In-house")
+                      .length
+                  }
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-purple-200/50 flex items-center justify-center">
+                <FaUsers className="text-purple-600 text-xl" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Outsourced Card */}
+        <div
+          onClick={() => {
+            setActiveStatFilter("outsourced");
+            setSearchTerm("");
+            setResourceTypeFilter("all");
+            setEmploymentTypeFilter("all");
+            setStatusFilter("all");
+          }}
+          className="cursor-pointer"
+        >
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-orange-500 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-orange-600">
+                  Outsourced
+                </p>
+                <p className="text-3xl font-bold text-orange-900 mt-1">
+                  {
+                    resources.filter((r) => r.resourceType === "Outsourced")
+                      .length
+                  }
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-orange-200/50 flex items-center justify-center">
+                <FaUserTie className="text-orange-600 text-xl" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6">
         <div className="flex flex-col gap-6">
           <Card className="p-4">
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
-              <div className="relative w-full sm:w-96">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FaSearch className="h-4 w-4 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search by name or email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                />
-              </div>
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <Button
-                  onClick={() => setShowAddForm(true)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2"
-                >
-                  <FaPlus className="h-4 w-4" />
-                  Add Resource
-                </Button>
-              </div>
-            </div>
-
-            {/* Filters */}
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <FaFilter className="text-gray-400 h-3 w-3" />
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                  Filters:
-                </span>
-              </div>
-
-              <select
-                value={employmentTypeFilter}
-                onChange={(e) => setEmploymentTypeFilter(e.target.value)}
-                className="text-sm border-gray-200 rounded-md focus:ring-indigo-500 focus:border-indigo-500 py-1 pl-2 pr-8"
-              >
-                <option value="all">All Employment</option>
-                <option value="Full-time">Full-time</option>
-                <option value="Part-time">Part-time</option>
-              </select>
-
-              <select
-                value={resourceTypeFilter}
-                onChange={(e) => setResourceTypeFilter(e.target.value)}
-                className="text-sm border-gray-200 rounded-md focus:ring-indigo-500 focus:border-indigo-500 py-1 pl-2 pr-8"
-              >
-                <option value="all">All Types</option>
-                <option value="In-house">In-house</option>
-                <option value="Outsourced">Outsourced</option>
-              </select>
-
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="text-sm border-gray-200 rounded-md focus:ring-indigo-500 focus:border-indigo-500 py-1 pl-2 pr-8"
-              >
-                <option value="all">All Status</option>
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-
-              {(searchTerm ||
-                employmentTypeFilter !== "all" ||
-                resourceTypeFilter !== "all" ||
-                statusFilter !== "all") && (
-                  <button
-                    onClick={() => {
-                      setSearchTerm("");
-                      setEmploymentTypeFilter("all");
-                      setResourceTypeFilter("all");
-                      setStatusFilter("all");
-                    }}
-                    className="ml-auto text-xs text-red-600 hover:text-red-800 font-medium flex items-center gap-1"
+            {/* Search & Actions Header */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Search & Actions
+                </h2>
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-gray-500">
+                    Showing {filteredResources.length} records
+                  </span>
+                  <Button
+                    onClick={() => setShowAddForm(true)}
+                    className="flex items-center justify-center gap-2"
                   >
-                    <FaTimes className="h-3 w-3" /> Clear Filters
-                  </button>
-                )}
+                    <FaPlus className="h-4 w-4" />
+                    Add Resource
+                  </Button>
+                </div>
+              </div>
+              <hr className="border-gray-200" />
             </div>
+
+            {/* Search and Filters Row */}
+            <div className="flex flex-col lg:flex-row lg:items-end gap-4">
+              {/* Search Input */}
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Search by name or email
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaSearch className="h-4 w-4 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. John Doe or john@company.com"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Employment Type Filter */}
+              <div className="w-full lg:w-48">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Employment Type
+                </label>
+                <select
+                  value={employmentTypeFilter}
+                  onChange={(e) => setEmploymentTypeFilter(e.target.value)}
+                  className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm"
+                >
+                  <option value="all">All Employment</option>
+                  <option value="Full-time">Full-time</option>
+                  <option value="Part-time">Part-time</option>
+                </select>
+              </div>
+
+              {/* Resource Type Filter */}
+              <div className="w-full lg:w-48">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Resource Type
+                </label>
+                <select
+                  value={resourceTypeFilter}
+                  onChange={(e) => setResourceTypeFilter(e.target.value)}
+                  className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm"
+                >
+                  <option value="all">All Types</option>
+                  <option value="In-house">In-house</option>
+                  <option value="Outsourced">Outsourced</option>
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div className="w-full lg:w-48">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm"
+                >
+                  <option value="all">All Status</option>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Clear Filters Button */}
+            {(searchTerm ||
+              employmentTypeFilter !== "all" ||
+              resourceTypeFilter !== "all" ||
+              statusFilter !== "all") && (
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setEmploymentTypeFilter("all");
+                    setResourceTypeFilter("all");
+                    setStatusFilter("all");
+                  }}
+                  className="text-xs text-red-600 hover:text-red-800 font-medium flex items-center gap-1"
+                >
+                  <FaTimes className="h-3 w-3" /> Clear Filters
+                </button>
+              </div>
+            )}
           </Card>
 
           <Card title="Resource List">
@@ -660,20 +835,21 @@ function ManageResources() {
                       const ariaSort = !header.sortable
                         ? "none"
                         : isActive
-                          ? sortConfig.direction === "asc"
-                            ? "ascending"
-                            : "descending"
-                          : "none";
+                        ? sortConfig.direction === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none";
 
                       return (
                         <th
                           key={header.key}
                           scope="col"
                           aria-sort={ariaSort}
-                          className={`group px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 whitespace-nowrap align-middle ${header.key === "actions"
-                            ? "sticky right-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100"
-                            : ""
-                            }`}
+                          className={`group px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 whitespace-nowrap align-middle ${
+                            header.key === "actions"
+                              ? "sticky right-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100"
+                              : ""
+                          }`}
                         >
                           {header.sortable ? (
                             <button
@@ -746,16 +922,18 @@ function ManageResources() {
                       </td>
                       <td className="whitespace-nowrap px-3 py-3 text-sm">
                         <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${resource.resourceType === "In-house"
-                            ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300"
-                            : "bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 border border-orange-300"
-                            }`}
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${
+                            resource.resourceType === "In-house"
+                              ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300"
+                              : "bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 border border-orange-300"
+                          }`}
                         >
                           <div
-                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${resource.resourceType === "In-house"
-                              ? "bg-blue-500"
-                              : "bg-orange-500"
-                              }`}
+                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                              resource.resourceType === "In-house"
+                                ? "bg-blue-500"
+                                : "bg-orange-500"
+                            }`}
                           ></div>
                           {resource.resourceType}
                         </span>
@@ -770,16 +948,18 @@ function ManageResources() {
                       </td>
                       <td className="whitespace-nowrap px-3 py-3 text-sm">
                         <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${resource.status === "Active"
-                            ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300"
-                            : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300"
-                            }`}
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${
+                            resource.status === "Active"
+                              ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300"
+                              : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300"
+                          }`}
                         >
                           <div
-                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${resource.status === "Active"
-                              ? "bg-green-500"
-                              : "bg-gray-500"
-                              }`}
+                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                              resource.status === "Active"
+                                ? "bg-green-500"
+                                : "bg-gray-500"
+                            }`}
                           ></div>
                           {resource.status}
                         </span>

@@ -56,10 +56,11 @@ const TaskGroup = ({
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
           {/* --- UPDATED COLUMN HEADERS WITH ICONS --- */}
           <div
-            className={`grid ${showActions
-              ? "grid-cols-[30px_1fr_180px_100px_100px_80px_110px_80px]"
-              : "grid-cols-[30px_1fr_180px_100px_100px_80px_110px]"
-              } gap-4 px-4 py-3 bg-gray-50 border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider`}
+            className={`grid ${
+              showActions
+                ? "grid-cols-[30px_1fr_180px_100px_100px_80px_110px_80px]"
+                : "grid-cols-[30px_1fr_180px_100px_100px_80px_110px]"
+            } gap-4 px-4 py-3 bg-gray-50 border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider`}
           >
             {/* 1. Checkbox Spacer */}
             <div></div>

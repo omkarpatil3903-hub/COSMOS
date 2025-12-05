@@ -13,10 +13,10 @@ import {
   FaTimes,
   FaTag,
   FaMoneyBill,
-  FaStickyNote,
   FaFileUpload,
   FaFileInvoice,
   FaCalendarAlt,
+  FaProjectDiagram,
 } from "react-icons/fa";
 import {
   subscribeToEmployeeExpenses,
@@ -25,6 +25,8 @@ import {
   updateExpense,
   deleteExpense,
 } from "../services/expenseService";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
 import toast from "react-hot-toast";
 
 const statusColors = {
@@ -38,6 +40,8 @@ const statusColors = {
 const EmployeeExpenses = () => {
   const { user } = useAuthContext();
   const [expenses, setExpenses] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [assignedProjects, setAssignedProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -59,6 +63,8 @@ const EmployeeExpenses = () => {
     notes: "",
     status: "Submitted",
     receipt: null,
+    projectId: "",
+    projectName: "",
   });
 
   useEffect(() => {
@@ -70,10 +76,63 @@ const EmployeeExpenses = () => {
     return unsub;
   }, [user?.uid]);
 
+  // Fetch projects assigned to employee
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    // Get tasks assigned to this employee to find their projects
+    const tasksQuery = query(
+      collection(db, "tasks"),
+      where("assigneeId", "==", user.uid)
+    );
+
+    const unsubTasks = onSnapshot(tasksQuery, (taskSnapshot) => {
+      const taskData = taskSnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((task) => task.assigneeType === "user");
+
+      // Get unique project IDs from tasks
+      const projectIds = [
+        ...new Set(taskData.map((t) => t.projectId).filter(Boolean)),
+      ];
+
+      if (projectIds.length > 0) {
+        // Get projects
+        const projectsQuery = query(
+          collection(db, "projects"),
+          where("__name__", "in", projectIds)
+        );
+
+        const unsubProjects = onSnapshot(projectsQuery, (projectSnapshot) => {
+          const projectData = projectSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          setProjects(projectData);
+          setAssignedProjects(projectData);
+        });
+
+        return () => {
+          unsubProjects();
+          unsubTasks();
+        };
+      } else {
+        setProjects([]);
+        setAssignedProjects([]);
+      }
+    });
+
+    return () => unsubTasks();
+  }, [user?.uid]);
+
   const filtered = useMemo(() => {
     return expenses.filter((e) => {
       if (statusFilter !== "all" && e.status !== statusFilter) return false;
-      if (categoryFilter !== "all" && (e.category || "Other") !== categoryFilter) return false;
+      if (
+        categoryFilter !== "all" &&
+        (e.category || "Other") !== categoryFilter
+      )
+        return false;
 
       if (fromDate && e.date && e.date < fromDate) return false;
       if (toDate && e.date && e.date > toDate) return false;
@@ -110,6 +169,8 @@ const EmployeeExpenses = () => {
       notes: "",
       status: "Submitted",
       receipt: null,
+      projectId: "",
+      projectName: "",
     });
     setEditingId(null);
   };
@@ -124,7 +185,9 @@ const EmployeeExpenses = () => {
       currency: expense.currency || "INR",
       notes: expense.notes || "",
       status: expense.status,
-      receipt: null, // New file upload if they want to change it
+      receipt: null,
+      projectId: expense.projectId || "",
+      projectName: expense.projectName || "",
     });
     setEditingId(expense.id);
     setShowModal(true);
@@ -162,6 +225,10 @@ const EmployeeExpenses = () => {
         receiptUrl = await uploadReceipt(form.receipt);
       }
 
+      const selectedProject = assignedProjects.find(
+        (p) => p.id === form.projectId
+      );
+
       const payload = {
         employeeId: user.uid,
         employeeName: user.displayName || user.email || "Employee",
@@ -173,6 +240,9 @@ const EmployeeExpenses = () => {
         currency: form.currency,
         notes: form.notes,
         status,
+        projectId: form.projectId || null,
+        projectName:
+          selectedProject?.projectName || selectedProject?.name || null,
       };
 
       if (receiptUrl) {
@@ -183,7 +253,7 @@ const EmployeeExpenses = () => {
         await updateExpense(editingId, payload);
         toast.success(status === "Draft" ? "Draft updated" : "Expense updated");
       } else {
-        await createExpense({ ...payload, receiptUrl }); // receiptUrl might be null, which is fine
+        await createExpense({ ...payload, receiptUrl });
         toast.success(
           status === "Draft" ? "Draft saved" : "Expense submitted for approval"
         );
@@ -205,7 +275,11 @@ const EmployeeExpenses = () => {
       <PageHeader
         title="My Expenses"
         description="Submit and track your reimbursement claims"
-        icon={<div><FaMoneyBillWave /></div>}
+        icon={
+          <div>
+            <FaMoneyBillWave />
+          </div>
+        }
       />
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -307,14 +381,18 @@ const EmployeeExpenses = () => {
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 mb-4 animate-pulse">
               <FaMoneyBillWave className="text-xl" />
             </div>
-            <p className="text-gray-500 font-medium">Loading your expenses...</p>
+            <p className="text-gray-500 font-medium">
+              Loading your expenses...
+            </p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-16 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 text-gray-400 mb-4">
               <FaFileInvoice className="text-3xl" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">No expenses found</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              No expenses found
+            </h3>
             <p className="text-gray-500 mt-1 max-w-sm mx-auto">
               You haven't submitted any expenses matching your filters yet.
             </p>
@@ -333,19 +411,40 @@ const EmployeeExpenses = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  >
                     Date
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  >
                     Expense Details
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  >
+                    Project
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  >
                     Category
                   </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  >
                     Amount
                   </th>
-                  <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  >
                     Status
                   </th>
                 </tr>
@@ -375,6 +474,18 @@ const EmployeeExpenses = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      {e.projectName ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          <FaProjectDiagram className="text-[10px] text-indigo-500" />
+                          {e.projectName}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">
+                          No project
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
                         <FaTag className="text-[10px] text-gray-500" />
                         {e.category || "Other"}
@@ -383,14 +494,18 @@ const EmployeeExpenses = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <div className="text-sm font-bold text-gray-900">
                         {e.amount?.toFixed ? e.amount.toFixed(2) : e.amount}
-                        <span className="text-xs font-medium text-gray-500 ml-1">{e.currency || "INR"}</span>
+                        <span className="text-xs font-medium text-gray-500 ml-1">
+                          {e.currency || "INR"}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex flex-col items-center gap-2">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[e.status] || "bg-gray-100 text-gray-800"
-                            }`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            statusColors[e.status] ||
+                            "bg-gray-100 text-gray-800"
+                          }`}
                         >
                           {e.status || "Unknown"}
                         </span>
@@ -431,7 +546,9 @@ const EmployeeExpenses = () => {
                   {editingId ? "Edit Expense" : "New Expense"}
                 </h2>
                 <p className="text-xs text-gray-500 font-medium mt-0.5">
-                  {editingId ? "Update expense details" : "Submit a new reimbursement claim"}
+                  {editingId
+                    ? "Update expense details"
+                    : "Submit a new reimbursement claim"}
                 </p>
               </div>
               <button
@@ -461,7 +578,9 @@ const EmployeeExpenses = () => {
                     />
                   </div>
                   {errors.title && (
-                    <p className="mt-1 text-xs text-red-600 font-medium">{errors.title}</p>
+                    <p className="mt-1 text-xs text-red-600 font-medium">
+                      {errors.title}
+                    </p>
                   )}
                 </div>
                 <div>
@@ -477,9 +596,51 @@ const EmployeeExpenses = () => {
                     />
                   </div>
                   {errors.date && (
-                    <p className="mt-1 text-xs text-red-600 font-medium">{errors.date}</p>
+                    <p className="mt-1 text-xs text-red-600 font-medium">
+                      {errors.date}
+                    </p>
                   )}
                 </div>
+              </div>
+
+              {/* Project Dropdown - New Field */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                  Project (Optional)
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                    <FaProjectDiagram />
+                  </div>
+                  <select
+                    value={form.projectId}
+                    onChange={(e) => handleChange("projectId", e.target.value)}
+                    className="w-full rounded-xl border-0 bg-gray-50 py-2.5 pl-10 pr-3 text-sm font-medium text-gray-900 ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all appearance-none"
+                  >
+                    <option value="">Select Project</option>
+                    {assignedProjects.map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.projectName ||
+                          project.name ||
+                          "Untitled Project"}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500">
+                    <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                      <path
+                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                        fillRule="evenodd"
+                      ></path>
+                    </svg>
+                  </div>
+                </div>
+                {assignedProjects.length === 0 && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    No projects assigned to you yet
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -500,7 +661,13 @@ const EmployeeExpenses = () => {
                       <option>Other</option>
                     </select>
                     <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500">
-                      <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" fillRule="evenodd"></path></svg>
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                        <path
+                          d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                          clipRule="evenodd"
+                          fillRule="evenodd"
+                        ></path>
+                      </svg>
                     </div>
                   </div>
                 </div>
@@ -522,7 +689,9 @@ const EmployeeExpenses = () => {
                       />
                     </div>
                     {errors.amount && (
-                      <p className="mt-1 text-xs text-red-600 font-medium">{errors.amount}</p>
+                      <p className="mt-1 text-xs text-red-600 font-medium">
+                        {errors.amount}
+                      </p>
                     )}
                   </div>
                   <div>
@@ -549,8 +718,6 @@ const EmployeeExpenses = () => {
                 />
               </div>
 
-
-
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
                   Receipt (Optional)
@@ -570,13 +737,17 @@ const EmployeeExpenses = () => {
                           type="file"
                           accept="image/*,application/pdf"
                           className="sr-only"
-                          onChange={(e) => handleChange("receipt", e.target.files[0])}
+                          onChange={(e) =>
+                            handleChange("receipt", e.target.files[0])
+                          }
                         />
                       </label>
                       <p className="pl-1">or drag and drop</p>
                     </div>
                     <p className="text-xs leading-5 text-gray-500">
-                      {form.receipt ? form.receipt.name : "PNG, JPG, PDF up to 1MB"}
+                      {form.receipt
+                        ? form.receipt.name
+                        : "PNG, JPG, PDF up to 1MB"}
                     </p>
                   </div>
                 </div>

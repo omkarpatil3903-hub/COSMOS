@@ -60,19 +60,19 @@ function MainLayout() {
   // Dynamic page title based on route
   useEffect(() => {
     const pathToTitle = {
-      "/": "Dashboard - Admin Panel",
-      "/manage-resources": "Manage Resources - Admin Panel",
-      "/manage-clients": "Manage Clients - Admin Panel",
-      "/manage-projects": "Manage Projects - Admin Panel",
-      "/mom": "Meeting Minutes - Admin Panel",
-      "/task-management": "Task Management - Admin Panel",
-      "/documents": "Documents - Admin Panel",
-      "/reports": "Reports - Admin Panel",
-      "/expenses": "Expense Management - Admin Panel",
-      "/calendar": "Calendar - Admin Panel",
-      "/settings": "Settings - Admin Panel",
-      "/settings/add-hierarchy": "Settings - Add Hierarchy - Admin Panel",
-      "/settings/project-settings": "Settings - Project Settings - Admin Panel",
+      "/": "COSMOS | Dashboard",
+      "/manage-resources": "COSMOS | Manage Resources",
+      "/manage-clients": "COSMOS | Manage Clients",
+      "/manage-projects": "COSMOS | Manage Projects",
+      "/mom": "COSMOS | Meeting Minutes",
+      "/task-management": "COSMOS | Task Management",
+      "/documents": "COSMOS | Knowledge Management",
+      "/reports": "COSMOS | Reports",
+      "/expenses": "COSMOS | Expense Management",
+      "/calendar": "COSMOS | Calendar",
+      "/settings": "COSMOS | Settings",
+      "/settings/add-hierarchy": "COSMOS | Settings | Add Hierarchy",
+      "/settings/project-settings": "COSMOS | Settings | Project Settings",
     };
 
     const title = pathToTitle[location.pathname] || "Admin Panel";
@@ -107,7 +107,7 @@ function MainLayout() {
     },
     {
       to: "/documents",
-      text: "Documents",
+      text: "Knowledge Management",
       icon: <FaFileAlt className="h-4 w-4" aria-hidden="true" />,
     },
 

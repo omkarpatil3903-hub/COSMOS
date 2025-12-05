@@ -8,9 +8,15 @@ export default function ManageDocument() {
   const [search, setSearch] = useState("");
   return (
     <div className="space-y-6">
-      <PageHeader title="Manage Documents">Create, manage and organize documents.</PageHeader>
+      <PageHeader title="Manage Documents">
+        Create, manage and organize documents.
+      </PageHeader>
       <Card title="Search & Actions" tone="muted">
-        <SearchActions value={search} onChange={setSearch} placeholder="Search documents" />
+        <SearchActions
+          value={search}
+          onChange={setSearch}
+          placeholder="Search documents"
+        />
       </Card>
       <Card title="Document List" tone="muted">
         <DocumentsTable query={search} />

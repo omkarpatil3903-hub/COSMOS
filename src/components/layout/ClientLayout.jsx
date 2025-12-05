@@ -18,13 +18,12 @@ import {
   FaTimes,
   FaChevronLeft,
 } from "react-icons/fa";
-import { FaFileAlt } from "react-icons/fa";
 
 // Reusable sidebar link component matching admin panel
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
-  const baseClasses =
-    `group flex items-center ${isCollapsed ? "justify-center px-2" : "gap-3 px-3"
-    } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
+  const baseClasses = `group flex items-center ${
+    isCollapsed ? "justify-center px-2" : "gap-3 px-3"
+  } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
   const activeClasses =
     "border-indigo-200 bg-indigo-50 text-indigo-700 shadow-soft";
   const inactiveClasses =
@@ -58,12 +57,11 @@ export default function ClientLayout() {
   // Dynamic page title based on route
   useEffect(() => {
     const pathToTitle = {
-      "/client": "Dashboard - Client Portal",
-      "/client/projects": "My Projects - Client Portal",
-      "/client/tasks": "My Tasks - Client Portal",
-      "/client/calendar": "Calendar - Client Portal",
-      "/client/reports": "Reports - Client Portal",
-      "/client/documents": "Documents - Client Portal",
+      "/client": "COSMOS | Dashboard",
+      "/client/projects": "COSMOS | My Projects - Client Portal",
+      "/client/tasks": "COSMOS | My Tasks - Client Portal",
+      "/client/calendar": "COSMOS | Calendar - Client Portal",
+      "/client/reports": "COSMOS | Reports - Client Portal",
     };
 
     const title = pathToTitle[location.pathname] || "Client Portal";
@@ -90,11 +88,6 @@ export default function ClientLayout() {
       to: "/client/calendar",
       text: "Calendar",
       icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
-    },
-    {
-      to: "/client/documents",
-      text: "Documents",
-      icon: <FaFileAlt className="h-4 w-4" aria-hidden="true" />,
     },
     // {
     //   to: "/client/reports",
@@ -138,8 +131,9 @@ export default function ClientLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
-          } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"}`}
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${
+          isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
+        } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"}`}
         aria-label="Primary"
       >
         <div className="flex items-center justify-between gap-4">
@@ -150,13 +144,15 @@ export default function ClientLayout() {
                 alt={userData?.clientName || userData?.companyName || "Client"}
                 className="h-10 w-10 rounded-xl object-cover shadow-soft"
                 onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
+                  e.target.style.display = "none";
+                  e.target.nextSibling.style.display = "flex";
                 }}
               />
             ) : null}
             <span
-              className={`flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft ${userData?.imageUrl ? 'hidden' : ''}`}
+              className={`flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft ${
+                userData?.imageUrl ? "hidden" : ""
+              }`}
             >
               <FaUserCircle className="h-5 w-5" aria-hidden="true" />
             </span>
@@ -164,9 +160,13 @@ export default function ClientLayout() {
               <div className="min-w-0">
                 <p
                   className="text-sm font-medium text-content-tertiary truncate"
-                  title={userData?.clientName || userData?.companyName || "Client User"}
+                  title={
+                    userData?.clientName ||
+                    userData?.companyName ||
+                    "Client User"
+                  }
                 >
-                  {userData?.clientName || userData?.companyName || "Client User"}
+                  COSMOS
                 </p>
                 <h2 className="text-lg font-semibold text-content-primary truncate">
                   Client Portal
@@ -182,8 +182,9 @@ export default function ClientLayout() {
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <FaChevronLeft
-              className={`h-4 w-4 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""
-                }`}
+              className={`h-4 w-4 transition-transform duration-300 ${
+                isCollapsed ? "rotate-180" : ""
+              }`}
               aria-hidden="true"
             />
           </button>

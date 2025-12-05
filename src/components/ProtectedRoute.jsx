@@ -16,10 +16,23 @@ function ProtectedRoute({ children, allowedRoles = [] }) {
   if (!allowedRoles || allowedRoles.length === 0) return children;
 
   // Check if user has required role
-  const role = userData?.role || null;
+  const rawRole = userData?.role || null;
+  const resourceRoleType = (userData?.resourceRoleType || "").trim().toLowerCase();
+
+  let effectiveRole = (rawRole || "").trim().toLowerCase();
+  if (effectiveRole !== "client") {
+    if (resourceRoleType === "admin") {
+      effectiveRole = "admin";
+    } else if (resourceRoleType === "member") {
+      effectiveRole = "resource";
+    }
+  }
+  if (effectiveRole === "member") {
+    effectiveRole = "resource";
+  }
 
   // If user has the required role, allow access
-  if (role && allowedRoles.includes(role)) return children;
+  if (effectiveRole && allowedRoles.includes(effectiveRole)) return children;
 
   // If user is authenticated but doesn't have the required role, show unauthorized
   return <Navigate to="/unauthorized" replace />;
