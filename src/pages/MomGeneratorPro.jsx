@@ -10,6 +10,7 @@ import {
   FaUndo,
   FaShareAlt,
   FaFilePdf,
+  FaEllipsisV,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 import {
@@ -136,7 +137,8 @@ export default function MomGeneratorPro() {
   const [meetingStartTime, setMeetingStartTime] = useState("");
   const [meetingEndTime, setMeetingEndTime] = useState("");
   const [meetingVenue, setMeetingVenue] = useState("");
-  const [attendees, setAttendees] = useState([]); // userIds
+  const [attendees, setAttendees] = useState([]); // userIds - Internal
+  const [externalAttendees, setExternalAttendees] = useState(""); // Comma-separated names
   const [momPreparedBy, setMomPreparedBy] = useState("");
 
   // Versioning
@@ -150,7 +152,7 @@ export default function MomGeneratorPro() {
   // Action items
   const [inputActionItems, setInputActionItems] = useState([]);
   const [newActionTask, setNewActionTask] = useState("");
-  const [newActionPerson, setNewActionPerson] = useState("");
+  const [newActionPerson, setNewActionPerson] = useState(""); // Now stores text instead of userId
   const [newActionDeadline, setNewActionDeadline] = useState("");
 
   // Generated output (no AI)
@@ -160,6 +162,7 @@ export default function MomGeneratorPro() {
   // UI
   const [loading, setLoading] = useState(false);
   const [isGenerated, setIsGenerated] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
 
   // Load Projects
   useEffect(() => {
@@ -261,16 +264,16 @@ export default function MomGeneratorPro() {
 
   const addActionItem = () => {
     if (!newActionTask.trim()) return toast.error("Enter task");
-    if (!newActionPerson) return toast.error("Select responsible person");
+    if (!newActionPerson.trim())
+      return toast.error("Enter responsible person name");
     if (!newActionDeadline) return toast.error("Select deadline");
-    const person = users.find((u) => u.id === newActionPerson);
+
     setInputActionItems((prev) => [
       ...prev,
       {
         id: crypto.randomUUID(),
         task: newActionTask.trim(),
-        responsiblePerson: person?.name || "",
-        responsiblePersonId: newActionPerson,
+        responsiblePerson: newActionPerson.trim(), // Direct name
         deadline: newActionDeadline, // ISO
       },
     ]);
@@ -371,6 +374,7 @@ export default function MomGeneratorPro() {
         meetingEndTime,
         meetingVenue,
         attendees,
+        externalAttendees,
         momPreparedBy,
         inputDiscussions,
         inputActionItems,
@@ -390,7 +394,7 @@ export default function MomGeneratorPro() {
   const downloadMomTxt = () => {
     if (!isGenerated) return toast.error("Generate MOM first");
 
-    const attendeeNames = attendees
+    const internalAttendeeNames = attendees
       .map((id) => users.find((u) => u.id === id)?.name)
       .filter(Boolean)
       .join(", ");
@@ -401,7 +405,10 @@ export default function MomGeneratorPro() {
       meetingStartTime ? ` ${meetingStartTime} to ${meetingEndTime}` : ""
     }\n`;
     content += `Venue: ${meetingVenue || "N/A"}\n`;
-    content += `Attendees: ${attendeeNames}\n`;
+    content += `Internal Attendees: ${internalAttendeeNames || "N/A"}\n`;
+    if (externalAttendees.trim()) {
+      content += `External Attendees: ${externalAttendees}\n`;
+    }
     content += `MoM Prepared by: ${momPreparedBy || "N/A"}\n\n`;
 
     content += `Meeting Agenda:\n`;
@@ -485,7 +492,7 @@ export default function MomGeneratorPro() {
     const projectName = selectedProject?.name || "Project";
     const title = `MoM v${momVersion} – ${projectName} (${meetingDate})`;
 
-    const attendeeNames = attendees
+    const internalAttendeeNames = attendees
       .map((id) => users.find((u) => u.id === id)?.name)
       .filter(Boolean)
       .join(", ");
@@ -493,11 +500,13 @@ export default function MomGeneratorPro() {
     let text = `${title}\n\n`;
     text += `Date & Time: ${meetingDate}${
       meetingStartTime ? ` ${meetingStartTime} to ${meetingEndTime}` : ""
-    }\nVenue: ${
-      meetingVenue || "N/A"
-    }\nAttendees: ${attendeeNames}\nPrepared by: ${
-      momPreparedBy || "N/A"
-    }\n\nAgenda:\n`;
+    }\nVenue: ${meetingVenue || "N/A"}\nInternal Attendees: ${
+      internalAttendeeNames || "N/A"
+    }`;
+    if (externalAttendees.trim()) {
+      text += `\nExternal Attendees: ${externalAttendees}`;
+    }
+    text += `\nPrepared by: ${momPreparedBy || "N/A"}\n\nAgenda:\n`;
     inputDiscussions.forEach((d) => (text += `• ${d.topic}\n`));
     text += `\nDiscussion:\n`;
     discussions.forEach((d) => {
@@ -534,8 +543,8 @@ export default function MomGeneratorPro() {
 
       <div className="space-y-6">
         {/* Quick Actions */}
-        <Card>
-          <div className="flex flex-wrap gap-3">
+        <Card className="overflow-visible">
+          <div className="flex flex-wrap gap-3 relative">
             {!isGenerated ? (
               <Button
                 onClick={generateMom}
@@ -554,21 +563,87 @@ export default function MomGeneratorPro() {
                 <Button onClick={resetGenerated} variant="secondary">
                   <FaUndo /> Edit Details
                 </Button>
-                <Button onClick={saveMom} variant="primary">
-                  <FaSave /> Save v{momVersion}
-                </Button>
-                <Button onClick={downloadMomTxt} variant="secondary">
-                  <FaDownload /> Download .txt
-                </Button>
-                <Button onClick={exportPDF} variant="secondary">
-                  <FaFilePdf /> Export PDF
-                </Button>
-                <Button onClick={shareMom} variant="ghost">
-                  <FaShareAlt /> Share
-                </Button>
-                <Button onClick={() => window.print()} variant="ghost">
-                  <FaPrint /> Print
-                </Button>
+
+                {/* Actions Dropdown Menu */}
+                <div className="relative">
+                  <Button
+                    onClick={() => setShowActionsMenu(!showActionsMenu)}
+                    variant="primary"
+                    className="flex items-center gap-2"
+                  >
+                    <FaEllipsisV /> Actions
+                  </Button>
+
+                  {showActionsMenu && (
+                    <>
+                      {/* Backdrop to close menu */}
+                      <div
+                        className="fixed inset-0 z-[100]"
+                        onClick={() => setShowActionsMenu(false)}
+                      />
+
+                      {/* Dropdown Menu */}
+                      <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-lg shadow-2xl border border-gray-200 py-2 z-[101]">
+                        <button
+                          onClick={() => {
+                            saveMom();
+                            setShowActionsMenu(false);
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
+                        >
+                          <FaSave className="text-indigo-600 flex-shrink-0" />
+                          <span>Save v{momVersion}</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            downloadMomTxt();
+                            setShowActionsMenu(false);
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
+                        >
+                          <FaDownload className="text-green-600 flex-shrink-0" />
+                          <span>Download .txt</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            exportPDF();
+                            setShowActionsMenu(false);
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
+                        >
+                          <FaFilePdf className="text-red-600 flex-shrink-0" />
+                          <span>Export PDF</span>
+                        </button>
+
+                        <div className="border-t border-gray-200 my-2"></div>
+
+                        <button
+                          onClick={() => {
+                            shareMom();
+                            setShowActionsMenu(false);
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
+                        >
+                          <FaShareAlt className="text-blue-600 flex-shrink-0" />
+                          <span>Share</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            window.print();
+                            setShowActionsMenu(false);
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
+                        >
+                          <FaPrint className="text-gray-600 flex-shrink-0" />
+                          <span>Print</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -648,7 +723,7 @@ export default function MomGeneratorPro() {
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Attendees * (Select multiple)
+                    Internal Attendees * (Select multiple)
                   </label>
                   <div className="border rounded p-3 max-h-44 overflow-y-auto space-y-1">
                     {users.map((u) => (
@@ -665,6 +740,24 @@ export default function MomGeneratorPro() {
                       </label>
                     ))}
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    External Attendees (comma separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={externalAttendees}
+                    onChange={(e) => setExternalAttendees(e.target.value)}
+                    className="w-full rounded border border-gray-300 px-3 py-2"
+                    placeholder="e.g., John Doe (Client), Jane Smith (Vendor)"
+                    spellCheck="true"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Enter names of external attendees (clients, vendors,
+                    partners, etc.)
+                  </p>
                 </div>
 
                 <div>
@@ -848,18 +941,14 @@ export default function MomGeneratorPro() {
                   placeholder="Task description..."
                   spellCheck="true"
                 />
-                <select
+                <input
+                  type="text"
                   value={newActionPerson}
                   onChange={(e) => setNewActionPerson(e.target.value)}
                   className="rounded border border-gray-300 px-3 py-2"
-                >
-                  <option value="">Select Person</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Responsible person name..."
+                  spellCheck="true"
+                />
                 <div className="flex gap-2">
                   <input
                     type="date"
@@ -930,7 +1019,7 @@ export default function MomGeneratorPro() {
                   </tr>
                   <tr>
                     <td className="border border-gray-700 bg-gray-100 px-4 py-2 font-semibold align-top">
-                      Attendees:
+                      Internal Attendees:
                     </td>
                     <td className="border border-gray-700 px-4 py-2">
                       {attendees
@@ -939,8 +1028,21 @@ export default function MomGeneratorPro() {
                         .map((n, i) => (
                           <div key={i}>{n}</div>
                         ))}
+                      {attendees.length === 0 && "N/A"}
                     </td>
                   </tr>
+                  {externalAttendees.trim() && (
+                    <tr>
+                      <td className="border border-gray-700 bg-gray-100 px-4 py-2 font-semibold align-top">
+                        External Attendees:
+                      </td>
+                      <td className="border border-gray-700 px-4 py-2">
+                        {externalAttendees.split(",").map((name, i) => (
+                          <div key={i}>{name.trim()}</div>
+                        ))}
+                      </td>
+                    </tr>
+                  )}
                   <tr>
                     <td className="border border-gray-700 bg-gray-100 px-4 py-2 font-semibold">
                       MoM Prepared by:

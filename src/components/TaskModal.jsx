@@ -86,7 +86,9 @@ function TaskModal({
   const [recurringEndType, setRecurringEndType] = useState("never");
   const [recurringEndDate, setRecurringEndDate] = useState("");
   const [recurringEndAfter, setRecurringEndAfter] = useState("");
-  const [selectedWeekDays, setSelectedWeekDays] = useState([0, 1, 2, 3, 4, 5, 6]); // All days default
+  const [selectedWeekDays, setSelectedWeekDays] = useState([
+    0, 1, 2, 3, 4, 5, 6,
+  ]); // All days default
   const [isCustomDays, setIsCustomDays] = useState(false);
   const [previewDates, setPreviewDates] = useState([]);
 
@@ -125,12 +127,14 @@ function TaskModal({
       // Start from next day for preview
       current.setDate(current.getDate() + 1);
 
-      while (out.length < 5 && count < 365) { // Limit iterations to prevent infinite loop
+      while (out.length < 5 && count < 365) {
+        // Limit iterations to prevent infinite loop
         const d = new Date(current);
         let include = false;
 
         // Check if day is allowed
-        const isAllowedDay = !isCustomDays || selectedWeekDays.includes(d.getDay());
+        const isAllowedDay =
+          !isCustomDays || selectedWeekDays.includes(d.getDay());
 
         if (isAllowedDay) {
           if (recurringPattern === "daily") {
@@ -151,8 +155,11 @@ function TaskModal({
             }
           } else if (recurringPattern === "monthly") {
             if (d.getDate() === start.getDate()) {
-              const monthDiff = (d.getFullYear() - start.getFullYear()) * 12 + (d.getMonth() - start.getMonth());
-              if (monthDiff > 0 && monthDiff % recurringInterval === 0) include = true;
+              const monthDiff =
+                (d.getFullYear() - start.getFullYear()) * 12 +
+                (d.getMonth() - start.getMonth());
+              if (monthDiff > 0 && monthDiff % recurringInterval === 0)
+                include = true;
             }
           }
         }
@@ -172,7 +179,14 @@ function TaskModal({
       // Ignore date parsing errors
     }
     setPreviewDates(out);
-  }, [isRecurring, dueDate, recurringPattern, recurringInterval, selectedWeekDays, isCustomDays]);
+  }, [
+    isRecurring,
+    dueDate,
+    recurringPattern,
+    recurringInterval,
+    selectedWeekDays,
+    isCustomDays,
+  ]);
 
   // Initialize form when editing
   useEffect(() => {
@@ -225,7 +239,9 @@ function TaskModal({
           : []
       );
 
-      setSubtasks(Array.isArray(taskToEdit.subtasks) ? taskToEdit.subtasks : []);
+      setSubtasks(
+        Array.isArray(taskToEdit.subtasks) ? taskToEdit.subtasks : []
+      );
     }
   }, [taskToEdit]);
 
@@ -244,24 +260,25 @@ function TaskModal({
       normalize(assigneeType) === normalize(taskToEdit.assigneeType),
       normalize(assigneeId) === normalize(taskToEdit.assigneeId),
       JSON.stringify(assigneesSelected) ===
-      JSON.stringify(taskToEdit.assignees || []),
+        JSON.stringify(taskToEdit.assignees || []),
       normalize(assignedDate) === normalize(taskToEdit.assignedDate),
       normalize(dueDate) === normalize(taskToEdit.dueDate),
       (taskToEdit.taskType || "one-time") === taskType,
       normalize(recurringPattern) === normalize(taskToEdit.recurringPattern),
       Number(recurringInterval || 1) ===
-      Number(taskToEdit.recurringInterval || 1),
+        Number(taskToEdit.recurringInterval || 1),
       normalize(recurringEndType) === normalize(taskToEdit.recurringEndType),
       normalize(recurringEndDate) === normalize(taskToEdit.recurringEndDate),
       String(recurringEndAfter || "") ===
-      String(taskToEdit.recurringEndAfter || ""),
-      JSON.stringify(selectedWeekDays) === JSON.stringify(taskToEdit.selectedWeekDays || [0, 1, 2, 3, 4, 5, 6]),
+        String(taskToEdit.recurringEndAfter || ""),
+      JSON.stringify(selectedWeekDays) ===
+        JSON.stringify(taskToEdit.selectedWeekDays || [0, 1, 2, 3, 4, 5, 6]),
       (typeof okrObjectiveIndex === "number" ? okrObjectiveIndex : null) ===
-      (typeof taskToEdit.okrObjectiveIndex === "number"
-        ? taskToEdit.okrObjectiveIndex
-        : null),
+        (typeof taskToEdit.okrObjectiveIndex === "number"
+          ? taskToEdit.okrObjectiveIndex
+          : null),
       JSON.stringify(okrKeyResultIndices) ===
-      JSON.stringify(taskToEdit.okrKeyResultIndices || []),
+        JSON.stringify(taskToEdit.okrKeyResultIndices || []),
       JSON.stringify(subtasks) === JSON.stringify(taskToEdit.subtasks || []),
     ];
     return !fields.every(Boolean);
@@ -299,13 +316,19 @@ function TaskModal({
       projectId,
       assignedDate,
       dueDate,
-  
+
       assigneeId:
         assigneeType === "client" ? assigneeId : assigneesSelected[0]?.id || "",
     });
 
     if (!validation.isValid) {
       setErrors(validation.errors || {});
+      return;
+    }
+
+    // Check for required project field
+    if (!projectId || !projectId.trim()) {
+      toast.error("Project is required");
       return;
     }
 
@@ -340,7 +363,8 @@ function TaskModal({
         isRecurring && recurringEndType === "after"
           ? Number(recurringEndAfter)
           : undefined,
-      selectedWeekDays: isRecurring && isCustomDays ? selectedWeekDays : undefined,
+      selectedWeekDays:
+        isRecurring && isCustomDays ? selectedWeekDays : undefined,
       okrObjectiveIndex:
         typeof okrObjectiveIndex === "number" ? okrObjectiveIndex : undefined,
       okrKeyResultIndices: okrKeyResultIndices,
@@ -364,7 +388,13 @@ function TaskModal({
         {/* Header - Clean Style */}
         <div className="shrink-0 px-6 py-4 border-b border-gray-100/50 bg-white/80 backdrop-blur-md flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${taskToEdit ? "bg-indigo-50 text-indigo-600" : "bg-gray-100 text-gray-500"}`}>
+            <div
+              className={`p-2 rounded-lg ${
+                taskToEdit
+                  ? "bg-indigo-50 text-indigo-600"
+                  : "bg-gray-100 text-gray-500"
+              }`}
+            >
               <MdReplayCircleFilled className="text-xl" />
             </div>
             <div>
@@ -372,7 +402,9 @@ function TaskModal({
                 {taskToEdit ? "Edit Task" : "Create New Task"}
               </h2>
               <p className="text-xs text-gray-500 font-medium">
-                {taskToEdit ? "Update task details" : "Add a new task to project"}
+                {taskToEdit
+                  ? "Update task details"
+                  : "Add a new task to project"}
               </p>
             </div>
           </div>
@@ -386,11 +418,13 @@ function TaskModal({
 
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <form onSubmit={handleSubmit} noValidate className="p-6 lg:p-8 space-y-8">
-
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            className="p-6 lg:p-8 space-y-8"
+          >
             {/* 3-Column Grid Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
               {/* Column 1: Details & Classification */}
               <div className="space-y-6">
                 <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2 uppercase tracking-wider">
@@ -398,17 +432,23 @@ function TaskModal({
                 </h3>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Task Title</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                    Task Title
+                  </label>
                   <input
                     type="text"
                     value={title}
                     onChange={(e) => {
                       setTitle(e.target.value);
-                      if (errors.title) setErrors((prev) => ({ ...prev, title: "" }));
+                      if (errors.title)
+                        setErrors((prev) => ({ ...prev, title: "" }));
                     }}
                     placeholder="Enter task title..."
-                    className={`block w-full rounded-xl border-0 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all ${errors.title ? "ring-red-300 focus:ring-red-500 bg-red-50" : ""
-                      }`}
+                    className={`block w-full rounded-xl border-0 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all ${
+                      errors.title
+                        ? "ring-red-300 focus:ring-red-500 bg-red-50"
+                        : ""
+                    }`}
                   />
                   {errors.title && (
                     <p className="mt-1.5 text-xs text-red-600 font-medium flex items-center gap-1">
@@ -418,7 +458,9 @@ function TaskModal({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Description</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                    Description
+                  </label>
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -430,30 +472,41 @@ function TaskModal({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Project</label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      Project
+                    </label>
                     <select
                       value={projectId}
                       onChange={(e) => {
                         setProjectId(e.target.value);
-                        if (errors.projectId) setErrors((prev) => ({ ...prev, projectId: "" }));
+                        if (errors.projectId)
+                          setErrors((prev) => ({ ...prev, projectId: "" }));
                         setOkrObjectiveIndex(null);
                         setOkrKeyResultIndices([]);
                       }}
-                      className={`block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${errors.projectId ? "ring-red-300 bg-red-50" : ""
-                        }`}
+                      className={`block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${
+                        errors.projectId ? "ring-red-300 bg-red-50" : ""
+                      }`}
+                      required
                     >
                       <option value="">Select Project</option>
                       {projects.map((p) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
                       ))}
                     </select>
                     {errors.projectId && (
-                      <p className="mt-1 text-xs text-red-600">{errors.projectId}</p>
+                      <p className="mt-1 text-xs text-red-600">
+                        {errors.projectId}
+                      </p>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Priority</label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      Priority
+                    </label>
                     <select
                       value={priority}
                       onChange={(e) => setPriority(e.target.value)}
@@ -466,7 +519,9 @@ function TaskModal({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Status</label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      Status
+                    </label>
                     <select
                       value={status}
                       onChange={(e) => setStatus(e.target.value)}
@@ -496,8 +551,11 @@ function TaskModal({
                         setAssigneesSelected([]);
                         setAssigneeId("");
                       }}
-                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "user" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                        }`}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
+                        assigneeType === "user"
+                          ? "bg-white text-gray-900 shadow-sm"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
                     >
                       Resource
                     </button>
@@ -508,8 +566,11 @@ function TaskModal({
                         setAssigneesSelected([]);
                         setAssigneeId("");
                       }}
-                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "client" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                        }`}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
+                        assigneeType === "client"
+                          ? "bg-white text-gray-900 shadow-sm"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
                     >
                       Client
                     </button>
@@ -519,15 +580,26 @@ function TaskModal({
                   <div>
                     {assigneeType === "user" ? (
                       <SearchMultiSelect
-                        items={assignees.map((u) => ({ id: u.id, label: u.name }))}
-                        selected={assigneesSelected.filter((a) => a.type === "user").map((a) => a.id)}
+                        items={assignees.map((u) => ({
+                          id: u.id,
+                          label: u.name,
+                        }))}
+                        selected={assigneesSelected
+                          .filter((a) => a.type === "user")
+                          .map((a) => a.id)}
                         onChange={(ids) => {
-                          const others = assigneesSelected.filter((a) => a.type !== "user");
-                          const nextSame = ids.map((id) => ({ type: "user", id }));
+                          const others = assigneesSelected.filter(
+                            (a) => a.type !== "user"
+                          );
+                          const nextSame = ids.map((id) => ({
+                            type: "user",
+                            id,
+                          }));
                           const next = [...nextSame, ...others];
                           setAssigneesSelected(next);
                           setAssigneeId(nextSame[0]?.id || "");
-                          if (errors.assigneeId) setErrors((p) => ({ ...p, assigneeId: "" }));
+                          if (errors.assigneeId)
+                            setErrors((p) => ({ ...p, assigneeId: "" }));
                         }}
                         placeholder="Select resources..."
                       />
@@ -537,26 +609,35 @@ function TaskModal({
                         onChange={(e) => {
                           const id = e.target.value;
                           setAssigneeId(id);
-                          setAssigneesSelected(id ? [{ type: "client", id }] : []);
-                          if (errors.assigneeId) setErrors((p) => ({ ...p, assigneeId: "" }));
+                          setAssigneesSelected(
+                            id ? [{ type: "client", id }] : []
+                          );
+                          if (errors.assigneeId)
+                            setErrors((p) => ({ ...p, assigneeId: "" }));
                         }}
                         className="block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
                       >
                         <option value="">Select Client</option>
                         {clients.map((c) => (
-                          <option key={c.id} value={c.id}>{c.clientName}</option>
+                          <option key={c.id} value={c.id}>
+                            {c.clientName}
+                          </option>
                         ))}
                       </select>
                     )}
                     {errors.assigneeId && (
-                      <p className="mt-1 text-xs text-red-600">{errors.assigneeId}</p>
+                      <p className="mt-1 text-xs text-red-600">
+                        {errors.assigneeId}
+                      </p>
                     )}
                   </div>
 
                   {/* Dates */}
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1.5">Assigned Date</label>
+                      <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                        Assigned Date
+                      </label>
                       <div className="relative">
                         <input
                           type="date"
@@ -567,21 +648,27 @@ function TaskModal({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1.5">Due Date</label>
+                      <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                        Due Date
+                      </label>
                       <div className="relative">
                         <input
                           type="date"
                           value={dueDate}
                           onChange={(e) => {
                             setDueDate(e.target.value);
-                            if (errors.dueDate) setErrors((prev) => ({ ...prev, dueDate: "" }));
+                            if (errors.dueDate)
+                              setErrors((prev) => ({ ...prev, dueDate: "" }));
                           }}
-                          className={`block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${errors.dueDate ? "ring-red-300 bg-red-50" : ""
-                            }`}
+                          className={`block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${
+                            errors.dueDate ? "ring-red-300 bg-red-50" : ""
+                          }`}
                         />
                       </div>
                       {errors.dueDate && (
-                        <p className="mt-1 text-xs text-red-600">{errors.dueDate}</p>
+                        <p className="mt-1 text-xs text-red-600">
+                          {errors.dueDate}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -595,7 +682,9 @@ function TaskModal({
                 </h3>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Weightage (Points)</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                    Weightage (Points)
+                  </label>
                   <input
                     type="number"
                     min="0"
@@ -609,11 +698,19 @@ function TaskModal({
                 {/* Recurring Toggle */}
                 <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-100">
                   <div className="flex items-center gap-2">
-                    <div className={`p-1.5 rounded-lg ${isRecurring ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-500"}`}>
+                    <div
+                      className={`p-1.5 rounded-lg ${
+                        isRecurring
+                          ? "bg-indigo-600 text-white"
+                          : "bg-gray-200 text-gray-500"
+                      }`}
+                    >
                       <MdReplayCircleFilled className="text-lg" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-gray-900">Recurring</h4>
+                      <h4 className="text-xs font-bold text-gray-900">
+                        Recurring
+                      </h4>
                     </div>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
@@ -621,7 +718,9 @@ function TaskModal({
                       type="checkbox"
                       className="sr-only peer"
                       checked={isRecurring}
-                      onChange={(e) => setTaskType(e.target.checked ? "recurring" : "one-time")}
+                      onChange={(e) =>
+                        setTaskType(e.target.checked ? "recurring" : "one-time")
+                      }
                     />
                     <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
                   </label>
@@ -632,18 +731,26 @@ function TaskModal({
                   <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="col-span-2">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Repeat Every</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Repeat Every
+                        </label>
                         <div className="flex gap-2">
                           <input
                             type="number"
                             min="1"
                             value={recurringInterval}
-                            onChange={(e) => setRecurringInterval(parseInt(e.target.value) || 1)}
+                            onChange={(e) =>
+                              setRecurringInterval(
+                                parseInt(e.target.value) || 1
+                              )
+                            }
                             className="w-16 rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
                           />
                           <select
                             value={recurringPattern}
-                            onChange={(e) => setRecurringPattern(e.target.value)}
+                            onChange={(e) =>
+                              setRecurringPattern(e.target.value)
+                            }
                             className="flex-1 rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
                           >
                             <option value="daily">Day(s)</option>
@@ -655,7 +762,9 @@ function TaskModal({
 
                       <div className="col-span-2 flex flex-col gap-2">
                         <div className="flex items-center justify-between">
-                          <label className="block text-xs font-medium text-gray-500">Allowed Days</label>
+                          <label className="block text-xs font-medium text-gray-500">
+                            Allowed Days
+                          </label>
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
                               type="checkbox"
@@ -668,35 +777,44 @@ function TaskModal({
                               }}
                               className="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 h-3 w-3"
                             />
-                            <span className="text-[10px] text-indigo-600 font-medium">Customize</span>
+                            <span className="text-[10px] text-indigo-600 font-medium">
+                              Customize
+                            </span>
                           </label>
                         </div>
 
                         {isCustomDays && (
                           <div className="flex gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                            {["S", "M", "T", "W", "T", "F", "S"].map((day, idx) => (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedWeekDays(prev =>
-                                    prev.includes(idx) ? prev.filter(d => d !== idx) : [...prev, idx]
-                                  );
-                                }}
-                                className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-all ${selectedWeekDays.includes(idx)
-                                  ? "bg-indigo-600 text-white shadow-sm"
-                                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                            {["S", "M", "T", "W", "T", "F", "S"].map(
+                              (day, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedWeekDays((prev) =>
+                                      prev.includes(idx)
+                                        ? prev.filter((d) => d !== idx)
+                                        : [...prev, idx]
+                                    );
+                                  }}
+                                  className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-all ${
+                                    selectedWeekDays.includes(idx)
+                                      ? "bg-indigo-600 text-white shadow-sm"
+                                      : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                                   }`}
-                              >
-                                {day}
-                              </button>
-                            ))}
+                                >
+                                  {day}
+                                </button>
+                              )
+                            )}
                           </div>
                         )}
                       </div>
 
                       <div className="col-span-2">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Ends</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Ends
+                        </label>
                         <select
                           value={recurringEndType}
                           onChange={(e) => setRecurringEndType(e.target.value)}
@@ -710,11 +828,15 @@ function TaskModal({
 
                       {recurringEndType === "date" && (
                         <div className="col-span-2">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">End Date</label>
+                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                            End Date
+                          </label>
                           <input
                             type="date"
                             value={recurringEndDate}
-                            onChange={(e) => setRecurringEndDate(e.target.value)}
+                            onChange={(e) =>
+                              setRecurringEndDate(e.target.value)
+                            }
                             min={dueDate || undefined}
                             className="w-full rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
                           />
@@ -723,12 +845,16 @@ function TaskModal({
 
                       {recurringEndType === "after" && (
                         <div className="col-span-2">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Count</label>
+                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                            Count
+                          </label>
                           <input
                             type="number"
                             min="1"
                             value={recurringEndAfter}
-                            onChange={(e) => setRecurringEndAfter(e.target.value)}
+                            onChange={(e) =>
+                              setRecurringEndAfter(e.target.value)
+                            }
                             placeholder="e.g. 10"
                             className="w-full rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
                           />
@@ -741,44 +867,76 @@ function TaskModal({
                 {/* OKRs */}
                 {projectId && (
                   <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                    <h4 className="text-xs font-bold text-gray-900 mb-3">OKR</h4>
+                    <h4 className="text-xs font-bold text-gray-900 mb-3">
+                      OKR
+                    </h4>
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Objective</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Objective
+                        </label>
                         <select
-                          value={typeof okrObjectiveIndex === "number" ? String(okrObjectiveIndex) : ""}
+                          value={
+                            typeof okrObjectiveIndex === "number"
+                              ? String(okrObjectiveIndex)
+                              : ""
+                          }
                           onChange={(e) => {
-                            const idx = e.target.value === "" ? null : Number(e.target.value);
+                            const idx =
+                              e.target.value === ""
+                                ? null
+                                : Number(e.target.value);
                             setOkrObjectiveIndex(idx);
                             setOkrKeyResultIndices([]);
                           }}
                           className="block w-full rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
                         >
                           <option value="">Select Objective</option>
-                          {(projects.find((p) => p.id === projectId)?.okrs || []).map((okr, idx) => (
-                            <option key={idx} value={idx}>{okr?.objective || `Objective ${idx + 1}`}</option>
+                          {(
+                            projects.find((p) => p.id === projectId)?.okrs || []
+                          ).map((okr, idx) => (
+                            <option key={idx} value={idx}>
+                              {okr?.objective || `Objective ${idx + 1}`}
+                            </option>
                           ))}
                         </select>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Key Results</label>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Key Results
+                        </label>
                         <div className="bg-white rounded-lg border border-gray-200 p-2 max-h-24 overflow-y-auto">
                           {(() => {
-                            const proj = projects.find((p) => p.id === projectId);
+                            const proj = projects.find(
+                              (p) => p.id === projectId
+                            );
                             const okrs = proj?.okrs || [];
-                            const krs = typeof okrObjectiveIndex === "number" ? okrs[okrObjectiveIndex]?.keyResults || [] : [];
+                            const krs =
+                              typeof okrObjectiveIndex === "number"
+                                ? okrs[okrObjectiveIndex]?.keyResults || []
+                                : [];
 
-                            if (!krs.length) return <p className="text-xs text-gray-400 italic">No key results available</p>;
+                            if (!krs.length)
+                              return (
+                                <p className="text-xs text-gray-400 italic">
+                                  No key results available
+                                </p>
+                              );
 
                             return (
                               <div className="space-y-1">
                                 {krs.map((kr, idx) => (
-                                  <label key={idx} className="flex items-start gap-2 text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
+                                  <label
+                                    key={idx}
+                                    className="flex items-start gap-2 text-sm cursor-pointer hover:bg-gray-50 p-1 rounded"
+                                  >
                                     <input
                                       type="checkbox"
                                       className="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                      checked={okrKeyResultIndices.includes(idx)}
+                                      checked={okrKeyResultIndices.includes(
+                                        idx
+                                      )}
                                       onChange={(e) => {
                                         setOkrKeyResultIndices((prev) => {
                                           const set = new Set(prev);
@@ -788,7 +946,9 @@ function TaskModal({
                                         });
                                       }}
                                     />
-                                    <span className="text-gray-700 text-xs leading-tight">{kr}</span>
+                                    <span className="text-gray-700 text-xs leading-tight">
+                                      {kr}
+                                    </span>
                                   </label>
                                 ))}
                               </div>
@@ -803,13 +963,20 @@ function TaskModal({
                 {/* Subtasks */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Subtasks</h3>
-                    <span className="text-[10px] text-gray-500">{subtasks.length} items</span>
+                    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      Subtasks
+                    </h3>
+                    <span className="text-[10px] text-gray-500">
+                      {subtasks.length} items
+                    </span>
                   </div>
 
                   <div className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-200">
                     {subtasks.map((st, idx) => (
-                      <div key={idx} className="flex items-center gap-2 group bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2 group bg-white p-2 rounded-lg border border-gray-100 shadow-sm"
+                      >
                         <input
                           type="checkbox"
                           checked={st.completed}
@@ -853,7 +1020,14 @@ function TaskModal({
                           if (e.key === "Enter") {
                             e.preventDefault();
                             if (newSubtask.trim()) {
-                              setSubtasks([...subtasks, { id: Math.random().toString(36).slice(2), title: newSubtask.trim(), completed: false }]);
+                              setSubtasks([
+                                ...subtasks,
+                                {
+                                  id: Math.random().toString(36).slice(2),
+                                  title: newSubtask.trim(),
+                                  completed: false,
+                                },
+                              ]);
                               setNewSubtask("");
                             }
                           }
@@ -866,7 +1040,14 @@ function TaskModal({
                         variant="secondary"
                         onClick={() => {
                           if (newSubtask.trim()) {
-                            setSubtasks([...subtasks, { id: Math.random().toString(36).slice(2), title: newSubtask.trim(), completed: false }]);
+                            setSubtasks([
+                              ...subtasks,
+                              {
+                                id: Math.random().toString(36).slice(2),
+                                title: newSubtask.trim(),
+                                completed: false,
+                              },
+                            ]);
                             setNewSubtask("");
                           }
                         }}
@@ -878,9 +1059,7 @@ function TaskModal({
                   </div>
                 </div>
               </div>
-
             </div>
-
           </form>
         </div>
 
@@ -890,7 +1069,12 @@ function TaskModal({
             {hasChanges ? "Unsaved changes" : "No changes made"}
           </div>
           <div className="flex gap-3">
-            <Button onClick={onClose} variant="secondary" type="button" className="px-6">
+            <Button
+              onClick={onClose}
+              variant="secondary"
+              type="button"
+              className="px-6"
+            >
               Cancel
             </Button>
             <Button

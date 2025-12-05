@@ -10,6 +10,10 @@ import {
   FaEye,
   FaTh,
   FaList,
+  FaProjectDiagram,
+  FaCheckCircle,
+  FaClock,
+  FaFlag,
 } from "react-icons/fa";
 // Excel export not used on this page currently
 import toast from "react-hot-toast";
@@ -79,6 +83,9 @@ function ManageProjects() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [viewMode, setViewMode] = useState("table"); // "table" or "kanban"
+
+  // Add new state for active stat filter
+  const [activeStatFilter, setActiveStatFilter] = useState(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -214,11 +221,22 @@ function ManageProjects() {
   const filteredProjects = useMemo(() => {
     let result = [...projectsWithDerived];
 
-    // Filter by completion status FIRST
-    if (showCompleted) {
+    // Apply active stat filter FIRST (before showCompleted)
+    if (activeStatFilter === "completed") {
       result = result.filter((p) => p.progress === 100);
-    } else {
-      result = result.filter((p) => p.progress < 100);
+    } else if (activeStatFilter === "in-progress") {
+      result = result.filter((p) => p.progress > 0 && p.progress < 100);
+    } else if (activeStatFilter === "not-started") {
+      result = result.filter((p) => p.progress === 0);
+    }
+
+    // Then apply showCompleted filter only if no stat filter is active
+    if (!activeStatFilter) {
+      if (showCompleted) {
+        result = result.filter((p) => p.progress === 100);
+      } else {
+        result = result.filter((p) => p.progress < 100);
+      }
     }
 
     if (searchTerm) {
@@ -228,8 +246,8 @@ function ManageProjects() {
           (project.progress === 0
             ? "Not Started"
             : project.progress === 100
-              ? "Completed"
-              : "In Progress") || "";
+            ? "Completed"
+            : "In Progress") || "";
         return (
           (project.projectName || "").toLowerCase().includes(normalisedTerm) ||
           (project.clientName || "").toLowerCase().includes(normalisedTerm) ||
@@ -255,11 +273,24 @@ function ManageProjects() {
     }
 
     return result;
-  }, [projectsWithDerived, searchTerm, sortConfig, showCompleted]);
+  }, [
+    projectsWithDerived,
+    searchTerm,
+    sortConfig,
+    showCompleted,
+    activeStatFilter,
+  ]);
+
+  // Clear active stat filter when other filters change
+  useEffect(() => {
+    if (searchTerm || showCompleted) {
+      setActiveStatFilter(null);
+    }
+  }, [searchTerm, showCompleted]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, sortConfig, showCompleted]);
+  }, [searchTerm, sortConfig, showCompleted, activeStatFilter]);
 
   const totalPages = Math.max(
     1,
@@ -317,12 +348,12 @@ function ManageProjects() {
 
     const hasValidOKR = Array.isArray(data.okrs)
       ? data.okrs.some(
-        (okr) =>
-          okr.objective &&
-          okr.objective.trim() &&
-          Array.isArray(okr.keyResults) &&
-          okr.keyResults.some((kr) => kr && kr.trim())
-      )
+          (okr) =>
+            okr.objective &&
+            okr.objective.trim() &&
+            Array.isArray(okr.keyResults) &&
+            okr.keyResults.some((kr) => kr && kr.trim())
+        )
       : false;
 
     if (!hasValidOKR) {
@@ -555,10 +586,11 @@ function ManageProjects() {
               </span>
             </h3>
             <div
-              className={`space-y-3 ${projects.length > 4
-                ? "max-h-[750px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
-                : ""
-                }`}
+              className={`space-y-3 ${
+                projects.length > 4
+                  ? "max-h-[750px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+                  : ""
+              }`}
             >
               {projects.map((project) => (
                 <div
@@ -682,6 +714,117 @@ function ManageProjects() {
         </PageHeader>
 
         <div className="space-y-6">
+          {/* Stats Cards - Now Clickable Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Total Projects Card */}
+            <div
+              onClick={() => {
+                setActiveStatFilter(null);
+                setSearchTerm("");
+                setShowCompleted(false);
+              }}
+              className="cursor-pointer"
+            >
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-600">
+                      Total Projects
+                    </p>
+                    <p className="text-3xl font-bold text-blue-900 mt-1">
+                      {projects.length}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-blue-200/50 flex items-center justify-center">
+                    <FaProjectDiagram className="text-blue-600 text-xl" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Completed Projects Card */}
+            <div
+              onClick={() => {
+                setActiveStatFilter("completed");
+                setSearchTerm("");
+                setShowCompleted(false);
+              }}
+              className="cursor-pointer"
+            >
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-green-600">
+                      Completed
+                    </p>
+                    <p className="text-3xl font-bold text-green-900 mt-1">
+                      {completedProjectsCount}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-green-200/50 flex items-center justify-center">
+                    <FaCheckCircle className="text-green-600 text-xl" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* In Progress Projects Card */}
+            <div
+              onClick={() => {
+                setActiveStatFilter("in-progress");
+                setSearchTerm("");
+                setShowCompleted(false);
+              }}
+              className="cursor-pointer"
+            >
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-yellow-500 p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-yellow-600">
+                      In Progress
+                    </p>
+                    <p className="text-3xl font-bold text-yellow-900 mt-1">
+                      {
+                        projects.filter(
+                          (p) => p.progress > 0 && p.progress < 100
+                        ).length
+                      }
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-yellow-200/50 flex items-center justify-center">
+                    <FaClock className="text-yellow-600 text-xl" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Not Started Projects Card */}
+            <div
+              onClick={() => {
+                setActiveStatFilter("not-started");
+                setSearchTerm("");
+                setShowCompleted(false);
+              }}
+              className="cursor-pointer"
+            >
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-red-500 p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-red-600">
+                      Not Started
+                    </p>
+                    <p className="text-3xl font-bold text-red-900 mt-1">
+                      {projects.filter((p) => p.progress === 0).length}
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-red-200/50 flex items-center justify-center">
+                    <FaFlag className="text-red-600 text-xl" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <Card
             title="Search & Actions"
             tone="white"
@@ -695,10 +838,11 @@ function ManageProjects() {
                 </span>
                 <button
                   onClick={() => setShowCompleted(!showCompleted)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${showCompleted
-                    ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
-                    : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
-                    }`}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    showCompleted
+                      ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
+                      : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
+                  }`}
                   title={
                     showCompleted
                       ? "Hide completed projects"
@@ -713,20 +857,22 @@ function ManageProjects() {
                 <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                   <button
                     onClick={() => setViewMode("table")}
-                    className={`p-2 rounded transition-colors ${viewMode === "table"
-                      ? "bg-white text-indigo-600 shadow"
-                      : "text-gray-600 hover:text-gray-900"
-                      }`}
+                    className={`p-2 rounded transition-colors ${
+                      viewMode === "table"
+                        ? "bg-white text-indigo-600 shadow"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
                     title="List View"
                   >
                     <FaList className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setViewMode("kanban")}
-                    className={`p-2 rounded transition-colors ${viewMode === "kanban"
-                      ? "bg-white text-indigo-600 shadow"
-                      : "text-gray-600 hover:text-gray-900"
-                      }`}
+                    className={`p-2 rounded transition-colors ${
+                      viewMode === "kanban"
+                        ? "bg-white text-indigo-600 shadow"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
                     title="Kanban View"
                   >
                     <FaTh className="w-4 h-4" />
@@ -815,7 +961,6 @@ function ManageProjects() {
                 </div>
               }
             >
-
               <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
                 <table className="min-w-[1100px] divide-y divide-gray-200 bg-white">
                   <caption className="sr-only">
@@ -828,10 +973,10 @@ function ManageProjects() {
                         const ariaSort = !header.sortable
                           ? "none"
                           : isActive
-                            ? sortConfig.direction === "asc"
-                              ? "ascending"
-                              : "descending"
-                            : "none";
+                          ? sortConfig.direction === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : "none";
 
                         return (
                           <th
@@ -839,7 +984,9 @@ function ManageProjects() {
                             scope="col"
                             aria-sort={ariaSort}
                             className={`group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 ${
-                              header.key === "actions" ? "sticky right-0 z-10 bg-gray-50" : ""
+                              header.key === "actions"
+                                ? "sticky right-0 z-10 bg-gray-50"
+                                : ""
                             }`}
                           >
                             {header.sortable ? (
@@ -891,16 +1038,17 @@ function ManageProjects() {
                           <div className="flex items-center">
                             <div className="flex-1 bg-gray-200 rounded-full h-3 mr-3 min-w-[120px]">
                               <div
-                                className={`h-3 rounded-full transition-all duration-300 ${project.progress === 0
-                                  ? "bg-gray-400"
-                                  : project.progress < 30
+                                className={`h-3 rounded-full transition-all duration-300 ${
+                                  project.progress === 0
+                                    ? "bg-gray-400"
+                                    : project.progress < 30
                                     ? "bg-red-500"
                                     : project.progress < 70
-                                      ? "bg-yellow-500"
-                                      : project.progress < 100
-                                        ? "bg-blue-500"
-                                        : "bg-green-500"
-                                  }`}
+                                    ? "bg-yellow-500"
+                                    : project.progress < 100
+                                    ? "bg-blue-500"
+                                    : "bg-green-500"
+                                }`}
                                 style={{ width: `${project.progress}%` }}
                               ></div>
                             </div>

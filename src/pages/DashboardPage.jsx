@@ -296,7 +296,12 @@ function DashboardPage() {
         (d) => (d[dataKey1] || 0) + (d[dataKey2] || 0) + (d[dataKey3] || 0)
       )
     );
-    if (!Array.isArray(data) || data.length === 0 || !isFinite(maxValue) || maxValue <= 0) {
+    if (
+      !Array.isArray(data) ||
+      data.length === 0 ||
+      !isFinite(maxValue) ||
+      maxValue <= 0
+    ) {
       return (
         <div>
           <h3 className="text-lg font-semibold text-content-primary mb-4">
@@ -491,24 +496,31 @@ function DashboardPage() {
     const sorted = [...list].sort((a, b) => b.progress - a.progress);
 
     return (
-      <div>
-        <h3 className="text-lg font-semibold text-content-primary mb-4">
-          Projects Progress
-        </h3>
-        <div className="space-y-4 max-h-64 overflow-auto pr-2">
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-content-primary">
+            Projects Progress
+          </h3>
+        </div>
+        <div
+          className="overflow-y-auto pr-2 space-y-2.5"
+          style={{ maxHeight: "420px" }}
+        >
           {sorted.map((p) => (
             <div key={p.id} className="space-y-1">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-medium text-content-primary">
-                  {p.name}
-                  {p.client ? (
-                    <span className="ml-2 text-xs text-content-tertiary">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm font-medium text-content-primary truncate flex-1 min-w-0">
+                  <span className="truncate block" title={p.name}>
+                    {p.name}
+                  </span>
+                  {p.client && (
+                    <span className="text-xs text-content-tertiary block truncate">
                       ({p.client})
                     </span>
-                  ) : null}
+                  )}
                 </div>
-                <div className="text-xs text-content-secondary">
-                  {p.done}/{p.total} tasks · {p.progress}%
+                <div className="text-xs text-content-secondary whitespace-nowrap shrink-0">
+                  {p.done}/{p.total} · {p.progress}%
                 </div>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
@@ -520,8 +532,10 @@ function DashboardPage() {
             </div>
           ))}
           {sorted.length === 0 && (
-            <div className="text-sm text-content-tertiary">
-              No projects yet.
+            <div className="flex items-center justify-center h-full">
+              <div className="text-sm text-content-tertiary">
+                No projects yet.
+              </div>
             </div>
           )}
         </div>
@@ -676,8 +690,12 @@ function DashboardPage() {
           <h5 className="text-sm font-medium text-content-primary">
             Upcoming Events
           </h5>
-          {data.filter((event) => new Date(event.date) >= currentDate).slice(0, 5).length === 0 ? (
-            <div className="text-xs text-content-tertiary">No upcoming events.</div>
+          {data
+            .filter((event) => new Date(event.date) >= currentDate)
+            .slice(0, 5).length === 0 ? (
+            <div className="text-xs text-content-tertiary">
+              No upcoming events.
+            </div>
           ) : (
             data
               .filter((event) => new Date(event.date) >= currentDate)
@@ -854,7 +872,9 @@ function DashboardPage() {
                 Project Health Overview
               </h3>
               {statusSummary.total === 0 && (
-                <div className="text-sm text-content-tertiary mb-2">No task data yet.</div>
+                <div className="text-sm text-content-tertiary mb-2">
+                  No task data yet.
+                </div>
               )}
 
               {/* Status distribution stacked bar */}

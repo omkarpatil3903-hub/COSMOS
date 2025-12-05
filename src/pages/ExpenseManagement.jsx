@@ -17,6 +17,11 @@ import {
   FaExternalLinkAlt,
   FaMoneyBillWave,
   FaTag,
+  FaProjectDiagram,
+  FaSearch,
+  FaClock,
+  FaHourglassHalf,
+  FaDownload,
 } from "react-icons/fa";
 import {
   subscribeToAllExpenses,
@@ -46,6 +51,7 @@ const ExpenseManagement = () => {
   const [rejectReason, setRejectReason] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const [viewingExpense, setViewingExpense] = useState(null);
+  const [activeStatFilter, setActiveStatFilter] = useState(null);
 
   useEffect(() => {
     const unsub = subscribeToAllExpenses(
@@ -59,21 +65,62 @@ const ExpenseManagement = () => {
   }, [statusFilter]);
 
   const filtered = useMemo(() => {
-    return expenses.filter((e) => {
-      if (categoryFilter !== "all" && (e.category || "Other") !== categoryFilter)
-        return false;
-      if (fromDate && e.date && e.date < fromDate) return false;
-      if (toDate && e.date && e.date > toDate) return false;
+    let result = [...expenses];
 
-      if (!searchQuery) return true;
+    if (activeStatFilter === "submitted") {
+      result = result.filter((e) => e.status === "Submitted");
+    } else if (activeStatFilter === "approved") {
+      result = result.filter((e) => e.status === "Approved");
+    } else if (activeStatFilter === "paid") {
+      result = result.filter((e) => e.status === "Paid");
+    }
+
+    if (!activeStatFilter) {
+      if (categoryFilter !== "all") {
+        result = result.filter(
+          (e) => (e.category || "Other") === categoryFilter
+        );
+      }
+    } else {
+      if (categoryFilter !== "all") {
+        result = result.filter(
+          (e) => (e.category || "Other") === categoryFilter
+        );
+      }
+    }
+
+    if (fromDate && !activeStatFilter) {
+      result = result.filter((e) => e.date && e.date >= fromDate);
+    }
+    if (toDate && !activeStatFilter) {
+      result = result.filter((e) => e.date && e.date <= toDate);
+    }
+
+    if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      return (
-        e.title?.toLowerCase().includes(q) ||
-        e.employeeName?.toLowerCase().includes(q) ||
-        e.description?.toLowerCase().includes(q)
+      result = result.filter(
+        (e) =>
+          e.title?.toLowerCase().includes(q) ||
+          e.employeeName?.toLowerCase().includes(q) ||
+          e.description?.toLowerCase().includes(q)
       );
-    });
-  }, [expenses, searchQuery, categoryFilter, fromDate, toDate]);
+    }
+
+    return result;
+  }, [
+    expenses,
+    searchQuery,
+    categoryFilter,
+    fromDate,
+    toDate,
+    activeStatFilter,
+  ]);
+
+  useEffect(() => {
+    if (searchQuery || categoryFilter !== "all" || fromDate || toDate) {
+      setActiveStatFilter(null);
+    }
+  }, [searchQuery, categoryFilter, fromDate, toDate]);
 
   const stats = useMemo(() => {
     const total = expenses.length;
@@ -212,105 +259,283 @@ const ExpenseManagement = () => {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Expense Management"
-        description="Review and process employee reimbursement claims"
-        icon={<FaMoneyCheckAlt />}
-      />
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <StatCard
-          label="Total"
-          value={stats.total}
-          icon={<FaMoneyCheckAlt className="h-5 w-5" />}
-          color="indigo"
+      <div className="flex items-center justify-between">
+        <PageHeader
+          title="Expense Management"
+          description="Review and process employee reimbursement claims"
+          icon={<FaMoneyCheckAlt />}
         />
-        <StatCard
-          label="Approved"
-          value={stats.approved}
-          icon={<FaCheckCircle className="h-5 w-5" />}
-          color="green"
-        />
-        <StatCard
-          label="Paid"
-          value={`₹${stats.totalAmount.toFixed(2)}`}
-          subValue={`${stats.paid} claim${stats.paid !== 1 ? "s" : ""}`}
-          icon={<FaRupeeSign className="h-5 w-5" />}
-          color="purple"
-        />
+        <Button
+          onClick={handleExportCSV}
+          variant="secondary"
+          className="flex items-center gap-2"
+          disabled={filtered.length === 0}
+        >
+          <FaDownload className="h-4 w-4" />
+          Export Excel
+        </Button>
       </div>
 
-      <Card>
-        <div className="flex flex-wrap items-center gap-3">
-          <input
-            type="text"
-            placeholder="Search by title, employee, description..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 min-w-[220px] rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
-          />
+      {/* Stats Cards - Now Clickable Filters */}
+      <div className="grid gap-4 md:grid-cols-4">
+        {/* Total Expenses Card */}
+        <div
+          onClick={() => {
+            setActiveStatFilter(null);
+            setSearchQuery("");
+            setCategoryFilter("all");
+            setFromDate("");
+            setToDate("");
+            setStatusFilter("all");
+          }}
+          className="cursor-pointer"
+        >
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-indigo-500 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-indigo-600">Total</p>
+                <p className="text-3xl font-bold text-indigo-900 mt-1">
+                  {stats.total}
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-indigo-200/50 flex items-center justify-center">
+                <FaMoneyCheckAlt className="text-indigo-600 text-xl" />
+              </div>
+            </div>
+          </div>
+        </div>
 
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
-          >
-            <option value="all">All Statuses</option>
-            <option value="Draft">Draft</option>
-            <option value="Submitted">Submitted</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Paid">Paid</option>
-          </select>
+        {/* Submitted Card */}
+        <div
+          onClick={() => {
+            setActiveStatFilter("submitted");
+            setSearchQuery("");
+            setCategoryFilter("all");
+            setFromDate("");
+            setToDate("");
+            setStatusFilter("all");
+          }}
+          className="cursor-pointer"
+        >
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-600">Submitted</p>
+                <p className="text-3xl font-bold text-blue-900 mt-1">
+                  {stats.submitted}
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-blue-200/50 flex items-center justify-center">
+                <FaHourglassHalf className="text-blue-600 text-xl" />
+              </div>
+            </div>
+          </div>
+        </div>
 
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
-          >
-            <option value="all">All Categories</option>
-            <option value="Travel">Travel</option>
-            <option value="Food">Food</option>
-            <option value="Stay">Stay</option>
-            <option value="Office">Office</option>
-            <option value="Other">Other</option>
-          </select>
+        {/* Approved Card */}
+        <div
+          onClick={() => {
+            setActiveStatFilter("approved");
+            setSearchQuery("");
+            setCategoryFilter("all");
+            setFromDate("");
+            setToDate("");
+            setStatusFilter("all");
+          }}
+          className="cursor-pointer"
+        >
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-green-600">Approved</p>
+                <p className="text-3xl font-bold text-green-900 mt-1">
+                  {stats.approved}
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-green-200/50 flex items-center justify-center">
+                <FaCheckCircle className="text-green-600 text-xl" />
+              </div>
+            </div>
+          </div>
+        </div>
 
-          <div className="flex items-center gap-2 text-xs text-content-secondary">
-            <span>Date:</span>
+        {/* Paid Card */}
+        <div
+          onClick={() => {
+            setActiveStatFilter("paid");
+            setSearchQuery("");
+            setCategoryFilter("all");
+            setFromDate("");
+            setToDate("");
+            setStatusFilter("all");
+          }}
+          className="cursor-pointer"
+        >
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-purple-500 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-purple-600">
+                  Paid (₹{stats.totalAmount.toFixed(2)})
+                </p>
+                <p className="text-3xl font-bold text-purple-900 mt-1">
+                  {stats.paid}
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-purple-200/50 flex items-center justify-center">
+                <FaRupeeSign className="text-purple-600 text-xl" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Card className="p-4">
+        {/* Search & Actions Header */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Search & Actions
+            </h2>
+            <span className="text-sm text-gray-500">
+              Showing {filtered.length} records
+            </span>
+          </div>
+          <hr className="border-gray-200" />
+        </div>
+
+        {/* Search Input with Label */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Search by title, employee, or description
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FaSearch className="h-4 w-4 text-gray-400" />
+            </div>
             <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="rounded-lg border border-subtle bg-surface py-1 px-2 text-xs text-content-primary"
-            />
-            <span>-</span>
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="rounded-lg border border-subtle bg-surface py-1 px-2 text-xs text-content-primary"
+              type="text"
+              placeholder="e.g. Travel Expense or John Doe"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
           </div>
+        </div>
 
-          <div className="ml-auto flex items-center gap-2">
-            {selectedIds.length > 0 && (
-              <>
-                <Button size="sm" onClick={handleBulkApprove}>
-                  Approve ({selectedIds.length})
-                </Button>
-                <Button size="sm" variant="secondary" onClick={handleBulkPay}>
-                  Mark Paid ({selectedIds.length})
-                </Button>
-              </>
-            )}
-            <Button size="sm" variant="secondary" onClick={handleExportCSV}>
-              Export CSV
+        {/* Bulk Actions */}
+        {selectedIds.length > 0 && (
+          <div className="flex items-center gap-3 mb-4 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+            <span className="text-sm font-medium text-indigo-700">
+              {selectedIds.length} selected
+            </span>
+            <Button size="sm" onClick={handleBulkApprove}>
+              Approve Selected
+            </Button>
+            <Button size="sm" variant="secondary" onClick={handleBulkPay}>
+              Mark Paid
             </Button>
           </div>
+        )}
+
+        {/* Filters Section with Labels */}
+        <div className="pt-4 border-t border-gray-200">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              Filters:
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Status Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm"
+              >
+                <option value="all">All Statuses</option>
+                <option value="Draft">Draft</option>
+                <option value="Submitted">Submitted</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+                <option value="Paid">Paid</option>
+              </select>
+            </div>
+
+            {/* Category Filter */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Category
+              </label>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm"
+              >
+                <option value="all">All Categories</option>
+                <option value="Travel">Travel</option>
+                <option value="Food">Food</option>
+                <option value="Stay">Stay</option>
+                <option value="Office">Office</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            {/* From Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                From Date
+              </label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm"
+              />
+            </div>
+
+            {/* To Date */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                To Date
+              </label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm"
+              />
+            </div>
+          </div>
+
+          {/* Clear Filters Button Only */}
+          {(searchQuery ||
+            categoryFilter !== "all" ||
+            statusFilter !== "all" ||
+            fromDate ||
+            toDate) && (
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setCategoryFilter("all");
+                  setStatusFilter("all");
+                  setFromDate("");
+                  setToDate("");
+                }}
+                className="text-xs text-red-600 hover:text-red-800 font-medium flex items-center gap-1"
+              >
+                <FaTimes className="h-3 w-3" /> Clear Filters
+              </button>
+            </div>
+          )}
         </div>
       </Card>
 
+      {/* Table Section */}
       {loading ? (
         <div className="py-12 text-center">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 mb-4 animate-pulse">
@@ -323,13 +548,15 @@ const ExpenseManagement = () => {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 text-gray-400 mb-4">
             <FaFileInvoice className="text-3xl" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900">No expenses found</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            No expenses found
+          </h3>
           <p className="text-gray-500 mt-1 max-w-sm mx-auto">
             No expenses match your current filters.
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm">
+        <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -344,31 +571,63 @@ const ExpenseManagement = () => {
                     className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                   />
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                >
+                  Sr. No.
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                >
                   Employee
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                >
                   Expense Details
                 </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                >
+                  Project
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                >
                   Category
                 </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                >
                   Amount
                 </th>
-                <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                >
                   Status
                 </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                >
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filtered.map((e) => (
+              {filtered.map((e, index) => (
                 <tr
                   key={e.id}
-                  className={`hover:bg-gray-50 transition-colors group ${selectedIds.includes(e.id) ? "bg-indigo-50/50" : ""}`}
+                  className={`hover:bg-gray-50 transition-colors group ${
+                    selectedIds.includes(e.id) ? "bg-indigo-50/50" : ""
+                  }`}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <input
@@ -378,17 +637,21 @@ const ExpenseManagement = () => {
                       className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
+                      {index + 1}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs mr-3">
-                        {e.employeeName ? e.employeeName.charAt(0).toUpperCase() : "?"}
+                        {e.employeeName
+                          ? e.employeeName.charAt(0).toUpperCase()
+                          : "?"}
                       </div>
                       <div>
                         <div className="text-sm font-medium text-gray-900">
                           {e.employeeName || "Unknown"}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {e.employeeId}
                         </div>
                       </div>
                     </div>
@@ -415,6 +678,18 @@ const ExpenseManagement = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    {e.projectName ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        <FaProjectDiagram className="text-[10px] text-indigo-500" />
+                        {e.projectName}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-400 italic">
+                        No project
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
                       <FaTag className="text-[10px] text-gray-500" />
                       {e.category || "Other"}
@@ -423,13 +698,16 @@ const ExpenseManagement = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="text-sm font-bold text-gray-900">
                       {e.amount?.toFixed ? e.amount.toFixed(2) : e.amount}
-                      <span className="text-xs font-medium text-gray-500 ml-1">{e.currency || "INR"}</span>
+                      <span className="text-xs font-medium text-gray-500 ml-1">
+                        {e.currency || "INR"}
+                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[e.status] || "bg-gray-100 text-gray-800"
-                        }`}
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        statusColors[e.status] || "bg-gray-100 text-gray-800"
+                      }`}
                     >
                       {e.status || "Unknown"}
                     </span>
@@ -505,7 +783,8 @@ const ExpenseManagement = () => {
               <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex gap-3">
                 <FaExclamationTriangle className="text-amber-500 mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-amber-800">
-                  The employee will be notified about this rejection. Please provide a clear reason to help them correct the issue.
+                  The employee will be notified about this rejection. Please
+                  provide a clear reason to help them correct the issue.
                 </p>
               </div>
               <div>
@@ -570,18 +849,33 @@ const ExpenseManagement = () => {
                     {viewingExpense.title}
                   </h3>
                   <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
-                    <span className="font-medium text-gray-700">{viewingExpense.category}</span>
+                    <span className="font-medium text-gray-700">
+                      {viewingExpense.category}
+                    </span>
                     <span>•</span>
                     <span>{viewingExpense.date}</span>
                   </div>
+                  {viewingExpense.projectName && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        <FaProjectDiagram className="text-[10px]" />
+                        {viewingExpense.projectName}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-indigo-600">
-                    {viewingExpense.amount?.toFixed(2)} <span className="text-base font-medium text-gray-500">{viewingExpense.currency}</span>
+                    {viewingExpense.amount?.toFixed(2)}{" "}
+                    <span className="text-base font-medium text-gray-500">
+                      {viewingExpense.currency}
+                    </span>
                   </div>
                   <div className="mt-1 flex justify-end">
                     <span
-                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${statusColors[viewingExpense.status]}`}
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${
+                        statusColors[viewingExpense.status]
+                      }`}
                     >
                       {viewingExpense.status}
                     </span>
@@ -601,9 +895,6 @@ const ExpenseManagement = () => {
                   <div className="font-semibold text-gray-900">
                     {viewingExpense.employeeName}
                   </div>
-                  <div className="text-xs text-gray-500 font-mono mt-0.5">
-                    {viewingExpense.employeeId}
-                  </div>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 p-3">
                   <div className="flex items-center gap-2 mb-1">
@@ -619,7 +910,12 @@ const ExpenseManagement = () => {
                   </div>
                   <div className="text-xs text-gray-500 mt-0.5">
                     {viewingExpense.createdAt?.toDate
-                      ? viewingExpense.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      ? viewingExpense.createdAt
+                          .toDate()
+                          .toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
                       : ""}
                   </div>
                 </div>

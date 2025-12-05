@@ -1,365 +1,817 @@
-import { useMemo, useCallback, useState } from "react";
-import { updateDoc, doc } from "firebase/firestore";
+import { useState, useMemo, useEffect } from "react";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import toast from "react-hot-toast";
 import {
   FaChevronRight,
-  FaChevronLeft,
   FaEye,
   FaEdit,
   FaTrash,
+  FaCheckCircle,
+  FaClock,
+  FaFlag,
+  FaTimes,
 } from "react-icons/fa";
-import toast from "react-hot-toast";
 
-const STAGES = [
-  "Diagnose",
-  "Design Solution",
-  "Roadmap",
-  "System Designing",
-  "Monitor and Review",
-  "Optimization",
-  "Closure or Continuity",
-];
+// Utility function for progress color
+const getProgressColor = (progress) => {
+  if (progress === 0) return "bg-gray-400";
+  if (progress < 30) return "bg-red-500";
+  if (progress < 70) return "bg-yellow-500";
+  if (progress < 100) return "bg-blue-500";
+  return "bg-green-500";
+};
 
-export default function SevenStageProjectKanban({
-  projects = [],
-  onLocalUpdate,
-  onView,
-  onEdit,
-  onDelete,
-}) {
-  const [openSubs, setOpenSubs] = useState({});
+export default function SevenStageProjectKanban({ projects, onUpdate }) {
+  const [STAGES, setSTAGES] = useState([]);
+  const [loadingStages, setLoadingStages] = useState(true);
+  const [currentProgressPage, setCurrentProgressPage] = useState(0);
+  const STAGES_PER_PAGE = 7;
+
+  // Load pipeline stages from Firestore settings/projectValues
+  useEffect(() => {
+    const loadPipelineStages = async () => {
+      try {
+        // Fetch from settings/projectValues document
+        const settingsDocRef = doc(db, "settings", "project-levels");
+        const settingsDoc = await getDoc(settingsDocRef);
+
+        if (settingsDoc.exists()) {
+          const data = settingsDoc.data();
+
+          // Check if levels array exists in the document
+          if (data.levels && Array.isArray(data.levels)) {
+            // Map Firestore levels data to component format and sort by level number
+            const stagesWithIcons = data.levels
+              .filter((stage) => stage.level && stage.name) // Filter out invalid entries
+              .sort((a, b) => {
+                // Parse level as integer for proper numerical sorting
+                const levelA = parseInt(a.level, 10);
+                const levelB = parseInt(b.level, 10);
+                return levelA - levelB;
+              })
+              .map((stage) => {
+                const levelNum = parseInt(stage.level, 10);
+                return {
+                  id: stage.name, // Use name as ID for matching with project pipelineStage
+                  label: stage.name, // Project level name from database
+                  level: levelNum, // Parse as integer
+                  description: `Level ${levelNum}`, // Use level as description
+                  color: getColorForLevel(levelNum), // Assign color based on level
+                  icon: getIconForStage(stage.name),
+                };
+              });
+
+            setSTAGES(stagesWithIcons);
+            console.log(
+              "✅ Pipeline stages loaded from Firestore:",
+              stagesWithIcons
+            );
+          } else {
+            console.warn(
+              "⚠️ No 'levels' array found in projectValues document"
+            );
+            setSTAGES(getDefaultStages());
+            toast.error("Pipeline stages not configured in settings");
+          }
+        } else {
+          console.warn("⚠️ settings/projectValues document does not exist");
+          setSTAGES(getDefaultStages());
+          toast.error("Pipeline stages not configured in settings");
+        }
+      } catch (error) {
+        console.error("❌ Error loading pipeline stages:", error);
+        toast.error("Failed to load pipeline stages");
+        setSTAGES(getDefaultStages());
+      } finally {
+        setLoadingStages(false);
+      }
+    };
+
+    loadPipelineStages();
+  }, []);
+
+  // Helper function to get color based on level number (1-indexed)
+  const getColorForLevel = (level) => {
+    const colors = [
+      "bg-purple-500", // Level 1
+      "bg-blue-500", // Level 2
+      "bg-cyan-500", // Level 3
+      "bg-indigo-500", // Level 4
+      "bg-orange-500", // Level 5
+      "bg-green-500", // Level 6
+      "bg-emerald-500", // Level 7
+      "bg-pink-500", // Level 8
+      "bg-teal-500", // Level 9
+      "bg-red-500", // Level 10
+      "bg-amber-500", // Level 11
+      "bg-lime-500", // Level 12
+      "bg-sky-500", // Level 13
+      "bg-violet-500", // Level 14
+      "bg-fuchsia-500", // Level 15
+      "bg-rose-500", // Level 16
+      "bg-slate-500", // Level 17
+      "bg-zinc-500", // Level 18
+      "bg-stone-500", // Level 19
+      "bg-neutral-500", // Level 20
+    ];
+    // level is 1-indexed, array is 0-indexed
+    return colors[level - 1] || "bg-gray-500";
+  };
+
+  // Helper function to get icon based on stage name
+  const getIconForStage = (stageName) => {
+    const name = stageName.toLowerCase();
+
+    // Map based on your screenshot levels
+    if (name.includes("system") || name.includes("design")) {
+      return <FaCheckCircle className="h-4 w-4" />;
+    }
+    if (name.includes("design") || name.includes("solution")) {
+      return <FaEdit className="h-4 w-4" />;
+    }
+    if (name.includes("roadmap") || name.includes("plan")) {
+      return <FaClock className="h-4 w-4" />;
+    }
+    if (name.includes("test") || name.includes("quality")) {
+      return <FaFlag className="h-4 w-4" />;
+    }
+    if (name.includes("deploy") || name.includes("launch")) {
+      return <FaCheckCircle className="h-4 w-4" />;
+    }
+    if (name.includes("deliver") || name.includes("complete")) {
+      return <FaCheckCircle className="h-4 w-4" />;
+    }
+
+    // Default icon
+    return <FaEye className="h-4 w-4" />;
+  };
+
+  // Default stages as fallback (properly ordered Level 1-7)
+  const getDefaultStages = () => [
+    {
+      id: "Diagnose",
+      label: "Diagnose",
+      level: 1,
+      description: "Level 1",
+      color: "bg-purple-500",
+      icon: <FaEye className="h-4 w-4" />,
+    },
+    {
+      id: "Design Solution",
+      label: "Design Solution",
+      level: 2,
+      description: "Level 2",
+      color: "bg-blue-500",
+      icon: <FaEdit className="h-4 w-4" />,
+    },
+    {
+      id: "Roadmap",
+      label: "Roadmap",
+      level: 3,
+      description: "Level 3",
+      color: "bg-cyan-500",
+      icon: <FaClock className="h-4 w-4" />,
+    },
+    {
+      id: "System Designing",
+      label: "System Designing",
+      level: 4,
+      description: "Level 4",
+      color: "bg-indigo-500",
+      icon: <FaCheckCircle className="h-4 w-4" />,
+    },
+    {
+      id: "Testing",
+      label: "Testing",
+      level: 5,
+      description: "Level 5",
+      color: "bg-orange-500",
+      icon: <FaFlag className="h-4 w-4" />,
+    },
+    {
+      id: "Deployment",
+      label: "Deployment",
+      level: 6,
+      description: "Level 6",
+      color: "bg-green-500",
+      icon: <FaCheckCircle className="h-4 w-4" />,
+    },
+    {
+      id: "Delivered",
+      label: "Delivered",
+      level: 7,
+      description: "Level 7",
+      color: "bg-emerald-500",
+      icon: <FaCheckCircle className="h-4 w-4" />,
+    },
+  ];
+
+  // Group projects by pipeline stage from database
+  const groupedProjects = useMemo(() => {
+    if (!STAGES.length) return {};
+
+    const groups = {};
+    STAGES.forEach((stage) => {
+      groups[stage.id] = projects.filter(
+        (p) => (p.pipelineStage || STAGES[0]?.id || "Diagnose") === stage.id
+      );
+    });
+    return groups;
+  }, [projects, STAGES]);
+
+  const move = async (project, direction) => {
+    const idx = STAGES.findIndex(
+      (s) => s.id === (project.pipelineStage || "Diagnose")
+    );
+    const nextIdx = idx + direction;
+    if (nextIdx < 0 || nextIdx >= STAGES.length) return;
+    const newStage = STAGES[nextIdx].id;
+    const subs = project.pipelineSubstages || {};
+    const patch = {
+      pipelineStage: newStage,
+      pipelineUpdatedAt: new Date(),
+    };
+    if (!subs[newStage]) {
+      patch[`pipelineSubstages.${newStage}`] = [];
+    }
+    try {
+      await updateDoc(doc(db, "projects", project.id), patch);
+      onUpdate?.(project.id, {
+        pipelineStage: newStage,
+        pipelineSubstages: { ...subs, [newStage]: subs[newStage] || [] },
+      });
+      toast.success(`Moved to ${newStage}`);
+    } catch (e) {
+      console.error("Stage update failed", e);
+      toast.error("Failed to update stage");
+    }
+  };
+
   const [newSubstageName, setNewSubstageName] = useState({});
 
-  const columns = useMemo(() => {
-    const map = {};
-    STAGES.forEach((s) => (map[s] = []));
-    projects.forEach((p) => {
-      const stage = STAGES.includes(p.pipelineStage)
-        ? p.pipelineStage
-        : "Diagnose";
-      map[stage].push(p);
-    });
-    return map;
-  }, [projects]);
-
-  const move = useCallback(
-    async (project, direction) => {
-      const idx = STAGES.indexOf(project.pipelineStage || "Diagnose");
-      const nextIdx = idx + direction;
-      if (nextIdx < 0 || nextIdx >= STAGES.length) return;
-      const newStage = STAGES[nextIdx];
-      const subs = project.pipelineSubstages || {};
-      const patch = {
-        pipelineStage: newStage,
-        pipelineUpdatedAt: new Date(),
-      };
-      if (!subs[newStage]) {
-        patch[`pipelineSubstages.${newStage}`] = [];
-      }
-      try {
-        await updateDoc(doc(db, "projects", project.id), patch);
-        onLocalUpdate?.(project.id, {
-          pipelineStage: newStage,
-          pipelineSubstages: { ...subs, [newStage]: subs[newStage] || [] },
-        });
-        toast.success(`Moved to ${newStage}`);
-      } catch (e) {
-        console.error("Stage update failed", e);
-        toast.error("Failed to update stage");
-      }
-    },
-    [onLocalUpdate]
-  );
-
-  const addSubstage = useCallback(
-    async (project) => {
-      const name = (newSubstageName[project.id] || "").trim();
-      if (!name) return;
-      const subs = project.pipelineSubstages || {};
-      const stageKey = project.pipelineStage;
-      const newEntry = {
-        id: Date.now().toString(),
-        name,
-        status: "open",
-        createdAt: Date.now(),
-        completedAt: null,
-      };
-      try {
-        await updateDoc(doc(db, "projects", project.id), {
-          [`pipelineSubstages.${stageKey}`]: [
-            ...(subs[stageKey] || []),
-            newEntry,
-          ],
-        });
-        onLocalUpdate?.(project.id, {
-          pipelineSubstages: {
-            ...subs,
-            [stageKey]: [...(subs[stageKey] || []), newEntry],
-          },
-        });
-        setNewSubstageName((prev) => ({ ...prev, [project.id]: "" }));
-        toast.success("Substage added");
-      } catch (e) {
-        console.error("Add substage failed", e);
-        toast.error("Failed to add substage");
-      }
-    },
-    [newSubstageName, onLocalUpdate]
-  );
-
-  const toggleSubstage = useCallback(
-    async (project, sub) => {
-      const subs = project.pipelineSubstages || {};
-      const stageKey = project.pipelineStage;
-      const updated = (subs[stageKey] || []).map((s) =>
-        s.id === sub.id
-          ? {
-              ...s,
-              status: s.status === "open" ? "done" : "open",
-              completedAt: s.status === "open" ? Date.now() : null,
-            }
-          : s
-      );
-      try {
-        await updateDoc(doc(db, "projects", project.id), {
-          [`pipelineSubstages.${stageKey}`]: updated,
-        });
-        onLocalUpdate?.(project.id, {
-          pipelineSubstages: { ...subs, [stageKey]: updated },
-        });
-      } catch (e) {
-        console.error("Toggle substage failed", e);
-        toast.error("Failed to update substage");
-      }
-    },
-    [onLocalUpdate]
-  );
-
-  const getProgressColor = (progress) => {
-    if (progress === 0) return "bg-gray-400";
-    if (progress < 30) return "bg-red-500";
-    if (progress < 70) return "bg-yellow-500";
-    if (progress < 100) return "bg-blue-500";
-    return "bg-green-500";
-  };
-
-  const getStageColor = (stage) => {
-    const colors = {
-      Diagnose: "border-purple-300 bg-purple-50",
-      "Design Solution": "border-blue-300 bg-blue-50",
-      Roadmap: "border-cyan-300 bg-cyan-50",
-      "System Designing": "border-indigo-300 bg-indigo-50",
-      "Monitor and Review": "border-yellow-300 bg-yellow-50",
-      Optimization: "border-orange-300 bg-orange-50",
-      "Closure or Continuity": "border-green-300 bg-green-50",
+  const addSubstage = async (project) => {
+    const name = (newSubstageName[project.id] || "").trim();
+    if (!name) return;
+    const subs = project.pipelineSubstages || {};
+    const stageKey = project.pipelineStage;
+    const newEntry = {
+      id: Date.now().toString(),
+      name,
+      status: "open",
+      createdAt: Date.now(),
+      completedAt: null,
     };
-    return colors[stage] || "border-gray-300 bg-gray-50";
+    try {
+      await updateDoc(doc(db, "projects", project.id), {
+        [`pipelineSubstages.${stageKey}`]: [
+          ...(subs[stageKey] || []),
+          newEntry,
+        ],
+      });
+      onUpdate?.(project.id, {
+        pipelineSubstages: {
+          ...subs,
+          [stageKey]: [...(subs[stageKey] || []), newEntry],
+        },
+      });
+      setNewSubstageName((prev) => ({ ...prev, [project.id]: "" }));
+      toast.success("Substage added");
+    } catch (e) {
+      console.error("Add substage failed", e);
+      toast.error("Failed to add substage");
+    }
   };
+
+  const toggleSubstage = async (project, sub) => {
+    const subs = project.pipelineSubstages || {};
+    const stageKey = project.pipelineStage;
+    const updated = (subs[stageKey] || []).map((s) =>
+      s.id === sub.id
+        ? {
+            ...s,
+            status: s.status === "open" ? "done" : "open",
+            completedAt: s.status === "open" ? Date.now() : null,
+          }
+        : s
+    );
+    try {
+      await updateDoc(doc(db, "projects", project.id), {
+        [`pipelineSubstages.${stageKey}`]: updated,
+      });
+      onUpdate?.(project.id, {
+        pipelineSubstages: { ...subs, [stageKey]: updated },
+      });
+    } catch (e) {
+      console.error("Toggle substage failed", e);
+      toast.error("Failed to update substage");
+    }
+  };
+
+  // Calculate visible stages for progress bar
+  const totalProgressPages = Math.ceil(STAGES.length / STAGES_PER_PAGE);
+  const visibleProgressStages = STAGES.slice(
+    currentProgressPage * STAGES_PER_PAGE,
+    (currentProgressPage + 1) * STAGES_PER_PAGE
+  );
+
+  const handlePrevProgressPage = () => {
+    setCurrentProgressPage((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleNextProgressPage = () => {
+    setCurrentProgressPage((prev) =>
+      Math.min(totalProgressPages - 1, prev + 1)
+    );
+  };
+
+  if (loadingStages) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
+          <p className="mt-2 text-gray-600">Loading pipeline stages...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!STAGES.length) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">
+          No pipeline stages configured. Please set up pipeline stages in
+          settings.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory">
-      {STAGES.map((stage, stageIdx) => (
-        <div
-          key={stage}
-          className={`flex-shrink-0 w-72 rounded-lg border-2 ${getStageColor(
-            stage
-          )} p-4 flex flex-col snap-start`}
-        >
-          {/* Column Header */}
-          <h3 className="font-semibold text-gray-800 mb-4 flex items-center justify-between flex-shrink-0 text-sm">
-            {stage}
-            <span className="text-xs bg-white px-2 py-1 rounded-full shadow-sm">
-              {columns[stage].length}
-            </span>
+    <div className="space-y-6">
+      {/* Stage Progress Bar with Pagination */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-gray-700">
+            Pipeline Progress
           </h3>
+          {STAGES.length > STAGES_PER_PAGE && (
+            <div className="text-xs text-gray-500">
+              Showing {currentProgressPage * STAGES_PER_PAGE + 1}-
+              {Math.min(
+                (currentProgressPage + 1) * STAGES_PER_PAGE,
+                STAGES.length
+              )}{" "}
+              of {STAGES.length} levels
+            </div>
+          )}
+        </div>
 
-          {/* Cards Container */}
-          <div
-            className={`space-y-3 flex-1 ${
-              columns[stage].length > 4
-                ? "max-h-[600px] overflow-y-auto pr-1"
-                : ""
-            }`}
-          >
-            {columns[stage].map((p) => {
-              const stageSubs = p.pipelineSubstages?.[stage] || [];
-              const open = openSubs[p.id];
-              const doneCount = stageSubs.filter(
-                (s) => s.status === "done"
-              ).length;
+        <div className="flex items-center gap-3">
+          {/* Left Arrow */}
+          {STAGES.length > STAGES_PER_PAGE && (
+            <button
+              onClick={handlePrevProgressPage}
+              disabled={currentProgressPage === 0}
+              className={`flex-shrink-0 p-2 rounded-lg transition-all ${
+                currentProgressPage === 0
+                  ? "text-gray-300 cursor-not-allowed"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              }`}
+              title="Previous stages"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+          )}
+
+          {/* Progress Stages */}
+          <div className="flex-1 flex items-center gap-2 overflow-hidden">
+            {visibleProgressStages.map((stage, idx) => {
+              const count = groupedProjects[stage.id]?.length || 0;
+              const isActive = count > 0;
+
+              // Truncate label if longer than 20 characters
+              const displayLabel =
+                stage.label.length > 20
+                  ? `${stage.label.substring(0, 20)}...`
+                  : stage.label;
+
               return (
-                <div
-                  key={p.id}
-                  className="bg-white rounded-lg p-3 shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
-                >
-                  <h4 className="font-medium text-gray-900 mb-2 text-sm">
-                    {p.projectName || p.name}
-                  </h4>
-                  <p className="text-xs text-gray-600 mb-2">
-                    Client: {p.clientName || "—"}
-                  </p>
-                  <div className="mb-2">
-                    <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                      <span>Progress</span>
-                      <span className="font-medium">{p.progress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(
-                          p.progress
-                        )}`}
-                        style={{ width: `${p.progress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <div className="text-xs text-gray-500 mb-2">
-                    <div>Start: {p.startDate || "—"}</div>
-                    <div>End: {p.endDate || "—"}</div>
-                    {p.okrs?.[0]?.objective && (
-                      <div className="mt-1 text-gray-600">
-                        <strong>Obj:</strong>{" "}
-                        {p.okrs[0].objective.substring(0, 25)}...
-                      </div>
+                <div key={stage.id} className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div
+                      className={`w-full h-2 rounded-full transition-colors ${
+                        isActive ? stage.color : "bg-gray-200"
+                      }`}
+                    />
+                    {idx < visibleProgressStages.length - 1 && (
+                      <FaChevronRight className="text-gray-300 flex-shrink-0" />
                     )}
                   </div>
-
-                  {/* Substages Section */}
-                  <div className="mb-2 pb-2 border-b border-gray-100">
-                    <button
-                      onClick={() =>
-                        setOpenSubs((o) => ({ ...o, [p.id]: !o[p.id] }))
-                      }
-                      className="w-full text-[10px] px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 font-medium text-gray-700 flex items-center justify-between"
+                  <div className="text-center">
+                    <p
+                      className="text-xs font-medium text-gray-900 px-1 truncate"
+                      title={stage.label}
                     >
-                      <span>
-                        {open
-                          ? "Hide Substages"
-                          : `Substages (${stageSubs.length})`}
-                      </span>
-                      {stageSubs.length > 0 && (
-                        <span className="text-green-600">
-                          {doneCount}/{stageSubs.length}
-                        </span>
-                      )}
-                    </button>
-
-                    {open && (
-                      <div className="mt-2 space-y-2">
-                        <ul className="space-y-1">
-                          {stageSubs.map((sub) => (
-                            <li
-                              key={sub.id}
-                              className="flex items-center justify-between bg-gray-50 rounded border px-2 py-1"
-                            >
-                              <span
-                                className={`text-[10px] truncate flex-1 ${
-                                  sub.status === "done"
-                                    ? "line-through text-green-700"
-                                    : "text-gray-700"
-                                }`}
-                              >
-                                {sub.name}
-                              </span>
-                              <button
-                                onClick={() => toggleSubstage(p, sub)}
-                                className={`text-[9px] px-1.5 py-0.5 rounded ml-2 ${
-                                  sub.status === "done"
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-yellow-100 text-yellow-700"
-                                }`}
-                              >
-                                {sub.status === "done" ? "✓" : "○"}
-                              </button>
-                            </li>
-                          ))}
-                          {stageSubs.length === 0 && (
-                            <li className="text-[10px] italic text-gray-400 px-2 py-1">
-                              No substages yet
-                            </li>
-                          )}
-                        </ul>
-                        <div className="flex gap-1">
-                          <input
-                            value={newSubstageName[p.id] || ""}
-                            onChange={(e) =>
-                              setNewSubstageName((ns) => ({
-                                ...ns,
-                                [p.id]: e.target.value,
-                              }))
-                            }
-                            onKeyPress={(e) => {
-                              if (e.key === "Enter") addSubstage(p);
-                            }}
-                            placeholder="New substage"
-                            className="flex-1 rounded border border-gray-300 px-2 py-1 text-[10px] focus:border-indigo-400 focus:outline-none"
-                            spellCheck="true"
-                          />
-                          <button
-                            onClick={() => addSubstage(p)}
-                            className="text-[10px] px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 font-medium"
-                          >
-                            Add
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-                    <div className="flex space-x-1">
-                      <button
-                        onClick={() => onView?.(p.id)}
-                        className="p-1.5 rounded text-indigo-600 hover:bg-indigo-100"
-                        title="View"
-                      >
-                        <FaEye className="h-3 w-3" />
-                      </button>
-                      <button
-                        onClick={() => onEdit?.(p.id)}
-                        className="p-1.5 rounded text-yellow-600 hover:bg-yellow-100"
-                        title="Edit"
-                      >
-                        <FaEdit className="h-3 w-3" />
-                      </button>
-                      <button
-                        onClick={() => onDelete?.(p.id)}
-                        className="p-1.5 rounded text-red-600 hover:bg-red-100"
-                        title="Delete"
-                      >
-                        <FaTrash className="h-3 w-3" />
-                      </button>
-                    </div>
-                    <div className="flex space-x-1">
-                      <button
-                        onClick={() => move(p, -1)}
-                        disabled={stageIdx === 0}
-                        className="disabled:opacity-30 disabled:cursor-not-allowed p-1.5 rounded text-gray-600 hover:bg-gray-100"
-                        title="Previous stage"
-                      >
-                        <FaChevronLeft className="h-3 w-3" />
-                      </button>
-                      <button
-                        onClick={() => move(p, +1)}
-                        disabled={stageIdx === STAGES.length - 1}
-                        className="disabled:opacity-30 disabled:cursor-not-allowed p-1.5 rounded text-indigo-600 hover:bg-indigo-100"
-                        title="Next stage"
-                      >
-                        <FaChevronRight className="h-3 w-3" />
-                      </button>
-                    </div>
+                      {displayLabel}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Level {stage.level}
+                    </p>
+                    <p className="text-lg font-bold text-gray-900 mt-1">
+                      {count}
+                    </p>
                   </div>
                 </div>
               );
             })}
+          </div>
 
-            {columns[stage].length === 0 && (
-              <div className="text-center text-gray-400 py-8 text-sm">
-                No projects
+          {/* Right Arrow */}
+          {STAGES.length > STAGES_PER_PAGE && (
+            <button
+              onClick={handleNextProgressPage}
+              disabled={currentProgressPage === totalProgressPages - 1}
+              className={`flex-shrink-0 p-2 rounded-lg transition-all ${
+                currentProgressPage === totalProgressPages - 1
+                  ? "text-gray-300 cursor-not-allowed"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              }`}
+              title="Next stages"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {/* Page Indicators (dots) */}
+        {STAGES.length > STAGES_PER_PAGE && totalProgressPages > 1 && (
+          <div className="flex items-center justify-center gap-1.5 mt-4">
+            {Array.from({ length: totalProgressPages }).map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentProgressPage(idx)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  idx === currentProgressPage
+                    ? "bg-indigo-600 w-6"
+                    : "bg-gray-300 hover:bg-gray-400"
+                }`}
+                title={`Page ${idx + 1}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Pipeline Stages - All in one row with horizontal scrolling */}
+      <div className="w-full overflow-x-auto pb-4">
+        <div className="inline-flex gap-4 min-w-min">
+          {STAGES.map((stage) => {
+            const stageProjects = groupedProjects[stage.id] || [];
+
+            // Get smooth solid background color based on stage color
+            const getBgColor = (color) => {
+              const colorMap = {
+                "bg-purple-500": "bg-purple-50",
+                "bg-blue-500": "bg-blue-50",
+                "bg-cyan-500": "bg-cyan-50",
+                "bg-indigo-500": "bg-indigo-50",
+                "bg-orange-500": "bg-orange-50",
+                "bg-green-500": "bg-green-50",
+                "bg-emerald-500": "bg-emerald-50",
+                "bg-pink-500": "bg-pink-50",
+                "bg-teal-500": "bg-teal-50",
+                "bg-red-500": "bg-red-50",
+                "bg-amber-500": "bg-amber-50",
+                "bg-lime-500": "bg-lime-50",
+                "bg-sky-500": "bg-sky-50",
+                "bg-violet-500": "bg-violet-50",
+                "bg-fuchsia-500": "bg-fuchsia-50",
+                "bg-rose-500": "bg-rose-50",
+                "bg-slate-500": "bg-slate-50",
+                "bg-zinc-500": "bg-zinc-50",
+                "bg-stone-500": "bg-stone-50",
+                "bg-neutral-500": "bg-neutral-50",
+              };
+              return colorMap[color] || "bg-gray-50";
+            };
+
+            // Get faint/light border color based on stage color
+            const getBorderColor = (color) => {
+              const borderMap = {
+                "bg-purple-500": "border-purple-200",
+                "bg-blue-500": "border-blue-200",
+                "bg-cyan-500": "border-cyan-200",
+                "bg-indigo-500": "border-indigo-200",
+                "bg-orange-500": "border-orange-200",
+                "bg-green-500": "border-green-200",
+                "bg-emerald-500": "border-emerald-200",
+                "bg-pink-500": "border-pink-200",
+                "bg-teal-500": "border-teal-200",
+                "bg-red-500": "border-red-200",
+                "bg-amber-500": "border-amber-200",
+                "bg-lime-500": "border-lime-200",
+                "bg-sky-500": "border-sky-200",
+                "bg-violet-500": "border-violet-200",
+                "bg-fuchsia-500": "border-fuchsia-200",
+                "bg-rose-500": "border-rose-200",
+                "bg-slate-500": "border-slate-200",
+                "bg-zinc-500": "border-zinc-200",
+                "bg-stone-500": "border-stone-200",
+                "bg-neutral-500": "border-neutral-200",
+              };
+              return borderMap[color] || "border-gray-200";
+            };
+
+            return (
+              <div
+                key={stage.id}
+                className={`rounded-lg border-2 ${getBorderColor(
+                  stage.color
+                )} overflow-hidden flex flex-col flex-shrink-0 ${getBgColor(
+                  stage.color
+                )}`}
+                style={{ width: "373px", minWidth: "373px" }}
+              >
+                {/* Stage Header - No border, merged with body background */}
+                <div className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div
+                        className={`flex-shrink-0 ${stage.color.replace(
+                          "bg-",
+                          "text-"
+                        )}`}
+                      >
+                        {stage.icon}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3
+                          className="font-semibold text-gray-900 text-base leading-tight truncate overflow-hidden text-ellipsis whitespace-nowrap"
+                          title={stage.label}
+                        >
+                          {stage.label}
+                        </h3>
+                      </div>
+                    </div>
+                    <span className="bg-white/60 backdrop-blur-sm text-gray-900 px-2 py-1 rounded-full text-xs font-bold flex-shrink-0 ml-2 border border-gray-300/50">
+                      {stageProjects.length}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Projects List */}
+                <div className="flex-1 px-3 pb-3 space-y-3 overflow-y-auto max-h-[600px]">
+                  {stageProjects.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400">
+                      <div className="mx-auto h-8 w-8 mb-2 opacity-50 flex items-center justify-center">
+                        {stage.icon}
+                      </div>
+                      <p className="text-xs">No projects</p>
+                    </div>
+                  ) : (
+                    stageProjects.map((project) => (
+                      <ProjectCard
+                        key={project.id}
+                        project={project}
+                        stage={stage}
+                        onUpdate={onUpdate}
+                        allStages={STAGES}
+                        getProgressColor={getProgressColor}
+                      />
+                    ))
+                  )}
+                </div>
               </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ProjectCard component
+function ProjectCard({
+  project,
+  stage,
+  onUpdate,
+  allStages,
+  getProgressColor,
+}) {
+  const [showSubstageModal, setShowSubstageModal] = useState(false);
+
+  // Define substages for each stage
+  const stageSubs = {
+    Diagnose: ["Discovery", "Analysis", "Documentation"],
+    "Design Solution": ["Planning", "Architecture", "Wireframes"],
+    Roadmap: ["Timeline", "Milestones", "Resource Planning"],
+    "System Designing": ["Development", "Implementation", "Integration"],
+    Testing: ["QA", "UAT", "Bug Fixes"],
+    Deployment: ["Staging", "Production", "Go-Live"],
+    Delivered: ["Handover", "Training", "Closure"],
+  };
+
+  // Get current substages for this stage - ensure it's always an array
+  const currentSubstages = stageSubs[stage.id] || stageSubs[stage.label] || [];
+  const completedSubstages = project.pipelineSubstages?.[stage.id] || [];
+
+  const handleStageChange = async (newStageId) => {
+    try {
+      const projectRef = doc(db, "projects", project.id);
+      await updateDoc(projectRef, {
+        pipelineStage: newStageId,
+      });
+
+      if (onUpdate) {
+        onUpdate(project.id, { pipelineStage: newStageId });
+      }
+
+      toast.success("Project stage updated");
+    } catch (error) {
+      console.error("Error updating project stage:", error);
+      toast.error("Failed to update project stage");
+    }
+  };
+
+  const toggleSubstage = async (substage) => {
+    try {
+      const projectRef = doc(db, "projects", project.id);
+      const currentCompleted = project.pipelineSubstages?.[stage.id] || {};
+
+      const newCompleted = currentCompleted.includes(substage)
+        ? currentCompleted.filter((s) => s !== substage)
+        : [...currentCompleted, substage];
+
+      await updateDoc(projectRef, {
+        [`pipelineSubstages.${stage.id}`]: newCompleted,
+      });
+
+      if (onUpdate) {
+        onUpdate(project.id, {
+          pipelineSubstages: {
+            ...project.pipelineSubstages,
+            [stage.id]: newCompleted,
+          },
+        });
+      }
+
+      toast.success("Substage updated");
+    } catch (error) {
+      console.error("Error updating substage:", error);
+      toast.error("Failed to update substage");
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg p-3 shadow-sm hover:shadow-lg transition-all duration-300">
+      {/* Project Name */}
+      <h4
+        className="font-medium text-gray-900 mb-2 truncate overflow-hidden text-ellipsis whitespace-nowrap"
+        title={project.projectName}
+        style={{ maxWidth: "100%" }}
+      >
+        {project.projectName}
+      </h4>
+
+      {/* Client Name */}
+      <p
+        className="text-xs text-gray-600 mb-2 truncate overflow-hidden text-ellipsis whitespace-nowrap"
+        title={project.clientName || "N/A"}
+      >
+        Client: {project.clientName || "N/A"}
+      </p>
+
+      {/* Progress Bar */}
+      <div className="mb-3">
+        <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+          <span>Progress</span>
+          <span className="font-medium">{project.progress || 0}%</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(
+              project.progress || 0
+            )}`}
+            style={{ width: `${project.progress || 0}%` }}
+          ></div>
+        </div>
+      </div>
+
+      {/* Substages */}
+      {Array.isArray(currentSubstages) && currentSubstages.length > 0 && (
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-medium text-gray-700">Substages</span>
+            <button
+              onClick={() => setShowSubstageModal(true)}
+              className="text-xs text-indigo-600 hover:text-indigo-700"
+            >
+              Manage
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {currentSubstages.slice(0, 2).map((substage, idx) => (
+              <span
+                key={idx}
+                className={`text-xs px-2 py-0.5 rounded ${
+                  completedSubstages.includes(substage)
+                    ? "bg-green-100 text-green-700"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+              >
+                {substage}
+              </span>
+            ))}
+            {currentSubstages.length > 2 && (
+              <span className="text-xs text-gray-500">
+                +{currentSubstages.length - 2} more
+              </span>
             )}
           </div>
         </div>
-      ))}
+      )}
+
+      {/* Stage Selector */}
+      <select
+        value={project.pipelineStage || stage.id}
+        onChange={(e) => handleStageChange(e.target.value)}
+        className="w-full text-xs border border-gray-300 rounded px-2 py-1 mt-2"
+      >
+        {allStages.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.label}
+          </option>
+        ))}
+      </select>
+
+      {/* Substage Modal */}
+      {showSubstageModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {stage.label} - Substages
+              </h3>
+              <button
+                onClick={() => setShowSubstageModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {Array.isArray(currentSubstages) &&
+                currentSubstages.map((substage, idx) => (
+                  <label
+                    key={idx}
+                    className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={completedSubstages.includes(substage)}
+                      onChange={() => toggleSubstage(substage)}
+                      className="rounded text-indigo-600"
+                    />
+                    <span className="text-sm text-gray-700">{substage}</span>
+                  </label>
+                ))}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setShowSubstageModal(false)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

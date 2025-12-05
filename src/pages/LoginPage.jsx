@@ -64,8 +64,9 @@ function LoginPage() {
 
       toast.success("Logged in successfully");
 
-      // Try to determine role from token claims first
+      // Determine role and resource role type for redirect
       let role = null;
+      let resourceRoleType = null;
       try {
         const tokenRes = await cred.user.getIdTokenResult();
         role = tokenRes?.claims?.role || null;
@@ -73,28 +74,36 @@ function LoginPage() {
         // ignore
       }
 
-      // Fallback to Firestore profile (users or clients)
-      if (!role) {
-        try {
-          const uSnap = await getDoc(doc(db, "users", cred.user.uid));
-          if (uSnap.exists() && uSnap.data()?.role) {
-            role = uSnap.data().role?.trim();
-          } else {
-            const cSnap = await getDoc(doc(db, "clients", cred.user.uid));
-            if (cSnap.exists() && cSnap.data()?.role) {
-              role = cSnap.data().role?.trim();
-            }
+      try {
+        const uSnap = await getDoc(doc(db, "users", cred.user.uid));
+        if (uSnap.exists()) {
+          const uData = uSnap.data();
+          if (!role && uData?.role) role = uData.role?.trim();
+          if (uData?.resourceRoleType)
+            resourceRoleType = String(uData.resourceRoleType).trim().toLowerCase();
+        } else {
+          const cSnap = await getDoc(doc(db, "clients", cred.user.uid));
+          if (cSnap.exists() && cSnap.data()?.role) {
+            role = cSnap.data().role?.trim();
           }
-        } catch {
-          // ignore
         }
+      } catch {
+        // ignore
       }
 
-      // Redirect based on role
+      // Redirect using Resource role type (admin/member) for staff; keep client logic unchanged
       setTimeout(() => {
         if (role === "client") {
           navigate("/client");
+        } else if (resourceRoleType === "member") {
+          navigate("/employee");
+        } else if (resourceRoleType === "admin") {
+          navigate("/");
         } else if (role === "resource") {
+          // Fallback for older data
+          navigate("/employee");
+        } else if (role === "member") {
+          // Additional fallback for older data
           navigate("/employee");
         } else {
           navigate("/");

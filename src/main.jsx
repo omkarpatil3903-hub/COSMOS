@@ -1,7 +1,11 @@
 // src/main.jsx
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Navigate,
+} from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import "./index.css";
 
@@ -39,6 +43,7 @@ import MomNew from "./pages/MomNew.jsx";
 import MomGeneratorPro from "./pages/MomGeneratorPro.jsx";
 import TaskManagment from "./pages/TaskManagment.jsx";
 import Calendar from "./pages/Calendar.jsx";
+import EmployeeExpenses from "./pages/EmployeeExpenses";
 
 import ExpenseManagement from "./pages/ExpenseManagement.jsx";
 
@@ -84,7 +89,11 @@ const router = createBrowserRouter([
       { path: "/employee/calendar", element: <EmployeeCalendar /> },
       { path: "/employee/reports", element: <EmployeeReports /> },
       { path: "/employee/documents", element: <EmployeeDocuments /> },
-      { path: "/employee/manage-documents", element: <EmployeeManageDocument /> },
+      {
+        path: "/employee/manage-documents",
+        element: <EmployeeManageDocument />,
+      },
+      { path: "/employee/expenses", element: <EmployeeExpenses /> },
     ],
   },
 

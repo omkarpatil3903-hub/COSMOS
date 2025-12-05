@@ -54,8 +54,11 @@ const AddProjectModal = ({
         </div>
 
         <div className="p-6">
-          <form onSubmit={handleFormSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-8" noValidate>
-
+          <form
+            onSubmit={handleFormSubmit}
+            className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+            noValidate
+          >
             {/* Column 1: Project Details & Timeline */}
             <div className="space-y-8">
               {/* Project Details Section */}
@@ -90,10 +93,11 @@ const AddProjectModal = ({
                         }
                       }}
                       placeholder="e.g. Website Redesign"
-                      className={`w-full rounded-lg border ${addErrors.projectName
-                        ? "border-red-500 focus:ring-red-100"
-                        : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                        } bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
+                      className={`w-full rounded-lg border ${
+                        addErrors.projectName
+                          ? "border-red-500 focus:ring-red-100"
+                          : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
+                      } bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
                       required
                     />
                     {addErrors.projectName && (
@@ -113,8 +117,9 @@ const AddProjectModal = ({
                       <select
                         value={
                           formData.clientId ||
-                          clients.find((c) => c.companyName === formData.clientName)
-                            ?.id ||
+                          clients.find(
+                            (c) => c.companyName === formData.clientName
+                          )?.id ||
                           ""
                         }
                         onChange={(e) => {
@@ -132,10 +137,11 @@ const AddProjectModal = ({
                             }));
                           }
                         }}
-                        className={`w-full rounded-lg border ${addErrors.clientId
-                          ? "border-red-500 focus:ring-red-100"
-                          : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                          } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200 appearance-none`}
+                        className={`w-full rounded-lg border ${
+                          addErrors.clientId
+                            ? "border-red-500 focus:ring-red-100"
+                            : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
+                        } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200 appearance-none`}
                         required
                       >
                         <option value="" disabled>
@@ -166,6 +172,66 @@ const AddProjectModal = ({
                     {addErrors.clientId && (
                       <p className="text-xs text-red-600 font-medium">
                         {addErrors.clientId}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Project Manager */}
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                      <FaBuilding className="text-gray-400" />
+                      Project Manager <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={formData.projectManagerId}
+                        onChange={(e) => {
+                          setFormData({
+                            ...formData,
+                            projectManagerId: e.target.value,
+                          });
+                          if (addErrors.projectManagerId) {
+                            setAddErrors((prev) => ({
+                              ...prev,
+                              projectManagerId: "",
+                            }));
+                          }
+                        }}
+                        className={`w-full rounded-lg border ${
+                          addErrors.projectManagerId
+                            ? "border-red-500 focus:ring-red-100"
+                            : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
+                        } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200 appearance-none`}
+                        required
+                      >
+                        <option value="" disabled>
+                          Select a project manager
+                        </option>
+                        {managers.map((manager) => (
+                          <option key={manager.id} value={manager.id}>
+                            {manager.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M19 9l-7 7-7-7"
+                          ></path>
+                        </svg>
+                      </div>
+                    </div>
+                    {addErrors.projectManagerId && (
+                      <p className="text-xs text-red-600 font-medium">
+                        {addErrors.projectManagerId}
                       </p>
                     )}
                   </div>
@@ -203,10 +269,11 @@ const AddProjectModal = ({
                           }));
                         }
                       }}
-                      className={`w-full rounded-lg border ${addErrors.startDate
-                        ? "border-red-500 focus:ring-red-100"
-                        : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                        } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200`}
+                      className={`w-full rounded-lg border ${
+                        addErrors.startDate
+                          ? "border-red-500 focus:ring-red-100"
+                          : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
+                      } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200`}
                       required
                     />
                   </div>
@@ -232,10 +299,11 @@ const AddProjectModal = ({
                           }));
                         }
                       }}
-                      className={`w-full rounded-lg border ${addErrors.endDate
-                        ? "border-red-500 focus:ring-red-100"
-                        : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                        } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200`}
+                      className={`w-full rounded-lg border ${
+                        addErrors.endDate
+                          ? "border-red-500 focus:ring-red-100"
+                          : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
+                      } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200`}
                       required
                     />
                   </div>
@@ -362,18 +430,18 @@ const AddProjectModal = ({
                             )}
                             {krIndex ===
                               formData.okrs[okrIndex].keyResults.length - 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const newOkrs = [...formData.okrs];
-                                    newOkrs[okrIndex].keyResults.push("");
-                                    setFormData({ ...formData, okrs: newOkrs });
-                                  }}
-                                  className="text-indigo-400 hover:text-indigo-600"
-                                >
-                                  <FaPlus className="h-3 w-3" />
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newOkrs = [...formData.okrs];
+                                  newOkrs[okrIndex].keyResults.push("");
+                                  setFormData({ ...formData, okrs: newOkrs });
+                                }}
+                                className="text-indigo-400 hover:text-indigo-600"
+                              >
+                                <FaPlus className="h-3 w-3" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -382,7 +450,6 @@ const AddProjectModal = ({
                 ))}
               </div>
             </div>
-
           </form>
         </div>
 

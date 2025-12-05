@@ -414,57 +414,73 @@ Generated on: ${formatDateToDDMMYYYY(
         </Button>
       </div>
 
-      {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
+      {/* Overview Stats - Updated Card Style */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Projects Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-600">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-500 mb-1">
                 Total Projects
               </p>
-              <p className="text-3xl font-bold text-blue-900 mt-1">
+              <p className="text-3xl font-bold text-gray-900">
                 {totalProjects}
               </p>
             </div>
-            <FaProjectDiagram className="text-blue-600 text-3xl" />
-          </div>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-purple-600">Total Tasks</p>
-              <p className="text-3xl font-bold text-purple-900 mt-1">
-                {totalTasks}
-              </p>
+            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <FaProjectDiagram className="text-blue-500 text-xl" />
             </div>
-            <FaTasks className="text-purple-600 text-3xl" />
           </div>
-        </Card>
+        </div>
 
-        <Card className="bg-gradient-to-br from-green-50 to-green-100">
+        {/* Total Tasks Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-purple-500 p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-600">Completed</p>
-              <p className="text-3xl font-bold text-green-900 mt-1">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-500 mb-1">
+                Total Tasks
+              </p>
+              <p className="text-3xl font-bold text-gray-900">{totalTasks}</p>
+            </div>
+            <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0">
+              <FaTasks className="text-purple-500 text-xl" />
+            </div>
+          </div>
+        </div>
+
+        {/* Completed Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-500 mb-1">
+                Completed
+              </p>
+              <p className="text-3xl font-bold text-gray-900">
                 {completedTasks}
               </p>
             </div>
-            <FaCheckCircle className="text-green-600 text-3xl" />
+            <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+              <FaCheckCircle className="text-green-500 text-xl" />
+            </div>
           </div>
-        </Card>
+        </div>
 
-        <Card className="bg-gradient-to-br from-red-50 to-red-100">
+        {/* Completion Rate Card */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-indigo-500 p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-red-600">Overdue</p>
-              <p className="text-3xl font-bold text-red-900 mt-1">
-                {overdueTasks}
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-500 mb-1">
+                Completion Rate
+              </p>
+              <p className="text-3xl font-bold text-gray-900">
+                {taskCompletionRate.toFixed(0)}%
               </p>
             </div>
-            <FaClock className="text-red-600 text-3xl" />
+            <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0">
+              <FaChartBar className="text-indigo-500 text-xl" />
+            </div>
           </div>
-        </Card>
+        </div>
       </div>
 
       {/* Completion Rate & Priority Breakdown */}

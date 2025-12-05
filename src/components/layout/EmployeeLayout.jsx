@@ -20,9 +20,9 @@ import { useAuthContext } from "../../context/useAuthContext";
 
 // Reusable sidebar link component matching admin panel exactly
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
-  const baseClasses =
-    `group flex items-center ${isCollapsed ? "justify-center px-2" : "gap-3 px-3"
-    } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
+  const baseClasses = `group flex items-center ${
+    isCollapsed ? "justify-center px-2" : "gap-3 px-3"
+  } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
   const activeClasses =
     "border-indigo-200 bg-indigo-50 text-indigo-700 shadow-soft";
   const inactiveClasses =
@@ -57,12 +57,12 @@ function EmployeeLayout() {
   // Dynamic page title based on route
   useEffect(() => {
     const pathToTitle = {
-      "/employee": "Dashboard - Employee Portal",
-      "/employee/tasks": "My Tasks - Employee Portal",
-      "/employee/projects": "My Projects - Employee Portal",
-      "/employee/calendar": "Calendar - Employee Portal",
-      "/employee/reports": "Reports - Employee Portal",
-      "/employee/documents": "Documents - Employee Portal",
+      "/employee": "COSMOS | Dashboard ",
+      "/employee/tasks": "COSMOS | My Tasks",
+      "/employee/projects": "COSMOS | My Projects",
+      "/employee/calendar": "COSMOS | Calendar",
+      "/employee/reports": "COSMOS | Reports",
+      "/employee/documents": "COSMOS | Documents",
     };
 
     const title = pathToTitle[location.pathname] || "Employee Portal";
@@ -92,7 +92,7 @@ function EmployeeLayout() {
     },
     {
       to: "/employee/documents",
-      text: "Documents",
+      text: "Knowledge",
       icon: <FaFileAlt className="h-4 w-4" aria-hidden="true" />,
     },
     {
@@ -140,8 +140,9 @@ function EmployeeLayout() {
       </a>
       <Toaster position="top-right" />
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
-          } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"}`}
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${
+          isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
+        } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"}`}
         aria-label="Primary"
       >
         <div className="flex items-center justify-between gap-4">
@@ -156,7 +157,12 @@ function EmployeeLayout() {
                 />
               ) : (
                 <div className="h-full w-full rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold">
-                  {(userData?.name || userData?.clientName || userData?.email || "U")
+                  {(
+                    userData?.name ||
+                    userData?.clientName ||
+                    userData?.email ||
+                    "U"
+                  )
                     .toString()
                     .charAt(0)
                     .toUpperCase()}
@@ -166,8 +172,11 @@ function EmployeeLayout() {
 
             {!isCollapsed && (
               <div className="min-w-0">
-                <p className="text-sm font-medium text-content-tertiary truncate" title={userData?.name || "Employee"}>
-                  {userData?.name || "Employee"}
+                <p
+                  className="text-sm font-medium text-content-tertiary truncate"
+                  title={userData?.name || "Employee"}
+                >
+                  COSMOS
                 </p>
                 <h2 className="text-lg font-semibold text-content-primary truncate">
                   Employee Portal
@@ -183,8 +192,9 @@ function EmployeeLayout() {
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <FaChevronLeft
-              className={`h-4 w-4 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""
-                }`}
+              className={`h-4 w-4 transition-transform duration-300 ${
+                isCollapsed ? "rotate-180" : ""
+              }`}
               aria-hidden="true"
             />
           </button>
