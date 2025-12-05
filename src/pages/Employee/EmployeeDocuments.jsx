@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import SearchActions from "../components/SearchActions";
-import DocumentsTable from "../components/documents/DocumentsTable";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import SearchActions from "../../components/SearchActions";
+import DocumentsTable from "../../components/documents/DocumentsTable";
 
 export default function EmployeeDocuments() {
   const [search, setSearch] = useState("");

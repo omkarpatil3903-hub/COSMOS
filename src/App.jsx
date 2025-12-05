@@ -1,4 +1,4 @@
-import EmployeeExpenses from "./pages/EmployeeExpenses";
+import EmployeeExpenses from "./pages/Employee/EmployeeExpenses";
 
 function App() {
   return (

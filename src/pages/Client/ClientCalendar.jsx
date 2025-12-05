@@ -1,10 +1,10 @@
 // src/pages/ClientCalendar.jsx
 import React, { useEffect, useState, useMemo } from "react";
-import Card from "../components/Card";
-import PageHeader from "../components/PageHeader";
-import Button from "../components/Button";
-import { useAuthContext } from "../context/useAuthContext";
-import { db } from "../firebase";
+import Card from "../../components/Card";
+import PageHeader from "../../components/PageHeader";
+import Button from "../../components/Button";
+import { useAuthContext } from "../../context/useAuthContext";
+import { db } from "../../firebase";
 import {
   collection,
   query,
@@ -29,8 +29,7 @@ import {
   STATUS_BORDER_CLASSES,
   PRIORITY_CLASSES,
   getPriorityBadge,
-} from "../utils/colorMaps";
-
+} from "../../utils/colorMaps";
 const tsToDate = (value) => {
   if (!value) return null;
   if (typeof value.toDate === "function") return value.toDate();

@@ -13,15 +13,15 @@ import {
   orderBy,
   limit,
 } from "firebase/firestore";
-import TaskGroup from "../components/TaskManagment/TaskGroup";
-import { db } from "../firebase";
-import { useAuthContext } from "../context/useAuthContext";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import Button from "../components/Button";
-import KanbanBoard from "../components/KanbanBoard";
+import TaskGroup from "../../components/TaskManagment/TaskGroup";
+import { db } from "../../firebase";
+import { useAuthContext } from "../../context/useAuthContext";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import KanbanBoard from "../../components/KanbanBoard";
 import toast from "react-hot-toast";
-import CompletionCommentModal from "../components/CompletionCommentModal";
+import CompletionCommentModal from "../../components/CompletionCommentModal";
 import {
   FaTasks,
   FaFilter,
@@ -42,13 +42,13 @@ import {
 } from "react-icons/fa";
 import { MdReplayCircleFilled } from "react-icons/md";
 import { IoIosWarning } from "react-icons/io";
-import StatCard from "../components/StatCard";
+import StatCard from "../../components/StatCard";
 import {
   shouldCreateNextInstanceAsync,
   createNextRecurringInstance,
-} from "../utils/recurringTasks";
-import { logTaskActivity } from "../services/taskService";
-import TaskViewModal from "../components/TaskManagment/TaskViewModal";
+} from "../../utils/recurringTasks";
+import { logTaskActivity } from "../../services/taskService";
+import TaskViewModal from "../../components/TaskManagment/TaskViewModal";
 
 const EmployeeTasks = () => {
   const { user } = useAuthContext();

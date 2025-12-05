@@ -7,12 +7,12 @@ import {
   addDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { db } from "../firebase";
-import { useAuthContext } from "../context/useAuthContext";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import Button from "../components/Button";
-import TaskModal from "../components/TaskModal";
+import { db } from "../../firebase";
+import { useAuthContext } from "../../context/useAuthContext";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import TaskModal from "../../components/TaskModal";
 import toast from "react-hot-toast";
 import {
   FaCalendarAlt,
@@ -24,8 +24,8 @@ import {
   FaPlus,
 } from "react-icons/fa";
 import { MdReplayCircleFilled } from "react-icons/md";
-import { TYPE_CLASSES, PRIORITY_CLASSES } from "../utils/colorMaps";
-import { occursOnDate } from "../utils/recurringTasks";
+import { TYPE_CLASSES, PRIORITY_CLASSES } from "../../utils/colorMaps";
+import { occursOnDate } from "../../utils/recurringTasks";
 
 const EmployeeCalendar = () => {
   const { user } = useAuthContext();

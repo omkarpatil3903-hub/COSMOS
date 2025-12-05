@@ -1,13 +1,23 @@
 import React, { useEffect, useState } from "react";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import SearchActions from "../components/SearchActions";
-import DocumentsTable from "../components/documents/DocumentsTable";
-import Button from "../components/Button";
-import AddDocumentModal from "../components/documents/AddDocumentModal";
-import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
-import { db } from "../firebase";
-import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import SearchActions from "../../components/SearchActions";
+import DocumentsTable from "../../components/documents/DocumentsTable";
+import Button from "../../components/Button";
+import AddDocumentModal from "../../components/documents/AddDocumentModal";
+import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
+import { db } from "../../firebase";
+import {
+  addDoc,
+  collection,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  doc,
+  deleteDoc,
+} from "firebase/firestore";
 import toast from "react-hot-toast";
 
 export default function Documents() {
@@ -16,7 +26,11 @@ export default function Documents() {
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [editingDoc, setEditingDoc] = useState(null);
-  const [deleteState, setDeleteState] = useState({ open: false, item: null, loading: false });
+  const [deleteState, setDeleteState] = useState({
+    open: false,
+    item: null,
+    loading: false,
+  });
 
   useEffect(() => {
     const q = query(collection(db, "documents"), orderBy("createdAt", "desc"));
@@ -25,7 +39,8 @@ export default function Documents() {
         const data = d.data() || {};
         const ts = data.updatedAt || data.createdAt;
         let updated = "";
-        if (ts && typeof ts.toDate === "function") updated = ts.toDate().toLocaleDateString();
+        if (ts && typeof ts.toDate === "function")
+          updated = ts.toDate().toLocaleDateString();
         else if (ts) updated = new Date(ts).toLocaleDateString();
         return {
           id: d.id,
@@ -100,7 +115,8 @@ export default function Documents() {
     }
   };
 
-  const handleAskDelete = (row) => setDeleteState({ open: true, item: row, loading: false });
+  const handleAskDelete = (row) =>
+    setDeleteState({ open: true, item: row, loading: false });
   const handleConfirmDelete = async () => {
     const item = deleteState.item;
     if (!item) return;
@@ -129,15 +145,36 @@ export default function Documents() {
         />
       </Card>
       <Card title="Document List" tone="muted">
-        <DocumentsTable rows={docs} query={search} onEdit={handleEditDoc} onDelete={handleAskDelete} />
+        <DocumentsTable
+          rows={docs}
+          query={search}
+          onEdit={handleEditDoc}
+          onDelete={handleAskDelete}
+        />
       </Card>
-      <AddDocumentModal isOpen={openAdd} onClose={() => setOpenAdd(false)} onSubmit={handleAddDoc} />
-      <AddDocumentModal isOpen={openEdit} onClose={() => setOpenEdit(false)} onSubmit={handleSaveEdit} initialDoc={editingDoc} />
+      <AddDocumentModal
+        isOpen={openAdd}
+        onClose={() => setOpenAdd(false)}
+        onSubmit={handleAddDoc}
+      />
+      <AddDocumentModal
+        isOpen={openEdit}
+        onClose={() => setOpenEdit(false)}
+        onSubmit={handleSaveEdit}
+        initialDoc={editingDoc}
+      />
       {deleteState.open && (
-        <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/30" onClick={() => setDeleteState({ open: false, item: null, loading: false })}>
+        <div
+          className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/30"
+          onClick={() =>
+            setDeleteState({ open: false, item: null, loading: false })
+          }
+        >
           <div onClick={(e) => e.stopPropagation()}>
             <DeleteConfirmationModal
-              onClose={() => setDeleteState({ open: false, item: null, loading: false })}
+              onClose={() =>
+                setDeleteState({ open: false, item: null, loading: false })
+              }
               onConfirm={handleConfirmDelete}
               itemType="document"
               title="Delete Document"

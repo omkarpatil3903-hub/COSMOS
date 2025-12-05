@@ -1,15 +1,15 @@
 import React, { useState } from "react";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import SearchActions from "../components/SearchActions";
-import DocumentsTable from "../components/documents/DocumentsTable";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import SearchActions from "../../components/SearchActions";
+import DocumentsTable from "../../components/documents/DocumentsTable";
 
-export default function ManageDocument() {
+export default function ClientManageDocument() {
   const [search, setSearch] = useState("");
   return (
     <div className="space-y-6">
       <PageHeader title="Manage Documents">
-        Create, manage and organize documents.
+        Manage documents shared with your organization.
       </PageHeader>
       <Card title="Search & Actions" tone="muted">
         <SearchActions

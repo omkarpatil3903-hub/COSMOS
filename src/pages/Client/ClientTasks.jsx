@@ -1,9 +1,9 @@
 // src/pages/ClientTasks.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import { useLocation } from "react-router-dom";
-import Card from "../components/Card";
-import { useAuthContext } from "../context/useAuthContext";
-import { db, storage } from "../firebase";
+import Card from "../../components/Card";
+import { useAuthContext } from "../../context/useAuthContext";
+import { db, storage } from "../../firebase";
 import {
   collection,
   query,
@@ -16,8 +16,8 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import toast from "react-hot-toast";
-import CompletionCommentModal from "../components/CompletionCommentModal";
-import ImageUploadModal from "../components/ImageUploadModal";
+import CompletionCommentModal from "../../components/CompletionCommentModal";
+import ImageUploadModal from "../../components/ImageUploadModal";
 import {
   FaTasks,
   FaSearch,

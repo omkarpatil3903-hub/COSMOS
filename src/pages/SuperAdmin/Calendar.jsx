@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import Button from "../components/Button";
-import TaskModal from "../components/TaskModal";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import TaskModal from "../../components/TaskModal";
 import toast from "react-hot-toast";
 import {
   FaCalendarAlt,
@@ -14,12 +14,12 @@ import {
   FaClock,
   FaTasks,
 } from "react-icons/fa";
-import { db } from "../firebase";
+import { db } from "../../firebase";
 import {
   TYPE_CLASSES,
   PRIORITY_CLASSES,
   getPriorityBadge,
-} from "../utils/colorMaps";
+} from "../../utils/colorMaps";
 import {
   collection,
   onSnapshot,
@@ -33,11 +33,11 @@ import {
 } from "firebase/firestore";
 
 // Refactored: Import utilities and services
-import { tsToDate, dateToInputValue, DAY_NAMES } from "../utils/dateUtils";
-import { calculateCalendarStats } from "../utils/calendarUtils";
-import StatsCards from "../components/calendar/StatsCards";
-import CalendarHeader from "../components/calendar/CalendarHeader";
-import { expandRecurringOccurrences } from "../utils/recurringTasks";
+import { tsToDate, dateToInputValue, DAY_NAMES } from "../../utils/dateUtils";
+import { calculateCalendarStats } from "../../utils/calendarUtils";
+import StatsCards from "../../components/calendar/StatsCards";
+import CalendarHeader from "../../components/calendar/CalendarHeader";
+import { expandRecurringOccurrences } from "../../utils/recurringTasks";
 
 // Refactored: Utility functions moved to utils/dateUtils.js and utils/calendarUtils.js
 const buildDefaultEventForm = (baseDate = new Date()) => ({

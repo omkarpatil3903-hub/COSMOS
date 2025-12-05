@@ -16,7 +16,7 @@ import {
 import { HiOutlineArrowDownTray, HiMiniArrowPath } from "react-icons/hi2";
 // Excel export not used on this page currently
 import toast from "react-hot-toast";
-import { db, app as primaryApp } from "../firebase";
+import { db, app as primaryApp } from "../../firebase";
 import { getApps, getApp, initializeApp as initApp } from "firebase/app";
 import {
   getAuth as getAuthMod,
@@ -36,14 +36,14 @@ import {
 } from "firebase/firestore";
 
 // Reusable UI Components
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import Button from "../components/Button";
-import SkeletonRow from "../components/SkeletonRow";
-import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
-import AddResourceModal from "../components/AddResourceModal";
-import EditResourceModal from "../components/EditResourceModal";
-import ViewResourceModal from "../components/ViewResourceModal";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import SkeletonRow from "../../components/SkeletonRow";
+import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
+import AddResourceModal from "../../components/AddResourceModal";
+import EditResourceModal from "../../components/EditResourceModal";
+import ViewResourceModal from "../../components/ViewResourceModal";
 
 // Removed placeholder data; now loading users/resources from Firestore
 

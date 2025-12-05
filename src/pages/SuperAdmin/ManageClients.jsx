@@ -7,8 +7,8 @@ import {
   FaPlus,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
-import { db } from "../firebase";
-import { app as primaryApp } from "../firebase";
+import { db } from "../../firebase";
+import { app as primaryApp } from "../../firebase";
 import { getApps, getApp, initializeApp as initApp } from "firebase/app";
 import {
   getAuth as getAuthMod,
@@ -27,18 +27,14 @@ import {
   updateDoc,
   setDoc,
 } from "firebase/firestore";
-
-// Reusable UI Components
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import Button from "../components/Button";
-import SkeletonRow from "../components/SkeletonRow";
-import DeleteConfirmationModal from "../components/DeleteConfirmationModal";
-
-// New Refactored Sub-Components
-import ClientTableRow from "../components/ManageClients/ClientTableRow";
-import ClientFormModal from "../components/ManageClients/ClientFormModal";
-import ClientViewModal from "../components/ManageClients/ClientViewModal";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import SkeletonRow from "../../components/SkeletonRow";
+import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
+import ClientTableRow from "../../components/ManageClients/ClientTableRow";
+import ClientFormModal from "../../components/ManageClients/ClientFormModal";
+import ClientViewModal from "../../components/ManageClients/ClientViewModal";
 
 const CLIENTS_COLLECTION = "clients";
 

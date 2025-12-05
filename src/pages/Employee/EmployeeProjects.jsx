@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
-import { db } from "../firebase";
-import { useAuthContext } from "../context/useAuthContext";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
+import { db } from "../../firebase";
+import { useAuthContext } from "../../context/useAuthContext";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
 import {
   FaProjectDiagram,
   FaCalendarAlt,

@@ -24,10 +24,10 @@ import {
   limit,
   getDocs,
 } from "firebase/firestore";
-import { db } from "../firebase";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import Button from "../components/Button";
+import { db } from "../../firebase";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 // ---------- Utility: Rule-based notes generator (NO AI) ----------

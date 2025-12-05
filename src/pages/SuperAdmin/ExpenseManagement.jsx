@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
-import Button from "../components/Button";
-import StatCard from "../components/StatCard";
+import PageHeader from "../../components/PageHeader";
+import Card from "../../components/Card";
+import Button from "../../components/Button";
+import StatCard from "../../components/StatCard";
 import {
   FaMoneyCheckAlt,
   FaCheckCircle,
@@ -28,7 +28,7 @@ import {
   approveExpense,
   rejectExpense,
   markExpensePaid,
-} from "../services/expenseService";
+} from "../../services/expenseService";
 import toast from "react-hot-toast";
 
 const statusColors = {
