@@ -218,6 +218,8 @@ export async function createNextRecurringInstance(task) {
       description: restOfTask.description,
       assigneeId: restOfTask.assigneeId,
       assigneeType: restOfTask.assigneeType,
+      assigneeIds: restOfTask.assigneeIds || [],
+      assignees: restOfTask.assignees || [],
       projectId: restOfTask.projectId,
       assignedDate: new Date().toISOString().slice(0, 10),
       dueDate: nextDueDate,
@@ -229,6 +231,7 @@ export async function createNextRecurringInstance(task) {
       completedAt: null,
       archived: false,
       completionComment: "",
+      assigneeStatus: {}, // Reset individual statuses
       weightage: restOfTask.weightage,
       isRecurring: restOfTask.isRecurring,
       recurringPattern: restOfTask.recurringPattern,

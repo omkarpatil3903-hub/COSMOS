@@ -55,7 +55,11 @@ import {
   FaCalendar,
   FaClock,
   FaEye,
+  FaPrint,
+  FaFilePdf,
 } from "react-icons/fa";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 import toast from "react-hot-toast";
 import {
   collection,
@@ -329,12 +333,11 @@ Now generate the **final Minutes of Meeting (MoM)** below:
 
       // Generate paragraph summary
       setParagraphSummary(
-        `Meeting "${title}" was conducted with attendees: ${
-          attendees || "N/A"
+        `Meeting "${title}" was conducted with attendees: ${attendees || "N/A"
         }. ` +
-          `Key discussion points included ${points.length} topics covering ` +
-          points.slice(0, 2).join(", ") +
-          (points.length > 2 ? `, and ${points.length - 2} more topics.` : ".")
+        `Key discussion points included ${points.length} topics covering ` +
+        points.slice(0, 2).join(", ") +
+        (points.length > 2 ? `, and ${points.length - 2} more topics.` : ".")
       );
 
       toast.success("MoM generated with Gemini AI!");
@@ -352,13 +355,11 @@ Now generate the **final Minutes of Meeting (MoM)** below:
       toast.error("Failed to generate MoM. Using offline mode.");
 
       // Fallback: generate basic MoM offline
-      const fallbackMom = `# ${title}\n\n*Date:* ${
-        meetingDate || "N/A"
-      }\n*Time:* ${meetingTime || "N/A"}\n*Attendees:* ${
-        attendees || "N/A"
-      }\n\n## Discussion Points\n\n${points
-        .map((p, i) => `${i + 1}. ${p}`)
-        .join("\n")}\n\n---\nGenerated offline`;
+      const fallbackMom = `# ${title}\n\n*Date:* ${meetingDate || "N/A"
+        }\n*Time:* ${meetingTime || "N/A"}\n*Attendees:* ${attendees || "N/A"
+        }\n\n## Discussion Points\n\n${points
+          .map((p, i) => `${i + 1}. ${p}`)
+          .join("\n")}\n\n---\nGenerated offline`;
       setGenerated(fallbackMom);
       const fallbackActions = points.map((p) => `• ${p}`).join("\n");
       setActionItems(fallbackActions);
@@ -491,6 +492,65 @@ Now generate the **final Minutes of Meeting (MoM)** below:
     } catch {
       await navigator.clipboard.writeText(shareContent);
       toast.success("Copied to clipboard (fallback)");
+    }
+  };
+
+  const handlePrint = () => {
+    if (!generated) return toast.error("Generate MoM first");
+    const printContent = document.querySelector(".mom-document");
+    if (!printContent) return;
+
+    const originalContents = document.body.innerHTML;
+    const printContents = printContent.innerHTML;
+
+    document.body.innerHTML = `
+      <div style="padding: 40px;">
+        ${printContents}
+      </div>
+    `;
+    window.print();
+    document.body.innerHTML = originalContents;
+    window.location.reload(); // Reload to restore event listeners
+  };
+
+  const handleExportPDF = async () => {
+    if (!generated) return toast.error("Generate MoM first");
+    const element = document.querySelector(".mom-document");
+    if (!element) return;
+
+    const toastId = toast.loading("Generating PDF...");
+
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+
+      pdf.save(`${(title || "meeting").replace(/\s+/g, "_")}_MoM.pdf`);
+      toast.success("PDF Exported!", { id: toastId });
+    } catch (error) {
+      console.error("PDF Export Error:", error);
+      toast.error("Failed to export PDF", { id: toastId });
     }
   };
 
@@ -845,6 +905,12 @@ Now generate the **final Minutes of Meeting (MoM)** below:
                 </Button>
                 <Button onClick={shareMom} variant="ghost">
                   <FaShareAlt /> Share
+                </Button>
+                <Button onClick={handlePrint} variant="ghost">
+                  <FaPrint /> Print
+                </Button>
+                <Button onClick={handleExportPDF} variant="ghost">
+                  <FaFilePdf /> PDF
                 </Button>
               </div>
             }

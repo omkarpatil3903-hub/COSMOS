@@ -7,7 +7,7 @@ import {
   FaPlus,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
-import { db } from "../../firebase";
+import { db, functions } from "../../firebase";
 import { app as primaryApp } from "../../firebase";
 import { getApps, getApp, initializeApp as initApp } from "firebase/app";
 import {
@@ -27,6 +27,7 @@ import {
   updateDoc,
   setDoc,
 } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
@@ -216,6 +217,21 @@ function ManageClients() {
       // Remove password from update if not provided or needed
       const { password, ...updateData } = submittedData;
 
+      if (submittedData.password) {
+        // Call Cloud Function to update Auth password
+        try {
+          const updateUserPassword = httpsCallable(functions, 'updateUserPassword');
+          await updateUserPassword({ uid: selectedClient.id, password: submittedData.password });
+          toast.success("Password updated in Auth system");
+
+          // Also update devPassword in Firestore
+          updateData.devPassword = submittedData.password;
+        } catch (authError) {
+          console.error("Failed to update Auth password:", authError);
+          toast.error(`Failed to update Auth password: ${authError.message}`);
+        }
+      }
+
       await updateDoc(doc(db, CLIENTS_COLLECTION, selectedClient.id), {
         ...updateData,
         updatedAt: serverTimestamp(),
@@ -243,6 +259,17 @@ function ManageClients() {
     if (!selectedClient) return;
     try {
       setIsDeleting(true);
+
+      // 1. Delete from Auth (Cloud Function)
+      try {
+        const deleteUserAuth = httpsCallable(functions, 'deleteUserAuth');
+        await deleteUserAuth({ uid: selectedClient.id });
+        console.log("Auth deletion successful");
+      } catch (authError) {
+        console.error("Auth deletion failed:", authError);
+      }
+
+      // 2. Delete from Firestore
       await deleteDoc(doc(db, CLIENTS_COLLECTION, selectedClient.id));
       setShowDeleteModal(false);
       setSelectedClient(null);
@@ -359,11 +386,10 @@ function ManageClients() {
                   {tableHeaders.map((header) => (
                     <th
                       key={header.key}
-                      className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 ${
-                        header.key === "actions"
+                      className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 ${header.key === "actions"
                           ? "sticky right-0 z-10 bg-gray-50"
                           : ""
-                      }`}
+                        }`}
                     >
                       {header.sortable ? (
                         <button
