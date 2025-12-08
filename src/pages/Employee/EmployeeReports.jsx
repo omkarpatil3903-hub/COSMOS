@@ -18,6 +18,7 @@ import {
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 
 export default function EmployeeReports() {
   const { user, userData } = useAuthContext();
@@ -30,6 +31,13 @@ export default function EmployeeReports() {
     employeeName: "",
     reportDate: "",
     reportTime: "",
+    clientName: "",
+    projectName: "",
+    dailyHours: "",
+    objective: "",
+    obstacles: "",
+    nextActionPlan: "",
+    summary: "",
     reportContent: "",
   });
   const [generatingReport, setGeneratingReport] = useState(false);
@@ -169,14 +177,26 @@ export default function EmployeeReports() {
       const hh = String(now.getHours()).padStart(2, "0");
       const min = String(now.getMinutes()).padStart(2, "0");
 
+      // Pre-fill Next Action Plan with pending tasks for today
+      const pendingTasksList = todayTasks
+        .map((t) => `${t.title} (${t.priority})`)
+        .join("\n");
+
       setReportData({
         employeeName: userData?.name || "Employee",
         reportDate: `${dd}/${mm}/${yyyy}`,
         reportTime: `${hh}:${min}`,
+        clientName: "",
+        projectName: projects.length > 0 ? projects[0].name : "",
+        dailyHours: "8.0",
+        objective: "",
+        obstacles: "",
+        nextActionPlan: pendingTasksList,
+        summary: "",
         reportContent: "",
       });
     }
-  }, [showReportModal, userData]);
+  }, [showReportModal, userData, projects, todayTasks]);
 
   // Generate Report handler
   const handleGenerateReport = () => {
@@ -198,22 +218,20 @@ TIME:     ${reportData.reportTime}
 ------------------------------------------
              DAILY PROGRESS
 ------------------------------------------
-${
-  tasksCompletedToday.length > 0
-    ? tasksCompletedToday.map((task) => `[x] ${task.title}`).join("\n")
-    : "(No tasks completed today)"
-}
+${tasksCompletedToday.length > 0
+          ? tasksCompletedToday.map((task) => `[x] ${task.title}`).join("\n")
+          : "(No tasks completed today)"
+        }
 
 ------------------------------------------
         PENDING / IN PROGRESS
 ------------------------------------------
-${
-  todayTasks.length > 0
-    ? todayTasks
-        .map((task) => `[ ] ${task.title} (${task.priority}) - ${task.status}`)
-        .join("\n")
-    : "(No pending tasks for today)"
-}
+${todayTasks.length > 0
+          ? todayTasks
+            .map((task) => `[ ] ${task.title} (${task.priority}) - ${task.status}`)
+            .join("\n")
+          : "(No pending tasks for today)"
+        }
 
 ------------------------------------------
                SUMMARY
@@ -224,8 +242,8 @@ ${
 
 ==========================================
 Generated on: ${formatDateToDDMMYYYY(
-        new Date()
-      )} at ${new Date().toLocaleTimeString()}
+          new Date()
+        )} at ${new Date().toLocaleTimeString()}
 ==========================================`;
 
       setReportData((prev) => ({ ...prev, reportContent: content }));
@@ -238,94 +256,53 @@ Generated on: ${formatDateToDDMMYYYY(
     }
   };
 
-  // Generate PDF
-  const generatePDF = () => {
-    const doc = new jsPDF();
-
-    // Header
-    doc.setFontSize(20);
-    doc.setTextColor(41, 128, 185); // Blue color
-    doc.text("Daily Performance Report", 105, 20, { align: "center" });
-
-    // Employee Details
-    doc.setFontSize(12);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Employee: ${reportData.employeeName}`, 20, 40);
-    doc.text(`Date: ${reportData.reportDate}`, 20, 48);
-    doc.text(`Time: ${reportData.reportTime}`, 20, 56);
-
-    // Daily Progress
-    doc.setFontSize(14);
-    doc.setTextColor(41, 128, 185);
-    doc.text("Daily Progress", 20, 70);
-    doc.line(20, 72, 190, 72); // Horizontal line
-
-    doc.setFontSize(11);
-    doc.setTextColor(0, 0, 0);
-    let yPos = 80;
-    if (tasksCompletedToday.length > 0) {
-      tasksCompletedToday.forEach((task) => {
-        doc.text(`• ${task.title}`, 25, yPos);
-        yPos += 8;
-      });
-    } else {
-      doc.text("(No tasks completed today)", 25, yPos);
-      yPos += 8;
+  // Generate PDF using html2canvas
+  const generatePDF = async () => {
+    const element = document.getElementById("report-preview");
+    if (!element) {
+      toast.error("Report preview not found");
+      return;
     }
 
-    // Pending / In Progress
-    yPos += 10;
-    doc.setFontSize(14);
-    doc.setTextColor(41, 128, 185);
-    doc.text("Pending / In Progress", 20, yPos);
-    doc.line(20, yPos + 2, 190, yPos + 2);
-
-    yPos += 10;
-    doc.setFontSize(11);
-    doc.setTextColor(0, 0, 0);
-    if (todayTasks.length > 0) {
-      todayTasks.forEach((task) => {
-        const text = `• ${task.title} (${task.priority}) - ${task.status}`;
-        doc.text(text, 25, yPos);
-        yPos += 8;
+    try {
+      setGeneratingReport(true);
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        logging: false,
+        useCORS: true,
+        backgroundColor: "#ffffff",
       });
-    } else {
-      doc.text("(No pending tasks for today)", 25, yPos);
-      yPos += 8;
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 10; // Top margin
+
+      pdf.addImage(
+        imgData,
+        "PNG",
+        0, // Full width
+        0,
+        pdfWidth,
+        (imgHeight * pdfWidth) / imgWidth
+      );
+
+      pdf.save(
+        `Daily_Report_${reportData.reportDate.replace(/\//g, "-")}_${reportData.employeeName
+        }.pdf`
+      );
+      toast.success("PDF downloaded successfully!");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF");
+    } finally {
+      setGeneratingReport(false);
     }
-
-    // Summary
-    yPos += 10;
-    doc.setFontSize(14);
-    doc.setTextColor(41, 128, 185);
-    doc.text("Summary", 20, yPos);
-    doc.line(20, yPos + 2, 190, yPos + 2);
-
-    yPos += 10;
-    doc.setFontSize(11);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`• Completed Today: ${tasksCompletedToday.length}`, 25, yPos);
-    doc.text(`• Pending Today: ${todayTasks.length}`, 25, yPos + 8);
-    doc.text(`• Total Pending: ${pendingTasks}`, 25, yPos + 16);
-
-    // Footer
-    doc.setFontSize(10);
-    doc.setTextColor(128, 128, 128);
-    doc.text(
-      `Generated on: ${formatDateToDDMMYYYY(
-        new Date()
-      )} at ${new Date().toLocaleTimeString()}`,
-      105,
-      280,
-      { align: "center" }
-    );
-
-    doc.save(
-      `Daily_Report_${reportData.reportDate.replace(/\//g, "-")}_${
-        reportData.employeeName
-      }.pdf`
-    );
-    toast.success("PDF downloaded successfully!");
   };
 
   // Handle Share
@@ -544,11 +521,10 @@ Generated on: ${formatDateToDDMMYYYY(
                 <div
                   className="bg-red-600 h-2 rounded-full transition-all"
                   style={{
-                    width: `${
-                      totalTasks > 0
-                        ? (highPriorityTasks / totalTasks) * 100
-                        : 0
-                    }%`,
+                    width: `${totalTasks > 0
+                      ? (highPriorityTasks / totalTasks) * 100
+                      : 0
+                      }%`,
                   }}
                 ></div>
               </div>
@@ -565,11 +541,10 @@ Generated on: ${formatDateToDDMMYYYY(
                 <div
                   className="bg-yellow-600 h-2 rounded-full transition-all"
                   style={{
-                    width: `${
-                      totalTasks > 0
-                        ? (mediumPriorityTasks / totalTasks) * 100
-                        : 0
-                    }%`,
+                    width: `${totalTasks > 0
+                      ? (mediumPriorityTasks / totalTasks) * 100
+                      : 0
+                      }%`,
                   }}
                 ></div>
               </div>
@@ -586,9 +561,8 @@ Generated on: ${formatDateToDDMMYYYY(
                 <div
                   className="bg-green-600 h-2 rounded-full transition-all"
                   style={{
-                    width: `${
-                      totalTasks > 0 ? (lowPriorityTasks / totalTasks) * 100 : 0
-                    }%`,
+                    width: `${totalTasks > 0 ? (lowPriorityTasks / totalTasks) * 100 : 0
+                      }%`,
                   }}
                 ></div>
               </div>
@@ -699,10 +673,10 @@ Generated on: ${formatDateToDDMMYYYY(
           onClick={() => setShowReportModal(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6"
+            className="bg-white rounded-xl shadow-2xl w-full max-w-[95vw] h-[90vh] flex flex-col p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-3 mb-6">
+            <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
               <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                 <FaFileAlt className="h-5 w-5 text-indigo-600" />
                 Generate Performance Report
@@ -727,140 +701,417 @@ Generated on: ${formatDateToDDMMYYYY(
               </button>
             </div>
 
-            {/* Form Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Employee Name
-                </label>
-                <input
-                  type="text"
-                  value={reportData.employeeName}
-                  onChange={(e) =>
-                    setReportData((prev) => ({
-                      ...prev,
-                      employeeName: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Report Date
-                </label>
-                <input
-                  type="date"
-                  value={reportData.reportDate}
-                  onChange={(e) =>
-                    setReportData((prev) => ({
-                      ...prev,
-                      reportDate: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Report Time
-                </label>
-                <input
-                  type="time"
-                  value={reportData.reportTime}
-                  onChange={(e) =>
-                    setReportData((prev) => ({
-                      ...prev,
-                      reportTime: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                />
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-3 mb-6 flex-wrap">
-              <Button
-                onClick={generateReportContent}
-                disabled={generatingReport}
-                className="flex items-center gap-2"
-              >
-                {generatingReport ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <FaFileAlt className="h-4 w-4" />
-                    {reportData.reportContent
-                      ? "Regenerate"
-                      : "Generate Report"}
-                  </>
-                )}
-              </Button>
-
-              {reportData.reportContent && (
-                <>
-                  <Button
-                    variant="secondary"
-                    onClick={generatePDF}
-                    className="flex items-center gap-2"
-                  >
-                    <FaDownload className="h-4 w-4" />
-                    Download PDF
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={saveReport}
-                    disabled={savingReport}
-                  >
-                    {savingReport ? "Saving..." : "Save Text"}
-                  </Button>
-                  <Button
-                    onClick={sendViaEmail}
-                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    <FaEnvelope className="h-4 w-4" />
-                    Email
-                  </Button>
-                  <Button
-                    onClick={handleShare}
-                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
-                  >
-                    <FaShareAlt className="h-4 w-4" />
-                    Share
-                  </Button>
-                </>
-              )}
-            </div>
-
-            {/* Report Editor Area */}
-            {reportData.reportContent && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Report Content (Editable)
-                  </label>
-                  <span className="text-xs text-gray-500">
-                    You can edit this text before saving or sending
-                  </span>
+            <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
+              {/* LEFT COLUMN: Inputs & Actions */}
+              <div className="w-full lg:w-1/3 overflow-y-auto pr-2 flex flex-col gap-6">
+                {/* Form Fields */}
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Client Name
+                    </label>
+                    <input
+                      type="text"
+                      value={reportData.clientName}
+                      onChange={(e) =>
+                        setReportData((prev) => ({
+                          ...prev,
+                          clientName: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      placeholder="e.g. Acme Corp"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Project Name
+                    </label>
+                    <input
+                      type="text"
+                      value={reportData.projectName}
+                      onChange={(e) =>
+                        setReportData((prev) => ({
+                          ...prev,
+                          projectName: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      placeholder="e.g. Website Redesign"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Daily Hours
+                    </label>
+                    <input
+                      type="text"
+                      value={reportData.dailyHours}
+                      onChange={(e) =>
+                        setReportData((prev) => ({
+                          ...prev,
+                          dailyHours: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      placeholder="e.g. 8.0 Hrs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Objective for the Day
+                    </label>
+                    <input
+                      type="text"
+                      value={reportData.objective}
+                      onChange={(e) =>
+                        setReportData((prev) => ({
+                          ...prev,
+                          objective: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      placeholder="Main goal for today"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Obstacles / Challenges (One per line)
+                    </label>
+                    <textarea
+                      value={reportData.obstacles}
+                      onChange={(e) =>
+                        setReportData((prev) => ({
+                          ...prev,
+                          obstacles: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                      placeholder="List any roadblocks..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Next Action Plan (One per line)
+                    </label>
+                    <textarea
+                      value={reportData.nextActionPlan}
+                      onChange={(e) =>
+                        setReportData((prev) => ({
+                          ...prev,
+                          nextActionPlan: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                      placeholder="What's next..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Summary
+                    </label>
+                    <textarea
+                      value={reportData.summary}
+                      onChange={(e) =>
+                        setReportData((prev) => ({
+                          ...prev,
+                          summary: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                      placeholder="Brief summary of the day..."
+                    />
+                  </div>
                 </div>
-                <textarea
-                  value={reportData.reportContent}
-                  onChange={(e) =>
-                    setReportData((prev) => ({
-                      ...prev,
-                      reportContent: e.target.value,
-                    }))
-                  }
-                  className="w-full h-[400px] rounded-xl border border-gray-300 p-6 text-sm font-mono leading-relaxed focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 bg-gray-50 shadow-inner resize-none"
-                  placeholder="Report content will appear here..."
-                  spellCheck={false}
-                />
+
+                {/* Action Buttons */}
+                <div className="flex items-center gap-3 flex-wrap border-t pt-4">
+                  <Button
+                    onClick={generateReportContent}
+                    disabled={generatingReport}
+                    className="flex items-center gap-2 w-full justify-center"
+                  >
+                    {generatingReport ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <FaFileAlt className="h-4 w-4" />
+                        {reportData.reportContent
+                          ? "Regenerate Text"
+                          : "Generate Text Report"}
+                      </>
+                    )}
+                  </Button>
+
+                  {reportData.reportContent && (
+                    <div className="flex gap-2 w-full flex-wrap">
+                      <Button
+                        variant="secondary"
+                        onClick={generatePDF}
+                        className="flex items-center gap-2 flex-1 justify-center bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-200"
+                      >
+                        <FaDownload className="h-4 w-4" />
+                        Download PDF
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={saveReport}
+                        disabled={savingReport}
+                        className="flex-1 justify-center"
+                      >
+                        {savingReport ? "Saving..." : "Save Text"}
+                      </Button>
+                      <Button
+                        onClick={sendViaEmail}
+                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white flex-1 justify-center"
+                      >
+                        <FaEnvelope className="h-4 w-4" />
+                        Email
+                      </Button>
+                      <Button
+                        onClick={handleShare}
+                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white flex-1 justify-center"
+                      >
+                        <FaShareAlt className="h-4 w-4" />
+                        Share
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Report Editor Area (Text) */}
+                {reportData.reportContent && (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Report Content (Editable)
+                      </label>
+                    </div>
+                    <textarea
+                      value={reportData.reportContent}
+                      onChange={(e) =>
+                        setReportData((prev) => ({
+                          ...prev,
+                          reportContent: e.target.value,
+                        }))
+                      }
+                      className="w-full h-[200px] rounded-xl border border-gray-300 p-4 text-sm font-mono leading-relaxed focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 bg-gray-50 shadow-inner resize-none"
+                      placeholder="Report content will appear here..."
+                      spellCheck={false}
+                    />
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* RIGHT COLUMN: Visual Preview */}
+              <div className="w-full lg:w-2/3 bg-gray-100 rounded-xl border border-gray-200 overflow-y-auto p-4 flex justify-center">
+                {/* VISUAL PREVIEW - MATCHING SCREENSHOT */}
+                <div
+                  id="report-preview"
+                  className="bg-white p-8 shadow-lg text-black transform scale-90 origin-top"
+                  style={{
+                    width: "210mm",
+                    minHeight: "297mm",
+                    fontFamily: '"Comic Sans MS", "Chalkboard SE", sans-serif',
+                  }}
+                >
+                  {/* Title */}
+                  <h1
+                    className="text-center text-2xl font-bold mb-6"
+                    style={{
+                      fontFamily:
+                        '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
+                      fontStyle: "italic",
+                    }}
+                  >
+                    Daily Progress Report
+                  </h1>
+
+                  <hr className="border-t-2 border-gray-300 mb-6" />
+
+                  {/* Metadata Table */}
+                  <table className="w-full border-collapse border border-black mb-6 text-sm">
+                    <tbody>
+                      <tr>
+                        <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
+                          Report No.
+                        </td>
+                        <td className="border border-black p-2 w-1/4">
+                          MFI_DR_{new Date().getDate()}
+                        </td>
+                        <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
+                          Day & Date
+                        </td>
+                        <td className="border border-black p-2 w-1/4">
+                          {reportData.reportDate}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black p-2 font-bold bg-gray-100">
+                          Client Name -
+                        </td>
+                        <td className="border border-black p-2" colSpan="3">
+                          {reportData.clientName}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black p-2 font-bold bg-gray-100">
+                          Project Name -
+                        </td>
+                        <td className="border border-black p-2" colSpan="3">
+                          {reportData.projectName}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black p-2 font-bold bg-gray-100">
+                          Consultant Name:
+                        </td>
+                        <td className="border border-black p-2" colSpan="3">
+                          {reportData.employeeName}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black p-2 font-bold bg-gray-100">
+                          Daily Hours:
+                        </td>
+                        <td className="border border-black p-2" colSpan="3">
+                          Hours Worked: {reportData.dailyHours}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  {/* Objective */}
+                  <div className="mb-4">
+                    <h3 className="font-bold mb-1 italic">
+                      Objective for the Day:
+                    </h3>
+                    <p className="ml-4">{reportData.objective}</p>
+                  </div>
+
+                  {/* Key Activities */}
+                  <div className="mb-6">
+                    <h3 className="font-bold mb-2 italic">
+                      1. Key Activities Completed:
+                    </h3>
+                    <table className="w-full border-collapse border border-black text-sm">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border border-black p-2 text-left w-1/2">
+                            Task Detail
+                          </th>
+                          <th className="border border-black p-2 text-left w-1/4">
+                            Task Status
+                          </th>
+                          <th className="border border-black p-2 text-left w-1/4">
+                            Comments/Remarks
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tasksCompletedToday.length > 0 ? (
+                          tasksCompletedToday.map((task, index) => (
+                            <tr key={task.id}>
+                              <td className="border border-black p-2">
+                                {index + 1}. {task.title}
+                              </td>
+                              <td className="border border-black p-2">
+                                {task.status}
+                              </td>
+                              <td className="border border-black p-2">
+                                {task.completionComment || "-"}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td
+                              className="border border-black p-2 text-center text-gray-500"
+                              colSpan="3"
+                            >
+                              No tasks completed today
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Obstacles */}
+                  <div className="mb-6">
+                    <h3 className="font-bold mb-2 italic">
+                      Obstacles/Challenges Faced/ Roadblocks (if any)
+                    </h3>
+                    <table className="w-full border-collapse border border-black text-sm">
+                      <tbody>
+                        {reportData.obstacles
+                          .split("\n")
+                          .filter((line) => line.trim() !== "")
+                          .map((line, index) => (
+                            <tr key={index}>
+                              <td className="border border-black p-2 w-10 text-center">
+                                {index + 1}
+                              </td>
+                              <td className="border border-black p-2">
+                                {line}
+                              </td>
+                            </tr>
+                          ))}
+                        {reportData.obstacles.trim() === "" && (
+                          <tr>
+                            <td className="border border-black p-2 w-10 text-center">
+                              1
+                            </td>
+                            <td className="border border-black p-2"></td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Next Action Plan */}
+                  <div className="mb-6">
+                    <h3 className="font-bold mb-2 italic">Next Action Plan</h3>
+                    <table className="w-full border-collapse border border-black text-sm">
+                      <tbody>
+                        {reportData.nextActionPlan
+                          .split("\n")
+                          .filter((line) => line.trim() !== "")
+                          .map((line, index) => (
+                            <tr key={index}>
+                              <td className="border border-black p-2 w-10 text-center">
+                                {index + 1}
+                              </td>
+                              <td className="border border-black p-2">
+                                {line}
+                              </td>
+                            </tr>
+                          ))}
+                        {reportData.nextActionPlan.trim() === "" && (
+                          <tr>
+                            <td className="border border-black p-2 w-10 text-center">
+                              1
+                            </td>
+                            <td className="border border-black p-2"></td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Summary */}
+                  <div className="mb-6">
+                    <h3 className="font-bold mb-1 italic">Summary:</h3>
+                    <p className="ml-4 border-b border-black min-h-[2rem]">
+                      {reportData.summary}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

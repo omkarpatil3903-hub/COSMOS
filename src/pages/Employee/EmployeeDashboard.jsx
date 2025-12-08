@@ -16,6 +16,9 @@ import Card from "../../components/Card";
 import StatCard from "../../components/StatCard";
 import Button from "../../components/Button";
 import CompletionCommentModal from "../../components/CompletionCommentModal";
+
+import RemindersList from "../../components/Reminders/RemindersList";
+import AddReminderModal from "../../components/Reminders/AddReminderModal";
 import {
   FaTasks,
   FaCheckCircle,
@@ -58,10 +61,13 @@ const EmployeeDashboard = () => {
   const [savingReport, setSavingReport] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [reminderNotifications, setReminderNotifications] = useState([]);
   const [dismissedNotifications, setDismissedNotifications] = useState(
     new Set()
   );
   const notificationRef = useRef(null);
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [reminderTask, setReminderTask] = useState(null);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -153,6 +159,41 @@ const EmployeeDashboard = () => {
 
     return () => unsubProjects();
   }, [user, tasks]);
+
+  // Listen for due reminders
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    // We fetch all pending reminders and filter client-side for "due" ones
+    // to avoid complex composite indexes for now, or we can just query by status
+    const q = query(
+      collection(db, "reminders"),
+      where("userId", "==", user.uid),
+      where("status", "==", "pending")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const now = new Date();
+      const due = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(r => {
+          const dueAt = r.dueAt?.toDate?.() || new Date(r.dueAt);
+          return dueAt <= now && !r.isRead;
+        })
+        .map(r => ({
+          id: `reminder-${r.id}`,
+          type: "reminder",
+          title: "Reminder Due",
+          message: r.title,
+          reminderId: r.id,
+          redirectTo: null // Or open a modal?
+        }));
+
+      setReminderNotifications(due);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   // Calculate stats
   const stats = {
@@ -264,7 +305,7 @@ const EmployeeDashboard = () => {
 
   // Generate real-time notifications based on task data
   useEffect(() => {
-    if (tasks.length === 0) return;
+    if (tasks.length === 0 && reminderNotifications.length === 0) return;
 
     const newNotifications = [];
     const now = new Date();
@@ -285,9 +326,8 @@ const EmployeeDashboard = () => {
         id: `overdue-${task.id}`,
         type: "overdue",
         title: "Overdue Task",
-        message: `"${task.title}" is ${daysOverdue} day${
-          daysOverdue > 1 ? "s" : ""
-        } overdue`,
+        message: `"${task.title}" is ${daysOverdue} day${daysOverdue > 1 ? "s" : ""
+          } overdue`,
         taskId: task.id,
         redirectTo: "/employee/tasks?view=overdue",
       });
@@ -312,19 +352,22 @@ const EmployeeDashboard = () => {
       });
     });
 
+    // Merge with reminder notifications
+    const allNotifications = [...newNotifications, ...reminderNotifications];
+
     // Filter out dismissed notifications
-    const filteredNotifications = newNotifications.filter(
+    const filteredNotifications = allNotifications.filter(
       (notification) => !dismissedNotifications.has(notification.id)
     );
 
-    // Sort notifications by priority (overdue first, then new tasks)
+    // Sort notifications by priority (overdue first, then reminders, then new tasks)
     filteredNotifications.sort((a, b) => {
-      const priority = { overdue: 0, task: 1 };
+      const priority = { overdue: 0, reminder: 1, task: 2 };
       return priority[a.type] - priority[b.type];
     });
 
     setNotifications(filteredNotifications);
-  }, [tasks, dismissedNotifications]);
+  }, [tasks, reminderNotifications, dismissedNotifications]);
 
   // Close notifications when clicking outside
   useEffect(() => {
@@ -347,7 +390,7 @@ const EmployeeDashboard = () => {
   }, [showNotifications]);
 
   // Handle notification click
-  const handleNotificationClick = (notification) => {
+  const handleNotificationClick = async (notification) => {
     if (notification.type === "overdue" || notification.type === "task") {
       // For overdue and newly assigned tasks, redirect to task management with scroll to task
       navigate("/employee/tasks", {
@@ -355,9 +398,19 @@ const EmployeeDashboard = () => {
           highlightTaskId: notification.taskId,
         },
       });
+    } else if (notification.type === "reminder") {
+      // Mark as read
+      try {
+        await updateDoc(doc(db, "reminders", notification.reminderId), {
+          isRead: true
+        });
+        toast.success("Reminder marked as read");
+      } catch (e) {
+        console.error("Error updating reminder", e);
+      }
     } else {
       // For other notifications, use the original redirect
-      navigate(notification.redirectTo);
+      if (notification.redirectTo) navigate(notification.redirectTo);
     }
     setShowNotifications(false);
   };
@@ -388,6 +441,12 @@ const EmployeeDashboard = () => {
     setShowReportModal(true);
   };
 
+  const handleSetReminder = (task, e) => {
+    e.stopPropagation();
+    setReminderTask(task);
+    setShowReminderModal(true);
+  };
+
   // Generate report content
   const generateReportContent = () => {
     setGeneratingReport(true);
@@ -411,25 +470,23 @@ const EmployeeDashboard = () => {
 - *Active Projects:* ${projects.length}
 
 ## Recent Activity
-${
-  recentCompletedTasks.length > 0
-    ? recentCompletedTasks.map((task) => `- ${task.title}`).join("\n")
-    : "- No recent completed tasks"
-}
+${recentCompletedTasks.length > 0
+          ? recentCompletedTasks.map((task) => `- ${task.title}`).join("\n")
+          : "- No recent completed tasks"
+        }
 
 ## Today's Focus
-${
-  todayTasks.length > 0
-    ? todayTasks
-        .map((task) => `- ${task.title} (${task.priority} Priority)`)
-        .join("\n")
-    : "- No tasks due today"
-}
+${todayTasks.length > 0
+          ? todayTasks
+            .map((task) => `- ${task.title} (${task.priority} Priority)`)
+            .join("\n")
+          : "- No tasks due today"
+        }
 
 ---
 *Generated on: ${formatDateToDDMMYYYY(
-        new Date()
-      )} at ${new Date().toLocaleTimeString()}*`;
+          new Date()
+        )} at ${new Date().toLocaleTimeString()}*`;
 
       setReportData((prev) => ({ ...prev, reportContent: content }));
       toast.success("Report generated successfully!");
@@ -554,6 +611,9 @@ ${
                             )}
                             {notification.type === "overdue" && (
                               <FaExclamationTriangle className="h-4 w-4 text-red-500 mt-1" />
+                            )}
+                            {notification.type === "reminder" && (
+                              <FaBell className="h-4 w-4 text-indigo-500 mt-1" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0 pr-8">
@@ -708,8 +768,8 @@ ${
         </div>
       </Card>
 
-      {/* Two Column Layout - Upcoming Tasks & Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Three Column Layout - Upcoming Tasks, Reminders, Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Upcoming Tasks */}
         <Card>
           <div className="flex items-center justify-between mb-4">
@@ -749,11 +809,10 @@ ${
                 return (
                   <div
                     key={task.id}
-                    className={`border-l-4 rounded-lg p-4 hover:shadow-md transition-shadow ${
-                      priorityColors[task.priority]
-                        ?.replace("bg-", "border-")
-                        .split(" ")[0] || "border-gray-300"
-                    } bg-white border border-gray-200`}
+                    className={`border-l-4 rounded-lg p-4 hover:shadow-md transition-shadow ${priorityColors[task.priority]
+                      ?.replace("bg-", "border-")
+                      .split(" ")[0] || "border-gray-300"
+                      } bg-white border border-gray-200`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
@@ -767,31 +826,35 @@ ${
                         )}
                         <div className="flex items-center gap-2 mt-2 flex-wrap">
                           <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              statusColors[task.status] || statusColors["To-Do"]
-                            }`}
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[task.status] || statusColors["To-Do"]
+                              }`}
                           >
                             {task.status}
                           </span>
                           <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              priorityColors[task.priority] ||
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${priorityColors[task.priority] ||
                               priorityColors.Medium
-                            }`}
+                              }`}
                           >
                             {task.priority}
                           </span>
                           <span
-                            className={`text-xs ${
-                              isOverdue
-                                ? "text-red-600 font-semibold"
-                                : "text-gray-500"
-                            }`}
+                            className={`text-xs ${isOverdue
+                              ? "text-red-600 font-semibold"
+                              : "text-gray-500"
+                              }`}
                           >
                             {formatDateToDDMMYYYY(dueDate)}
                             {isOverdue && " (Overdue!)"}
                           </span>
                         </div>
+                        <button
+                          onClick={(e) => handleSetReminder(task, e)}
+                          className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-full transition-colors shrink-0"
+                          title="Set Reminder"
+                        >
+                          <FaBell />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -800,6 +863,9 @@ ${
             </div>
           )}
         </Card>
+
+        {/* Reminders Widget */}
+        <RemindersList />
 
         {/* Recent Activity */}
         <Card>
@@ -873,20 +939,29 @@ ${
                         {task.title}
                       </h4>
                       <span
-                        className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full ${
-                          priorityColors[task.priority] || priorityColors.Medium
-                        }`}
+                        className={`inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full ${priorityColors[task.priority] || priorityColors.Medium
+                          }`}
                       >
                         {task.priority} Priority
                       </span>
                     </div>
-                    <Button
-                      onClick={() => handleQuickComplete(task.id)}
-                      size="sm"
-                      className="shrink-0"
-                    >
-                      ✓
-                    </Button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        onClick={(e) => handleSetReminder(task, e)}
+                        variant="ghost"
+                        size="sm"
+                        className="text-gray-400 hover:text-amber-600 hover:bg-amber-50 px-2"
+                        title="Set Reminder"
+                      >
+                        <FaBell />
+                      </Button>
+                      <Button
+                        onClick={() => handleQuickComplete(task.id)}
+                        size="sm"
+                      >
+                        ✓
+                      </Button>
+                    </div>
                   </div>
                 </div>
               );
@@ -1072,6 +1147,19 @@ ${
           </div>
         </div>
       )}
+
+      {/* Add Reminder Modal */}
+      <AddReminderModal
+        isOpen={showReminderModal}
+        onClose={() => {
+          setShowReminderModal(false);
+          setReminderTask(null);
+        }}
+        initialData={{
+          title: reminderTask?.title,
+          relatedTaskId: reminderTask?.id,
+        }}
+      />
     </div>
   );
 };

@@ -44,6 +44,7 @@ import {
   serverTimestamp,
   updateDoc,
   limit,
+  where,
 } from "firebase/firestore";
 import { useAuthContext } from "../../context/AuthContext";
 import { logTaskActivity } from "../../services/taskService";
@@ -258,12 +259,19 @@ function TasksManagement() {
   const wipLimits = useMemo(() => ({}), []);
 
   useEffect(() => {
+    const constraints = [orderBy("createdAt", "desc"), limit(taskLimit)];
+    if (filters.project) {
+      constraints.unshift(where("projectId", "==", filters.project));
+    }
+    if (filters.assignee) {
+      const [type, id] = filters.assignee.split(":");
+      if (id) {
+        constraints.unshift(where("assigneeIds", "array-contains", id));
+      }
+    }
+
     const unsubTasks = onSnapshot(
-      query(
-        collection(db, "tasks"),
-        orderBy("createdAt", "desc"),
-        limit(taskLimit)
-      ),
+      query(collection(db, "tasks"), ...constraints),
       (snap) => {
         const list = snap.docs.map((d) => {
           const data = d.data() || {};
@@ -283,9 +291,32 @@ function TasksManagement() {
               ? data.dueDate.toDate().toISOString().slice(0, 10)
               : data.dueDate || "",
             priority: data.priority || "Medium",
-            status:
-              (data.status === "In Review" ? "In Progress" : data.status) ||
-              "To-Do",
+            status: (() => {
+              // 1. Default global status
+              let s = (data.status === "In Review" ? "In Progress" : data.status) || "To-Do";
+
+              // 2. Override with derived status from assignees if available
+              if (data.assigneeStatus && Object.keys(data.assigneeStatus).length > 0) {
+                const values = Object.values(data.assigneeStatus);
+                if (values.length > 0) {
+                  const allDone = values.every((v) => v.status === "Done");
+                  const anyInProgress = values.some((v) => v.status === "In Progress" || v.status === "In Review");
+                  const anyDone = values.some((v) => v.status === "Done");
+
+                  if (allDone) s = "Done";
+                  else if (anyInProgress || anyDone) s = "In Progress";
+                  else s = "To-Do";
+                }
+              }
+              return s;
+            })(),
+            isDerivedStatus: (() => {
+              if (data.assigneeStatus && Object.keys(data.assigneeStatus).length > 0) {
+                const values = Object.values(data.assigneeStatus);
+                return values.length > 0;
+              }
+              return false;
+            })(),
             progressPercent: data.progressPercent ?? 0,
             createdAt: tsToISO(data.createdAt) || new Date().toISOString(),
             completedAt: tsToISO(data.completedAt),
@@ -298,8 +329,8 @@ function TasksManagement() {
                 : typeof data.weightage === "string" &&
                   data.weightage.trim() !== "" &&
                   !isNaN(Number(data.weightage))
-                ? Number(data.weightage)
-                : null,
+                  ? Number(data.weightage)
+                  : null,
             archived: !!data.archived,
             isRecurring: data.isRecurring || false,
             recurringPattern: data.recurringPattern || "daily",
@@ -348,7 +379,7 @@ function TasksManagement() {
       unsubUsers();
       unsubClients();
     };
-  }, []);
+  }, [taskLimit, filters.project, filters.assignee]);
 
   // Ref to track if we've already checked deadlines in this session to prevent spam
   const hasCheckedDeadlines = useRef(false);
@@ -412,8 +443,8 @@ function TasksManagement() {
         const ref = doc(db, "tasks", taskData.id);
         const wt =
           taskData.weightage === "" ||
-          taskData.weightage === undefined ||
-          taskData.weightage === null
+            taskData.weightage === undefined ||
+            taskData.weightage === null
             ? null
             : Number(taskData.weightage);
 
@@ -423,8 +454,8 @@ function TasksManagement() {
         const newAssigneeIds = Array.isArray(taskData.assignees)
           ? taskData.assignees.map((a) => a.id).filter(Boolean)
           : taskData.assigneeId
-          ? [taskData.assigneeId]
-          : [];
+            ? [taskData.assigneeId]
+            : [];
 
         // Build or update assigneeStatus map
         const currentStatusMap = current?.assigneeStatus || {};
@@ -588,16 +619,16 @@ function TasksManagement() {
         }
         const wt =
           taskData.weightage === "" ||
-          taskData.weightage === undefined ||
-          taskData.weightage === null
+            taskData.weightage === undefined ||
+            taskData.weightage === null
             ? null
             : Number(taskData.weightage);
 
         const assigneeIds = Array.isArray(taskData.assignees)
           ? taskData.assignees.map((a) => a.id).filter(Boolean)
           : taskData.assigneeId
-          ? [taskData.assigneeId]
-          : [];
+            ? [taskData.assigneeId]
+            : [];
 
         // Initialize assigneeStatus map
         const initialAssigneeStatus = {};
@@ -764,7 +795,7 @@ function TasksManagement() {
       // refresh project progress for affected projects
       await Promise.all(
         Array.from(affectedProjects).map((pid) =>
-          updateProjectProgress(pid).catch(() => {})
+          updateProjectProgress(pid).catch(() => { })
         )
       );
     } catch (err) {
@@ -789,7 +820,7 @@ function TasksManagement() {
             .filter(Boolean)
         );
         affected.forEach((pid) => {
-          updateProjectProgress(pid).catch(() => {});
+          updateProjectProgress(pid).catch(() => { });
         });
       })
       .catch((err) => {
@@ -813,7 +844,7 @@ function TasksManagement() {
             .filter(Boolean)
         );
         affected.forEach((pid) => {
-          updateProjectProgress(pid).catch(() => {});
+          updateProjectProgress(pid).catch(() => { });
         });
       })
       .catch((err) => {
@@ -860,8 +891,7 @@ function TasksManagement() {
         assigneeType: newType || (newRes ? "user" : newCli ? "client" : "user"),
       });
       toast.success(
-        `Task reassigned from ${
-          oldRes?.name || oldCli?.clientName || "Unassigned"
+        `Task reassigned from ${oldRes?.name || oldCli?.clientName || "Unassigned"
         } to ${newRes?.name || newCli?.clientName || "Unassigned"}`
       );
       logTaskActivity(
@@ -892,13 +922,13 @@ function TasksManagement() {
         progressPercent: willBeDone
           ? 100
           : wasDone
-          ? 0
-          : t.progressPercent ?? 0,
+            ? 0
+            : t.progressPercent ?? 0,
         completedAt: willBeDone
           ? serverTimestamp()
           : wasDone
-          ? null
-          : t.completedAt || null,
+            ? null
+            : t.completedAt || null,
       });
       if (t.projectId) {
         try {
@@ -1004,7 +1034,10 @@ function TasksManagement() {
       // 4. Assignee ID Check
       if (filters.assignee) {
         const [type, id] = filters.assignee.split(":");
-        if (t.assigneeType !== type || t.assigneeId !== id) return false;
+        // Check legacy OR new array
+        const matchLegacy = t.assigneeType === type && t.assigneeId === id;
+        const matchArray = t.assigneeIds?.includes(id);
+        if (!matchLegacy && !matchArray) return false;
       }
 
       // 5. Search Text
@@ -1013,9 +1046,8 @@ function TasksManagement() {
         const project = projectMap[t.projectId];
         const assignee = userMap[t.assigneeId] || clientMap[t.assigneeId];
 
-        const searchText = `${t.title} ${t.description} ${
-          project?.name || ""
-        } ${assignee?.name || assignee?.clientName || ""}`.toLowerCase();
+        const searchText = `${t.title} ${t.description} ${project?.name || ""
+          } ${assignee?.name || assignee?.clientName || ""}`.toLowerCase();
 
         if (!searchText.includes(s)) return false;
       }
@@ -1225,7 +1257,7 @@ function TasksManagement() {
               user
             );
             if (taskData.projectId) {
-              updateProjectProgress(taskData.projectId).catch(() => {});
+              updateProjectProgress(taskData.projectId).catch(() => { });
             }
             createdCount++;
           } catch (err) {
@@ -1395,39 +1427,35 @@ function TasksManagement() {
           </Card>
           <Card
             onClick={applyOverdueQuickFilter}
-            className={`cursor-pointer transition-all duration-300 ${
-              globalOverdueTasks.length > 0
-                ? "bg-red-50 border-red-300 ring-2 ring-red-100 ring-offset-2"
-                : "hover:bg-surface-subtle"
-            }`}
+            className={`cursor-pointer transition-all duration-300 ${globalOverdueTasks.length > 0
+              ? "bg-red-50 border-red-300 ring-2 ring-red-100 ring-offset-2"
+              : "hover:bg-surface-subtle"
+              }`}
           >
             <div className="flex items-center justify-between">
               <div>
                 <div
-                  className={`text-sm ${
-                    globalOverdueTasks.length > 0
-                      ? "text-red-700 font-medium"
-                      : "text-content-secondary"
-                  }`}
+                  className={`text-sm ${globalOverdueTasks.length > 0
+                    ? "text-red-700 font-medium"
+                    : "text-content-secondary"
+                    }`}
                 >
                   Overdue
                 </div>
                 <div
-                  className={`mt-1 text-2xl font-bold ${
-                    globalOverdueTasks.length > 0
-                      ? "text-red-800"
-                      : "text-red-600"
-                  }`}
+                  className={`mt-1 text-2xl font-bold ${globalOverdueTasks.length > 0
+                    ? "text-red-800"
+                    : "text-red-600"
+                    }`}
                 >
                   {globalOverdueTasks.length}
                 </div>
               </div>
               <FaExclamationTriangle
-                className={`h-8 w-8 ${
-                  globalOverdueTasks.length > 0
-                    ? "text-red-600 animate-bounce"
-                    : "text-red-500"
-                }`}
+                className={`h-8 w-8 ${globalOverdueTasks.length > 0
+                  ? "text-red-600 animate-bounce"
+                  : "text-red-500"
+                  }`}
               />
             </div>
           </Card>
@@ -1505,15 +1533,15 @@ function TasksManagement() {
                 )}
                 {(!filters.assigneeType ||
                   filters.assigneeType === "client") && (
-                  <optgroup label="Clients">
-                    {filteredAssigneeClients.map((c) => (
-                      <option key={c.id} value={`client:${c.id}`}>
-                        {c.clientName}{" "}
-                        {c.companyName ? `(${c.companyName})` : ""}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
+                    <optgroup label="Clients">
+                      {filteredAssigneeClients.map((c) => (
+                        <option key={c.id} value={`client:${c.id}`}>
+                          {c.clientName}{" "}
+                          {c.companyName ? `(${c.companyName})` : ""}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
               </select>
 
               <select
@@ -1598,33 +1626,30 @@ function TasksManagement() {
 
                 <div className="flex items-center rounded-lg border border-subtle bg-white p-0.5">
                   <button
-                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
-                      filters.assigneeType === ""
-                        ? "bg-indigo-600 text-white shadow-sm"
-                        : "text-content-primary hover:bg-gray-100"
-                    }`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === ""
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-content-primary hover:bg-gray-100"
+                      }`}
                     onClick={() => updateFilter("assigneeType", "")}
                     type="button"
                   >
                     All
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
-                      filters.assigneeType === "user"
-                        ? "bg-indigo-600 text-white shadow-sm"
-                        : "text-content-primary hover:bg-gray-100"
-                    }`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "user"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-content-primary hover:bg-gray-100"
+                      }`}
                     onClick={() => updateFilter("assigneeType", "user")}
                     type="button"
                   >
                     Resources
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
-                      filters.assigneeType === "client"
-                        ? "bg-indigo-600 text-white shadow-sm"
-                        : "text-content-primary hover:bg-gray-100"
-                    }`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "client"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-content-primary hover:bg-gray-100"
+                      }`}
                     onClick={() => updateFilter("assigneeType", "client")}
                     type="button"
                   >
@@ -1637,22 +1662,20 @@ function TasksManagement() {
                 <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                   <button
                     onClick={() => setView("list")}
-                    className={`p-2 rounded transition-all ${
-                      view === "list"
-                        ? "bg-white text-indigo-600 shadow-sm"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
-                    }`}
+                    className={`p-2 rounded transition-all ${view === "list"
+                      ? "bg-white text-indigo-600 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                      }`}
                     title="List View"
                   >
                     <FaList className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setView("board")}
-                    className={`p-2 rounded transition-all ${
-                      view === "board"
-                        ? "bg-white text-indigo-600 shadow-sm"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
-                    }`}
+                    className={`p-2 rounded transition-all ${view === "board"
+                      ? "bg-white text-indigo-600 shadow-sm"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                      }`}
                     title="Kanban View"
                   >
                     <FaTh className="w-4 h-4" />

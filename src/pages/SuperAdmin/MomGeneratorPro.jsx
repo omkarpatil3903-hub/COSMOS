@@ -12,6 +12,8 @@ import {
   FaFilePdf,
   FaEllipsisV,
 } from "react-icons/fa";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 import toast from "react-hot-toast";
 import {
   collection,
@@ -163,6 +165,7 @@ export default function MomGeneratorPro() {
   const [loading, setLoading] = useState(false);
   const [isGenerated, setIsGenerated] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const momRef = React.useRef(null);
 
   // Load Projects
   useEffect(() => {
@@ -401,9 +404,8 @@ export default function MomGeneratorPro() {
 
     let content = `Minutes of Meeting (v${momVersion})\n\n`;
     content += `Project: ${selectedProject?.name || "N/A"}\n`;
-    content += `Meeting Date & Time: ${meetingDate}${
-      meetingStartTime ? ` ${meetingStartTime} to ${meetingEndTime}` : ""
-    }\n`;
+    content += `Meeting Date & Time: ${meetingDate}${meetingStartTime ? ` ${meetingStartTime} to ${meetingEndTime}` : ""
+      }\n`;
     content += `Venue: ${meetingVenue || "N/A"}\n`;
     content += `Internal Attendees: ${internalAttendeeNames || "N/A"}\n`;
     if (externalAttendees.trim()) {
@@ -430,59 +432,75 @@ export default function MomGeneratorPro() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `MOM_${
-      selectedProject?.name || "Project"
-    }_${meetingDate}_v${momVersion}.txt`;
+    a.download = `MOM_${selectedProject?.name || "Project"
+      }_${meetingDate}_v${momVersion}.txt`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Downloaded .txt");
   };
 
-  // PDF export (html2pdf.js via CDN)
-  const ensureHtml2Pdf = useCallback(async () => {
-    if (window.html2pdf) return window.html2pdf;
-    return new Promise((resolve, reject) => {
-      const existing = document.querySelector("#html2pdf-cdn");
-      if (existing) {
-        existing.addEventListener("load", () => resolve(window.html2pdf));
-        existing.addEventListener("error", () =>
-          reject(new Error("html2pdf failed to load"))
-        );
-        if (window.html2pdf) resolve(window.html2pdf);
-        return;
-      }
-      const script = document.createElement("script");
-      script.id = "html2pdf-cdn";
-      script.src =
-        "https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js";
-      script.onload = () => resolve(window.html2pdf);
-      script.onerror = () => reject(new Error("html2pdf failed to load"));
-      document.body.appendChild(script);
-    });
-  }, []);
-
-  const exportPDF = async () => {
+  // PDF export (html2pdf.js via CDN) - REPLACED with local jsPDF + html2canvas
+  const handleExportPDF = async () => {
     if (!isGenerated) return toast.error("Generate MOM first");
+    const element = momRef.current;
+    if (!element) return toast.error("Document content not found");
+
+    const toastId = toast.loading("Generating PDF...");
+
     try {
-      const html2pdf = await ensureHtml2Pdf();
-      const element = document.querySelector(".mom-document");
-      const filename = `MOM_${
-        selectedProject?.name || "Project"
-      }_${meetingDate}_v${momVersion}.pdf`;
-      html2pdf()
-        .from(element)
-        .set({
-          margin: [10, 10, 10, 10],
-          filename,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        })
-        .save();
-    } catch (e) {
-      console.error(e);
-      toast.error("PDF export failed");
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        logging: false,
+        useCORS: false,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+
+      const filename = `MOM_${selectedProject?.name || "Project"
+        }_${meetingDate}_v${momVersion}.pdf`;
+      pdf.save(filename);
+      toast.success("PDF Exported!", { id: toastId });
+    } catch (error) {
+      console.error("PDF Export Error:", error);
+      toast.error("Failed to export PDF", { id: toastId });
     }
+  };
+
+  const handlePrint = () => {
+    if (!isGenerated) return toast.error("Generate MOM first");
+    const printContent = momRef.current;
+    if (!printContent) return;
+
+    const originalContents = document.body.innerHTML;
+    const printContents = printContent.innerHTML;
+
+    document.body.innerHTML = `
+      <div style="padding: 40px;">
+        ${printContents}
+      </div>
+    `;
+    window.print();
+    document.body.innerHTML = originalContents;
+    window.location.reload(); // Reload to restore event listeners
   };
 
   // Share (Web Share API or mailto)
@@ -498,11 +516,9 @@ export default function MomGeneratorPro() {
       .join(", ");
 
     let text = `${title}\n\n`;
-    text += `Date & Time: ${meetingDate}${
-      meetingStartTime ? ` ${meetingStartTime} to ${meetingEndTime}` : ""
-    }\nVenue: ${meetingVenue || "N/A"}\nInternal Attendees: ${
-      internalAttendeeNames || "N/A"
-    }`;
+    text += `Date & Time: ${meetingDate}${meetingStartTime ? ` ${meetingStartTime} to ${meetingEndTime}` : ""
+      }\nVenue: ${meetingVenue || "N/A"}\nInternal Attendees: ${internalAttendeeNames || "N/A"
+      }`;
     if (externalAttendees.trim()) {
       text += `\nExternal Attendees: ${externalAttendees}`;
     }
@@ -608,7 +624,7 @@ export default function MomGeneratorPro() {
 
                         <button
                           onClick={() => {
-                            exportPDF();
+                            handleExportPDF();
                             setShowActionsMenu(false);
                           }}
                           className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
@@ -632,7 +648,7 @@ export default function MomGeneratorPro() {
 
                         <button
                           onClick={() => {
-                            window.print();
+                            handlePrint();
                             setShowActionsMenu(false);
                           }}
                           className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
@@ -972,33 +988,69 @@ export default function MomGeneratorPro() {
         {/* PRINT-READY DOCUMENT */}
         {isGenerated && (
           <Card>
-            <div className="mom-document bg-white rounded-lg border-2 border-gray-300 p-8 print:border-0">
+            <div
+              ref={momRef}
+              className="mom-document rounded-lg p-10 print:border-0"
+              style={{
+                backgroundColor: "#ffffff",
+                fontFamily: "Arial, sans-serif",
+                color: "#000000",
+                lineHeight: "1.5",
+              }}
+            >
               {/* Header */}
-              <div className="text-center mb-6 pb-4 border-b-4 border-gray-800">
+              <div
+                className="text-center mb-8"
+                style={{ borderBottom: "2px solid #000000", paddingBottom: "10px" }}
+              >
                 <h1 className="text-3xl font-bold uppercase tracking-wide">
                   Minutes of Meeting
                 </h1>
-                <div className="text-sm text-gray-600 mt-2">
+                <div
+                  className="text-sm mt-2"
+                  style={{ color: "#4b5563" }}
+                >
                   Version <b>{momVersion}</b>
                 </div>
               </div>
 
               {/* Meeting Info Table */}
-              <table className="w-full border-collapse border-2 border-gray-700 mb-6 text-sm">
+              <table
+                className="w-full border-collapse mb-8 text-sm"
+                style={{ border: "1px solid #000000" }}
+              >
                 <tbody>
                   <tr>
-                    <td className="border border-gray-700 bg-gray-100 px-4 py-2 font-semibold w-1/3">
+                    <td
+                      className="px-4 py-2 font-bold w-1/3"
+                      style={{
+                        border: "1px solid #000000",
+                        backgroundColor: "#f0f0f0",
+                      }}
+                    >
                       Project Name:
                     </td>
-                    <td className="border border-gray-700 px-4 py-2">
+                    <td
+                      className="px-4 py-2"
+                      style={{ border: "1px solid #000000" }}
+                    >
                       {selectedProject?.name || "N/A"}
                     </td>
                   </tr>
                   <tr>
-                    <td className="border border-gray-700 bg-gray-100 px-4 py-2 font-semibold">
+                    <td
+                      className="px-4 py-2 font-semibold"
+                      style={{
+                        border: "1px solid #000000",
+                        backgroundColor: "#f3f4f6",
+                      }}
+                    >
                       Meeting Date & Time:
                     </td>
-                    <td className="border border-gray-700 px-4 py-2">
+                    <td
+                      className="px-4 py-2"
+                      style={{ border: "1px solid #000000" }}
+                    >
                       {new Date(meetingDate).toLocaleDateString("en-GB", {
                         weekday: "long",
                         day: "numeric",
@@ -1010,18 +1062,36 @@ export default function MomGeneratorPro() {
                     </td>
                   </tr>
                   <tr>
-                    <td className="border border-gray-700 bg-gray-100 px-4 py-2 font-semibold">
+                    <td
+                      className="px-4 py-2 font-semibold"
+                      style={{
+                        border: "1px solid #000000",
+                        backgroundColor: "#f3f4f6",
+                      }}
+                    >
                       Meeting Venue:
                     </td>
-                    <td className="border border-gray-700 px-4 py-2">
+                    <td
+                      className="px-4 py-2"
+                      style={{ border: "1px solid #000000" }}
+                    >
                       {meetingVenue || "N/A"}
                     </td>
                   </tr>
                   <tr>
-                    <td className="border border-gray-700 bg-gray-100 px-4 py-2 font-semibold align-top">
+                    <td
+                      className="px-4 py-2 font-bold align-top"
+                      style={{
+                        border: "1px solid #000000",
+                        backgroundColor: "#f0f0f0",
+                      }}
+                    >
                       Internal Attendees:
                     </td>
-                    <td className="border border-gray-700 px-4 py-2">
+                    <td
+                      className="px-4 py-2"
+                      style={{ border: "1px solid #000000" }}
+                    >
                       {attendees
                         .map((id) => users.find((u) => u.id === id)?.name)
                         .filter(Boolean)
@@ -1033,10 +1103,19 @@ export default function MomGeneratorPro() {
                   </tr>
                   {externalAttendees.trim() && (
                     <tr>
-                      <td className="border border-gray-700 bg-gray-100 px-4 py-2 font-semibold align-top">
+                      <td
+                        className="px-4 py-2 font-bold align-top"
+                        style={{
+                          border: "1px solid #000000",
+                          backgroundColor: "#f0f0f0",
+                        }}
+                      >
                         External Attendees:
                       </td>
-                      <td className="border border-gray-700 px-4 py-2">
+                      <td
+                        className="px-4 py-2"
+                        style={{ border: "1px solid #000000" }}
+                      >
                         {externalAttendees.split(",").map((name, i) => (
                           <div key={i}>{name.trim()}</div>
                         ))}
@@ -1044,10 +1123,19 @@ export default function MomGeneratorPro() {
                     </tr>
                   )}
                   <tr>
-                    <td className="border border-gray-700 bg-gray-100 px-4 py-2 font-semibold">
+                    <td
+                      className="px-4 py-2 font-semibold"
+                      style={{
+                        border: "1px solid #000000",
+                        backgroundColor: "#f3f4f6",
+                      }}
+                    >
                       MoM Prepared by:
                     </td>
-                    <td className="border border-gray-700 px-4 py-2">
+                    <td
+                      className="px-4 py-2"
+                      style={{ border: "1px solid #000000" }}
+                    >
                       {momPreparedBy || "N/A"}
                     </td>
                   </tr>
@@ -1055,29 +1143,63 @@ export default function MomGeneratorPro() {
               </table>
 
               {/* Agenda */}
-              <div className="mb-6">
-                <h2 className="text-base font-bold mb-2 pb-2 border-b border-gray-300">
-                  Meeting Agenda:
-                </h2>
-                <div className="text-sm leading-6">
-                  {inputDiscussions.map((d, idx) => (
-                    <div key={idx}>• {d.topic}</div>
-                  ))}
-                </div>
+              <div className="mb-8">
+                <table
+                  className="w-full border-collapse text-sm"
+                  style={{ border: "1px solid #000000" }}
+                >
+                  <thead>
+                    <tr>
+                      <th
+                        className="px-4 py-2 text-left font-bold"
+                        style={{
+                          border: "1px solid #000000",
+                          backgroundColor: "#f0f0f0",
+                        }}
+                      >
+                        Meeting Agenda:
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inputDiscussions.map((d, idx) => (
+                      <tr key={idx}>
+                        <td
+                          className="px-4 py-2"
+                          style={{ border: "1px solid #000000" }}
+                        >
+                          {idx + 1}. {d.topic}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
               {/* Discussion Table */}
-              <div className="mb-6">
-                <h2 className="text-base font-bold mb-3 pb-2 border-b border-gray-300">
+              <div className="mb-8">
+                <h2
+                  className="text-lg font-bold mb-3"
+                  style={{ color: "#000000" }}
+                >
                   Discussion:
                 </h2>
-                <table className="w-full border-collapse border-2 border-gray-700 text-sm">
+                <table
+                  className="w-full border-collapse text-sm"
+                  style={{ border: "1px solid #000000" }}
+                >
                   <thead>
-                    <tr className="bg-gray-200">
-                      <th className="border border-gray-700 px-4 py-2 text-left w-1/3 font-semibold">
+                    <tr style={{ backgroundColor: "#f0f0f0" }}>
+                      <th
+                        className="px-4 py-2 text-left w-1/3 font-bold"
+                        style={{ border: "1px solid #000000" }}
+                      >
                         Discussion
                       </th>
-                      <th className="border border-gray-700 px-4 py-2 text-left font-semibold">
+                      <th
+                        className="px-4 py-2 text-left font-bold"
+                        style={{ border: "1px solid #000000" }}
+                      >
                         Remark/Comments/Notes
                       </th>
                     </tr>
@@ -1085,11 +1207,15 @@ export default function MomGeneratorPro() {
                   <tbody>
                     {discussions.map((disc, i) => (
                       <tr key={i}>
-                        <td className="border border-gray-700 px-4 py-2 align-top font-semibold">
+                        <td
+                          className="px-4 py-2 align-top font-bold"
+                          style={{ border: "1px solid #000000" }}
+                        >
                           {disc.topic}
                         </td>
                         <td
-                          className="border border-gray-700 px-4 py-2 align-top"
+                          className="px-4 py-2 align-top"
+                          style={{ border: "1px solid #000000" }}
                           dangerouslySetInnerHTML={{
                             __html: (disc.notes || "").replace(/\n/g, "<br/>"),
                           }}
@@ -1101,20 +1227,35 @@ export default function MomGeneratorPro() {
               </div>
 
               {/* Next Action Plan */}
-              <div className="mb-6">
-                <h2 className="text-base font-bold mb-3 pb-2 border-b border-gray-300">
+              <div className="mb-8">
+                <h2
+                  className="text-lg font-bold mb-3"
+                  style={{ color: "#000000" }}
+                >
                   Next Action Plan:
                 </h2>
-                <table className="w-full border-collapse border-2 border-gray-700 text-sm">
+                <table
+                  className="w-full border-collapse text-sm"
+                  style={{ border: "1px solid #000000" }}
+                >
                   <thead>
-                    <tr className="bg-gray-200">
-                      <th className="border border-gray-700 px-4 py-2 text-left font-semibold">
+                    <tr style={{ backgroundColor: "#f0f0f0" }}>
+                      <th
+                        className="px-4 py-2 text-left font-bold"
+                        style={{ border: "1px solid #000000" }}
+                      >
                         Task
                       </th>
-                      <th className="border border-gray-700 px-4 py-2 text-left font-semibold w-1/4">
+                      <th
+                        className="px-4 py-2 text-left font-bold w-1/4"
+                        style={{ border: "1px solid #000000" }}
+                      >
                         Responsible Person
                       </th>
-                      <th className="border border-gray-700 px-4 py-2 text-left font-semibold w-28">
+                      <th
+                        className="px-4 py-2 text-left font-bold w-28"
+                        style={{ border: "1px solid #000000" }}
+                      >
                         Deadline
                       </th>
                     </tr>
@@ -1122,13 +1263,22 @@ export default function MomGeneratorPro() {
                   <tbody>
                     {actionItems.map((a, i) => (
                       <tr key={i}>
-                        <td className="border border-gray-700 px-4 py-2">
+                        <td
+                          className="px-4 py-2"
+                          style={{ border: "1px solid #000000" }}
+                        >
                           {a.task}
                         </td>
-                        <td className="border border-gray-700 px-4 py-2">
+                        <td
+                          className="px-4 py-2"
+                          style={{ border: "1px solid #000000" }}
+                        >
                           {a.responsiblePerson}
                         </td>
-                        <td className="border border-gray-700 px-4 py-2">
+                        <td
+                          className="px-4 py-2"
+                          style={{ border: "1px solid #000000" }}
+                        >
                           {new Date(a.deadline).toLocaleDateString("en-GB", {
                             day: "numeric",
                             month: "short",
@@ -1141,7 +1291,13 @@ export default function MomGeneratorPro() {
               </div>
 
               {/* Footer */}
-              <div className="mt-8 pt-4 border-t text-xs text-gray-500 flex justify-between">
+              <div
+                className="mt-8 pt-4 text-xs flex justify-between"
+                style={{
+                  borderTop: "1px solid #000000",
+                  color: "#000000",
+                }}
+              >
                 <span>Generated on {new Date().toLocaleDateString()}</span>
                 <span>Page 1 of 1</span>
               </div>

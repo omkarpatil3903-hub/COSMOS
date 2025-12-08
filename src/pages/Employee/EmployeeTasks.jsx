@@ -49,6 +49,10 @@ import {
 } from "../../utils/recurringTasks";
 import { logTaskActivity } from "../../services/taskService";
 import TaskViewModal from "../../components/TaskManagment/TaskViewModal";
+import AddReminderModal from "../../components/Reminders/AddReminderModal";
+import AddSelfTaskModal from "../../components/TaskManagment/AddSelfTaskModal";
+import EditSelfTaskModal from "../../components/TaskManagment/EditSelfTaskModal";
+import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 
 const EmployeeTasks = () => {
   const { user } = useAuthContext();
@@ -64,8 +68,22 @@ const EmployeeTasks = () => {
     const year = d.getFullYear();
     return `${day}/${month}/${year}`;
   };
-  const [tasks, setTasks] = useState([]);
+
+  const isToday = (date) => {
+    if (!date) return false;
+    const d = date instanceof Date ? date : date?.toDate?.() || new Date(date);
+    const today = new Date();
+    return (
+      d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear()
+    );
+  };
+
   const [selfTasks, setSelfTasks] = useState([]);
+  const [primaryTasks, setPrimaryTasks] = useState([]);
+  const [multiTasks, setMultiTasks] = useState([]);
+  const [tasks, setTasks] = useState([]); // Derived from primary + multi
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
@@ -88,21 +106,8 @@ const EmployeeTasks = () => {
   const [showAddSelfTaskModal, setShowAddSelfTaskModal] = useState(false);
   const [showEditTaskModal, setShowEditTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newTaskDesc, setNewTaskDesc] = useState("");
-  const [newTaskPriority, setNewTaskPriority] = useState("Medium");
-  const [newTaskDueDate, setNewTaskDueDate] = useState("");
-  const [newTaskAssignedDate, setNewTaskAssignedDate] = useState(() => {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  });
-  const [newTaskStatus, setNewTaskStatus] = useState("To-Do");
-  const [newTaskProjectId, setNewTaskProjectId] = useState("");
-  const [savingSelfTask, setSavingSelfTask] = useState(false);
   const [selectedSelfTaskIds, setSelectedSelfTaskIds] = useState(new Set());
+
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [showSingleDeleteConfirmModal, setShowSingleDeleteConfirmModal] =
     useState(false);
@@ -110,6 +115,8 @@ const EmployeeTasks = () => {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [taskLimit, setTaskLimit] = useState(50);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [reminderTask, setReminderTask] = useState(null);
 
   // Derived state for TaskGroups
   const inProgressTasks = useMemo(
@@ -172,6 +179,29 @@ const EmployeeTasks = () => {
     }
   }, [taskSource, selectedSelfTaskIds.size]);
 
+
+
+  // Combine tasks whenever primary or multi change
+  useEffect(() => {
+    const combined = [...primaryTasks];
+    const primaryIds = new Set(primaryTasks.map(t => t.id));
+
+    multiTasks.forEach(t => {
+      if (!primaryIds.has(t.id)) {
+        combined.push(t);
+      }
+    });
+
+    // Sort combined tasks
+    combined.sort((a, b) => {
+      const dateA = a.dueDate?.toDate?.() || new Date(a.dueDate || 0);
+      const dateB = b.dueDate?.toDate?.() || new Date(b.dueDate || 0);
+      return dateA - dateB;
+    });
+
+    setTasks(combined);
+  }, [primaryTasks, multiTasks]);
+
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -179,12 +209,14 @@ const EmployeeTasks = () => {
     const qPrimary = query(
       collection(db, "tasks"),
       where("assigneeId", "==", user.uid),
+      orderBy("dueDate", "asc"),
       limit(taskLimit)
     );
     // Query tasks where user is in assigneeIds array (multi-assignee)
     const qMulti = query(
       collection(db, "tasks"),
       where("assigneeIds", "array-contains", user.uid),
+      orderBy("dueDate", "asc"),
       limit(taskLimit)
     );
 
@@ -192,7 +224,6 @@ const EmployeeTasks = () => {
       const taskData = snapshot.docs
         .map((doc) => {
           const data = doc.data();
-          // For primary assignee (legacy), we might still use top-level, but check map first
           const myStatus = data.assigneeStatus?.[user.uid] || {};
           return {
             id: doc.id,
@@ -209,18 +240,13 @@ const EmployeeTasks = () => {
             collectionName: "tasks",
           };
         })
-        .filter((task) => task.assigneeType === "user")
-        .sort((a, b) => {
-          const dateA = a.dueDate?.toDate?.() || new Date(a.dueDate || 0);
-          const dateB = b.dueDate?.toDate?.() || new Date(b.dueDate || 0);
-          return dateA - dateB;
-        });
-      console.log("🔍 Tasks loaded:", taskData.length, "tasks");
-      setTasks((prev) => {
-        const map = new Map(prev.map((t) => [t.id, t]));
-        taskData.forEach((t) => map.set(t.id, t));
-        return Array.from(map.values());
-      });
+        .filter((task) => task.assigneeType === "user");
+
+      console.log("🔍 Primary Tasks loaded:", taskData.length);
+      setPrimaryTasks(taskData);
+    }, (error) => {
+      console.error("Error fetching primary tasks:", error);
+      toast.error("Failed to load tasks. Check console for details.");
     });
 
     const unsubscribeMulti = onSnapshot(qMulti, (snapshot) => {
@@ -243,23 +269,19 @@ const EmployeeTasks = () => {
             collectionName: "tasks",
           };
         })
-        .filter((task) => task.assigneeType === "user")
-        .sort((a, b) => {
-          const dateA = a.dueDate?.toDate?.() || new Date(a.dueDate || 0);
-          const dateB = b.dueDate?.toDate?.() || new Date(b.dueDate || 0);
-          return dateA - dateB;
-        });
-      setTasks((prev) => {
-        const map = new Map(prev.map((t) => [t.id, t]));
-        taskData.forEach((t) => map.set(t.id, t));
-        return Array.from(map.values());
-      });
+        .filter((task) => task.assigneeType === "user");
+
+      console.log("🔍 Multi Tasks loaded:", taskData.length);
+      setMultiTasks(taskData);
+    }, (error) => {
+      console.error("Error fetching multi-assignee tasks:", error);
     });
 
     // Self tasks subscription
     const qSelf = query(
       collection(db, "selfTasks"),
       where("userId", "==", user.uid),
+      orderBy("dueDate", "asc"),
       limit(taskLimit)
     );
     const unsubscribeSelf = onSnapshot(qSelf, (snapshot) => {
@@ -283,15 +305,22 @@ const EmployeeTasks = () => {
         });
       setSelfTasks(taskData);
       setLoading(false);
+    }, (error) => {
+      console.error("Error fetching self tasks:", error);
+      setLoading(false);
     });
 
     const unsubscribeProjects = onSnapshot(
       collection(db, "projects"),
       (snapshot) => {
-        const projectsData = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
+        const projectsData = snapshot.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            ...data,
+            name: data.projectName || data.name || "Untitled Project",
+          };
+        });
         setProjects(projectsData);
       }
     );
@@ -312,7 +341,7 @@ const EmployeeTasks = () => {
       unsubscribeUsers();
       unsubscribeClients();
     };
-  }, [user]);
+  }, [user, taskLimit]);
 
   // Only show projects that have admin-assigned tasks for this employee
   const adminProjectIds = useMemo(() => {
@@ -413,113 +442,14 @@ const EmployeeTasks = () => {
   };
 
   // Handle edit task
+  // Handle edit task
   const handleEditTask = (task) => {
     setEditingTask(task);
-    setNewTaskTitle(task.title || "");
-    setNewTaskDesc(task.description || "");
-    setNewTaskPriority(task.priority || "Medium");
-    setNewTaskStatus(task.status || "To-Do");
-    setNewTaskProjectId(task.projectId || "");
-
-    // Format dates for input fields
-    if (task.dueDate) {
-      const dueDate = task.dueDate?.toDate?.() || new Date(task.dueDate);
-      const dueDateStr = dueDate.toISOString().split("T")[0];
-      setNewTaskDueDate(dueDateStr);
-    } else {
-      setNewTaskDueDate("");
-    }
-
-    if (task.assignedDate) {
-      const assignedDate =
-        task.assignedDate?.toDate?.() || new Date(task.assignedDate);
-      const assignedDateStr = assignedDate.toISOString().split("T")[0];
-      setNewTaskAssignedDate(assignedDateStr);
-    } else {
-      const d = new Date();
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      setNewTaskAssignedDate(`${y}-${m}-${day}`);
-    }
-
     setShowEditTaskModal(true);
   };
 
   // Handle save edited task
-  const handleSaveEditedTask = async () => {
-    if (!newTaskTitle.trim()) {
-      toast.error("Title is required");
-      return;
-    }
 
-    try {
-      setSavingSelfTask(true);
-      const due = newTaskDueDate ? new Date(newTaskDueDate) : null;
-      const assigned = newTaskAssignedDate
-        ? new Date(newTaskAssignedDate)
-        : null;
-      const selectedProject = projectOptions.find(
-        (p) => p.id === newTaskProjectId
-      );
-
-      const collectionName =
-        editingTask.collectionName ||
-        (editingTask.source === "self" ? "selfTasks" : "tasks");
-
-      const updateData = {
-        title: newTaskTitle.trim(),
-        description: newTaskDesc.trim() || "",
-        priority: newTaskPriority,
-        status: newTaskStatus,
-        progressPercent:
-          newTaskStatus === "Done" ? 100 : editingTask.progressPercent || 0,
-        ...(newTaskProjectId
-          ? { projectId: newTaskProjectId }
-          : { projectId: null }),
-        ...(selectedProject
-          ? { projectName: selectedProject.name }
-          : { projectName: null }),
-        ...(due ? { dueDate: due } : { dueDate: null }),
-        ...(assigned ? { assignedDate: assigned } : { assignedDate: null }),
-        updatedAt: serverTimestamp(),
-      };
-
-      await updateDoc(doc(db, collectionName, editingTask.id), updateData);
-
-      toast.success("Task updated successfully");
-      setShowEditTaskModal(false);
-      setEditingTask(null);
-
-      // Reset form
-      setNewTaskTitle("");
-      setNewTaskDesc("");
-      setNewTaskPriority("Medium");
-      setNewTaskDueDate("");
-      setNewTaskAssignedDate(() => {
-        const d = new Date();
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return `${y}-${m}-${day}`;
-      });
-      setNewTaskStatus("To-Do");
-      setNewTaskProjectId("");
-
-      logTaskActivity(
-        editingTask.id,
-        "task_updated",
-        "Task details updated",
-        user,
-        collectionName
-      );
-    } catch (e) {
-      console.error(e);
-      toast.error("Failed to update task");
-    } finally {
-      setSavingSelfTask(false);
-    }
-  };
 
   // Handle delete task
   const handleDeleteTask = async (task) => {
@@ -919,6 +849,11 @@ const EmployeeTasks = () => {
     );
   }
 
+  const handleSetReminder = (task) => {
+    setReminderTask(task);
+    setShowReminderModal(true);
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -1049,21 +984,19 @@ const EmployeeTasks = () => {
             <div className="flex bg-gray-100 p-1 rounded-lg mr-4">
               <button
                 onClick={() => setTaskSource("admin")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  taskSource === "admin"
-                    ? "bg-white text-indigo-600 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${taskSource === "admin"
+                  ? "bg-white text-indigo-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+                  }`}
               >
                 Assigned Tasks
               </button>
               <button
                 onClick={() => setTaskSource("self")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  taskSource === "self"
-                    ? "bg-white text-indigo-600 shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${taskSource === "self"
+                  ? "bg-white text-indigo-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+                  }`}
               >
                 My Tasks
               </button>
@@ -1071,42 +1004,38 @@ const EmployeeTasks = () => {
 
             <button
               onClick={() => setViewMode("all")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                viewMode === "all"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "all"
+                ? "bg-indigo-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
             >
               All Tasks
             </button>
             <button
               onClick={() => setViewMode("today")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                viewMode === "today"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "today"
+                ? "bg-indigo-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
             >
               <FaCalendar className="inline mr-1" />
               Due Today
             </button>
             <button
               onClick={() => setViewMode("week")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                viewMode === "week"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "week"
+                ? "bg-indigo-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
             >
               This Week
             </button>
             <button
               onClick={() => setViewMode("overdue")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                viewMode === "overdue"
-                  ? "bg-red-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "overdue"
+                ? "bg-red-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
             >
               <FaExclamationTriangle className="inline mr-1" />
               Overdue
@@ -1117,22 +1046,20 @@ const EmployeeTasks = () => {
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setDisplayMode("list")}
-              className={`p-2 rounded transition-colors ${
-                displayMode === "list"
-                  ? "bg-white text-indigo-600 shadow"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
+              className={`p-2 rounded transition-colors ${displayMode === "list"
+                ? "bg-white text-indigo-600 shadow"
+                : "text-gray-600 hover:text-gray-900"
+                }`}
               title="List View"
             >
               <FaList className="w-4 h-4" />
             </button>
             <button
               onClick={() => setDisplayMode("kanban")}
-              className={`p-2 rounded transition-colors ${
-                displayMode === "kanban"
-                  ? "bg-white text-indigo-600 shadow"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
+              className={`p-2 rounded transition-colors ${displayMode === "kanban"
+                ? "bg-white text-indigo-600 shadow"
+                : "text-gray-600 hover:text-gray-900"
+                }`}
               title="Kanban View"
             >
               <FaTh className="w-4 h-4" />
@@ -1261,552 +1188,84 @@ const EmployeeTasks = () => {
             priorityFilter !== "all" ||
             projectFilter !== "all" ||
             viewMode !== "all") && (
-            <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
-              <span className="text-sm text-gray-600">Active filters:</span>
-              {searchQuery && (
-                <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full flex items-center gap-1">
-                  Search: "{searchQuery}"
-                  <button onClick={() => setSearchQuery("")}>
-                    <FaTimes className="text-xs" />
-                  </button>
-                </span>
-              )}
-              {statusFilter !== "all" && (
-                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
-                  Status: {statusFilter}
-                  <button onClick={() => setStatusFilter("all")}>
-                    <FaTimes className="text-xs" />
-                  </button>
-                </span>
-              )}
-              {priorityFilter !== "all" && (
-                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
-                  Priority: {priorityFilter}
-                  <button onClick={() => setPriorityFilter("all")}>
-                    <FaTimes className="text-xs" />
-                  </button>
-                </span>
-              )}
-              {projectFilter !== "all" && (
-                <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full flex items-center gap-1">
-                  Project:{" "}
-                  {projectFilter === "no-project"
-                    ? "No Project"
-                    : projectFilter}
-                  <button onClick={() => setProjectFilter("all")}>
-                    <FaTimes className="text-xs" />
-                  </button>
-                </span>
-              )}
-              {viewMode !== "all" && (
-                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center gap-1">
-                  View: {viewMode}
-                  <button onClick={() => setViewMode("all")}>
-                    <FaTimes className="text-xs" />
-                  </button>
-                </span>
-              )}
-              <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setStatusFilter("all");
-                  setPriorityFilter("all");
-                  setViewMode("all");
-                }}
-                className="text-xs text-red-600 hover:text-red-800 font-medium ml-2"
-              >
-                Clear All
-              </button>
-            </div>
-          )}
+              <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
+                <span className="text-sm text-gray-600">Active filters:</span>
+                {searchQuery && (
+                  <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full flex items-center gap-1">
+                    Search: "{searchQuery}"
+                    <button onClick={() => setSearchQuery("")}>
+                      <FaTimes className="text-xs" />
+                    </button>
+                  </span>
+                )}
+                {statusFilter !== "all" && (
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
+                    Status: {statusFilter}
+                    <button onClick={() => setStatusFilter("all")}>
+                      <FaTimes className="text-xs" />
+                    </button>
+                  </span>
+                )}
+                {priorityFilter !== "all" && (
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
+                    Priority: {priorityFilter}
+                    <button onClick={() => setPriorityFilter("all")}>
+                      <FaTimes className="text-xs" />
+                    </button>
+                  </span>
+                )}
+                {projectFilter !== "all" && (
+                  <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full flex items-center gap-1">
+                    Project:{" "}
+                    {projectFilter === "no-project"
+                      ? "No Project"
+                      : projectFilter}
+                    <button onClick={() => setProjectFilter("all")}>
+                      <FaTimes className="text-xs" />
+                    </button>
+                  </span>
+                )}
+                {viewMode !== "all" && (
+                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center gap-1">
+                    View: {viewMode}
+                    <button onClick={() => setViewMode("all")}>
+                      <FaTimes className="text-xs" />
+                    </button>
+                  </span>
+                )}
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStatusFilter("all");
+                    setPriorityFilter("all");
+                    setViewMode("all");
+                  }}
+                  className="text-xs text-red-600 hover:text-red-800 font-medium ml-2"
+                >
+                  Clear All
+                </button>
+              </div>
+            )}
 
           {/* Add Self Task Modal (UI matched to provided screenshot) */}
-          {showAddSelfTaskModal && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-              onClick={() => setShowAddSelfTaskModal(false)}
-            >
-              <div
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Header */}
-                <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                      <FaTasks className="w-5 h-5 text-indigo-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Create New Self Task
-                      </h3>
-                      <p className="text-xs text-gray-500">
-                        Add a new Self task to project
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowAddSelfTaskModal(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded-lg hover:bg-gray-100"
-                  >
-                    <FaTimes className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {/* Content - Scrollable */}
-                <div className="flex-1 overflow-y-auto p-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Column 1 - Details & Classification */}
-                    <div className="space-y-5">
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-4">
-                          Details & Classification
-                        </h4>
-
-                        <div className="space-y-4">
-                          {/* Task Title */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                              Task Title
-                            </label>
-                            <input
-                              value={newTaskTitle}
-                              onChange={(e) => setNewTaskTitle(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                              placeholder="Enter task title..."
-                            />
-                          </div>
-
-                          {/* Description */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                              Description
-                            </label>
-                            <textarea
-                              value={newTaskDesc}
-                              onChange={(e) => setNewTaskDesc(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm h-24 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none transition-colors"
-                              placeholder="Add a detailed description..."
-                            />
-                          </div>
-
-                          {/* Project */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                              Project
-                            </label>
-                            <select
-                              value={newTaskProjectId}
-                              onChange={(e) =>
-                                setNewTaskProjectId(e.target.value)
-                              }
-                              className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                            >
-                              <option value="">Select Project</option>
-                              {projectOptions.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* Priority */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                              Priority
-                            </label>
-                            <select
-                              value={newTaskPriority}
-                              onChange={(e) =>
-                                setNewTaskPriority(e.target.value)
-                              }
-                              className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                            >
-                              <option value="Medium">Medium</option>
-                              <option value="High">High</option>
-                              <option value="Low">Low</option>
-                            </select>
-                          </div>
-
-                          {/* Status */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                              Status
-                            </label>
-                            <select
-                              value={newTaskStatus}
-                              onChange={(e) => setNewTaskStatus(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                            >
-                              <option value="To-Do">To-Do</option>
-                              <option value="In Progress">In Progress</option>
-                              <option value="Done">Done</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Column 2 - Assignment & Schedule */}
-                    <div className="space-y-5">
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-4">
-                          Assignment & Schedule
-                        </h4>
-
-                        <div className="space-y-4">
-                          {/* Resource Tab (Read Only) */}
-                          <div>
-                            <div className="flex items-center gap-2 border-b border-gray-200 mb-3">
-                              <button className="px-4 py-2 text-sm font-medium text-indigo-600 border-b-2 border-indigo-600">
-                                Resource
-                              </button>
-                              <button
-                                disabled
-                                className="px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed"
-                              >
-                                Client
-                              </button>
-                            </div>
-                            <div className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3.5 py-2 border border-gray-200">
-                              Assigned to: {user?.name || "You"}
-                            </div>
-                          </div>
-
-                          {/* Assigned Date */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                              Assigned Date
-                            </label>
-                            <input
-                              type="date"
-                              value={newTaskAssignedDate}
-                              onChange={(e) =>
-                                setNewTaskAssignedDate(e.target.value)
-                              }
-                              className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                            />
-                          </div>
-
-                          {/* Due Date */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                              Due Date
-                            </label>
-                            <input
-                              type="date"
-                              value={newTaskDueDate}
-                              onChange={(e) =>
-                                setNewTaskDueDate(e.target.value)
-                              }
-                              className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div className="bg-white px-6 py-3.5 border-t border-gray-200 flex items-center justify-between flex-shrink-0">
-                  <div className="text-xs text-gray-500">Unsaved changes</div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setShowAddSelfTaskModal(false)}
-                      className="px-5 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (!newTaskTitle.trim()) {
-                          toast.error("Title is required");
-                          return;
-                        }
-                        try {
-                          setSavingSelfTask(true);
-                          const due = newTaskDueDate
-                            ? new Date(newTaskDueDate)
-                            : null;
-                          const assigned = newTaskAssignedDate
-                            ? new Date(newTaskAssignedDate)
-                            : null;
-                          const selectedProject = projectOptions.find(
-                            (p) => p.id === newTaskProjectId
-                          );
-                          await addDoc(collection(db, "selfTasks"), {
-                            userId: user?.uid,
-                            assigneeId: user?.uid,
-                            assigneeType: "user",
-                            title: newTaskTitle.trim(),
-                            description: newTaskDesc.trim() || "",
-                            priority: newTaskPriority,
-                            status: newTaskStatus,
-                            progressPercent: newTaskStatus === "Done" ? 100 : 0,
-                            ...(newTaskProjectId
-                              ? { projectId: newTaskProjectId }
-                              : {}),
-                            ...(selectedProject
-                              ? { projectName: selectedProject.name }
-                              : {}),
-                            ...(due ? { dueDate: due } : {}),
-                            ...(assigned ? { assignedDate: assigned } : {}),
-                            createdAt: serverTimestamp(),
-                          });
-                          toast.success("Task created successfully");
-                          setShowAddSelfTaskModal(false);
-                          // Reset form
-                          setNewTaskTitle("");
-                          setNewTaskDesc("");
-                          setNewTaskPriority("Medium");
-                          setNewTaskDueDate("");
-                          setNewTaskAssignedDate(() => {
-                            const d = new Date();
-                            const y = d.getFullYear();
-                            const m = String(d.getMonth() + 1).padStart(2, "0");
-                            const day = String(d.getDate()).padStart(2, "0");
-                            return `${y}-${m}-${day}`;
-                          });
-                          setNewTaskStatus("To-Do");
-                          setNewTaskProjectId("");
-                        } catch (e) {
-                          console.error(e);
-                          toast.error("Failed to create task");
-                        } finally {
-                          setSavingSelfTask(false);
-                        }
-                      }}
-                      className="px-6 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm"
-                      disabled={savingSelfTask}
-                    >
-                      {savingSelfTask ? "Creating..." : "Create Task"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          <AddSelfTaskModal
+            isOpen={showAddSelfTaskModal}
+            onClose={() => setShowAddSelfTaskModal(false)}
+            projects={projectOptions}
+            user={user}
+          />
 
           {/* Edit Task Modal */}
-          {showEditTaskModal && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-              onClick={() => {
-                setShowEditTaskModal(false);
-                setEditingTask(null);
-              }}
-            >
-              <div
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Header */}
-                <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                      <FaTasks className="w-5 h-5 text-indigo-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Edit Task
-                      </h3>
-                      <p className="text-xs text-gray-500">
-                        Update task details
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowEditTaskModal(false);
-                      setEditingTask(null);
-                    }}
-                    className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded-lg hover:bg-gray-100"
-                  >
-                    <FaTimes className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {/* Content - Scrollable */}
-                <div className="flex-1 overflow-y-auto p-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Column 1 - Details & Classification */}
-                    <div className="space-y-5">
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-4">
-                          Details & Classification
-                        </h4>
-
-                        <div className="space-y-4">
-                          {/* Task Title */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                              Task Title
-                            </label>
-                            <input
-                              value={newTaskTitle}
-                              onChange={(e) => setNewTaskTitle(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                              placeholder="Enter task title"
-                            />
-                          </div>
-
-                          {/* Description */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                              Description
-                            </label>
-                            <textarea
-                              value={newTaskDesc}
-                              onChange={(e) => setNewTaskDesc(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm h-24 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none transition-colors"
-                              placeholder="Add a detailed description..."
-                            />
-                          </div>
-
-                          {/* Project */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                              Project
-                            </label>
-                            <select
-                              value={newTaskProjectId}
-                              onChange={(e) =>
-                                setNewTaskProjectId(e.target.value)
-                              }
-                              className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                            >
-                              <option value="">Select Project</option>
-                              {projectOptions.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.name}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* Priority */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                              Priority
-                            </label>
-                            <select
-                              value={newTaskPriority}
-                              onChange={(e) =>
-                                setNewTaskPriority(e.target.value)
-                              }
-                              className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                            >
-                              <option value="High">High</option>
-                              <option value="Medium">Medium</option>
-                              <option value="Low">Low</option>
-                            </select>
-                          </div>
-
-                          {/* Status */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                              Status
-                            </label>
-                            <select
-                              value={newTaskStatus}
-                              onChange={(e) => setNewTaskStatus(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                            >
-                              <option value="To-Do">To-Do</option>
-                              <option value="In Progress">In Progress</option>
-                              <option value="Done">Done</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Column 2 - Assignment & Schedule */}
-                    <div className="space-y-5">
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-4">
-                          Assignment & Schedule
-                        </h4>
-
-                        <div className="space-y-4">
-                          {/* Assignee Info - Read Only for Employee */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                              Assigned To
-                            </label>
-                            <div className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2 text-sm text-gray-600">
-                              {user?.name || "You"}
-                            </div>
-                          </div>
-
-                          {/* Assigned Date */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                              Assigned Date
-                            </label>
-                            <input
-                              type="date"
-                              value={newTaskAssignedDate}
-                              onChange={(e) =>
-                                setNewTaskAssignedDate(e.target.value)
-                              }
-                              className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                            />
-                          </div>
-
-                          {/* Due Date */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                              Due Date
-                            </label>
-                            <input
-                              type="date"
-                              value={newTaskDueDate}
-                              onChange={(e) =>
-                                setNewTaskDueDate(e.target.value)
-                              }
-                              className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div className="bg-white px-6 py-3.5 border-t border-gray-200 flex items-center justify-between flex-shrink-0">
-                  <div className="text-xs text-gray-500">
-                    {editingTask?.source === "self" ? (
-                      <span>No changes made</span>
-                    ) : (
-                      <span>Limited editing for admin tasks</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => {
-                        setShowEditTaskModal(false);
-                        setEditingTask(null);
-                      }}
-                      className="px-5 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSaveEditedTask}
-                      className="px-6 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm"
-                      disabled={savingSelfTask}
-                    >
-                      {savingSelfTask ? "Saving..." : "Save Changes"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          <EditSelfTaskModal
+            isOpen={showEditTaskModal}
+            onClose={() => {
+              setShowEditTaskModal(false);
+              setEditingTask(null);
+            }}
+            task={editingTask}
+            projects={projectOptions}
+            user={user}
+          />
 
           <CompletionCommentModal
             open={showCompletionModal}
@@ -1822,142 +1281,32 @@ const EmployeeTasks = () => {
 
           {/* Delete Confirmation Modal */}
           {showDeleteConfirmModal && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-              onClick={() => setShowDeleteConfirmModal(false)}
-            >
-              <div
-                className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <FaTimes className="h-5 w-5 text-red-600" />
-                    Delete Self Tasks
-                  </h3>
-                  <button
-                    onClick={() => setShowDeleteConfirmModal(false)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
-
-                <div className="mb-6">
-                  <p className="text-gray-600">
-                    Are you sure you want to delete {selectedSelfTaskIds.size}{" "}
-                    self task{selectedSelfTaskIds.size > 1 ? "s" : ""}?
-                  </p>
-                  <p className="text-sm text-red-600 mt-2">
-                    This action cannot be undone.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3 justify-end">
-                  <button
-                    onClick={() => setShowDeleteConfirmModal(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={deleteSelectedSelfTasks}
-                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-                  >
-                    <FaTimes className="h-4 w-4" />
-                    Delete {selectedSelfTaskIds.size} Task
-                    {selectedSelfTaskIds.size > 1 ? "s" : ""}
-                  </button>
-                </div>
-              </div>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+              <DeleteConfirmationModal
+                onClose={() => setShowDeleteConfirmModal(false)}
+                onConfirm={deleteSelectedSelfTasks}
+                title="Delete Self Tasks"
+                description={`Are you sure you want to delete ${selectedSelfTaskIds.size} self task${selectedSelfTaskIds.size > 1 ? "s" : ""}?`}
+                permanentMessage="This action cannot be undone."
+                confirmLabel={`Delete ${selectedSelfTaskIds.size} Task${selectedSelfTaskIds.size > 1 ? "s" : ""}`}
+              />
             </div>
           )}
 
           {/* Single Task Delete Confirmation Modal */}
           {showSingleDeleteConfirmModal && taskToDelete && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-              onClick={() => {
-                setShowSingleDeleteConfirmModal(false);
-                setTaskToDelete(null);
-              }}
-            >
-              <div
-                className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <FaTimes className="h-5 w-5 text-red-600 flex-shrink-0" />
-                    Delete Task
-                  </h3>
-                  <button
-                    onClick={() => {
-                      setShowSingleDeleteConfirmModal(false);
-                      setTaskToDelete(null);
-                    }}
-                    className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100 flex-shrink-0"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                </div>
-
-                <div className="mb-6">
-                  <p className="text-gray-600">
-                    Are you sure you want to delete "
-                    {taskToDelete.title.length > 50
-                      ? `${taskToDelete.title.substring(0, 30)}...`
-                      : taskToDelete.title}
-                    "?
-                  </p>
-                  <p className="text-sm text-red-600 mt-2">
-                    This action cannot be undone.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3 justify-end">
-                  <button
-                    onClick={() => {
-                      setShowSingleDeleteConfirmModal(false);
-                      setTaskToDelete(null);
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={confirmDeleteTask}
-                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
-                  >
-                    <FaTimes className="h-4 w-4" />
-                    Delete Task
-                  </button>
-                </div>
-              </div>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+              <DeleteConfirmationModal
+                onClose={() => {
+                  setShowSingleDeleteConfirmModal(false);
+                  setTaskToDelete(null);
+                }}
+                onConfirm={confirmDeleteTask}
+                title="Delete Task"
+                description={`Are you sure you want to delete "${taskToDelete.title.length > 50 ? `${taskToDelete.title.substring(0, 30)}...` : taskToDelete.title}"?`}
+                permanentMessage="This action cannot be undone."
+                confirmLabel="Delete Task"
+              />
             </div>
           )}
         </div>
@@ -1998,12 +1347,34 @@ const EmployeeTasks = () => {
                 {taskSource === "self" ? (
                   // --- SELF TASKS VIEW (Group by Status) ---
                   <>
-                    {/* IN PROGRESS Group */}
+                    {/* TODAY'S TASKS Group */}
+                    <TaskGroup
+                      title="Today's Tasks"
+                      tasks={filteredTasks.filter(
+                        (t) =>
+                          t.status !== "Done" &&
+                          isToday(t.dueDate?.toDate?.() || new Date(t.dueDate))
+                      )}
+                      colorClass="bg-indigo-500"
+                      onOpenCreate={() => setShowAddSelfTaskModal(true)}
+                      selectedIds={selectedSelfTaskIds}
+                      onToggleSelect={toggleSelectSelfTask}
+                      onView={(task) => setSelectedTask(task)}
+                      onEdit={handleEditTask}
+                      onDelete={handleDeleteTask}
+                      onSetReminder={handleSetReminder}
+                      resolveAssignees={resolveAssignees}
+                      showActions={true}
+                    />
+
+                    {/* IN PROGRESS Group (Excluding Today's) */}
                     <TaskGroup
                       title="In Progress"
                       tasks={filteredTasks.filter(
                         (t) =>
-                          t.status === "In Progress" || t.status === "In Review"
+                          (t.status === "In Progress" ||
+                            t.status === "In Review") &&
+                          !isToday(t.dueDate?.toDate?.() || new Date(t.dueDate))
                       )}
                       colorClass="bg-blue-500"
                       onOpenCreate={() => setShowAddSelfTaskModal(true)}
@@ -2012,15 +1383,18 @@ const EmployeeTasks = () => {
                       onView={(task) => setSelectedTask(task)}
                       onEdit={handleEditTask}
                       onDelete={handleDeleteTask}
+                      onSetReminder={handleSetReminder}
                       resolveAssignees={resolveAssignees}
                       showActions={true}
                     />
 
-                    {/* TO DO Group */}
+                    {/* TO DO Group (Excluding Today's) */}
                     <TaskGroup
                       title="To Do"
                       tasks={filteredTasks.filter(
-                        (t) => t.status === "To-Do" || !t.status
+                        (t) =>
+                          (t.status === "To-Do" || !t.status) &&
+                          !isToday(t.dueDate?.toDate?.() || new Date(t.dueDate))
                       )}
                       colorClass="bg-gray-500"
                       onOpenCreate={() => setShowAddSelfTaskModal(true)}
@@ -2029,6 +1403,7 @@ const EmployeeTasks = () => {
                       onView={(task) => setSelectedTask(task)}
                       onEdit={handleEditTask}
                       onDelete={handleDeleteTask}
+                      onSetReminder={handleSetReminder}
                       resolveAssignees={resolveAssignees}
                       showActions={true}
                     />
@@ -2044,6 +1419,7 @@ const EmployeeTasks = () => {
                       onView={(task) => setSelectedTask(task)}
                       onEdit={handleEditTask}
                       onDelete={handleDeleteTask}
+                      onSetReminder={handleSetReminder}
                       resolveAssignees={resolveAssignees}
                       showActions={true}
                     />
@@ -2051,34 +1427,59 @@ const EmployeeTasks = () => {
                 ) : (
                   // --- ADMIN TASKS VIEW (Group by Status) ---
                   <>
-                    {/* IN PROGRESS Group */}
+                    {/* TODAY'S TASKS Group */}
+                    <TaskGroup
+                      title="Today's Tasks"
+                      tasks={filteredTasks.filter(
+                        (t) =>
+                          t.status !== "Done" &&
+                          isToday(t.dueDate?.toDate?.() || new Date(t.dueDate))
+                      )}
+                      colorClass="bg-indigo-500"
+                      selectedIds={selectedIds}
+                      onToggleSelect={toggleSelect}
+                      onView={(task) => setSelectedTask(task)}
+                      onEdit={handleEditTask}
+                      onSetReminder={handleSetReminder}
+                      showActions={true}
+                      canDelete={false}
+                      resolveAssignees={resolveAssignees}
+                    />
+
+                    {/* IN PROGRESS Group (Excluding Today's) */}
                     <TaskGroup
                       title="In Progress"
                       tasks={filteredTasks.filter(
                         (t) =>
-                          t.status === "In Progress" || t.status === "In Review"
+                          (t.status === "In Progress" ||
+                            t.status === "In Review") &&
+                          !isToday(t.dueDate?.toDate?.() || new Date(t.dueDate))
                       )}
                       colorClass="bg-blue-500"
                       selectedIds={selectedIds}
                       onToggleSelect={toggleSelect}
                       onView={(task) => setSelectedTask(task)}
                       onEdit={handleEditTask}
+                      onSetReminder={handleSetReminder}
                       showActions={true}
                       canDelete={false}
                       resolveAssignees={resolveAssignees}
                     />
 
-                    {/* TO DO Group */}
+                    {/* TO DO Group (Excluding Today's) */}
                     <TaskGroup
                       title="To Do"
                       tasks={filteredTasks.filter(
-                        (t) => t.status === "To-Do" || !t.status
+                        (t) =>
+                          (t.status === "To-Do" || !t.status) &&
+                          !isToday(t.dueDate?.toDate?.() || new Date(t.dueDate))
                       )}
                       colorClass="bg-gray-500"
                       selectedIds={selectedIds}
                       onToggleSelect={toggleSelect}
                       onView={(task) => setSelectedTask(task)}
                       onEdit={handleEditTask}
+                      onSetReminder={handleSetReminder}
                       showActions={true}
                       canDelete={false}
                       resolveAssignees={resolveAssignees}
@@ -2093,6 +1494,7 @@ const EmployeeTasks = () => {
                       onToggleSelect={toggleSelect}
                       onView={(task) => setSelectedTask(task)}
                       onEdit={handleEditTask}
+                      onSetReminder={handleSetReminder}
                       showActions={true}
                       canDelete={false}
                       resolveAssignees={resolveAssignees}
@@ -2171,6 +1573,17 @@ const EmployeeTasks = () => {
           canEdit={selectedTask.source === "self"}
         />
       )}
+      <AddReminderModal
+        isOpen={showReminderModal}
+        onClose={() => {
+          setShowReminderModal(false);
+          setReminderTask(null);
+        }}
+        initialData={{
+          title: reminderTask?.title,
+          relatedTaskId: reminderTask?.id,
+        }}
+      />
     </div>
   );
 };

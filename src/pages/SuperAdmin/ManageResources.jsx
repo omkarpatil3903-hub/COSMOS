@@ -16,7 +16,7 @@ import {
 import { HiOutlineArrowDownTray, HiMiniArrowPath } from "react-icons/hi2";
 // Excel export not used on this page currently
 import toast from "react-hot-toast";
-import { db, app as primaryApp } from "../../firebase";
+import { db, app as primaryApp, functions } from "../../firebase";
 import { getApps, getApp, initializeApp as initApp } from "firebase/app";
 import {
   getAuth as getAuthMod,
@@ -34,6 +34,7 @@ import {
   updateDoc,
   setDoc,
 } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 
 // Reusable UI Components
 import PageHeader from "../../components/PageHeader";
@@ -44,8 +45,6 @@ import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 import AddResourceModal from "../../components/AddResourceModal";
 import EditResourceModal from "../../components/EditResourceModal";
 import ViewResourceModal from "../../components/ViewResourceModal";
-
-// Removed placeholder data; now loading users/resources from Firestore
 
 const tableHeaders = [
   { key: "srNo", label: "Sr. No.", sortable: false },
@@ -58,7 +57,6 @@ const tableHeaders = [
   { key: "status", label: "Status", sortable: true },
   { key: "actions", label: "Actions", sortable: false },
 ];
-// --- End Placeholder Data ---
 
 function ManageResources() {
   const [resources, setResources] = useState([]);
@@ -272,7 +270,8 @@ function ManageResources() {
       const initialValue = initialEditData[field] ?? "";
       return nextValue !== initialValue;
     });
-    return changed || Boolean(imageFile);
+    const passwordChanged = formData.password && formData.password.trim() !== "";
+    return changed || Boolean(imageFile) || passwordChanged;
   }, [formData, initialEditData, imageFile]);
 
   const handleNextPage = () => {
@@ -295,13 +294,6 @@ function ManageResources() {
       };
     });
   };
-
-  // const handleReset = () => {
-  //   setSearchTerm("");
-  //   setSortConfig({ key: "fullName", direction: "asc" });
-  //   setRowsPerPage(10);
-  //   setCurrentPage(1);
-  // };
 
   // Handle image file selection and convert to base64
   const handleImageChange = (e) => {
@@ -378,7 +370,7 @@ function ManageResources() {
         resourceRoleType: formData.resourceRoleType,
         status: formData.status,
         imageUrl: imageFile || "",
-        role: "member",
+        role: formData.resourceRoleType || "member", // Auto-assign role based on hierarchy type
         createdAt: serverTimestamp(),
         joinDate: new Date().toISOString().split("T")[0],
         devPassword: formData.password,
@@ -459,6 +451,7 @@ function ManageResources() {
         employmentType: formData.employmentType,
         resourceRole: formData.resourceRole,
         resourceRoleType: formData.resourceRoleType,
+        role: formData.resourceRoleType || "member", // Auto-update role based on hierarchy type
         status: formData.status,
         updatedAt: serverTimestamp(),
       };
@@ -471,14 +464,16 @@ function ManageResources() {
 
       if (formData.password) {
         updates.devPassword = formData.password;
-        // Note: Updating Auth password requires admin SDK or re-auth,
-        // which is complex on client. For now just updating Firestore ref.
-        toast(
-          "Password updated in record only (Auth update requires re-login)",
-          {
-            icon: "ℹ️",
-          }
-        );
+
+        // Call Cloud Function to update Auth password
+        try {
+          const updateUserPassword = httpsCallable(functions, 'updateUserPassword');
+          await updateUserPassword({ uid: selectedResource.id, password: formData.password });
+          toast.success("Password updated in Auth system");
+        } catch (authError) {
+          console.error("Failed to update Auth password:", authError);
+          toast.error(`Failed to update Auth password: ${authError.message}`);
+        }
       }
 
       await updateDoc(userRef, updates);
@@ -505,9 +500,19 @@ function ManageResources() {
     setIsDeleting(true);
 
     try {
-      // Delete from Firestore
+      // 1. Delete from Auth (Cloud Function)
+      try {
+        const deleteUserAuth = httpsCallable(functions, 'deleteUserAuth');
+        await deleteUserAuth({ uid: selectedResource.id });
+        console.log("Auth deletion successful");
+      } catch (authError) {
+        console.error("Auth deletion failed:", authError);
+        // Continue to delete from Firestore even if Auth delete fails
+      }
+
+      // 2. Delete from Firestore
       await deleteDoc(doc(db, "users", selectedResource.id));
-      // Note: Cannot delete from Auth without Admin SDK
+
       toast.success("Resource deleted from database");
       setShowDeleteModal(false);
       setSelectedResource(null);
@@ -717,11 +722,13 @@ function ManageResources() {
                 <select
                   value={employmentTypeFilter}
                   onChange={(e) => setEmploymentTypeFilter(e.target.value)}
-                  className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
-                  <option value="all">All Employment</option>
+                  <option value="all">All Types</option>
                   <option value="Full-time">Full-time</option>
                   <option value="Part-time">Part-time</option>
+                  <option value="Contract">Contract</option>
+                  <option value="Internship">Internship</option>
                 </select>
               </div>
 
@@ -733,9 +740,9 @@ function ManageResources() {
                 <select
                   value={resourceTypeFilter}
                   onChange={(e) => setResourceTypeFilter(e.target.value)}
-                  className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
-                  <option value="all">All Types</option>
+                  <option value="all">All Resources</option>
                   <option value="In-house">In-house</option>
                   <option value="Outsourced">Outsourced</option>
                 </select>
@@ -749,52 +756,37 @@ function ManageResources() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
                   <option value="all">All Status</option>
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                 </select>
               </div>
+
+              {/* Reset Button */}
+              {/* <Button
+                variant="secondary"
+                onClick={handleReset}
+                className="mb-[2px]"
+              >
+                <HiMiniArrowPath className="h-5 w-5" />
+              </Button> */}
             </div>
 
-            {/* Clear Filters Button */}
-            {(searchTerm ||
-              employmentTypeFilter !== "all" ||
-              resourceTypeFilter !== "all" ||
-              statusFilter !== "all") && (
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={() => {
-                    setSearchTerm("");
-                    setEmploymentTypeFilter("all");
-                    setResourceTypeFilter("all");
-                    setStatusFilter("all");
-                  }}
-                  className="text-xs text-red-600 hover:text-red-800 font-medium flex items-center gap-1"
-                >
-                  <FaTimes className="h-3 w-3" /> Clear Filters
-                </button>
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+              <div className="text-sm text-gray-500">
+                Page {currentPage} of {totalPages}
               </div>
-            )}
-          </Card>
-
-          <Card title="Resource List">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-2">
-              <div className="text-sm text-content-secondary">
-                Page {Math.min(currentPage, totalPages)} of {totalPages}
-              </div>
-              <div className="flex items-center gap-3">
-                <label className="text-sm font-medium text-content-secondary">
-                  Rows per page
-                </label>
+              <div className="flex items-center gap-4">
                 <select
                   value={rowsPerPage}
                   onChange={(e) => {
                     setRowsPerPage(Number(e.target.value));
                     setCurrentPage(1);
                   }}
-                  className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                  className="border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value={10}>10</option>
                   <option value={25}>25</option>
@@ -835,21 +827,20 @@ function ManageResources() {
                       const ariaSort = !header.sortable
                         ? "none"
                         : isActive
-                        ? sortConfig.direction === "asc"
-                          ? "ascending"
-                          : "descending"
-                        : "none";
+                          ? sortConfig.direction === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : "none";
 
                       return (
                         <th
                           key={header.key}
                           scope="col"
                           aria-sort={ariaSort}
-                          className={`group px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 whitespace-nowrap align-middle ${
-                            header.key === "actions"
-                              ? "sticky right-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100"
-                              : ""
-                          }`}
+                          className={`group px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 whitespace-nowrap align-middle ${header.key === "actions"
+                            ? "sticky right-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100"
+                            : ""
+                            }`}
                         >
                           {header.sortable ? (
                             <button
@@ -922,18 +913,16 @@ function ManageResources() {
                       </td>
                       <td className="whitespace-nowrap px-3 py-3 text-sm">
                         <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${
-                            resource.resourceType === "In-house"
-                              ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300"
-                              : "bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 border border-orange-300"
-                          }`}
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${resource.resourceType === "In-house"
+                            ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300"
+                            : "bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 border border-orange-300"
+                            }`}
                         >
                           <div
-                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                              resource.resourceType === "In-house"
-                                ? "bg-blue-500"
-                                : "bg-orange-500"
-                            }`}
+                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${resource.resourceType === "In-house"
+                              ? "bg-blue-500"
+                              : "bg-orange-500"
+                              }`}
                           ></div>
                           {resource.resourceType}
                         </span>
@@ -948,18 +937,16 @@ function ManageResources() {
                       </td>
                       <td className="whitespace-nowrap px-3 py-3 text-sm">
                         <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${
-                            resource.status === "Active"
-                              ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300"
-                              : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300"
-                          }`}
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${resource.status === "Active"
+                            ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300"
+                            : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300"
+                            }`}
                         >
                           <div
-                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                              resource.status === "Active"
-                                ? "bg-green-500"
-                                : "bg-gray-500"
-                            }`}
+                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${resource.status === "Active"
+                              ? "bg-green-500"
+                              : "bg-gray-500"
+                              }`}
                           ></div>
                           {resource.status}
                         </span>

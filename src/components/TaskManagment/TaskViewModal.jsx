@@ -46,6 +46,10 @@ import TagInput from "./TagInput";
 import TimeEstimateInput from "./TimeEstimateInput";
 import toast from "react-hot-toast";
 import CompletionCommentModal from "../CompletionCommentModal"; // Adjust path if needed
+import {
+  createNextRecurringInstance,
+  shouldCreateNextInstance,
+} from "../../utils/recurringTasks";
 
 const TaskViewModal = ({
   task: initialTask,
@@ -228,23 +232,109 @@ const TaskViewModal = ({
       if (col === "tasks" && isAssignee) {
         // Update individual status
         const updateKey = `assigneeStatus.${currentUser.uid}`;
-        await updateTask(task.id, {
+        const updates = {
           [`${updateKey}.status`]: "Done",
           [`${updateKey}.completedAt`]: serverTimestamp(),
           [`${updateKey}.progressPercent`]: 100,
           [`${updateKey}.completedBy`]: currentUser?.uid || "",
           [`${updateKey}.completionComment`]: comment || ""
-        }, col);
+        };
+
+        // Check if ALL assignees are now done (including me)
+        const assigneeIds = task.assigneeIds || [];
+        const allOthersDone = assigneeIds.every(uid => {
+          if (uid === currentUser.uid) return true; // I am doing it now
+          return task.assigneeStatus?.[uid]?.status === "Done";
+        });
+
+        if (allOthersDone) {
+          // If everyone is done, mark GLOBAL status as Done
+          updates.status = "Done";
+          updates.completedAt = serverTimestamp();
+          updates.progressPercent = 100;
+          updates.completedBy = currentUser?.uid; // Last person to finish
+
+          // Trigger Recurrence (since global task is now done)
+          if (task.isRecurring) {
+            console.log("All assignees done. Triggering recurrence for:", task.id);
+            const dueDate = task.dueDate?.toDate ? task.dueDate.toDate() : new Date(task.dueDate);
+            const completedTaskState = {
+              ...task,
+              dueDate: dueDate,
+              status: "Done",
+              completedAt: new Date(),
+            };
+
+            if (shouldCreateNextInstance(completedTaskState)) {
+              createNextRecurringInstance(completedTaskState)
+                .then(newId => {
+                  if (newId) toast.success("Next recurring task created!");
+                })
+                .catch(err => console.error("Recurrence error:", err));
+            }
+          }
+        }
+
+        await updateTask(task.id, updates, col);
       } else {
         // Update global status (Admin or Self Task)
-        await updateTask(task.id, {
+        const updates = {
           status: "Done",
           completedAt: serverTimestamp(),
           progressPercent: 100,
           completedBy: currentUser?.uid || "",
           completedByType: "user",
           completionComment: comment,
-        }, col);
+        };
+
+        // ADMIN OVERRIDE: If Admin marks as Done, mark ALL assignees as Done
+        if (col === "tasks") {
+          const assigneeIds = task.assigneeIds || [];
+          assigneeIds.forEach(uid => {
+            const key = `assigneeStatus.${uid}`;
+            updates[`${key}.status`] = "Done";
+            updates[`${key}.completedAt`] = serverTimestamp();
+            updates[`${key}.progressPercent`] = 100;
+            updates[`${key}.completedBy`] = currentUser?.uid;
+            updates[`${key}.completionComment`] = comment || "";
+          });
+        }
+
+        await updateTask(task.id, updates, col);
+      }
+
+      // Handle Recurring Task Creation
+      if (task.isRecurring) {
+        console.log("Attempting to create next recurring instance for:", task.id);
+
+        // Ensure dates are valid JS Dates or strings, not Firestore Timestamps
+        const dueDate = task.dueDate?.toDate ? task.dueDate.toDate() : new Date(task.dueDate);
+
+        const completedTaskState = {
+          ...task,
+          dueDate: dueDate, // Pass converted date
+          status: "Done",
+          completedAt: new Date(), // Use JS Date
+        };
+
+        console.log("Completed Task State for Recurrence:", completedTaskState);
+
+        if (shouldCreateNextInstance(completedTaskState)) {
+          try {
+            const newId = await createNextRecurringInstance(completedTaskState);
+            if (newId) {
+              toast.success("Next recurring task created!");
+              console.log("Created new recurring task:", newId);
+            } else {
+              console.warn("createNextRecurringInstance returned null (duplicate or error)");
+            }
+          } catch (recError) {
+            console.error("Failed to create recurring instance:", recError);
+            toast.error("Failed to create next recurring task");
+          }
+        } else {
+          console.warn("shouldCreateNextInstance returned false");
+        }
       }
 
       await logTaskActivity(
@@ -302,8 +392,34 @@ const TaskViewModal = ({
 
         await updateTask(task.id, updates, col);
       } else {
-        // Global update
-        await updateTask(task.id, { [field]: value }, col);
+        // Global update (Admin or Self Task)
+        const updates = { [field]: value };
+
+        // ADMIN OVERRIDE LOGIC:
+        // If an Admin changes the status, force update ALL assignees to match.
+        if (field === "status" && col === "tasks") {
+          const assigneeIds = task.assigneeIds || [];
+          assigneeIds.forEach(uid => {
+            const key = `assigneeStatus.${uid}`;
+            updates[`${key}.status`] = value;
+
+            if (value === "Done") {
+              updates[`${key}.progressPercent`] = 100;
+              updates[`${key}.completedAt`] = serverTimestamp();
+              // We don't set completedBy here to avoid confusion, or set it to Admin? 
+              // Let's leave completedBy empty or set to Admin ID to show who forced it.
+              updates[`${key}.completedBy`] = currentUser?.uid;
+            } else if (value === "In Progress") {
+              updates[`${key}.progressPercent`] = 0;
+              updates[`${key}.completedAt`] = null;
+            } else {
+              updates[`${key}.progressPercent`] = 0;
+              updates[`${key}.completedAt`] = null;
+            }
+          });
+        }
+
+        await updateTask(task.id, updates, col);
       }
 
       console.log("updateTask success");
@@ -412,6 +528,33 @@ const TaskViewModal = ({
     // Fallback to existing name or ID
     return item.userName || "Unknown";
   };
+
+  // Determine the status to display for the current user
+  const displayStatus = useMemo(() => {
+    if (!currentUser?.uid) return task.status;
+
+    // Check if user is an assignee
+    const isAssignee = task.assigneeIds?.includes(currentUser.uid);
+
+    if (isAssignee && task.assigneeStatus?.[currentUser.uid]) {
+      return task.assigneeStatus[currentUser.uid].status || "To-Do";
+    }
+
+    // If not assignee (e.g. Admin), derive status from all assignees
+    if (task.assigneeStatus && Object.keys(task.assigneeStatus).length > 0) {
+      const values = Object.values(task.assigneeStatus);
+      if (values.length > 0) {
+        const allDone = values.every((v) => v.status === "Done");
+        const anyInProgress = values.some((v) => v.status === "In Progress" || v.status === "In Review");
+        const anyDone = values.some((v) => v.status === "Done");
+
+        if (allDone) return "Done";
+        if (anyInProgress || anyDone) return "In Progress";
+      }
+    }
+
+    return task.status || "To-Do";
+  }, [task, currentUser]);
 
   return (
     <div
@@ -753,9 +896,9 @@ const TaskViewModal = ({
                   </label>
                   <button
                     onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                    className={`w-full px-3 py-2 rounded-lg text-xs border border-gray-200 bg-white flex items-center justify-between hover:border-indigo-300 transition-colors ${getStatusBadge(task.status)}`}
+                    className={`w-full px-3 py-2 rounded-lg text-xs border border-gray-200 bg-white flex items-center justify-between hover:border-indigo-300 transition-colors ${getStatusBadge(displayStatus)}`}
                   >
-                    <span className="font-medium">{task.status || "To-Do"}</span>
+                    <span className="font-medium">{displayStatus}</span>
                     <FaChevronDown className="text-[10px] opacity-50" />
                   </button>
 
@@ -775,10 +918,10 @@ const TaskViewModal = ({
                                 setShowStatusDropdown(false);
                               }
                             }}
-                            className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between ${task.status === status ? "bg-indigo-50 text-indigo-700 font-medium" : "text-gray-700"}`}
+                            className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between ${displayStatus === status ? "bg-indigo-50 text-indigo-700 font-medium" : "text-gray-700"}`}
                           >
                             {status}
-                            {task.status === status && <FaCheck />}
+                            {displayStatus === status && <FaCheck />}
                           </button>
                         ))}
                       </div>

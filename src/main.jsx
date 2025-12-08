@@ -40,6 +40,7 @@ import ManageClients from "./pages/SuperAdmin/ManageClients.jsx";
 import ManageProjects from "./pages/SuperAdmin/ManageProjects.jsx";
 // import Mom from "./pages/SuperAdmin/Mom.jsx"; // TODO: Verify correct filename
 import MomGeneratorPro from "./pages/SuperAdmin/MomGeneratorPro.jsx";
+import Mom from "./pages/Mom";
 import TaskManagment from "./pages/SuperAdmin/TaskManagment.jsx";
 import Calendar from "./pages/SuperAdmin/Calendar.jsx";
 import EmployeeExpenses from "./pages/Employee/EmployeeExpenses.jsx";
@@ -49,6 +50,8 @@ import ExpenseManagement from "./pages/SuperAdmin/ExpenseManagement.jsx";
 import Settings from "./pages/SuperAdmin/Settings.jsx";
 import AddHierarchy from "./pages/SuperAdmin/AddHierarchy.jsx";
 import ProjectSettings from "./pages/SuperAdmin/ProjectSettings.jsx"; // TODO: Verify path
+import ManagerLayout from "./components/layout/ManagerLayout";
+
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   { path: "/unauthorized", element: <Unauthorized /> },
@@ -62,13 +65,13 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <ClientDashboard /> },
-      { path: "projects", element: <ClientProjects /> },
-      { path: "tasks", element: <ClientTasks /> },
-      { path: "calendar", element: <ClientCalendar /> },
-      { path: "reports", element: <ClientReports /> },
-      { path: "documents", element: <ClientDocuments /> },
-      { path: "manage-documents", element: <ClientManageDocument /> },
+      { path: "/client", element: <ClientDashboard /> },
+      { path: "/client/projects", element: <ClientProjects /> },
+      { path: "/client/tasks", element: <ClientTasks /> },
+      { path: "/client/calendar", element: <ClientCalendar /> },
+      { path: "/client/reports", element: <ClientReports /> },
+      { path: "/client/documents", element: <ClientDocuments /> },
+      { path: "/client/manage-documents", element: <ClientManageDocument /> },
     ],
   },
 
@@ -76,45 +79,66 @@ const router = createBrowserRouter([
   {
     path: "/employee",
     element: (
-      <ProtectedRoute allowedRoles={["member"]}>
+      <ProtectedRoute allowedRoles={["member", "resource"]}>
         <EmployeeLayout />
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <EmployeeDashboard /> },
-      { path: "tasks", element: <EmployeeTasks /> },
-      { path: "projects", element: <EmployeeProjects /> },
-      { path: "calendar", element: <EmployeeCalendar /> },
-      { path: "reports", element: <EmployeeReports /> },
-      { path: "documents", element: <EmployeeDocuments /> },
-      { path: "manage-documents", element: <EmployeeManageDocument /> },
-      { path: "expenses", element: <EmployeeExpenses /> },
+      { path: "/employee", element: <EmployeeDashboard /> },
+      { path: "/employee/tasks", element: <EmployeeTasks /> },
+      { path: "/employee/projects", element: <EmployeeProjects /> },
+      { path: "/employee/calendar", element: <EmployeeCalendar /> },
+      { path: "/employee/reports", element: <EmployeeReports /> },
+      { path: "/employee/documents", element: <EmployeeDocuments /> },
+      {
+        path: "/employee/manage-documents",
+        element: <EmployeeManageDocument />,
+      },
+      { path: "/employee/expenses", element: <EmployeeExpenses /> },
     ],
   },
 
-  // Admin Portal Routes
+  // Project Manager Portal Routes (using "admin" role)
+  {
+    path: "/manager",
+    element: (
+      <ProtectedRoute allowedRoles={["admin"]}>
+        <ManagerLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { path: "/manager", element: <DashboardPage /> },
+      { path: "/manager/projects", element: <ManageProjects /> },
+      { path: "/manager/tasks", element: <TaskManagment /> },
+      { path: "/manager/reports", element: <ReportsPage /> },
+      { path: "/manager/calendar", element: <Calendar /> },
+      { path: "/manager/documents", element: <Documents /> },
+    ],
+  },
+
+  // Super Admin Portal Routes (using "superadmin" role)
   {
     path: "/",
     element: (
-      <ProtectedRoute allowedRoles={["admin"]}>
+      <ProtectedRoute allowedRoles={["superadmin"]}>
         <MainLayout />
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: "manage-resources", element: <ManageResources /> },
-      { path: "manage-clients", element: <ManageClients /> },
-      { path: "manage-projects", element: <ManageProjects /> },
-      { path: "documents", element: <Documents /> },
-      { path: "manage-documents", element: <ManageDocument /> },
-      // { path: "mom", element: <Mom /> }, // TODO: Verify correct filename
-      { path: "mom-pro", element: <MomGeneratorPro /> },
-      { path: "task-management", element: <TaskManagment /> },
-      { path: "reports", element: <ReportsPage /> },
-      { path: "expenses", element: <ExpenseManagement /> },
-      { path: "calendar", element: <Calendar /> },
+      { path: "/", element: <DashboardPage /> },
+      { path: "/manage-resources", element: <ManageResources /> },
+      { path: "/manage-clients", element: <ManageClients /> },
+      { path: "/manage-projects", element: <ManageProjects /> },
+      { path: "/documents", element: <Documents /> },
+      { path: "/manage-documents", element: <ManageDocument /> },
+      { path: "/mom", element: <Mom /> },
+      { path: "/mom-pro", element: <MomGeneratorPro /> },
+      { path: "/task-management", element: <TaskManagment /> },
+      { path: "/reports", element: <ReportsPage /> },
+      { path: "/expenses", element: <ExpenseManagement /> },
+      { path: "/calendar", element: <Calendar /> },
       {
-        path: "settings",
+        path: "/settings",
         element: <Settings />,
         children: [
           { index: true, element: <Navigate to="add-hierarchy" replace /> },

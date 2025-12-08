@@ -21,10 +21,10 @@ export function AuthProvider({ children }) {
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           const data = userDoc.data();
-          // If user is in 'users' collection but doesn't have a role, default to 'admin'
+          // If user is in 'users' collection but doesn't have a role, default to 'member' for safety
           setUserData({
             ...data,
-            role: data.role ? data.role.trim() : "admin",
+            role: data.role ? data.role.trim() : "member",
           });
         } else {
           // If not in users, check clients collection
@@ -37,11 +37,12 @@ export function AuthProvider({ children }) {
               role: data.role ? data.role.trim() : "client",
             });
           } else {
-            // User exists in Auth but not in Firestore - treat as admin (for manually created admin accounts)
+            // User exists in Auth but not in Firestore - treat as superadmin ONLY if email matches a hardcoded safe list or similar, otherwise member
+            // For now, we will default to 'member' to prevent unauthorized admin access for broken records
             setUserData({
               email: currentUser.email,
               name: currentUser.displayName || currentUser.email,
-              role: "admin",
+              role: "member", // Changed from 'admin' to 'member' for security
               uid: currentUser.uid,
             });
           }

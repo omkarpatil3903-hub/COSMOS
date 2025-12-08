@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../firebase";
-import { getDoc, doc } from "firebase/firestore";
+import { getDoc, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import toast from "react-hot-toast";
 import {
   FaShieldAlt,
@@ -56,56 +56,98 @@ function LoginPage() {
     try {
       const emailTrimmed = email.trim();
       const passwordTrimmed = password;
+      console.log("Attempting login for:", emailTrimmed);
+
       const cred = await signInWithEmailAndPassword(
         auth,
         emailTrimmed,
         passwordTrimmed
       );
+      console.log("Firebase Auth successful. User UID:", cred.user.uid);
 
       toast.success("Logged in successfully");
 
       // Determine role and resource role type for redirect
       let role = null;
       let resourceRoleType = null;
-      
+
       try {
         const tokenRes = await cred.user.getIdTokenResult();
         role = tokenRes?.claims?.role || null;
-      } catch {
-        // ignore
+        console.log("Claims role:", role);
+      } catch (e) {
+        console.warn("Error fetching token claims:", e);
       }
 
       try {
         const uSnap = await getDoc(doc(db, "users", cred.user.uid));
         if (uSnap.exists()) {
           const uData = uSnap.data();
+          console.log("User data found in 'users':", uData);
           if (!role && uData?.role) role = uData.role?.trim();
           if (uData?.resourceRoleType)
             resourceRoleType = String(uData.resourceRoleType)
               .trim()
               .toLowerCase();
         } else {
+          console.log("User not found in 'users', checking 'clients'...");
           const cSnap = await getDoc(doc(db, "clients", cred.user.uid));
-          if (cSnap.exists() && cSnap.data()?.role) {
-            role = cSnap.data().role?.trim();
+          if (cSnap.exists()) {
+            console.log("User data found in 'clients':", cSnap.data());
+            if (cSnap.data()?.role) {
+              role = cSnap.data().role?.trim();
+            }
+          } else {
+            console.log("User not found in 'clients' either.");
+
+            // Auto-recovery for Super Admin
+            if (emailTrimmed.toLowerCase() === "admin@gmail.com") {
+              console.log("Detected orphan Super Admin account. Attempting recovery...");
+
+              const newAdminData = {
+                name: "Super Admin",
+                email: emailTrimmed,
+                role: "superadmin",
+                resourceRoleType: "admin",
+                status: "Active",
+                createdAt: serverTimestamp(),
+                resourceType: "In-house",
+                employmentType: "Full-time"
+              };
+
+              await setDoc(doc(db, "users", cred.user.uid), newAdminData);
+              console.log("Super Admin account recovered in Firestore.");
+              toast.success("Super Admin account recovered!");
+              role = "superadmin";
+            }
           }
         }
       } catch (err) {
         console.error("Error fetching user data:", err);
       }
 
+      console.log("Final determined role:", role);
+      console.log("Final resourceRoleType:", resourceRoleType);
+
       // Wait for auth state to update
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Redirect based on role priority: client > resourceRoleType > role
       if (role === "client") {
+        console.log("Redirecting to /client");
         navigate("/client", { replace: true });
-      } else if (resourceRoleType === "member" || role === "member") {
-        navigate("/employee", { replace: true });
-      } else if (resourceRoleType === "admin" || role === "admin") {
+      } else if (role === "superadmin") {
+        console.log("Redirecting to / (superadmin)");
         navigate("/", { replace: true });
+      } else if (role === "admin") {
+        console.log("Redirecting to /manager");
+        navigate("/manager", { replace: true });
+      } else if (role === "member" || role === "resource" || resourceRoleType === "member") {
+        console.log("Redirecting to /employee");
+        navigate("/employee", { replace: true });
       } else {
         // Default fallback
+        console.log("Redirecting to / (fallback)");
         navigate("/", { replace: true });
       }
     } catch (err) {
