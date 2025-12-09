@@ -528,11 +528,49 @@ function TasksManagement() {
         else if (update.status !== "Done" && current?.status === "Done")
           update.completedAt = null;
         await updateDoc(ref, update);
+
+        // Handle Series Update
+        if (taskData.updateSeries) {
+          const rootId = taskData.parentRecurringTaskId || taskData.id;
+          // If we are editing a child task, update the root task with definition changes
+          if (rootId !== taskData.id) {
+            try {
+              const rootRef = doc(db, "tasks", rootId);
+              const rootUpdate = {
+                title: taskData.title,
+                description: taskData.description || "",
+                priority: taskData.priority || "Medium",
+                projectId: taskData.projectId || "",
+                // Recurrence settings
+                isRecurring: true,
+                recurringPattern: taskData.recurringPattern || "daily",
+                recurringInterval: taskData.recurringInterval || 1,
+                recurringEndDate: taskData.recurringEndDate || "",
+                recurringEndAfter: taskData.recurringEndAfter || "",
+                recurringEndType: taskData.recurringEndType || "never",
+                // OKRs
+                okrObjectiveIndex: taskData.okrObjectiveIndex === undefined ? null : taskData.okrObjectiveIndex,
+                okrKeyResultIndices: taskData.okrKeyResultIndices || [],
+                // Assignees
+                assigneeId: taskData.assigneeId || "",
+                assigneeType: taskData.assigneeType || "user",
+                assignees: Array.isArray(taskData.assignees) ? taskData.assignees : [],
+                assigneeIds: newAssigneeIds,
+              };
+              await updateDoc(rootRef, rootUpdate);
+              // toast.success("Series definition updated"); // Optional: reduce toast spam
+            } catch (err) {
+              console.error("Failed to update series root task", err);
+              toast.error("Failed to update series definition");
+            }
+          }
+        }
         // If task just transitioned to Done and is recurring, create next instance immediately
         try {
           const becameDone =
             update.status === "Done" && current?.status !== "Done";
           if (becameDone && (current?.isRecurring || update.isRecurring)) {
+            console.log("Task became done and is recurring. Checking next instance...", { id: taskData.id });
             const taskForCheck = {
               ...(current || {}),
               ...update,
@@ -540,8 +578,12 @@ function TasksManagement() {
               // Ensure fields required by shouldCreateNextInstance
               completedAt: new Date(),
             };
-            if (await shouldCreateNextInstanceAsync(taskForCheck)) {
+            const shouldCreate = await shouldCreateNextInstanceAsync(taskForCheck);
+            console.log("Should create next instance?", shouldCreate);
+            if (shouldCreate) {
+              console.log("Creating next recurring instance...");
               const newId = await createNextRecurringInstance(taskForCheck);
+              console.log("Created next recurring instance:", newId);
               if (newId && (update.projectId || current?.projectId)) {
                 const pid = update.projectId || current?.projectId;
                 try {
@@ -554,6 +596,8 @@ function TasksManagement() {
                 }
               }
             }
+          } else {
+            console.log("Task update did not trigger recurrence check", { becameDone, isRecurring: current?.isRecurring || update.isRecurring });
           }
         } catch (e) {
           console.warn("Recurring continuation failed (update)", e);
@@ -966,6 +1010,8 @@ function TasksManagement() {
         user
       );
 
+      console.log("Admin completion updated doc. Checking recurrence for:", t?.id);
+
       // Attempt to create next recurring instance if applicable
       try {
         const checkTask = {
@@ -973,8 +1019,11 @@ function TasksManagement() {
           id: completionTaskId,
           completedAt: new Date(),
         };
+        console.log("Checking shouldCreateNextInstanceAsync with:", checkTask);
         if (await shouldCreateNextInstanceAsync(checkTask)) {
+          console.log("Creating next recurring instance (Admin)...");
           const newId = await createNextRecurringInstance(checkTask);
+          console.log("Created next recurring instance (Admin):", newId);
           if (newId && t?.projectId) {
             try {
               await updateProjectProgress(t.projectId);

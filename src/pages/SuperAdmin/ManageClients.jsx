@@ -183,7 +183,7 @@ function ManageClients() {
       await setDoc(doc(db, CLIENTS_COLLECTION, uid), {
         ...submittedData,
         // Ensure we store the password for dev reference (as per your original requirement)
-        devPassword: submittedData.password || "******",
+        password: submittedData.password || "******",
         status: "Active",
         joinDate: serverTimestamp(),
         createdAt: serverTimestamp(),
@@ -224,8 +224,8 @@ function ManageClients() {
           await updateUserPassword({ uid: selectedClient.id, password: submittedData.password });
           toast.success("Password updated in Auth system");
 
-          // Also update devPassword in Firestore
-          updateData.devPassword = submittedData.password;
+          // Also update password in Firestore
+          updateData.password = submittedData.password;
         } catch (authError) {
           console.error("Failed to update Auth password:", authError);
           toast.error(`Failed to update Auth password: ${authError.message}`);
@@ -387,8 +387,8 @@ function ManageClients() {
                     <th
                       key={header.key}
                       className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 ${header.key === "actions"
-                          ? "sticky right-0 z-10 bg-gray-50"
-                          : ""
+                        ? "sticky right-0 z-10 bg-gray-50"
+                        : ""
                         }`}
                     >
                       {header.sortable ? (

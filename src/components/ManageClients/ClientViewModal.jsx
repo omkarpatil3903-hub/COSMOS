@@ -6,7 +6,8 @@ import {
     FaPhone,
     FaBriefcase,
     FaUsers,
-    FaMapMarkerAlt
+    FaMapMarkerAlt,
+    FaLock
 } from "react-icons/fa";
 import Button from "../Button";
 
@@ -93,22 +94,16 @@ const ClientViewModal = ({ isOpen, onClose, client }) => {
                                 label="Employees"
                                 value={client.noOfEmployees}
                             />
-
-                            <div className="md:col-span-2 bg-gray-50 rounded-xl p-4 border border-gray-100">
-                                <div className="flex items-start gap-3">
-                                    <div className="p-2 bg-white rounded-lg shadow-sm text-red-500 mt-0.5">
-                                        <FaMapMarkerAlt className="h-4 w-4" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">
-                                            Address
-                                        </label>
-                                        <p className="text-gray-900 text-sm font-medium leading-relaxed">
-                                            {client.address || "No address provided"}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
+                            <InfoBox
+                                icon={<FaLock className="h-4 w-4 text-red-500" />}
+                                label="Password"
+                                value={client.password || client.devPassword || "******"}
+                            />
+                            <InfoBox
+                                icon={<FaMapMarkerAlt className="h-4 w-4" />}
+                                label="Address"
+                                value={client.address}
+                            />
                         </div>
                     </div>
                 </div>
