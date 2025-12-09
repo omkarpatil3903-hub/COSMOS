@@ -8,8 +8,8 @@ export default function ClientManageDocument() {
   const [search, setSearch] = useState("");
   return (
     <div className="space-y-6">
-      <PageHeader title="Manage Documents">
-        Manage documents shared with your organization.
+      <PageHeader title="Manage Knowledge">
+        Manage knowledge assets shared with your organization.
       </PageHeader>
       <Card title="Search & Actions" tone="muted">
         <SearchActions
@@ -18,7 +18,7 @@ export default function ClientManageDocument() {
           placeholder="Search documents"
         />
       </Card>
-      <Card title="Document List" tone="muted">
+      <Card title="Knowledge List" tone="muted">
         <DocumentsTable query={search} />
       </Card>
     </div>

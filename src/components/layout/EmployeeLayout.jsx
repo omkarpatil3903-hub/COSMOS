@@ -62,7 +62,7 @@ function EmployeeLayout() {
       "/employee/projects": "COSMOS | My Projects",
       "/employee/calendar": "COSMOS | Calendar",
       "/employee/reports": "COSMOS | Reports",
-      "/employee/documents": "COSMOS | Documents",
+      "/employee/knowledge-management": "COSMOS | Knowledge Management",
     };
 
     const title = pathToTitle[location.pathname] || "Employee Portal";
@@ -91,7 +91,7 @@ function EmployeeLayout() {
       icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/employee/documents",
+      to: "/employee/knowledge-management",
       text: "Knowledge",
       icon: <FaFileAlt className="h-4 w-4" aria-hidden="true" />,
     },

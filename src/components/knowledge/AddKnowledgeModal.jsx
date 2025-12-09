@@ -4,9 +4,9 @@ import Button from "../Button";
 import { db } from "../../firebase";
 import { collection, onSnapshot, orderBy, query, where, doc, getDoc } from "firebase/firestore";
 
-function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projectId, canEditAccess = true }) {
-  const [name, setName] = useState("");
-  const [file, setFile] = useState(null);
+function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, projectId, canEditAccess = true }) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [errors, setErrors] = useState({});
   const [admins, setAdmins] = useState([]);
   const [members, setMembers] = useState([]);
@@ -17,8 +17,8 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
 
   useEffect(() => {
     if (!isOpen) {
-      setName("");
-      setFile(null);
+      setTitle("");
+      setDescription("");
       setErrors({});
       setSelectedAdmin([]);
       setSelectedMember([]);
@@ -35,16 +35,15 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     }
   }, [isOpen]);
 
-  // Prefill when editing
   useEffect(() => {
-    if (isOpen && initialDoc) {
-      setName(initialDoc.name || "");
-      setSelectedAdmin(Array.isArray(initialDoc.access?.admin) ? initialDoc.access.admin : []);
-      setSelectedMember(Array.isArray(initialDoc.access?.member) ? initialDoc.access.member : []);
+    if (isOpen && initialItem) {
+      setTitle(initialItem.title || "");
+      setDescription(initialItem.description || "");
+      setSelectedAdmin(Array.isArray(initialItem.access?.admin) ? initialItem.access.admin : []);
+      setSelectedMember(Array.isArray(initialItem.access?.member) ? initialItem.access.member : []);
     }
-  }, [isOpen, initialDoc]);
+  }, [isOpen, initialItem]);
 
-  // Determine allowed user IDs for the selected project (project manager + assignees on tasks)
   useEffect(() => {
     if (!isOpen || !projectId) {
       setAllowedIds([]);
@@ -70,14 +69,12 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     const pref = doc(db, "projects", projectId);
     let unsubProject = null;
     try {
-      // Try to keep manager updates live if project changes
       unsubProject = onSnapshot(pref, (ds) => {
         const pdata = ds.data() || {};
         managerId = pdata.projectManagerId || null;
         recompute();
       });
     } catch {
-      // Fallback to one-time fetch
       getDoc(pref).then((ds) => {
         const pdata = ds.data() || {};
         managerId = pdata.projectManagerId || null;
@@ -91,7 +88,6 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     };
   }, [isOpen, projectId]);
 
-  // Load users, filter to those involved in the project, and group by resourceRoleType
   useEffect(() => {
     const q = query(collection(db, "users"), orderBy("name", "asc"));
     const unsub = onSnapshot(q, (snap) => {
@@ -99,11 +95,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
       const allowed = new Set(allowedIds);
       const mapped = list
         .filter((u) => (projectId ? allowed.has(u.id) : true))
-        .map((u) => ({
-          id: u.id,
-          name: u.name || u.fullName || "",
-          type: String(u.resourceRoleType || "").toLowerCase(),
-        }));
+        .map((u) => ({ id: u.id, name: u.name || u.fullName || "", type: String(u.resourceRoleType || "").toLowerCase() }));
       setAdmins(mapped.filter((x) => x.type === "admin"));
       setMembers(mapped.filter((x) => x.type === "member" || x.type === "resource"));
     });
@@ -112,47 +104,23 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
 
   const validate = () => {
     const e = {};
-    if (!name.trim()) e.name = "Document name is required";
-    if (!initialDoc && !file) e.file = "Please upload a document";
+    if (!title.trim()) e.title = "Title is required";
+    if (!description.trim()) e.description = "Description is required";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (!validate()) return;
-    let fileDataUrl = null;
-    if (file) {
-      fileDataUrl = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-    const shared = (selectedAdmin.length + selectedMember.length) > 0;
-    const doc = {
-      id: initialDoc?.id || String(Date.now()),
-      name: name.trim(),
-      location: "—",
-      tags: [],
-      updated: new Date().toLocaleDateString(),
-      viewed: "-",
-      shared,
-      access: {
-        admin: selectedAdmin,
-        member: selectedMember,
-      },
-      children: 0,
-      _file: file,
-      _fileDataUrl: fileDataUrl,
+    const payload = {
+      id: initialItem?.id || String(Date.now()),
+      title: title.trim(),
+      description: description.trim(),
+      access: { admin: selectedAdmin, member: selectedMember },
     };
-    onSubmit && onSubmit(doc);
+    onSubmit && onSubmit(payload);
     onClose && onClose();
-  };
-
-  const handleOverlayKeyDown = (e) => {
-    if (e.key === "Escape") onClose && onClose();
   };
 
   if (!isOpen) return null;
@@ -161,16 +129,15 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
       onClick={onClose}
-      onKeyDown={handleOverlayKeyDown}
       tabIndex={-1}
     >
       <div
-        className={`bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto relative z-[10000] transform transition-all duration-300 ease-out ${entered ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+        className={`bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative z-[10000] transform transition-all duration-300 ease-out ${entered ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-content-primary">{initialDoc ? "Edit Document" : "Add Document"}</h2>
+            <h2 className="text-xl font-semibold text-content-primary">{initialItem ? "Edit Knowledge" : "Add Knowledge"}</h2>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <HiXMark className="h-6 w-6" />
             </button>
@@ -179,62 +146,38 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className={`grid grid-cols-1 gap-6 ${canEditAccess ? "md:grid-cols-2" : ""}`}>
               <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-                      <path d="M19.5 14.25v3.375a2.625 2.625 0 0 1-2.625 2.625H7.125A2.625 2.625 0 0 1 4.5 17.625V6.375A2.625 2.625 0 0 1 7.125 3.75h5.25L19.5 10.5v3.75z" />
-                    </svg>
-                  </span>
-                  <h3 className="text-sm font-semibold text-content-secondary">Document Details</h3>
-                </div>
                 <div className="space-y-4">
                   <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    Name of document *
+                    Title *
                     <input
                       type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Project Requirements"
-                      className={`w-full rounded-lg border ${errors.name ? "border-red-500" : "border-subtle"} bg-surface py-2 px-3 text-sm focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="e.g. What I learned"
+                      className={`w-full rounded-lg border ${errors.title ? "border-red-500" : "border-subtle"} bg-surface py-2 px-3 text-sm focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
                       required
                     />
-                    {errors.name && <span className="text-xs text-red-600">{errors.name}</span>}
+                    {errors.title && <span className="text-xs text-red-600">{errors.title}</span>}
                   </label>
 
                   <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-                    <span className="flex items-center gap-2">
-                      <span>Upload document *</span>
-                      <span className="text-indigo-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
-                          <path d="M7.5 18.75h9a3.75 3.75 0 0 0 .42-7.485 5.25 5.25 0 0 0-10.293-.894A4.5 4.5 0 0 0 7.5 18.75z" />
-                          <path d="M12 12.75v6m0-6l2.25 2.25M12 12.75l-2.25 2.25M12 3v9" />
-                        </svg>
-                      </span>
-                    </span>
-                    <input
-                      type="file"
-                      onChange={(e) => setFile(e.target.files?.[0] || null)}
-                      className={`w-full rounded-lg border ${errors.file ? "border-red-500" : "border-subtle"} bg-surface py-2 px-3 text-sm focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
-                      required={!initialDoc}
+                    Description *
+                    <textarea
+                      rows={8}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Write what you learned from this project..."
+                      className={`w-full rounded-lg border ${errors.description ? "border-red-500" : "border-subtle"} bg-surface py-2 px-3 text-sm focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                      required
                     />
-                    {!!file && (
-                      <span className="text-xs text-content-tertiary">Selected: {file.name}</span>
-                    )}
-                    {errors.file && <span className="text-xs text-red-600">{errors.file}</span>}
+                    {errors.description && <span className="text-xs text-red-600">{errors.description}</span>}
                   </label>
                 </div>
               </div>
 
               {canEditAccess && (
                 <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-emerald-50 text-emerald-600">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-                        <path d="M12 1.5a4.5 4.5 0 0 1 4.5 4.5v1.5h.75A2.25 2.25 0 0 1 19.5 9.75v9A2.25 2.25 0 0 1 17.25 21H6.75A2.25 2.25 0 0 1 4.5 18.75v-9A2.25 2.25 0 0 1 6.75 6H7.5A4.5 4.5 0 0 1 12 1.5zm0 3A1.5 1.5 0 0 0 10.5 6v1.5h3V6A1.5 1.5 0 0 0 12 4.5z" />
-                      </svg>
-                    </span>
-                    <h3 className="text-sm font-semibold text-content-secondary">Access</h3>
-                  </div>
+                  <div className="mb-3 text-sm font-semibold text-content-secondary">Access</div>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                       <div className="mb-2 text-xs font-bold uppercase tracking-wide text-content-tertiary">Admin Users</div>
@@ -301,7 +244,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
 
             <div className="flex justify-end gap-3 pt-2">
               <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button type="submit">{initialDoc ? "Save Changes" : "Add Document"}</Button>
+              <Button type="submit">{initialItem ? "Save Changes" : "+ Add Knowledge"}</Button>
             </div>
           </form>
         </div>
@@ -310,4 +253,4 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
   );
 }
 
-export default AddDocumentModal;
+export default AddKnowledgeModal;

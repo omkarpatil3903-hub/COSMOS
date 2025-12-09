@@ -8,8 +8,8 @@ export default function EmployeeManageDocument() {
   const [search, setSearch] = useState("");
   return (
     <div className="space-y-6">
-      <PageHeader title="Manage Documents">
-        Manage your documents and shared files.
+      <PageHeader title="Manage Knowledge">
+        Manage your knowledge assets and shared files.
       </PageHeader>
       <Card title="Search & Actions" tone="muted">
         <SearchActions
@@ -18,8 +18,12 @@ export default function EmployeeManageDocument() {
           placeholder="Search documents"
         />
       </Card>
-      <Card title="Document List" tone="muted">
-        <DocumentsTable query={search} />
+      <Card title="Knowledge List" tone="muted">
+        <DocumentsTable
+          query={search}
+          showActions={true}
+          onEdit={() => {}}
+        />
       </Card>
     </div>
   );

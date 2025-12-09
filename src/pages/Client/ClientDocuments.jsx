@@ -8,8 +8,8 @@ export default function ClientDocuments() {
   const [search, setSearch] = useState("");
   return (
     <div className="space-y-6">
-      <PageHeader title="Documents">
-        All docs shared with your organization.
+      <PageHeader title="Knowledge">
+        All knowledge shared with your organization.
       </PageHeader>
       <Card title="Search & Actions" tone="muted">
         <SearchActions
@@ -18,7 +18,7 @@ export default function ClientDocuments() {
           placeholder="Search documents"
         />
       </Card>
-      <Card title="Document List" tone="muted">
+      <Card title="Knowledge List" tone="muted">
         <DocumentsTable query={search} />
       </Card>
     </div>
