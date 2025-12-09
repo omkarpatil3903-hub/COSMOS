@@ -226,6 +226,7 @@ const TaskViewModal = ({
 
   const handleCompletionSubmit = async (comment) => {
     try {
+      console.log(`handleCompletionSubmit called for task ${task.id}, isRecurring=${task.isRecurring}`);
       const isAssignee = task.assigneeIds?.includes(currentUser?.uid);
       const col = task.collectionName || "tasks";
 
@@ -308,7 +309,9 @@ const TaskViewModal = ({
         console.log("Attempting to create next recurring instance for:", task.id);
 
         // Ensure dates are valid JS Dates or strings, not Firestore Timestamps
-        const dueDate = task.dueDate?.toDate ? task.dueDate.toDate() : new Date(task.dueDate);
+        const dueDate = task.dueDate?.toDate
+          ? task.dueDate.toDate()
+          : (task.dueDate?.seconds ? new Date(task.dueDate.seconds * 1000) : new Date(task.dueDate));
 
         const completedTaskState = {
           ...task,
@@ -354,7 +357,7 @@ const TaskViewModal = ({
   };
 
   const handleQuickUpdate = async (field, value) => {
-    console.log("handleQuickUpdate called", { taskId: task?.id, field, value });
+    console.log(`handleQuickUpdate called: taskId=${task?.id}, field=${field}, value=${value}, isRecurring=${task?.isRecurring}`);
     if (!task?.id) {
       console.error("No task ID found in handleQuickUpdate");
       return;
@@ -432,6 +435,48 @@ const TaskViewModal = ({
           currentUser,
           col
         );
+
+        // Check for recurrence if status changed to Done
+        if (value === "Done") {
+          console.log("Status is Done. Checking recurrence condition:", {
+            isRecurring: task.isRecurring,
+            dueDate: task.dueDate,
+            hasToDate: !!task.dueDate?.toDate
+          });
+
+          if (task.isRecurring) {
+            console.log("Status changed to Done via QuickUpdate. Checking recurrence...", task.id);
+            const dueDate = task.dueDate?.toDate ? task.dueDate.toDate() : new Date(task.dueDate);
+            const completedTaskState = {
+              ...task,
+              dueDate: dueDate,
+              status: "Done",
+              completedAt: new Date(),
+            };
+
+            const shouldCreate = shouldCreateNextInstance(completedTaskState);
+            console.log("shouldCreateNextInstance result:", shouldCreate);
+
+            if (shouldCreate) {
+              try {
+                console.log("Creating next recurring instance from QuickUpdate...");
+                const newId = await createNextRecurringInstance(completedTaskState);
+                if (newId) {
+                  toast.success("Next recurring task created!");
+                  console.log("Created new recurring task:", newId);
+                } else {
+                  console.warn("createNextRecurringInstance returned null (duplicate?)");
+                }
+              } catch (err) {
+                console.error("Failed to create recurring instance in QuickUpdate:", err);
+              }
+            } else {
+              console.warn("shouldCreateNextInstance returned false. Check task criteria (end date, max occurrences, etc).");
+            }
+          } else {
+            console.log("Task is not recurring, skipping creation.");
+          }
+        }
       }
     } catch (err) {
       console.error("updateTask failed", err);
@@ -910,7 +955,9 @@ const TaskViewModal = ({
                           <button
                             key={status}
                             onClick={() => {
+                              console.log(`Status dropdown clicked: ${status}`);
                               if (status === "Done") {
+                                console.log("Opening Completion Modal");
                                 setShowCompletionModal(true);
                                 setShowStatusDropdown(false);
                               } else {

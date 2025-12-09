@@ -4,7 +4,8 @@ import Button from "./Button";
 import toast from "react-hot-toast";
 import { validateTaskForm } from "../utils/formBuilders";
 import { MdReplayCircleFilled } from "react-icons/md";
-import { FaTimes, FaRegCalendarAlt } from "react-icons/fa";
+import { FaTimes, FaRegCalendarAlt, FaArrowRight } from "react-icons/fa";
+import { calculateNextDueDate } from "../utils/recurringTasks";
 
 // Inline simple searchable multi-select component
 function SearchMultiSelect({ items, selected, onChange, placeholder }) {
@@ -101,6 +102,8 @@ function TaskModal({
   const [newSubtask, setNewSubtask] = useState("");
 
   const [errors, setErrors] = useState({});
+  const [showSeriesPrompt, setShowSeriesPrompt] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState(null);
 
   // Clear recurring fields when switching to one-time
   useEffect(() => {
@@ -260,25 +263,25 @@ function TaskModal({
       normalize(assigneeType) === normalize(taskToEdit.assigneeType),
       normalize(assigneeId) === normalize(taskToEdit.assigneeId),
       JSON.stringify(assigneesSelected) ===
-        JSON.stringify(taskToEdit.assignees || []),
+      JSON.stringify(taskToEdit.assignees || []),
       normalize(assignedDate) === normalize(taskToEdit.assignedDate),
       normalize(dueDate) === normalize(taskToEdit.dueDate),
       (taskToEdit.taskType || "one-time") === taskType,
       normalize(recurringPattern) === normalize(taskToEdit.recurringPattern),
       Number(recurringInterval || 1) ===
-        Number(taskToEdit.recurringInterval || 1),
+      Number(taskToEdit.recurringInterval || 1),
       normalize(recurringEndType) === normalize(taskToEdit.recurringEndType),
       normalize(recurringEndDate) === normalize(taskToEdit.recurringEndDate),
       String(recurringEndAfter || "") ===
-        String(taskToEdit.recurringEndAfter || ""),
+      String(taskToEdit.recurringEndAfter || ""),
       JSON.stringify(selectedWeekDays) ===
-        JSON.stringify(taskToEdit.selectedWeekDays || [0, 1, 2, 3, 4, 5, 6]),
+      JSON.stringify(taskToEdit.selectedWeekDays || [0, 1, 2, 3, 4, 5, 6]),
       (typeof okrObjectiveIndex === "number" ? okrObjectiveIndex : null) ===
-        (typeof taskToEdit.okrObjectiveIndex === "number"
-          ? taskToEdit.okrObjectiveIndex
-          : null),
+      (typeof taskToEdit.okrObjectiveIndex === "number"
+        ? taskToEdit.okrObjectiveIndex
+        : null),
       JSON.stringify(okrKeyResultIndices) ===
-        JSON.stringify(taskToEdit.okrKeyResultIndices || []),
+      JSON.stringify(taskToEdit.okrKeyResultIndices || []),
       JSON.stringify(subtasks) === JSON.stringify(taskToEdit.subtasks || []),
     ];
     return !fields.every(Boolean);
@@ -352,6 +355,7 @@ function TaskModal({
       assignedDate,
       dueDate,
       taskType,
+      isRecurring, // Critical fix: Ensure this boolean is passed
       recurringPattern: isRecurring ? recurringPattern : undefined,
       recurringInterval: isRecurring ? Number(recurringInterval) : undefined,
       recurringEndType: isRecurring ? recurringEndType : undefined,
@@ -371,8 +375,27 @@ function TaskModal({
       subtasks,
     };
 
+    // Check if we need to ask about series update
+    // Only if editing an existing task that is part of a series
+    const isSeries = taskToEdit && (taskToEdit.isRecurring || taskToEdit.parentRecurringTaskId);
+
+    if (isSeries && !payload.updateSeries && !payload.updateOccurrence) {
+      setPendingPayload(payload);
+      setShowSeriesPrompt(true);
+      return;
+    }
+
     onSave(payload);
     toast.success(taskToEdit ? "Task updated" : "Task created");
+    onClose();
+  };
+
+  const handleSeriesChoice = (updateSeries) => {
+    if (!pendingPayload) return;
+    const finalPayload = { ...pendingPayload, updateSeries };
+    onSave(finalPayload);
+    toast.success(updateSeries ? "Series updated" : "Task updated");
+    setShowSeriesPrompt(false);
     onClose();
   };
 
@@ -389,11 +412,10 @@ function TaskModal({
         <div className="shrink-0 px-6 py-4 border-b border-gray-100/50 bg-white/80 backdrop-blur-md flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div
-              className={`p-2 rounded-lg ${
-                taskToEdit
-                  ? "bg-indigo-50 text-indigo-600"
-                  : "bg-gray-100 text-gray-500"
-              }`}
+              className={`p-2 rounded-lg ${taskToEdit
+                ? "bg-indigo-50 text-indigo-600"
+                : "bg-gray-100 text-gray-500"
+                }`}
             >
               <MdReplayCircleFilled className="text-xl" />
             </div>
@@ -444,11 +466,10 @@ function TaskModal({
                         setErrors((prev) => ({ ...prev, title: "" }));
                     }}
                     placeholder="Enter task title..."
-                    className={`block w-full rounded-xl border-0 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all ${
-                      errors.title
-                        ? "ring-red-300 focus:ring-red-500 bg-red-50"
-                        : ""
-                    }`}
+                    className={`block w-full rounded-xl border-0 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all ${errors.title
+                      ? "ring-red-300 focus:ring-red-500 bg-red-50"
+                      : ""
+                      }`}
                   />
                   {errors.title && (
                     <p className="mt-1.5 text-xs text-red-600 font-medium flex items-center gap-1">
@@ -484,9 +505,8 @@ function TaskModal({
                         setOkrObjectiveIndex(null);
                         setOkrKeyResultIndices([]);
                       }}
-                      className={`block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${
-                        errors.projectId ? "ring-red-300 bg-red-50" : ""
-                      }`}
+                      className={`block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${errors.projectId ? "ring-red-300 bg-red-50" : ""
+                        }`}
                       required
                     >
                       <option value="">Select Project</option>
@@ -551,11 +571,10 @@ function TaskModal({
                         setAssigneesSelected([]);
                         setAssigneeId("");
                       }}
-                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
-                        assigneeType === "user"
-                          ? "bg-white text-gray-900 shadow-sm"
-                          : "text-gray-500 hover:text-gray-700"
-                      }`}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "user"
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                        }`}
                     >
                       Resource
                     </button>
@@ -566,11 +585,10 @@ function TaskModal({
                         setAssigneesSelected([]);
                         setAssigneeId("");
                       }}
-                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
-                        assigneeType === "client"
-                          ? "bg-white text-gray-900 shadow-sm"
-                          : "text-gray-500 hover:text-gray-700"
-                      }`}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "client"
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                        }`}
                     >
                       Client
                     </button>
@@ -660,9 +678,8 @@ function TaskModal({
                             if (errors.dueDate)
                               setErrors((prev) => ({ ...prev, dueDate: "" }));
                           }}
-                          className={`block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${
-                            errors.dueDate ? "ring-red-300 bg-red-50" : ""
-                          }`}
+                          className={`block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${errors.dueDate ? "ring-red-300 bg-red-50" : ""
+                            }`}
                         />
                       </div>
                       {errors.dueDate && (
@@ -699,11 +716,10 @@ function TaskModal({
                 <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-100">
                   <div className="flex items-center gap-2">
                     <div
-                      className={`p-1.5 rounded-lg ${
-                        isRecurring
-                          ? "bg-indigo-600 text-white"
-                          : "bg-gray-200 text-gray-500"
-                      }`}
+                      className={`p-1.5 rounded-lg ${isRecurring
+                        ? "bg-indigo-600 text-white"
+                        : "bg-gray-200 text-gray-500"
+                        }`}
                     >
                       <MdReplayCircleFilled className="text-lg" />
                     </div>
@@ -797,11 +813,10 @@ function TaskModal({
                                         : [...prev, idx]
                                     );
                                   }}
-                                  className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-all ${
-                                    selectedWeekDays.includes(idx)
-                                      ? "bg-indigo-600 text-white shadow-sm"
-                                      : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                                  }`}
+                                  className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-all ${selectedWeekDays.includes(idx)
+                                    ? "bg-indigo-600 text-white shadow-sm"
+                                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                                    }`}
                                 >
                                   {day}
                                 </button>
@@ -861,6 +876,26 @@ function TaskModal({
                         </div>
                       )}
                     </div>
+
+                    {/* Recurrence Preview */}
+                    {previewDates.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <label className="block text-xs font-medium text-gray-500 mb-2 flex items-center gap-1">
+                          <FaRegCalendarAlt /> Next 5 Occurrences
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {previewDates.map((date, idx) => (
+                            <div
+                              key={idx}
+                              className="px-2 py-1 bg-indigo-50 text-indigo-700 text-xs rounded-md border border-indigo-100 flex items-center gap-1"
+                            >
+                              <span>{date}</span>
+                              {idx < previewDates.length - 1 && <FaArrowRight className="text-[8px] text-indigo-300" />}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1088,6 +1123,52 @@ function TaskModal({
           </div>
         </div>
       </div>
+      {/* Series Update Prompt Modal */}
+      {showSeriesPrompt && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-gray-100">
+            <div className="flex items-center gap-3 text-indigo-600">
+              <MdReplayCircleFilled className="text-2xl" />
+              <h3 className="text-lg font-bold text-gray-900">Update Recurring Task</h3>
+            </div>
+            <p className="text-sm text-gray-600">
+              This task is part of a recurring series. How would you like to apply your changes?
+            </p>
+            <div className="flex flex-col gap-3 pt-2">
+              <button
+                onClick={() => handleSeriesChoice(false)}
+                className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all group text-left"
+              >
+                <div>
+                  <span className="block text-sm font-bold text-gray-900 group-hover:text-indigo-700">This Occurrence Only</span>
+                  <span className="block text-xs text-gray-500">Update only this specific task instance</span>
+                </div>
+                <div className="w-4 h-4 rounded-full border border-gray-300 group-hover:border-indigo-500"></div>
+              </button>
+
+              <button
+                onClick={() => handleSeriesChoice(true)}
+                className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all group text-left"
+              >
+                <div>
+                  <span className="block text-sm font-bold text-gray-900 group-hover:text-indigo-700">Entire Series</span>
+                  <span className="block text-xs text-gray-500">Update this and all future occurrences</span>
+                </div>
+                <div className="w-4 h-4 rounded-full border border-gray-300 group-hover:border-indigo-500"></div>
+              </button>
+            </div>
+            <div className="pt-2 flex justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => setShowSeriesPrompt(false)}
+                className="text-xs"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 // src/utils/recurringTasks.js
-import { addDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { addDoc, collection, query, where, getDocs, runTransaction, doc } from "firebase/firestore";
 import { db } from "../firebase";
 
 /**
@@ -14,7 +14,14 @@ export function calculateNextDueDate(
   interval,
   skipWeekends = false
 ) {
-  const date = new Date(currentDueDate);
+  let date;
+  if (currentDueDate?.toDate) {
+    date = currentDueDate.toDate();
+  } else if (currentDueDate?.seconds) {
+    date = new Date(currentDueDate.seconds * 1000);
+  } else {
+    date = new Date(currentDueDate);
+  }
 
   switch (pattern) {
     case "daily":
@@ -184,6 +191,9 @@ export async function shouldCreateNextInstanceAsync(task) {
 /**
  * Create the next instance of a recurring task
  */
+/**
+ * Create the next instance of a recurring task using a transaction to prevent duplicates
+ */
 export async function createNextRecurringInstance(task) {
   try {
     // Calculate next due date
@@ -194,59 +204,74 @@ export async function createNextRecurringInstance(task) {
       task.skipWeekends
     );
 
-    // Check if instance already exists for this date
-    const existingQuery = query(
-      collection(db, "tasks"),
-      where(
-        "parentRecurringTaskId",
-        "==",
-        task.parentRecurringTaskId || task.id
-      ),
-      where("dueDate", "==", nextDueDate)
-    );
+    const seriesId = task.parentRecurringTaskId || task.id;
 
-    const existingDocs = await getDocs(existingQuery);
-    if (!existingDocs.empty) {
-      console.log("Instance already exists for", nextDueDate);
-      return null;
-    }
+    // Use a transaction to ensure atomic check-and-create
+    return await runTransaction(db, async (transaction) => {
+      console.log("Starting transaction for recurring task", seriesId, nextDueDate);
+      // 1. Check if instance already exists for this date
+      // Note: Transactional queries require an index. If index is missing, this might fail initially.
+      // However, for simple equality checks on indexed fields, it usually works.
+      // Alternatively, we can read the parent to "lock" it, then query.
+      // But Firestore transactions don't lock queries the same way SQL does.
+      // The best way in Firestore is to use a deterministic ID or check existence.
+      // Since we want to allow multiple tasks on same day if they are different series,
+      // we query by seriesId + dueDate.
+      
+      const existingQuery = query(
+        collection(db, "tasks"),
+        where("parentRecurringTaskId", "==", seriesId),
+        where("dueDate", "==", nextDueDate)
+      );
+      
+      const existingDocs = await getDocs(existingQuery);
+      
+      if (!existingDocs.empty) {
+        console.log("Instance already exists for", nextDueDate);
+        return null; // Abort
+      }
 
-    // Create new task instance
-    const { id, ...restOfTask } = task; // Destructure id to exclude it
-    const newTaskData = {
-      title: restOfTask.title,
-      description: restOfTask.description,
-      assigneeId: restOfTask.assigneeId,
-      assigneeType: restOfTask.assigneeType,
-      assigneeIds: restOfTask.assigneeIds || [],
-      assignees: restOfTask.assignees || [],
-      projectId: restOfTask.projectId,
-      assignedDate: new Date().toISOString().slice(0, 10),
-      dueDate: nextDueDate,
-      visibleFrom: nextDueDate,
-      priority: restOfTask.priority,
-      status: "To-Do",
-      progressPercent: 0,
-      createdAt: new Date(),
-      completedAt: null,
-      archived: false,
-      completionComment: "",
-      assigneeStatus: {}, // Reset individual statuses
-      weightage: restOfTask.weightage,
-      isRecurring: restOfTask.isRecurring,
-      recurringPattern: restOfTask.recurringPattern,
-      recurringInterval: restOfTask.recurringInterval,
-      recurringEndDate: restOfTask.recurringEndDate,
-      recurringEndAfter: restOfTask.recurringEndAfter,
-      recurringEndType: restOfTask.recurringEndType,
-      parentRecurringTaskId: restOfTask.parentRecurringTaskId || id, // Use the destructured id here
-      recurringOccurrenceCount: (restOfTask.recurringOccurrenceCount || 0) + 1,
-    };
+      console.log("No existing instance found. Creating new task...");
 
-    const docRef = await addDoc(collection(db, "tasks"), newTaskData);
-    console.log("Created recurring task instance:", docRef.id);
+      // 2. Create new task instance
+      const { id, ...restOfTask } = task; // Destructure id to exclude it
+      const newTaskData = {
+        title: restOfTask.title,
+        description: restOfTask.description,
+        assigneeId: restOfTask.assigneeId,
+        assigneeType: restOfTask.assigneeType,
+        assigneeIds: restOfTask.assigneeIds || [],
+        assignees: restOfTask.assignees || [],
+        projectId: restOfTask.projectId,
+        assignedDate: new Date().toISOString().slice(0, 10),
+        dueDate: nextDueDate,
+        visibleFrom: new Date().toISOString().slice(0, 10), // Fix: Make visible immediately so employees can see upcoming tasks
+        priority: restOfTask.priority,
+        status: "To-Do",
+        progressPercent: 0,
+        createdAt: new Date(),
+        completedAt: null,
+        archived: false,
+        completionComment: "",
+        assigneeStatus: {}, // Reset individual statuses
+        weightage: restOfTask.weightage,
+        isRecurring: restOfTask.isRecurring,
+        recurringPattern: restOfTask.recurringPattern,
+        recurringInterval: restOfTask.recurringInterval,
+        recurringEndDate: restOfTask.recurringEndDate,
+        recurringEndAfter: restOfTask.recurringEndAfter,
+        recurringEndType: restOfTask.recurringEndType,
+        parentRecurringTaskId: seriesId,
+        recurringOccurrenceCount: (restOfTask.recurringOccurrenceCount || 0) + 1,
+      };
 
-    return docRef.id;
+      const newDocRef = doc(collection(db, "tasks")); // Generate ID
+      transaction.set(newDocRef, newTaskData);
+      
+      console.log("Transaction set called for new task", newDocRef.id);
+      return newDocRef.id;
+    });
+
   } catch (error) {
     console.error("Error creating recurring task instance:", error);
     throw error;

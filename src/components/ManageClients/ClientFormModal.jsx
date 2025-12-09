@@ -312,36 +312,34 @@ const ClientFormModal = ({
                                     </div>
                                 </div>
 
-                                {/* Account Info (Only show password for Add mode) */}
-                                {mode === "add" && (
-                                    <div className="space-y-4 pt-4 border-t border-gray-100">
-                                        <div className="space-y-1.5">
-                                            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                                                <FaLock className="text-gray-400 text-xs" />
-                                                Password <span className="text-red-500">*</span>
-                                            </label>
-                                            <div className="relative">
-                                                <input
-                                                    type={showPassword ? "text" : "password"}
-                                                    name="password"
-                                                    value={formData.password}
-                                                    onChange={handleChange}
-                                                    className="w-full rounded-lg border border-gray-200 bg-white py-2.5 px-4 pr-10 text-sm text-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all duration-200"
-                                                    placeholder="••••••••"
-                                                    required
-                                                />
-                                                <button
-                                                    type="button"
-                                                    className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600 transition-colors"
-                                                    onClick={() => setShowPassword(!showPassword)}
-                                                >
-                                                    {showPassword ? <FaEyeSlash /> : <FaEye />}
-                                                </button>
-                                            </div>
-                                            <p className="text-xs text-gray-500">Min. 6 characters</p>
+                                {/* Account Info */}
+                                <div className="space-y-4 pt-4 border-t border-gray-100">
+                                    <div className="space-y-1.5">
+                                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                                            <FaLock className="text-gray-400 text-xs" />
+                                            Password {mode === "add" && <span className="text-red-500">*</span>}
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type={showPassword ? "text" : "password"}
+                                                name="password"
+                                                value={formData.password}
+                                                onChange={handleChange}
+                                                className="w-full rounded-lg border border-gray-200 bg-white py-2.5 px-4 pr-10 text-sm text-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all duration-200"
+                                                placeholder={mode === "add" ? "••••••••" : "Leave blank to keep current"}
+                                                required={mode === "add"}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600 transition-colors"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                            >
+                                                {showPassword ? <FaEyeSlash /> : <FaEye />}
+                                            </button>
                                         </div>
+                                        <p className="text-xs text-gray-500">Min. 6 characters</p>
                                     </div>
-                                )}
+                                </div>
                             </div>
                         </div>
                     </form>
