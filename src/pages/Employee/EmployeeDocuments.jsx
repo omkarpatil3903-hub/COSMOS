@@ -8,7 +8,7 @@ export default function EmployeeDocuments() {
   const [search, setSearch] = useState("");
   return (
     <div className="space-y-6">
-      <PageHeader title="Documents">All docs shared with you.</PageHeader>
+      <PageHeader title="Knowledge">All knowledge shared with you.</PageHeader>
       <Card title="Search & Actions" tone="muted">
         <SearchActions
           value={search}
@@ -16,8 +16,12 @@ export default function EmployeeDocuments() {
           placeholder="Search documents"
         />
       </Card>
-      <Card title="Document List" tone="muted">
-        <DocumentsTable query={search} showActions={false} />
+      <Card title="Knowledge List" tone="muted">
+        <DocumentsTable
+          query={search}
+          showActions={true}
+          onEdit={() => {}}
+        />
       </Card>
     </div>
   );

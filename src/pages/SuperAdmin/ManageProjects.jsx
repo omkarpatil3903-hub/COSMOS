@@ -18,6 +18,7 @@ import {
 // Excel export not used on this page currently
 import toast from "react-hot-toast";
 import { db } from "../../firebase";
+import { auth } from "../../firebase";
 import AddProjectModal from "../../components/AddProjectModal";
 import EditProjectModal from "../../components/EditProjectModal";
 import ViewProjectModal from "../../components/ViewProjectModal";
@@ -58,7 +59,7 @@ const tableHeaders = [
 ];
 // --- End Placeholder Data ---
 
-function ManageProjects() {
+function ManageProjects({ onlyMyManaged = false }) {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [clients, setClients] = useState([]);
@@ -203,7 +204,15 @@ function ManageProjects() {
         return "To-Do";
       return s || "To-Do";
     };
-    return projects.map((p) => {
+    const currentUser = auth.currentUser;
+
+    return projects
+      .filter((p) => {
+        if (!onlyMyManaged) return true;
+        if (!currentUser) return false;
+        return p.projectManagerId === currentUser.uid;
+      })
+      .map((p) => {
       const projTasks = tasks.filter((t) => t.projectId === p.id);
       const total = projTasks.length;
       const done = projTasks.filter(

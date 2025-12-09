@@ -51,6 +51,7 @@ import Settings from "./pages/SuperAdmin/Settings.jsx";
 import AddHierarchy from "./pages/SuperAdmin/AddHierarchy.jsx";
 import ProjectSettings from "./pages/SuperAdmin/ProjectSettings.jsx"; // TODO: Verify path
 import ManagerLayout from "./components/layout/ManagerLayout";
+import KnowledgeProjectDetail from "./pages/SuperAdmin/KnowledgeProjectDetail.jsx";
 
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -90,6 +91,8 @@ const router = createBrowserRouter([
       { path: "/employee/calendar", element: <EmployeeCalendar /> },
       { path: "/employee/reports", element: <EmployeeReports /> },
       { path: "/employee/documents", element: <EmployeeDocuments /> },
+      { path: "/employee/knowledge-management", element: <Documents onlyMyAssigned={true} /> },
+      { path: "/employee/knowledge-management/:projectName", element: <KnowledgeProjectDetail /> },
       {
         path: "/employee/manage-documents",
         element: <EmployeeManageDocument />,
@@ -108,11 +111,12 @@ const router = createBrowserRouter([
     ),
     children: [
       { path: "/manager", element: <DashboardPage /> },
-      { path: "/manager/projects", element: <ManageProjects /> },
+      { path: "/manager/projects", element: <ManageProjects onlyMyManaged={true} /> },
       { path: "/manager/tasks", element: <TaskManagment /> },
       { path: "/manager/reports", element: <ReportsPage /> },
       { path: "/manager/calendar", element: <Calendar /> },
-      { path: "/manager/documents", element: <Documents /> },
+      { path: "/manager/knowledge-management", element: <Documents onlyMyManaged={true} /> },
+      { path: "/manager/knowledge-management/:projectName", element: <KnowledgeProjectDetail /> },
     ],
   },
 
@@ -129,8 +133,9 @@ const router = createBrowserRouter([
       { path: "/manage-resources", element: <ManageResources /> },
       { path: "/manage-clients", element: <ManageClients /> },
       { path: "/manage-projects", element: <ManageProjects /> },
-      { path: "/documents", element: <Documents /> },
-      { path: "/manage-documents", element: <ManageDocument /> },
+      { path: "/knowledge-management", element: <Documents /> },
+      { path: "/knowledge-management/:projectName", element: <KnowledgeProjectDetail /> },
+      { path: "/manage-knowledge", element: <ManageDocument /> },
       { path: "/mom", element: <Mom /> },
       { path: "/mom-pro", element: <MomGeneratorPro /> },
       { path: "/task-management", element: <TaskManagment /> },

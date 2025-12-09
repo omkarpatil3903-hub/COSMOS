@@ -11,28 +11,34 @@ import {
   FaTimes,
   FaUserShield,
   FaUsers,
+  FaUser,
+  FaUserEdit,
 } from "react-icons/fa";
 
 function DocumentPreviewModal({
-  open,
+  open = true,
   onClose,
   doc,
   onSave,
   docs = [],
   onNavigate,
+  variant = "default",
 }) {
-  if (!open || !doc) return null;
+  if (!doc) return null;
   const admin = doc.access?.admin || [];
   const member = doc.access?.member || [];
-  const hasPreview = Boolean(doc.fileDataUrl);
+  const previewUrl = doc.fileDataUrl || doc.url || "";
+  const hasPreview = Boolean(previewUrl);
   const isImage =
     hasPreview &&
     (doc.fileType?.startsWith("image/") ||
-      /^data:image\//.test(doc.fileDataUrl));
+      /^data:image\//.test(previewUrl) ||
+      /\.(png|jpe?g|gif|webp|bmp)$/i.test(previewUrl));
   const isPdf =
     hasPreview &&
     (doc.fileType === "application/pdf" ||
-      /^data:application\/pdf/.test(doc.fileDataUrl));
+      /^data:application\/pdf/.test(previewUrl) ||
+      /\.pdf(?:$|[?#])/i.test(previewUrl));
 
   const fileKind = isImage ? "Image" : isPdf ? "PDF" : "File";
   const FileIcon = isImage ? FaFileImage : isPdf ? FaFilePdf : FaFile;
@@ -66,7 +72,8 @@ function DocumentPreviewModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden"
+        className={`bg-white rounded-xl shadow-2xl w-full ${variant === "compact" ? "max-w-5xl max-h-[90vh]" : "max-w-7xl max-h-[94vh]"} flex flex-col overflow-hidden`}
+        style={{ maxWidth: variant === "compact" ? "95vw" : "98vw" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -120,7 +127,7 @@ function DocumentPreviewModal({
           <div className="flex-1 p-6 lg:p-8 overflow-y-auto">
             <div
               className={`border-2 ${previewBorderColor} rounded-xl bg-gradient-to-br from-gray-50 to-white overflow-hidden shadow-inner relative`}
-              style={{ minHeight: "400px", maxHeight: "600px" }}
+              style={{ minHeight: variant === "compact" ? "65vh" : "72vh", maxHeight: "90vh" }}
             >
               {/* Navigation Buttons - Top Right Corner */}
               {canNavigate && (
@@ -163,16 +170,16 @@ function DocumentPreviewModal({
                 <div className="w-full h-full flex items-center justify-center p-4">
                   {isImage ? (
                     <img
-                      src={doc.fileDataUrl}
+                      src={previewUrl}
                       alt={doc.name}
                       className="max-h-full max-w-full object-contain rounded-lg shadow-lg"
                     />
                   ) : isPdf ? (
                     <iframe
                       title="PDF Preview"
-                      src={doc.fileDataUrl}
+                      src={previewUrl}
                       className="w-full h-full rounded-lg"
-                      style={{ minHeight: "500px" }}
+                      style={{ minHeight: variant === "compact" ? "70vh" : "78vh" }}
                     />
                   ) : (
                     <div className="text-center p-8">
@@ -205,7 +212,7 @@ function DocumentPreviewModal({
               <div className="flex justify-end mt-4">
                 {hasPreview && (
                   <a
-                    href={doc.fileDataUrl}
+                    href={previewUrl}
                     download={doc.filename || `${doc.name}`}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-medium text-sm transition-colors border border-indigo-200"
                   >
@@ -225,6 +232,36 @@ function DocumentPreviewModal({
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
                   Document Info
                 </h3>
+
+                {doc.createdByName && (
+                  <div className="flex items-center gap-3 mb-3">
+                    <FaUser className="w-4 h-4 text-gray-400" />
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500">Uploaded By</p>
+                      <p className="text-sm font-medium text-gray-900">{doc.createdByName}</p>
+                    </div>
+                  </div>
+                )}
+
+                {doc.created && (
+                  <div className="flex items-center gap-3 mb-3">
+                    <FaCalendarAlt className="w-4 h-4 text-gray-400" />
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500">Uploaded On</p>
+                      <p className="text-sm font-medium text-gray-900">{doc.created}</p>
+                    </div>
+                  </div>
+                )}
+
+                {doc.updatedByName && (
+                  <div className="flex items-center gap-3 mb-3">
+                    <FaUserEdit className="w-4 h-4 text-gray-400" />
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500">Last Edited By</p>
+                      <p className="text-sm font-medium text-gray-900">{doc.updatedByName}</p>
+                    </div>
+                  </div>
+                )}
 
                 {doc.updated && (
                   <div className="flex items-center gap-3 mb-3">

@@ -58,7 +58,7 @@ function ManagerLayout() {
             "/manager/tasks": "COSMOS | Task Management",
             "/manager/reports": "COSMOS | Project Reports",
             "/manager/calendar": "COSMOS | Project Calendar",
-            "/manager/documents": "COSMOS | Documents",
+            "/manager/knowledge-management": "COSMOS | Knowledge Management",
         };
 
         const title = pathToTitle[location.pathname] || "Project Manager Panel";
@@ -92,8 +92,8 @@ function ManagerLayout() {
             icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
         },
         {
-            to: "/manager/documents",
-            text: "Documents",
+            to: "/manager/knowledge-management",
+            text: "Knowledge Management",
             icon: <FaFileAlt className="h-4 w-4" aria-hidden="true" />,
         },
     ];

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { FaFileAlt } from "react-icons/fa";
+import { FaFileAlt, FaEdit, FaTrash } from "react-icons/fa";
 import DataTable from "./DataTable";
 import DocumentPreviewModal from "./DocumentPreviewModal";
 
@@ -9,6 +9,8 @@ function DocumentsTable({
   users = [],
   clients = [],
   showActions = false,
+  onEdit,
+  onDelete,
 }) {
   const [sortConfig, setSortConfig] = useState({
     key: "name",
@@ -87,17 +89,79 @@ function DocumentsTable({
           );
         },
       },
+      {
+        key: "createdByName",
+        label: "Uploaded By",
+        sortable: true,
+        render: (r) => (
+          <span className="text-gray-800 text-sm" title={r.createdByName || "-"}>
+            {r.createdByName || "-"}
+          </span>
+        ),
+        headerClassName: "w-[200px]",
+      },
+      {
+        key: "created",
+        label: "Uploaded On",
+        sortable: true,
+        render: (r) => (
+          <span className="text-gray-700 text-sm" title={r.created || "-"}>
+            {r.created || "-"}
+          </span>
+        ),
+        headerClassName: "w-[160px]",
+      },
     ];
 
+    if (showActions) {
+      baseColumns.push({
+        key: "actions",
+        label: "Actions",
+        sortable: false,
+        render: (r) => {
+          const showEdit = Boolean(onEdit);
+          const showDelete = Boolean(onDelete);
+          return (
+            <div className="flex items-center gap-3">
+              {showEdit && (
+                <button
+                  type="button"
+                  title="Edit"
+                  aria-label="Edit"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-yellow-400   shadow-sm hover:bg-yellow-50 hover:shadow focus:outline-none "
+                  onClick={(e) => { e.stopPropagation(); onEdit && onEdit(r); }}
+                >
+                  <FaEdit className="h-4 w-4" />
+                </button>
+              )}
+              {showDelete && (
+                <button
+                  type="button"
+                  title="Delete"
+                  aria-label="Delete"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-red-600  shadow-sm hover:bg-red-50 hover:shadow focus:outline-none  "
+                  onClick={(e) => { e.stopPropagation(); onDelete && onDelete(r); }}
+                >
+                  <FaTrash className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          );
+        },
+        align: "right",
+        headerClassName: "w-[160px]",
+      });
+    }
+
     return baseColumns;
-  }, [showActions]);
+  }, [showActions, onEdit, onDelete]);
 
   const filteredSorted = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = rows;
     if (q) {
       list = rows.filter((r) =>
-        [r.name, r.location, r.updated, r.viewed].some((v) =>
+        [r.name, r.location, r.updated, r.viewed, r.createdByName, r.created].some((v) =>
           String(v || "")
             .toLowerCase()
             .includes(q)
@@ -140,17 +204,69 @@ function DocumentsTable({
     setPreviewDoc(list[nextIndex]);
   };
 
-  const handleDownload = (doc) => {
-    if (!doc?.url) {
+  const handleDownload = async (doc) => {
+    const href = doc?.url || doc?.fileDataUrl;
+    if (!href) {
       console.warn("No URL for document:", doc);
       return;
     }
-    const link = document.createElement("a");
-    link.href = doc.url;
-    link.download = doc.name || "document";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const res = await fetch(href);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const resolveName = () => {
+        if (doc?.filename) return doc.filename;
+        if (doc?.storagePath) {
+          const seg = doc.storagePath.split("/");
+          const name = seg[seg.length - 1];
+          if (name) return name;
+        }
+        if (doc?.url) {
+          try {
+            const u = new URL(doc.url);
+            const path = decodeURIComponent(u.pathname);
+            const idx = path.lastIndexOf("/o/");
+            if (idx !== -1) {
+              const encoded = path.slice(idx + 3); // after /o/
+              const decoded = decodeURIComponent(encoded);
+              const parts = decoded.split("/");
+              const last = parts[parts.length - 1];
+              if (last) return last;
+            }
+          } catch {}
+        }
+        const map = {
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+          "application/vnd.ms-excel": "xls",
+          "text/csv": "csv",
+          "application/pdf": "pdf",
+          "image/jpeg": "jpg",
+          "image/png": "png",
+          "image/gif": "gif",
+          "image/webp": "webp",
+        };
+        const ext = map[doc?.fileType] || "";
+        const base = doc?.name || "document";
+        return ext ? `${base}.${ext}` : base;
+      };
+      const downloadName = resolveName();
+      link.href = objectUrl;
+      link.download = downloadName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (e) {
+      console.error("Blob download failed, falling back to direct link:", e);
+      const link = document.createElement("a");
+      link.href = href;
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
   };
 
   const handleView = (doc) => {
@@ -180,6 +296,7 @@ function DocumentsTable({
           onClose={() => setPreviewDoc(null)}
           onNavigate={handleNavigate}
           onDownload={handleDownload}
+          variant="compact"
         />
       )}
     </>
