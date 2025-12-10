@@ -25,8 +25,12 @@ import {
   where,
   limit,
   getDocs,
+  doc,
+  getDoc,
+  serverTimestamp,
 } from "firebase/firestore";
-import { db } from "../../firebase";
+import { db, storage, auth } from "../../firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
@@ -132,6 +136,7 @@ export default function MomGeneratorPro() {
   // Reference data
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
+  const [projectStaffNames, setProjectStaffNames] = useState({ admins: [], members: [] });
 
   // Meeting meta
   const [projectId, setProjectId] = useState("");
@@ -364,28 +369,179 @@ export default function MomGeneratorPro() {
     }
   };
 
-  // Save with versioning
+  // Save with versioning and sequential MOM number (momNo)
   const saveMom = async () => {
     if (!isGenerated) return toast.error("Generate MOM first");
+    if (!projectId) return toast.error("Select a project");
     try {
-      await addDoc(collection(db, "moms"), {
-        projectId,
+      // Compute next momNo per project: MOM_001, MOM_002, ...
+      let nextNumber = 1;
+      try {
+        const qn = query(
+          collection(db, "moms"),
+          where("projectId", "==", projectId),
+          orderBy("createdAt", "desc"),
+          limit(20)
+        );
+        const snap = await getDocs(qn);
+        snap.forEach((d) => {
+          const data = d.data() || {};
+          const existing = String(data.momNo || "");
+          const match = existing.match(/MOM_(\d+)/i);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (!isNaN(num) && num >= nextNumber) nextNumber = num + 1;
+          }
+        });
+      } catch (err) {
+        console.error("Failed to compute next momNo", err);
+        nextNumber = 1;
+      }
+
+      const momNo = `MOM_${String(nextNumber).padStart(3, "0")}`;
+
+      // Build sanitized payload for MOM document
+      const momPayload = {
+        projectId: projectId || "",
         projectName: selectedProject?.name || "",
-        momVersion,
-        meetingDate,
-        meetingStartTime,
-        meetingEndTime,
-        meetingVenue,
-        attendees,
-        externalAttendees,
-        momPreparedBy,
-        inputDiscussions,
-        inputActionItems,
-        discussions,
-        actionItems,
+        momVersion: momVersion || 1,
+        momNo,
+        meetingDate: meetingDate || "",
+        meetingStartTime: meetingStartTime || "",
+        meetingEndTime: meetingEndTime || "",
+        meetingVenue: meetingVenue || "",
+        attendees: attendees || [],
+        externalAttendees: externalAttendees || "",
+        momPreparedBy: momPreparedBy || "",
+        inputDiscussions: (inputDiscussions || []).map((d) => ({
+          id: d.id || "",
+          topic: d.topic || "",
+          notes: d.notes || "",
+        })),
+        inputActionItems: (inputActionItems || []).map((a) => ({
+          id: a.id || "",
+          task: a.task || "",
+          responsiblePerson: a.responsiblePerson || "",
+          deadline: a.deadline || "",
+        })),
+        discussions: (discussions || []).map((d) => ({
+          topic: d.topic || "",
+          notes: d.notes || "",
+        })),
+        actionItems: (actionItems || []).map((a) => ({
+          task: a.task || "",
+          responsiblePerson: a.responsiblePerson || "",
+          responsiblePersonId: a.responsiblePersonId || "",
+          deadline: a.deadline || "",
+        })),
         createdAt: Timestamp.now(),
-      });
-      toast.success(`MOM saved (v${momVersion})`);
+      };
+
+      // Save structured MOM entry
+      const momRef = await addDoc(collection(db, "moms"), momPayload);
+
+      // Additionally, save a text snapshot as a document in knowledge management for this project
+      try {
+        const internalAttendeeNames = (attendees || [])
+          .map((id) => users.find((u) => u.id === id)?.name)
+          .filter(Boolean)
+          .join(", ");
+
+        let content = `${momNo} (v${momVersion || 1})\n\n`;
+        content += `Project: ${selectedProject?.name || "N/A"}\n`;
+        content += `Meeting Date & Time: ${meetingDate || ""}${
+          meetingStartTime ? ` ${meetingStartTime} to ${meetingEndTime || ""}` : ""
+        }\n`;
+        content += `Venue: ${meetingVenue || "N/A"}\n`;
+        content += `Internal Attendees: ${internalAttendeeNames || "N/A"}\n`;
+        if (externalAttendees && externalAttendees.trim()) {
+          content += `External Attendees: ${externalAttendees}\n`;
+        }
+        content += `MoM Prepared by: ${momPreparedBy || "N/A"}\n\n`;
+
+        content += `Meeting Agenda:\n`;
+        (inputDiscussions || []).forEach((d) => (content += `• ${d.topic || ""}\n`));
+
+        content += `\nDiscussion:\n`;
+        (discussions || []).forEach((d) => {
+          content += `\n${d.topic || ""}\n`;
+          const notes = d.notes || "";
+          content +=
+            notes.replace(/<br\/?>(?=\s|$)/g, "\n").replace(/<[^>]+>/g, "") + "\n";
+        });
+
+        content += `\nNext Action Plan:\n`;
+        (actionItems || []).forEach((a) => {
+          content += `- ${a.task || ""} | ${a.responsiblePerson || ""} | ${
+            a.deadline || ""
+          }\n`;
+        });
+
+        const blob = new Blob([content], { type: "text/plain" });
+        const fileExt = "txt";
+        const safeProject = (selectedProject?.name || "Project").replace(
+          /[^a-zA-Z0-9._-]/g,
+          "-"
+        );
+        const baseName = `${momNo}_${safeProject}_${meetingDate || ""}`;
+        const filename = `${baseName}.${fileExt}`;
+        const storagePath = `Documents/${projectId}/${filename}`;
+        const storageRef = ref(storage, storagePath);
+
+        const currentUser = auth.currentUser;
+        const meta = {
+          contentType: "text/plain",
+          customMetadata: {
+            projectId,
+            momNo,
+            momVersion: String(momVersion || 1),
+            documentName: `${momNo} – ${selectedProject?.name || "Project"}`,
+            filename,
+            uploadedBy: currentUser?.uid || "",
+            uploadedAt: new Date().toISOString(),
+            source: "mom-generator",
+            momId: momRef.id,
+          },
+        };
+
+        await uploadBytes(storageRef, blob, meta);
+        const downloadURL = await getDownloadURL(storageRef);
+
+        const createdByName = (() => {
+          if (momPreparedBy && momPreparedBy.trim()) return momPreparedBy.trim();
+          const u = currentUser;
+          if (!u) return "";
+          return u.displayName || u.email || "";
+        })();
+
+        await addDoc(collection(db, "knowldge", projectId, "Documents"), {
+          name: `${momNo} – ${selectedProject?.name || "Project"}`,
+          shared: true,
+          access: {
+            admin: projectStaffNames.admins || [],
+            member: projectStaffNames.members || [],
+          },
+          filename,
+          fileType: "text/plain",
+          fileSize: blob.size,
+          url: downloadURL,
+          storagePath,
+          location: "—",
+          tags: [],
+          children: 0,
+          projectId,
+          momNo,
+          momId: momRef.id,
+          createdByUid: currentUser?.uid || "",
+          createdByName,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      } catch (err) {
+        console.error("Failed to save MOM document into knowledge documents", err);
+      }
+
+      toast.success(`${momNo} saved (v${momVersion || 1})`);
       setMomVersion((v) => v + 1);
     } catch (e) {
       console.error(e);

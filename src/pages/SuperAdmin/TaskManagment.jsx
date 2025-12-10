@@ -93,6 +93,10 @@ function TasksManagement() {
   const [taskLimit, setTaskLimit] = useState(50);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  // Bulk delete confirmation modal state
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
   const [view, setView] = useState("list");
 
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -823,7 +827,6 @@ function TasksManagement() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return toast.error("No tasks selected");
-    if (!window.confirm(`Delete ${selectedIds.size} selected task(s)?`)) return;
     try {
       const affectedProjects = new Set();
       const selectedList = Array.from(selectedIds);
@@ -845,6 +848,20 @@ function TasksManagement() {
     } catch (err) {
       console.error("Bulk delete failed", err);
       toast.error("Bulk delete failed");
+    }
+  };
+
+  const confirmBulkDelete = async () => {
+    if (selectedIds.size === 0) {
+      setShowBulkDeleteModal(false);
+      return toast.error("No tasks selected");
+    }
+    try {
+      setIsBulkDeleting(true);
+      await handleBulkDelete();
+    } finally {
+      setIsBulkDeleting(false);
+      setShowBulkDeleteModal(false);
     }
   };
 
@@ -1739,7 +1756,7 @@ function TasksManagement() {
                 <Button variant="secondary" onClick={handleUnarchive} size="sm">
                   Unarchive Selected
                 </Button>
-                <Button variant="danger" onClick={handleBulkDelete} size="sm">
+                <Button variant="danger" onClick={() => setShowBulkDeleteModal(true)} size="sm">
                   Delete Selected
                 </Button>
                 <Button
@@ -1955,6 +1972,24 @@ function TasksManagement() {
               }}
               onConfirm={confirmDelete}
               itemType={`task "${taskToDelete.title}"`}
+            />
+          </div>
+        </div>
+      )}
+
+      {showBulkDeleteModal && selectedIds.size > 0 && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowBulkDeleteModal(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <DeleteConfirmationModal
+              onClose={() => setShowBulkDeleteModal(false)}
+              onConfirm={confirmBulkDelete}
+              title="Delete Selected"
+              description={`Are you sure you want to delete ${selectedIds.size} selected task(s)?`}
+              permanentMessage="This action cannot be undone."
+              isLoading={isBulkDeleting}
             />
           </div>
         </div>

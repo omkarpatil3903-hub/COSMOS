@@ -64,6 +64,7 @@ function ManageProjects({ onlyMyManaged = false }) {
   const [tasks, setTasks] = useState([]);
   const [clients, setClients] = useState([]);
   const [managers, setManagers] = useState([]);
+  const [assigneesOptions, setAssigneesOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -95,6 +96,7 @@ function ManageProjects({ onlyMyManaged = false }) {
     clientName: "",
     projectManagerId: "",
     projectManagerName: "",
+    assigneeIds: [],
     startDate: "",
     endDate: "",
     okrs: [
@@ -118,6 +120,8 @@ function ManageProjects({ onlyMyManaged = false }) {
           clientId: data.clientId || "",
           projectManagerId: data.projectManagerId || "",
           projectManagerName: data.projectManagerName || "",
+          assigneeIds: Array.isArray(data.assigneeIds) ? data.assigneeIds : [],
+          assigneeNames: Array.isArray(data.assigneeNames) ? data.assigneeNames : [],
           // Firestore progress is not used for display; we'll compute from tasks below
           progress: typeof data.progress === "number" ? data.progress : 0,
           startDate: data.startDate?.toDate
@@ -143,15 +147,18 @@ function ManageProjects({ onlyMyManaged = false }) {
     const uq = query(collection(db, "users"), orderBy("name", "asc"));
     const unsub = onSnapshot(uq, (snap) => {
       const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
-      const admins = list
-        .map((u) => ({
-          id: u.id,
-          name: u.name || u.fullName || "",
-          resourceRoleType: String(u.resourceRoleType || "").toLowerCase(),
-          status: u.status || "Active",
-        }))
-        .filter((u) => u.resourceRoleType === "admin");
+      const normalized = list.map((u) => ({
+        id: u.id,
+        name: u.name || u.fullName || "",
+        resourceRoleType: String(u.resourceRoleType || "").toLowerCase(),
+        status: u.status || "Active",
+      }));
+      const admins = normalized.filter((u) => u.resourceRoleType === "admin");
       setManagers(admins);
+      const assignables = normalized.filter(
+        (u) => u.resourceRoleType === "member" && u.status === "Active"
+      );
+      setAssigneesOptions(assignables);
     });
     return () => unsub();
   }, []);
@@ -394,12 +401,19 @@ function ManageProjects({ onlyMyManaged = false }) {
       );
       const projectManagerName =
         selectedManager?.name || formData.projectManagerName || "";
+      const assigneeNames = Array.isArray(formData.assigneeIds)
+        ? formData.assigneeIds
+            .map((id) => assigneesOptions.find((u) => u.id === id)?.name)
+            .filter(Boolean)
+        : [];
       await addDoc(collection(db, "projects"), {
         projectName: formData.projectName,
         clientName,
         clientId: formData.clientId,
         projectManagerId: formData.projectManagerId,
         projectManagerName,
+        assigneeIds: formData.assigneeIds || [],
+        assigneeNames,
         progress: parseInt(formData.progress) || 0,
         startDate: formData.startDate
           ? Timestamp.fromDate(new Date(formData.startDate))
@@ -416,6 +430,7 @@ function ManageProjects({ onlyMyManaged = false }) {
         clientName: "",
         projectManagerId: "",
         projectManagerName: "",
+        assigneeIds: [],
         progress: 0,
         startDate: "",
         endDate: "",
@@ -438,6 +453,7 @@ function ManageProjects({ onlyMyManaged = false }) {
       clientName: project.clientName,
       projectManagerId: project.projectManagerId || "",
       projectManagerName: project.projectManagerName || "",
+      assigneeIds: project.assigneeIds || [],
       startDate: project.startDate,
       endDate: project.endDate,
       okrs: project.okrs || [{ objective: "", keyResults: [""] }],
@@ -484,12 +500,19 @@ function ManageProjects({ onlyMyManaged = false }) {
       );
       const projectManagerName =
         selectedManager?.name || formData.projectManagerName || "";
+      const assigneeNames = Array.isArray(formData.assigneeIds)
+        ? formData.assigneeIds
+            .map((id) => assigneesOptions.find((u) => u.id === id)?.name)
+            .filter(Boolean)
+        : [];
       await updateDoc(ref, {
         projectName: formData.projectName,
         clientName,
         clientId: formData.clientId,
         projectManagerId: formData.projectManagerId,
         projectManagerName,
+        assigneeIds: formData.assigneeIds || [],
+        assigneeNames,
         startDate: formData.startDate
           ? Timestamp.fromDate(new Date(formData.startDate))
           : null,
@@ -504,6 +527,7 @@ function ManageProjects({ onlyMyManaged = false }) {
         clientName: "",
         projectManagerId: "",
         projectManagerName: "",
+        assigneeIds: [],
         startDate: "",
         endDate: "",
         okrs: [{ objective: "", keyResults: [""] }],
@@ -1160,6 +1184,7 @@ function ManageProjects({ onlyMyManaged = false }) {
             setFormData={setFormData}
             clients={clients}
             managers={managers}
+            assigneesOptions={assigneesOptions}
             handleFormSubmit={handleFormSubmit}
             addErrors={addErrors}
             setAddErrors={setAddErrors}
@@ -1174,6 +1199,7 @@ function ManageProjects({ onlyMyManaged = false }) {
             setFormData={setFormData}
             clients={clients}
             managers={managers}
+            assigneesOptions={assigneesOptions}
             handleEditSubmit={handleEditSubmit}
             editErrors={editErrors}
             setEditErrors={setEditErrors}
