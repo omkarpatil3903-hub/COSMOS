@@ -10,6 +10,7 @@ const EditProjectModal = ({
   setFormData,
   clients,
   managers,
+  assigneesOptions = [],
   handleEditSubmit,
   editErrors,
   setEditErrors,
@@ -181,14 +182,47 @@ const EditProjectModal = ({
                   )}
                 </div>
 
-                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4 mt-6 flex items-center gap-2">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Assignees</label>
+                  <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-1">
+                    {assigneesOptions.map((u) => {
+                      const current = Array.isArray(formData.assigneeIds)
+                        ? formData.assigneeIds
+                        : [];
+                      const checked = current.includes(u.id);
+                      return (
+                        <label key={u.id} className="flex items-center gap-2 py-0.5">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const next = e.target.checked
+                                ? [...current, u.id]
+                                : current.filter((id) => id !== u.id);
+                              setFormData({ ...formData, assigneeIds: next });
+                            }}
+                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="text-sm text-gray-700">{u.name}</span>
+                        </label>
+                      );
+                    })}
+                    {assigneesOptions.length === 0 && (
+                      <p className="text-xs text-gray-400">No staff available</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column - OKRs */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4 mt-0 flex items-center gap-2">
                   <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs">
                     📅
                   </span>
                   TIMELINE
                 </h3>
 
-                {/* Start Date */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Start Date <span className="text-red-500">*</span>
@@ -212,8 +246,7 @@ const EditProjectModal = ({
                   )}
                 </div>
 
-                {/* End Date */}
-                <div className="mb-4">
+                <div className="mb-8">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     End Date <span className="text-red-500">*</span>
                   </label>
@@ -233,10 +266,7 @@ const EditProjectModal = ({
                     </p>
                   )}
                 </div>
-              </div>
 
-              {/* Right Column - OKRs */}
-              <div>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-2">
                     <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs">

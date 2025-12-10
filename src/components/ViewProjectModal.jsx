@@ -7,6 +7,7 @@ import {
   FaBullseye,
   FaCheckCircle,
   FaLayerGroup,
+  FaUsers,
 } from "react-icons/fa";
 import Button from "./Button";
 import { formatDate } from "../utils/formatDate";
@@ -29,7 +30,7 @@ const ViewProjectModal = ({
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative z-[10000] flex flex-col"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto relative z-[10000] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -56,49 +57,61 @@ const ViewProjectModal = ({
           </button>
         </div>
 
-        <div className="p-6 space-y-8">
+        <div className="p-6">
+          <div className="grid grid-cols-1 lg:[grid-template-columns:9fr_4fr] gap-6">
+            <div className="space-y-6">
           {/* Top Section: Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 md:[grid-template-columns:minmax(0,_1fr)_minmax(0,_2.5fr)_minmax(0,_1fr)] gap-4">
             {/* Client Card */}
-            <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200 min-h-[92px]">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-1.5 bg-purple-100 text-purple-600 rounded-md">
                   <FaUserTie className="h-4 w-4" />
                 </div>
                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Client
+                  CLIENT
                 </span>
               </div>
-              <p className="text-gray-900 font-bold text-lg truncate">
+              <p className="text-gray-900 font-semibold text-base leading-6 truncate" title={selectedProject.clientName}>
                 {selectedProject.clientName}
               </p>
             </div>
 
             {/* Timeline Card */}
-            <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow duration-200 min-h-[110px]">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-1.5 bg-blue-100 text-blue-600 rounded-md">
                   <FaCalendarAlt className="h-4 w-4" />
                 </div>
                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Timeline
+                  TIMELINE
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                <span>{formatDate(selectedProject.startDate)}</span>
-                <span className="text-gray-400">→</span>
-                <span>{formatDate(selectedProject.endDate)}</span>
+              <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-4">
+                <div className="min-w-0">
+                  <span className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Assigned</span>
+                  <span className="block text-base font-semibold text-gray-900" title={formatDate(selectedProject.startDate)}>
+                    {formatDate(selectedProject.startDate)}
+                  </span>
+                </div>
+                <div className="w-px bg-gray-200 self-stretch rounded justify-self-center" aria-hidden="true"></div>
+                <div className="text-right min-w-0 ">
+                  <span className="block text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Due</span>
+                  <span className="block text-base font-semibold text-gray-900" title={formatDate(selectedProject.endDate)}>
+                    {formatDate(selectedProject.endDate)}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Progress Card */}
-            <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200 min-h-[92px]">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-1.5 bg-green-100 text-green-600 rounded-md">
                   <FaChartLine className="h-4 w-4" />
                 </div>
                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                  Progress
+                  PROGRESS
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -110,13 +123,52 @@ const ViewProjectModal = ({
                     style={{ width: `${selectedProject.progress}%` }}
                   ></div>
                 </div>
-                <span className="text-lg font-bold text-gray-900">
+                <span className="w-10 text-right text-base font-semibold text-gray-900">
                   {selectedProject.progress}%
                 </span>
               </div>
             </div>
           </div>
 
+          <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded-md">
+                <FaUsers className="h-4 w-4" />
+              </div>
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Team</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <div className="text-xs text-gray-500 font-semibold mb-1 flex items-center gap-1">
+                  <FaUserTie className="h-3 w-3 text-gray-400" />
+                  Project Manager
+                </div>
+                <div className="text-sm font-medium text-gray-900">
+                  {selectedProject.projectManagerName || "—"}
+                </div>
+              </div>
+              <div className="md:col-span-2">
+                <div className="text-xs text-gray-500 font-semibold mb-1">Assignees</div>
+                {Array.isArray(selectedProject.assigneeNames) && selectedProject.assigneeNames.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProject.assigneeNames.map((name) => (
+                      <span
+                        key={name}
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400">No assignees</p>
+                )}
+              </div>
+            </div>
+          </div>
+            </div>
+
+            <div className="space-y-6">
           {/* OKRs Section */}
           <div>
             <div className="flex items-center gap-2 mb-4">
@@ -127,7 +179,7 @@ const ViewProjectModal = ({
             </div>
 
             {selectedProject.okrs && selectedProject.okrs.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-4 max-h-[240px] overflow-y-auto pr-2">
                 {selectedProject.okrs.map((okr, index) => (
                   <div
                     key={index}
@@ -185,6 +237,8 @@ const ViewProjectModal = ({
                 </p>
               </div>
             )}
+          </div>
+            </div>
           </div>
         </div>
 

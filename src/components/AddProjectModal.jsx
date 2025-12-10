@@ -8,6 +8,7 @@ import {
   FaPlus,
   FaTrash,
   FaTimes,
+  FaUsers,
 } from "react-icons/fa";
 import Button from "./Button";
 
@@ -18,6 +19,7 @@ const AddProjectModal = ({
   setFormData,
   clients,
   managers = [],
+  assigneesOptions = [],
   handleFormSubmit,
   addErrors,
   setAddErrors,
@@ -235,9 +237,65 @@ const AddProjectModal = ({
                       </p>
                     )}
                   </div>
+
+                  {/* Assignees */}
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                      <FaUsers className="text-gray-400" />
+                      Assignees
+                    </label>
+                      <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-1">
+                      {assigneesOptions.map((u) => {
+                        const current = Array.isArray(formData.assigneeIds)
+                          ? formData.assigneeIds
+                          : [];
+                        const checked = current.includes(u.id);
+                        return (
+                          <label key={u.id} className="flex items-center gap-2 py-0.5">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                const next = e.target.checked
+                                  ? [...current, u.id]
+                                  : current.filter((id) => id !== u.id);
+                                setFormData({ ...formData, assigneeIds: next });
+                              }}
+                              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span className="text-sm text-gray-700">{u.name}</span>
+                          </label>
+                        );
+                      })}
+                      {assigneesOptions.length === 0 && (
+                        <p className="text-xs text-gray-400">No assignees available</p>
+                      )}
+                    </div>
+                    {Array.isArray(formData.assigneeIds) && formData.assigneeIds.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {formData.assigneeIds
+                          .map((id) => assigneesOptions.find((u) => u.id === id)?.name)
+                          .filter(Boolean)
+                          .map((name) => (
+                            <span
+                              key={name}
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200"
+                            >
+                              {name}
+                            </span>
+                          ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400">No assignees selected</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
+            </div>
+
+            {/* Column 2: OKRs */}
+            <div className="space-y-6">
               {/* Timeline Section */}
               <div className="space-y-6">
                 <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
@@ -309,10 +367,6 @@ const AddProjectModal = ({
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Column 2: OKRs */}
-            <div className="space-y-6">
               <div className="flex items-center justify-between border-b border-gray-100 pb-2">
                 <div className="flex items-center gap-2">
                   <FaBullseye className="text-indigo-500" />

@@ -16,6 +16,7 @@ import {
 } from "react-icons/fa";
 import { MdReplayCircleFilled } from "react-icons/md";
 import { getPriorityBadge, getStatusBadge } from "../../utils/colorMaps";
+import { formatDate } from "../../utils/formatDate";
 
 const TaskRow = ({
     task,
@@ -97,11 +98,11 @@ const TaskRow = ({
                     <>
                         <FaRegCalendarAlt className="text-gray-400" />
                         <span className="text-xs">
-                            {(task.assignedDate?.toDate ? task.assignedDate.toDate() : new Date(task.assignedDate)).toLocaleDateString(undefined, {
-                                month: "numeric",
-                                day: "numeric",
-                                year: "2-digit",
-                            })}
+                            {formatDate(
+                                task.assignedDate?.toDate
+                                    ? task.assignedDate.toDate().toISOString().slice(0, 10)
+                                    : task.assignedDate
+                            )}
                         </span>
                     </>
                 ) : (
@@ -130,11 +131,11 @@ const TaskRow = ({
                                     : "text-xs"
                             }
                         >
-                            {(task.dueDate?.toDate ? task.dueDate.toDate() : new Date(task.dueDate)).toLocaleDateString(undefined, {
-                                month: "numeric",
-                                day: "numeric",
-                                year: "2-digit",
-                            })}
+                            {formatDate(
+                                task.dueDate?.toDate
+                                    ? task.dueDate.toDate().toISOString().slice(0, 10)
+                                    : task.dueDate
+                            )}
                         </span>
                     </>
                 ) : (
