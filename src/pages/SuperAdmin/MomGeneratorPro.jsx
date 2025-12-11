@@ -150,6 +150,10 @@ export default function MomGeneratorPro() {
 
   // Versioning
   const [momVersion, setMomVersion] = useState(1);
+  // MOM ID (e.g. MOM_001) for current generated/saved MOM
+  const [momNoState, setMomNoState] = useState("");
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState("");
+  const [editSession, setEditSession] = useState(false);
 
   // Agenda / Discussions (topic + REQUIRED notes)
   const [inputDiscussions, setInputDiscussions] = useState([]);
@@ -170,7 +174,65 @@ export default function MomGeneratorPro() {
   const [loading, setLoading] = useState(false);
   const [isGenerated, setIsGenerated] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const momRef = React.useRef(null);
+
+  const buildSnapshot = useCallback(() => {
+    const obj = {
+      projectId,
+      meetingDate,
+      meetingStartTime,
+      meetingEndTime,
+      meetingVenue,
+      attendees: [...attendees].sort(),
+      externalAttendees: (externalAttendees || "").trim(),
+      momPreparedBy: (momPreparedBy || "").trim(),
+      inputDiscussions: (inputDiscussions || []).map((d) => ({
+        topic: (d.topic || "").trim(),
+        notes: (d.notes || "").trim(),
+      })),
+      inputActionItems: (inputActionItems || []).map((a) => ({
+        task: (a.task || "").trim(),
+        responsiblePerson: (a.responsiblePerson || "").trim(),
+        deadline: a.deadline || "",
+      })),
+      discussions: (discussions || []).map((d) => ({
+        topic: d.topic || "",
+        notes: d.notes || "",
+      })),
+      actionItems: (actionItems || []).map((a) => ({
+        task: a.task || "",
+        responsiblePerson: a.responsiblePerson || "",
+        deadline: a.deadline || "",
+      })),
+    };
+    return JSON.stringify(obj);
+  }, [
+    projectId,
+    meetingDate,
+    meetingStartTime,
+    meetingEndTime,
+    meetingVenue,
+    attendees,
+    externalAttendees,
+    momPreparedBy,
+    inputDiscussions,
+    inputActionItems,
+    discussions,
+    actionItems,
+  ]);
+
+  const currentSnapshot = useMemo(() => buildSnapshot(), [buildSnapshot]);
+  const hasSaved = !!lastSavedSnapshot;
+  const isChangedSinceSave = useMemo(
+    () => !hasSaved || currentSnapshot !== lastSavedSnapshot,
+    [hasSaved, currentSnapshot, lastSavedSnapshot]
+  );
+  // Show Save whenever a MOM is generated. When there are no changes since
+  // last save, keep it visible but disabled and show the "Saved" label.
+  const showSave = isGenerated;
+  const disableSave = saveLoading || !isChangedSinceSave;
 
   // Load Projects
   useEffect(() => {
@@ -214,6 +276,7 @@ export default function MomGeneratorPro() {
     const fetchNextVersion = async () => {
       if (!projectId) {
         setMomVersion(1);
+        setMomNoState("");
         return;
       }
       try {
@@ -359,7 +422,32 @@ export default function MomGeneratorPro() {
 
       setDiscussions(builtDiscussions);
       setActionItems(builtActions);
+
+      // Prefetch next MOM number for header display so user sees MOM_00X immediately
+      try {
+        let nextNumber = 1;
+        const qn = query(collection(db, "moms"), limit(200));
+        const snap = await getDocs(qn);
+        snap.forEach((d) => {
+          const data = d.data() || {};
+          const existing = String(data.momNo || "");
+          const match = existing.match(/MOM_(\d+)/i);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (!isNaN(num) && num >= nextNumber) nextNumber = num + 1;
+          }
+        });
+        const prefetchedNo = `MOM_${String(nextNumber).padStart(3, "0")}`;
+        setMomNoState(prefetchedNo);
+      } catch (e) {
+        console.error("Failed to precompute MOM number", e);
+        setMomNoState("MOM_001");
+      }
+
       setIsGenerated(true);
+      // After (re)generation, we are working with potentially changed content
+      // so mark this as an edit session; Save visibility is driven by snapshot diff.
+      setEditSession(true);
       toast.success("MOM generated");
     } catch (err) {
       console.error(err);
@@ -371,126 +459,87 @@ export default function MomGeneratorPro() {
 
   // Save with versioning and sequential MOM number (momNo)
   const saveMom = async () => {
+    if (saveLoading) return;
     if (!isGenerated) return toast.error("Generate MOM first");
     if (!projectId) return toast.error("Select a project");
+    setSaveLoading(true);
     try {
-      // Compute next momNo per project: MOM_001, MOM_002, ...
-      let nextNumber = 1;
-      try {
-        const qn = query(
-          collection(db, "moms"),
-          where("projectId", "==", projectId),
-          orderBy("createdAt", "desc"),
-          limit(20)
-        );
-        const snap = await getDocs(qn);
-        snap.forEach((d) => {
-          const data = d.data() || {};
-          const existing = String(data.momNo || "");
-          const match = existing.match(/MOM_(\d+)/i);
-          if (match) {
-            const num = parseInt(match[1], 10);
-            if (!isNaN(num) && num >= nextNumber) nextNumber = num + 1;
-          }
-        });
-      } catch (err) {
-        console.error("Failed to compute next momNo", err);
-        nextNumber = 1;
+      // Determine momNo: prefer precomputed ID from generateMom if available; otherwise compute now
+      let momNo = momNoState;
+      if (!momNo) {
+        let nextNumber = 1;
+        try {
+          const qn = query(collection(db, "moms"), limit(200));
+          const snap = await getDocs(qn);
+          snap.forEach((d) => {
+            const data = d.data() || {};
+            const existing = String(data.momNo || "");
+            const match = existing.match(/MOM_(\d+)/i);
+            if (match) {
+              const num = parseInt(match[1], 10);
+              if (!isNaN(num) && num >= nextNumber) nextNumber = num + 1;
+            }
+          });
+        } catch (err) {
+          console.error("Failed to compute next momNo", err);
+          nextNumber = 1;
+        }
+        momNo = `MOM_${String(nextNumber).padStart(3, "0")}`;
       }
 
-      const momNo = `MOM_${String(nextNumber).padStart(3, "0")}`;
+      // Reflect this MOM number in the UI header as the MOM ID
+      setMomNoState(momNo);
 
-      // Build sanitized payload for MOM document
-      const momPayload = {
-        projectId: projectId || "",
-        projectName: selectedProject?.name || "",
-        momVersion: momVersion || 1,
-        momNo,
-        meetingDate: meetingDate || "",
-        meetingStartTime: meetingStartTime || "",
-        meetingEndTime: meetingEndTime || "",
-        meetingVenue: meetingVenue || "",
-        attendees: attendees || [],
-        externalAttendees: externalAttendees || "",
-        momPreparedBy: momPreparedBy || "",
-        inputDiscussions: (inputDiscussions || []).map((d) => ({
-          id: d.id || "",
-          topic: d.topic || "",
-          notes: d.notes || "",
-        })),
-        inputActionItems: (inputActionItems || []).map((a) => ({
-          id: a.id || "",
-          task: a.task || "",
-          responsiblePerson: a.responsiblePerson || "",
-          deadline: a.deadline || "",
-        })),
-        discussions: (discussions || []).map((d) => ({
-          topic: d.topic || "",
-          notes: d.notes || "",
-        })),
-        actionItems: (actionItems || []).map((a) => ({
-          task: a.task || "",
-          responsiblePerson: a.responsiblePerson || "",
-          responsiblePersonId: a.responsiblePersonId || "",
-          deadline: a.deadline || "",
-        })),
-        createdAt: Timestamp.now(),
-      };
-
-      // Save structured MOM entry
-      const momRef = await addDoc(collection(db, "moms"), momPayload);
-
-      // Additionally, save a text snapshot as a document in knowledge management for this project
+      // Additionally, save a PDF snapshot as a document in knowledge management for this project
+      let momDocRef = null;
       try {
-        const internalAttendeeNames = (attendees || [])
-          .map((id) => users.find((u) => u.id === id)?.name)
-          .filter(Boolean)
-          .join(", ");
-
-        let content = `${momNo} (v${momVersion || 1})\n\n`;
-        content += `Project: ${selectedProject?.name || "N/A"}\n`;
-        content += `Meeting Date & Time: ${meetingDate || ""}${
-          meetingStartTime ? ` ${meetingStartTime} to ${meetingEndTime || ""}` : ""
-        }\n`;
-        content += `Venue: ${meetingVenue || "N/A"}\n`;
-        content += `Internal Attendees: ${internalAttendeeNames || "N/A"}\n`;
-        if (externalAttendees && externalAttendees.trim()) {
-          content += `External Attendees: ${externalAttendees}\n`;
-        }
-        content += `MoM Prepared by: ${momPreparedBy || "N/A"}\n\n`;
-
-        content += `Meeting Agenda:\n`;
-        (inputDiscussions || []).forEach((d) => (content += `• ${d.topic || ""}\n`));
-
-        content += `\nDiscussion:\n`;
-        (discussions || []).forEach((d) => {
-          content += `\n${d.topic || ""}\n`;
-          const notes = d.notes || "";
-          content +=
-            notes.replace(/<br\/?>(?=\s|$)/g, "\n").replace(/<[^>]+>/g, "") + "\n";
-        });
-
-        content += `\nNext Action Plan:\n`;
-        (actionItems || []).forEach((a) => {
-          content += `- ${a.task || ""} | ${a.responsiblePerson || ""} | ${
-            a.deadline || ""
-          }\n`;
-        });
-
-        const blob = new Blob([content], { type: "text/plain" });
-        const fileExt = "txt";
         const safeProject = (selectedProject?.name || "Project").replace(
           /[^a-zA-Z0-9._-]/g,
           "-"
         );
         const baseName = `${momNo}_${safeProject}_${meetingDate || ""}`;
-        const filename = `${baseName}.${fileExt}`;
+        const filename = `${baseName}.pdf`;
         const storagePath = `Documents/${projectId}/${filename}`;
         const storageRef = ref(storage, storagePath);
 
+        // Render the current MoM DOM into a PDF using html2canvas + jsPDF
+        const element = momRef.current;
+        if (!element) {
+          throw new Error("MOM content not found for PDF generation");
+        }
+
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          logging: false,
+          useCORS: false,
+          allowTaint: true,
+          backgroundColor: "#ffffff",
+        });
+        const imgData = canvas.toDataURL("image/png");
+        const pdfDoc = new jsPDF("p", "mm", "a4");
+        const pdfWidth = pdfDoc.internal.pageSize.getWidth();
+        const pdfHeight = pdfDoc.internal.pageSize.getHeight();
+        const imgWidth = pdfWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        pdfDoc.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight;
+          pdfDoc.addPage();
+          pdfDoc.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+          heightLeft -= pdfHeight;
+        }
+
+        const pdfBlob = pdfDoc.output("blob");
+
         const currentUser = auth.currentUser;
         const meta = {
-          contentType: "text/plain",
+          contentType: "application/pdf",
           customMetadata: {
             projectId,
             momNo,
@@ -500,11 +549,11 @@ export default function MomGeneratorPro() {
             uploadedBy: currentUser?.uid || "",
             uploadedAt: new Date().toISOString(),
             source: "mom-generator",
-            momId: momRef.id,
+            momId: "", // will be set after creating moms metadata doc
           },
         };
 
-        await uploadBytes(storageRef, blob, meta);
+        await uploadBytes(storageRef, pdfBlob, meta);
         const downloadURL = await getDownloadURL(storageRef);
 
         const createdByName = (() => {
@@ -514,7 +563,7 @@ export default function MomGeneratorPro() {
           return u.displayName || u.email || "";
         })();
 
-        await addDoc(collection(db, "knowldge", projectId, "Documents"), {
+        const knowledgeDocRef = await addDoc(collection(db, "knowldge", projectId, "Documents"), {
           name: `${momNo} – ${selectedProject?.name || "Project"}`,
           shared: true,
           access: {
@@ -522,8 +571,8 @@ export default function MomGeneratorPro() {
             member: projectStaffNames.members || [],
           },
           filename,
-          fileType: "text/plain",
-          fileSize: blob.size,
+          fileType: "application/pdf",
+          fileSize: pdfBlob.size,
           url: downloadURL,
           storagePath,
           location: "—",
@@ -531,69 +580,38 @@ export default function MomGeneratorPro() {
           children: 0,
           projectId,
           momNo,
-          momId: momRef.id,
+          momId: "", // will be set after moms metadata doc is created
           createdByUid: currentUser?.uid || "",
           createdByName,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
+
+        // After knowledge doc and storage are created, write minimal metadata into moms node
+        momDocRef = await addDoc(collection(db, "moms"), {
+          projectId: projectId || "",
+          momNo,
+          storagePath,
+          url: downloadURL,
+          createdAt: Timestamp.now(),
+        });
       } catch (err) {
         console.error("Failed to save MOM document into knowledge documents", err);
       }
 
-      toast.success(`${momNo} saved (v${momVersion || 1})`);
+      toast.success(`${momNo} saved`);
       setMomVersion((v) => v + 1);
+      setLastSavedSnapshot(currentSnapshot);
+      setEditSession(false);
     } catch (e) {
       console.error(e);
       toast.error("Save failed");
+    } finally {
+      setSaveLoading(false);
     }
   };
 
-  // TXT download
-  const downloadMomTxt = () => {
-    if (!isGenerated) return toast.error("Generate MOM first");
-
-    const internalAttendeeNames = attendees
-      .map((id) => users.find((u) => u.id === id)?.name)
-      .filter(Boolean)
-      .join(", ");
-
-    let content = `Minutes of Meeting (v${momVersion})\n\n`;
-    content += `Project: ${selectedProject?.name || "N/A"}\n`;
-    content += `Meeting Date & Time: ${meetingDate}${meetingStartTime ? ` ${meetingStartTime} to ${meetingEndTime}` : ""
-      }\n`;
-    content += `Venue: ${meetingVenue || "N/A"}\n`;
-    content += `Internal Attendees: ${internalAttendeeNames || "N/A"}\n`;
-    if (externalAttendees.trim()) {
-      content += `External Attendees: ${externalAttendees}\n`;
-    }
-    content += `MoM Prepared by: ${momPreparedBy || "N/A"}\n\n`;
-
-    content += `Meeting Agenda:\n`;
-    inputDiscussions.forEach((d) => (content += `• ${d.topic}\n`));
-
-    content += `\nDiscussion:\n`;
-    discussions.forEach((d) => {
-      content += `\n${d.topic}\n`;
-      content +=
-        d.notes.replace(/<br\/?>/g, "\n").replace(/<[^>]+>/g, "") + "\n";
-    });
-
-    content += `\nNext Action Plan:\n`;
-    actionItems.forEach((a) => {
-      content += `- ${a.task} | ${a.responsiblePerson} | ${a.deadline}\n`;
-    });
-
-    const blob = new Blob([content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `MOM_${selectedProject?.name || "Project"
-      }_${meetingDate}_v${momVersion}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Downloaded .txt");
-  };
+  // TXT download function removed; MOM is now persisted as PDF only
 
   // PDF export (html2pdf.js via CDN) - REPLACED with local jsPDF + html2canvas
   const handleExportPDF = async () => {
@@ -631,8 +649,7 @@ export default function MomGeneratorPro() {
         heightLeft -= pdfHeight;
       }
 
-      const filename = `MOM_${selectedProject?.name || "Project"
-        }_${meetingDate}_v${momVersion}.pdf`;
+      const filename = `MOM_${selectedProject?.name || "Project"}_${meetingDate}.pdf`;
       pdf.save(filename);
       toast.success("PDF Exported!", { id: toastId });
     } catch (error) {
@@ -664,7 +681,7 @@ export default function MomGeneratorPro() {
     if (!isGenerated) return toast.error("Generate MOM first");
 
     const projectName = selectedProject?.name || "Project";
-    const title = `MoM v${momVersion} – ${projectName} (${meetingDate})`;
+    const title = `MoM – ${projectName} (${meetingDate})`;
 
     const internalAttendeeNames = attendees
       .map((id) => users.find((u) => u.id === id)?.name)
@@ -705,122 +722,174 @@ export default function MomGeneratorPro() {
     }
   };
 
-  const resetGenerated = () => setIsGenerated(false);
+  const resetGenerated = () => {
+    // Close any open action menus first
+    setShowActionsMenu(false);
+    // Switch back to edit mode
+    setIsGenerated(false);
+    // Clear current MOM ID; it will be recomputed on next generate
+    setMomNoState("");
+  };
 
   return (
     <div>
-      <PageHeader title={`Minutes of Meeting `}>
-        AI-powered MOM generation with professional structured format
-      </PageHeader>
-
-      <div className="space-y-6">
-        {/* Quick Actions */}
-        <Card className="overflow-visible">
-          <div className="flex flex-wrap gap-3 relative">
-            {!isGenerated ? (
-              <Button
-                onClick={generateMom}
-                variant="primary"
-                disabled={loading}
-              >
-                {loading ? (
-                  <FaSpinner className="animate-spin" />
-                ) : (
-                  <FaFileAlt />
-                )}
-                {loading ? "Generating..." : "Generate MOM"}
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <PageHeader
+          title={`Minutes of Meeting`}
+          description={`AI-powered MOM generation with professional structured format`}
+        />
+        <div className="flex items-center gap-3 mt-2">
+          {!isGenerated ? (
+            <Button
+              onClick={generateMom}
+              variant="primary"
+              disabled={loading}
+              className="flex items-center gap-2 whitespace-nowrap"
+            >
+              {loading ? (
+                <FaSpinner className="animate-spin" />
+              ) : (
+                <FaFileAlt />
+              )}
+              {loading ? "Generating..." : "Generate MOM"}
+            </Button>
+          ) : (
+            <>
+              <Button onClick={resetGenerated} variant="secondary">
+                <FaUndo /> Edit Details
               </Button>
-            ) : (
-              <>
-                <Button onClick={resetGenerated} variant="secondary">
-                  <FaUndo /> Edit Details
+
+              {/* Actions Dropdown Menu */}
+              <div className="relative">
+                <Button
+                  onClick={() => setShowActionsMenu(!showActionsMenu)}
+                  variant="primary"
+                  className="flex items-center gap-2"
+                >
+                  <FaEllipsisV /> Actions
                 </Button>
 
-                {/* Actions Dropdown Menu */}
-                <div className="relative">
-                  <Button
-                    onClick={() => setShowActionsMenu(!showActionsMenu)}
-                    variant="primary"
-                    className="flex items-center gap-2"
-                  >
-                    <FaEllipsisV /> Actions
-                  </Button>
+                {showActionsMenu && (
+                  <>
+                    {/* Backdrop to close menu */}
+                    <div
+                      className="fixed inset-0 z-[100]"
+                      onClick={() => setShowActionsMenu(false)}
+                    />
 
-                  {showActionsMenu && (
-                    <>
-                      {/* Backdrop to close menu */}
-                      <div
-                        className="fixed inset-0 z-[100]"
-                        onClick={() => setShowActionsMenu(false)}
-                      />
-
-                      {/* Dropdown Menu */}
-                      <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-lg shadow-2xl border border-gray-200 py-2 z-[101]">
+                    {/* Dropdown Menu */}
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-2xl border border-gray-200 py-2 z-[101]">
+                      {showSave && (
                         <button
                           onClick={() => {
-                            saveMom();
-                            setShowActionsMenu(false);
+                            if (disableSave) return;
+                            setShowSaveConfirm(true);
                           }}
-                          className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
+                          disabled={disableSave}
+                          className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${
+                            disableSave
+                              ? "text-gray-400 cursor-not-allowed"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
                         >
-                          <FaSave className="text-indigo-600 flex-shrink-0" />
-                          <span>Save v{momVersion}</span>
+                          <FaSave
+                            className={`flex-shrink-0 ${
+                              disableSave ? "text-gray-400" : "text-indigo-600"
+                            }`}
+                          />
+                          <span>
+                            {saveLoading
+                              ? "Saving..."
+                              : isChangedSinceSave
+                              ? "Save MOM"
+                              : "Saved"}
+                          </span>
                         </button>
+                      )}
 
-                        <button
-                          onClick={() => {
-                            downloadMomTxt();
-                            setShowActionsMenu(false);
-                          }}
-                          className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
-                        >
-                          <FaDownload className="text-green-600 flex-shrink-0" />
-                          <span>Download .txt</span>
-                        </button>
+                      <button
+                        onClick={() => {
+                          handleExportPDF();
+                          setShowActionsMenu(false);
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
+                      >
+                        <FaFilePdf className="text-red-600 flex-shrink-0" />
+                        <span>Export PDF</span>
+                      </button>
 
-                        <button
-                          onClick={() => {
-                            handleExportPDF();
-                            setShowActionsMenu(false);
-                          }}
-                          className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
-                        >
-                          <FaFilePdf className="text-red-600 flex-shrink-0" />
-                          <span>Export PDF</span>
-                        </button>
+                      <div className="border-t border-gray-200 my-2"></div>
 
-                        <div className="border-t border-gray-200 my-2"></div>
+                      <button
+                        onClick={() => {
+                          shareMom();
+                          setShowActionsMenu(false);
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
+                      >
+                        <FaShareAlt className="text-blue-600 flex-shrink-0" />
+                        <span>Share</span>
+                      </button>
 
-                        <button
-                          onClick={() => {
-                            shareMom();
-                            setShowActionsMenu(false);
-                          }}
-                          className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
-                        >
-                          <FaShareAlt className="text-blue-600 flex-shrink-0" />
-                          <span>Share</span>
-                        </button>
+                      <button
+                        onClick={() => {
+                          handlePrint();
+                          setShowActionsMenu(false);
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
+                      >
+                        <FaPrint className="text-gray-600 flex-shrink-0" />
+                        <span>Print</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
-                        <button
-                          onClick={() => {
-                            handlePrint();
-                            setShowActionsMenu(false);
-                          }}
-                          className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
-                        >
-                          <FaPrint className="text-gray-600 flex-shrink-0" />
-                          <span>Print</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </>
-            )}
+      {/* Save confirmation modal */}
+      {showSaveConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-lg font-semibold mb-2">Save MOM?</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Do you want to save this Minutes of Meeting with the current details?
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => setShowSaveConfirm(false)}
+                disabled={saveLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  if (saveLoading || disableSave) return;
+                  await saveMom();
+                  setShowSaveConfirm(false);
+                  setShowActionsMenu(false);
+                }}
+                disabled={saveLoading || disableSave}
+                className="flex items-center gap-2"
+              >
+                {saveLoading ? (
+                  <FaSpinner className="animate-spin" />
+                ) : (
+                  <FaSave />
+                )}
+                {saveLoading ? "Saving..." : "Yes, Save"}
+              </Button>
+            </div>
           </div>
-        </Card>
+        </div>
+      )}
 
+      <div className="space-y-6">
         {/* Input Forms */}
         {!isGenerated && (
           <>
@@ -934,7 +1003,7 @@ export default function MomGeneratorPro() {
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    MoM Prepared by
+                    MoM Prepared by*
                   </label>
                   <input
                     type="text"
@@ -949,7 +1018,7 @@ export default function MomGeneratorPro() {
             </Card>
 
             {/* Agenda / Discussion topics (Notes REQUIRED) with Drag & Drop */}
-            <Card title="Meeting Agenda & Discussions">
+            <Card title="Meeting Agenda & Discussions*">
               {/* <p className="text-xs text-red-600 -mt-1 mb-3">
                 Enter notes for every topic — notes are mandatory.
               </p> */}
@@ -1042,7 +1111,7 @@ export default function MomGeneratorPro() {
             </Card>
 
             {/* Action items with Drag & Drop */}
-            <Card title="Next Action Plan (Drag to Reorder)">
+            <Card title="Next Action Plan (Drag to Reorder)*">
               <DragDropContext onDragEnd={onDragEnd}>
                 <Droppable droppableId="actions" type="ACTIONS">
                   {(provided) => (
@@ -1164,9 +1233,9 @@ export default function MomGeneratorPro() {
                 </h1>
                 <div
                   className="text-sm mt-2"
-                  style={{ color: "#4b5563" }}
+                  style={{ color: "#6d7887ff" }}
                 >
-                  Version <b>{momVersion}</b>
+                  {momNoState && <b>ID: {momNoState}</b>}
                 </div>
               </div>
 
@@ -1187,7 +1256,7 @@ export default function MomGeneratorPro() {
                       Project Name:
                     </td>
                     <td
-                      className="px-4 py-2"
+                      className="px-4 py-2 font-bold"
                       style={{ border: "1px solid #000000" }}
                     >
                       {selectedProject?.name || "N/A"}
@@ -1321,7 +1390,7 @@ export default function MomGeneratorPro() {
                     {inputDiscussions.map((d, idx) => (
                       <tr key={idx}>
                         <td
-                          className="px-4 py-2"
+                          className="px-4 py-2 font-bold"
                           style={{ border: "1px solid #000000" }}
                         >
                           {idx + 1}. {d.topic}
@@ -1420,7 +1489,7 @@ export default function MomGeneratorPro() {
                     {actionItems.map((a, i) => (
                       <tr key={i}>
                         <td
-                          className="px-4 py-2"
+                          className="px-4 py-2 font-bold"
                           style={{ border: "1px solid #000000" }}
                         >
                           {a.task}
