@@ -1,7 +1,7 @@
 // src/components/PageHeader.jsx
 import React from "react";
 
-function PageHeader({ title, description, children, actions }) {
+function PageHeader({ title, description, children, actions, subtext }) {
   // Prefer explicit `description` prop, fall back to children for older pages
   const content = description ?? children;
 
@@ -14,6 +14,11 @@ function PageHeader({ title, description, children, actions }) {
         {content && (
           <p className="text-sm text-content-secondary sm:text-base">
             {content}
+          </p>
+        )}
+        {subtext && (
+          <p className="text-sm text-content-secondary sm:text-base">
+            {subtext}
           </p>
         )}
       </div>

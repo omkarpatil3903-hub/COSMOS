@@ -72,7 +72,9 @@ function MainLayout() {
       "/calendar": "COSMOS | Calendar",
       "/settings": "COSMOS | Settings",
       "/settings/add-hierarchy": "COSMOS | Settings | Add Hierarchy",
-      "/settings/project-settings": "COSMOS | Settings | Project Settings",
+      "/settings/project-settings": "COSMOS | Settings | Project Level",
+      "/settings/status-settings": "COSMOS | Settings | Status",
+
     };
 
     const title = pathToTitle[location.pathname] || "Admin Panel";

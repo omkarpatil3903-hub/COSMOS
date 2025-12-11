@@ -101,6 +101,13 @@ function TasksManagement() {
 
   const [selectedIds, setSelectedIds] = useState(new Set());
 
+  // Status definitions from settings/task-statuses-name
+  const [statusOptions, setStatusOptions] = useState([]);
+
+  // Group options (ClickUp-style) modal state
+  const [showGroupOptionsModal, setShowGroupOptionsModal] = useState(false);
+  const [groupOptionsContext, setGroupOptionsContext] = useState(null); // { title, tasks }
+
   // 1. Consolidated Filter State
   const [filters, setFilters] = useState({
     project: "",
@@ -262,6 +269,29 @@ function TasksManagement() {
 
   const wipLimits = useMemo(() => ({}), []);
 
+  // Load task statuses from settings/task-statuses-name in Firestore
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, "settings", "task-statuses-name", "items"),
+      (snap) => {
+        const list = snap.docs
+          .map((d) => ({ id: d.id, ...(d.data() || {}) }))
+          .map((d) => d.name || d.label || d.value || "")
+          .filter(Boolean);
+        // Fallback to defaults if collection is empty
+        setStatusOptions(
+          list.length > 0 ? list : ["To-Do", "In Progress", "Done"]
+        );
+      },
+      () => {
+        // On error, keep a safe default so modal still works
+        setStatusOptions(["To-Do", "In Progress", "Done"]);
+      }
+    );
+
+    return () => unsub();
+  }, []);
+
   useEffect(() => {
     const constraints = [orderBy("createdAt", "desc"), limit(taskLimit)];
     if (filters.project) {
@@ -422,8 +452,10 @@ function TasksManagement() {
     }
   }, [tasks]); // We still depend on tasks, but the ref prevents re-running logic repeatedly
 
-  const openCreate = () => {
-    setEditing(null);
+  const openCreate = (status) => {
+    setEditing({
+      status: status === "Today's Tasks" ? "To-Do" : status // Default to "To-Do" for Today's Tasks
+    });
     setShowModal(true);
   };
 
@@ -823,6 +855,58 @@ function TasksManagement() {
   const selectAll = (checked, list) => {
     if (checked) setSelectedIds(new Set(list.map((t) => t.id)));
     else setSelectedIds(new Set());
+  };
+
+  // --- Group Options (ClickUp-style) handlers ---
+  const handleHeaderMenu = (payload) => {
+    // payload: { action, title, tasks }
+    setGroupOptionsContext(payload);
+    setShowGroupOptionsModal(true);
+  };
+
+  const closeGroupOptionsModal = () => {
+    setShowGroupOptionsModal(false);
+    setGroupOptionsContext(null);
+  };
+
+  const handleGroupAction = (action) => {
+    if (!groupOptionsContext) return;
+
+    const { title, tasks: groupTasks } = groupOptionsContext;
+
+    switch (action) {
+      case "rename":
+        toast("Rename group not implemented yet", { icon: "✏️" });
+        break;
+      case "new-status":
+        toast("New status not implemented yet", { icon: "➕" });
+        break;
+      case "edit-statuses":
+        toast("Edit statuses not implemented yet", { icon: "⚙️" });
+        break;
+      case "collapse-group":
+        toast("Collapse group not implemented yet", { icon: "📂" });
+        break;
+      case "hide-status":
+        toast("Hide status not implemented yet", { icon: "🙈" });
+        break;
+      case "select-all": {
+        const allIds = (groupTasks || []).map((t) => t.id);
+        setSelectedIds(new Set(allIds));
+        toast.success(`Selected ${allIds.length} task(s) in ${title}`);
+        break;
+      }
+      case "collapse-all-groups":
+        toast("Collapse all groups not implemented yet", { icon: "📚" });
+        break;
+      case "automate-status":
+        toast("Automate status not implemented yet", { icon: "⚡" });
+        break;
+      default:
+        break;
+    }
+
+    closeGroupOptionsModal();
   };
 
   const handleBulkDelete = async () => {
@@ -1416,18 +1500,94 @@ function TasksManagement() {
   };
   // ... inside TasksManagement function, before return
 
-  const todoTasks = useMemo(
-    () => filtered.filter((t) => t.status === "To-Do"),
-    [filtered]
+  // Today's string in YYYY-MM-DD
+  const todayStr = useMemo(
+    () => new Date().toISOString().slice(0, 10),
+    []
   );
+
+  // Grouped task lists (Employee panel-like ordering)
+  const todayTasks = useMemo(
+    () =>
+      filtered.filter(
+        (t) => t.status !== "Done" && t.dueDate && t.dueDate === todayStr
+      ),
+    [filtered, todayStr]
+  );
+
   const inProgressTasks = useMemo(
     () => filtered.filter((t) => t.status === "In Progress"),
     [filtered]
   );
+
+  const todoTasks = useMemo(
+    () => filtered.filter((t) => t.status === "To-Do" || !t.status),
+    [filtered]
+  );
+
   const doneTasks = useMemo(
     () => filtered.filter((t) => t.status === "Done"),
     [filtered]
   );
+
+  // Reorderable groups (swappable cards)
+  const [groupOrder, setGroupOrder] = useState(() => {
+    try {
+      const raw = localStorage.getItem("tm_group_order");
+      const parsed = raw ? JSON.parse(raw) : null;
+      const def = ["today", "inProgress", "todo", "done"];
+      return Array.isArray(parsed) && parsed.length ? parsed : def;
+    } catch {
+      return ["today", "inProgress", "todo", "done"];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("tm_group_order", JSON.stringify(groupOrder));
+    } catch {}
+  }, [groupOrder]);
+
+  const groups = useMemo(
+    () => ({
+      today: {
+        title: "Today's Tasks",
+        tasks: todayTasks,
+        colorClass: "bg-indigo-500",
+      },
+      inProgress: {
+        title: "In Progress",
+        tasks: inProgressTasks,
+        colorClass: "bg-blue-500",
+      },
+      todo: {
+        title: "To Do",
+        tasks: todoTasks,
+        colorClass: "bg-gray-500",
+      },
+      done: {
+        title: "Done",
+        tasks: doneTasks,
+        colorClass: "bg-emerald-500",
+      },
+    }),
+    [todayTasks, inProgressTasks, todoTasks, doneTasks]
+  );
+
+  const [dragKey, setDragKey] = useState(null);
+  const handleDragStart = (key) => setDragKey(key);
+  const handleDragOver = (e) => e.preventDefault();
+  const handleDrop = (key) => {
+    if (!dragKey || dragKey === key) return;
+    setGroupOrder((prev) => {
+      const next = prev.filter((k) => k !== dragKey);
+      const idx = next.indexOf(key);
+      if (idx === -1) return prev;
+      next.splice(idx, 0, dragKey);
+      return [...next];
+    });
+    setDragKey(null);
+  };
 
   // ...
   return (
@@ -1678,14 +1838,14 @@ function TasksManagement() {
                   onClick={handleImportClick}
                   className="flex items-center gap-2"
                 >
-                  <FaDownload className="rotate-180" /> Import
+                  <FaDownload /> Import
                 </Button>
                 <Button
                   variant="secondary"
                   onClick={handleExportExcel}
                   className="flex items-center gap-2"
                 >
-                  <FaDownload /> Export
+                  <FaDownload className="rotate-180" /> Export
                 </Button>
 
                 <div className="h-6 w-px bg-gray-300 mx-1"></div>
@@ -1819,50 +1979,35 @@ function TasksManagement() {
                 </div>
               ) : (
                 <>
-                  {/* IN PROGRESS Group */}
-                  <TaskGroup
-                    title="In Progress"
-                    tasks={inProgressTasks}
-                    colorClass="bg-blue-500"
-                    onOpenCreate={openCreate}
-                    selectedIds={selectedIds}
-                    onToggleSelect={toggleSelect}
-                    onView={handleView}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onArchive={handleTaskArchive}
-                    resolveAssignees={resolveAssignees}
-                  />
-
-                  {/* TO DO Group */}
-                  <TaskGroup
-                    title="To Do"
-                    tasks={todoTasks}
-                    colorClass="bg-gray-500"
-                    onOpenCreate={openCreate}
-                    selectedIds={selectedIds}
-                    onToggleSelect={toggleSelect}
-                    onView={handleView}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onArchive={handleTaskArchive}
-                    resolveAssignees={resolveAssignees}
-                  />
-
-                  {/* DONE Group */}
-                  <TaskGroup
-                    title="Done"
-                    tasks={doneTasks}
-                    colorClass="bg-emerald-500"
-                    onOpenCreate={openCreate}
-                    selectedIds={selectedIds}
-                    onToggleSelect={toggleSelect}
-                    onView={handleView}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    onArchive={handleTaskArchive}
-                    resolveAssignees={resolveAssignees}
-                  />
+                  {groupOrder.map((key) => {
+                    const g = groups[key];
+                    if (!g) return null;
+                    return (
+                      <div
+                      key={key}
+                      draggable
+                      onDragStart={() => handleDragStart(key)}
+                      onDragOver={handleDragOver}
+                      onDrop={() => handleDrop(key)}
+                      className="rounded-lg cursor-grab active:cursor-grabbing"
+                    >
+                      <TaskGroup
+                        title={g.title}
+                        tasks={g.tasks}
+                        colorClass={g.colorClass}
+                        onOpenCreate={() => openCreate(g.title)}
+                        selectedIds={selectedIds}
+                        onToggleSelect={toggleSelect}
+                        onView={handleView}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onArchive={handleTaskArchive}
+                        resolveAssignees={resolveAssignees}
+                        onHeaderMenu={handleHeaderMenu}
+                      />
+                    </div>
+                  );
+                })}
                 </>
               )}
             </div>
@@ -1878,6 +2023,7 @@ function TasksManagement() {
           projects={projects}
           assignees={activeUsers}
           clients={clients}
+          statuses={statusOptions}
         />
       )}
       {showViewModal && viewingTask && (
@@ -1973,6 +2119,92 @@ function TasksManagement() {
               onConfirm={confirmDelete}
               itemType={`task "${taskToDelete.title}"`}
             />
+          </div>
+        </div>
+      )}
+
+      {showGroupOptionsModal && groupOptionsContext && (
+        <div
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/40"
+          onClick={closeGroupOptionsModal}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl w-full max-w-xs py-2 text-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 pt-2 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+              Group options
+            </div>
+
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              onClick={() => handleGroupAction("rename")}
+            >
+              <span>Rename</span>
+            </button>
+
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              onClick={() => handleGroupAction("new-status")}
+            >
+              <span>New status</span>
+            </button>
+
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              onClick={() => handleGroupAction("edit-statuses")}
+            >
+              <span>Edit statuses</span>
+            </button>
+
+            <div className="my-1 border-t border-gray-100" />
+
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              onClick={() => handleGroupAction("collapse-group")}
+            >
+              <span>Collapse group</span>
+            </button>
+
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              onClick={() => handleGroupAction("hide-status")}
+            >
+              <span>Hide status</span>
+            </button>
+
+            <div className="my-1 border-t border-gray-100" />
+
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              onClick={() => handleGroupAction("select-all")}
+            >
+              <span>Select all</span>
+            </button>
+
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              onClick={() => handleGroupAction("collapse-all-groups")}
+            >
+              <span>Collapse all groups</span>
+            </button>
+
+            <div className="my-1 border-t border-gray-100" />
+
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              onClick={() => handleGroupAction("automate-status")}
+            >
+              <span>Automate status</span>
+            </button>
           </div>
         </div>
       )}

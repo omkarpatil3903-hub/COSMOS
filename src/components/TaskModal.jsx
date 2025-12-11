@@ -64,12 +64,13 @@ function TaskModal({
   projects = [],
   assignees = [],
   clients = [],
+  statuses = ["To-Do", "In Progress", "Done"],
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [projectId, setProjectId] = useState("");
   const [priority, setPriority] = useState("Medium");
-  const [status, setStatus] = useState("To-Do");
+  const [status, setStatus] = useState(taskToEdit?.status || "To-Do");
   const [weightage, setWeightage] = useState("");
 
   const [assigneeType, setAssigneeType] = useState("user"); // 'user' | 'client'
@@ -191,14 +192,17 @@ function TaskModal({
     isCustomDays,
   ]);
 
-  // Initialize form when editing
+  // Initialize form when editing or when status is provided for new task
   useEffect(() => {
     if (taskToEdit) {
+      // Always set status from taskToEdit if it exists (for both new and edit)
+      if (taskToEdit.status) {
+        setStatus(taskToEdit.status);
+      }
       setTitle(taskToEdit.title || "");
       setDescription(taskToEdit.description || "");
       setProjectId(taskToEdit.projectId || "");
       setPriority(taskToEdit.priority || "Medium");
-      setStatus(taskToEdit.status || "To-Do");
       setWeightage(String(taskToEdit.weightage || ""));
 
       setAssigneeType(taskToEdit.assigneeType || "user");
@@ -547,9 +551,11 @@ function TaskModal({
                       onChange={(e) => setStatus(e.target.value)}
                       className="block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
                     >
-                      <option value="To-Do">To-Do</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Done">Done</option>
+                      {statuses.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>

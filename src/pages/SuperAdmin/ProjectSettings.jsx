@@ -301,16 +301,16 @@ export default function ProjectSettings() {
           <table className="min-w-full divide-y divide-gray-200 bg-white">
             <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
                   Sr. No.
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
                   Level
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
                   Name
                 </th>
-                <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 sticky right-0 z-10 bg-gray-50">
+                <th className="px-6 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 sticky right-0 z-10 bg-gray-50">
                   Actions
                 </th>
               </tr>
@@ -330,14 +330,14 @@ export default function ProjectSettings() {
                   <tr
                     key={item.id}
                     onClick={() => handleRowClick(item)}
-                    className="cursor-pointer transition-colors group"
+                    className="cursor-pointer group odd:bg-white even:bg-gray-50 hover:bg-indigo-50/50 transition-colors duration-150"
                   >
-                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-500">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 transition-colors">
+                    <td className="whitespace-nowrap px-6 py-2.5 text-sm font-medium text-gray-500">
+                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 transition-colors">
                         {(page - 1) * pageSize + idx + 1}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-2.5">
                       <div
                         className="max-w-[100px] text-sm font-semibold text-gray-900 group-hover:text-blue-600 truncate transition-colors"
                         title={item.level || "-"}
@@ -345,7 +345,7 @@ export default function ProjectSettings() {
                         {item.level || "-"}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-2.5">
                       <div
                         className="max-w-[200px] text-sm font-semibold text-gray-900 group-hover:text-blue-600 truncate transition-colors"
                         title={item.name}
@@ -353,7 +353,7 @@ export default function ProjectSettings() {
                         {item.name}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm sticky right-0 z-10 bg-white transition-colors">
+                    <td className="whitespace-nowrap px-6 py-2.5 text-sm sticky right-0 z-10 bg-transparent transition-colors">
                       <div className="flex items-center justify-center space-x-3">
                         <button
                           onClick={(e) => handleEditClick(item, e)}

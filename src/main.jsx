@@ -50,6 +50,7 @@ import ExpenseManagement from "./pages/SuperAdmin/ExpenseManagement.jsx";
 import Settings from "./pages/SuperAdmin/Settings.jsx";
 import AddHierarchy from "./pages/SuperAdmin/AddHierarchy.jsx";
 import ProjectSettings from "./pages/SuperAdmin/ProjectSettings.jsx"; // TODO: Verify path
+import StatusSettings from "./pages/SuperAdmin/StatusSettings.jsx"; // TODO: Verify path
 import ManagerLayout from "./components/layout/ManagerLayout";
 import KnowledgeProjectDetail from "./pages/SuperAdmin/KnowledgeProjectDetail.jsx";
 
@@ -149,6 +150,7 @@ const router = createBrowserRouter([
           { index: true, element: <Navigate to="add-hierarchy" replace /> },
           { path: "add-hierarchy", element: <AddHierarchy /> },
           { path: "project-settings", element: <ProjectSettings /> },
+          { path: "status-settings", element: <StatusSettings /> },
         ],
       },
     ],
