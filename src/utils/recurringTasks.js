@@ -266,6 +266,7 @@ export async function createNextRecurringInstance(task) {
       };
 
       const newDocRef = doc(collection(db, "tasks")); // Generate ID
+      newTaskData.taskId = newDocRef.id;
       transaction.set(newDocRef, newTaskData);
       
       console.log("Transaction set called for new task", newDocRef.id);

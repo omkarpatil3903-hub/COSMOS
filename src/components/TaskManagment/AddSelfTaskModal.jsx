@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaTasks, FaTimes } from "react-icons/fa";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, onSnapshot, doc } from "firebase/firestore";
 import { db } from "../../firebase";
 import toast from "react-hot-toast";
 
@@ -19,6 +19,22 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
         return `${y}-${m}-${day}`;
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [statusOptions, setStatusOptions] = useState([]);
+
+    // Load task statuses from settings/task-statuses (document with array field 'statuses')
+    useEffect(() => {
+        const unsub = onSnapshot(doc(db, "settings", "task-statuses"), (snap) => {
+            const data = snap.data() || {};
+            const arr = Array.isArray(data.statuses) ? data.statuses : [];
+            const list = arr
+                .map((item) => (typeof item === "string" ? item : item?.name || item?.label || item?.value || ""))
+                .filter(Boolean);
+            setStatusOptions(list.length > 0 ? list : ["To-Do", "In Progress", "Done"]);
+        }, () => {
+            setStatusOptions(["To-Do", "In Progress", "Done"]);
+        });
+        return () => unsub();
+    }, []);
 
     if (!isOpen) return null;
 
@@ -189,9 +205,11 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
                                             onChange={(e) => setStatus(e.target.value)}
                                             className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                                         >
-                                            <option value="To-Do">To-Do</option>
-                                            <option value="In Progress">In Progress</option>
-                                            <option value="Done">Done</option>
+                                            {(statusOptions.length ? statusOptions : ["To-Do", "In Progress", "Done"]).map((s) => (
+                                                <option key={s} value={s}>
+                                                    {s}
+                                                </option>
+                                            ))}
                                         </select>
                                     </div>
                                 </div>

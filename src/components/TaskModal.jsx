@@ -64,13 +64,14 @@ function TaskModal({
   projects = [],
   assignees = [],
   clients = [],
-  statuses = ["To-Do", "In Progress", "Done"],
+  statuses = [],
 }) {
+  const isEdit = !!(taskToEdit && taskToEdit.id);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [projectId, setProjectId] = useState("");
   const [priority, setPriority] = useState("Medium");
-  const [status, setStatus] = useState(taskToEdit?.status || "To-Do");
+  const [status, setStatus] = useState(taskToEdit?.status || (Array.isArray(statuses) && statuses[0]) || "");
   const [weightage, setWeightage] = useState("");
 
   const [assigneeType, setAssigneeType] = useState("user"); // 'user' | 'client'
@@ -115,6 +116,12 @@ function TaskModal({
       setPreviewDates([]);
     }
   }, [isRecurring]);
+
+  useEffect(() => {
+    if (!isEdit && !taskToEdit?.status && Array.isArray(statuses) && statuses.length && !status) {
+      setStatus(statuses[0]);
+    }
+  }, [statuses, isEdit, taskToEdit, status]);
 
   // Generate preview dates for recurring tasks
   useEffect(() => {
@@ -254,7 +261,7 @@ function TaskModal({
 
   // Detect changes for edit mode
   const hasChanges = useMemo(() => {
-    if (!taskToEdit) return true;
+    if (!isEdit) return true;
 
     const normalize = (v) => v ?? "";
     const fields = [
@@ -312,6 +319,7 @@ function TaskModal({
     okrKeyResultIndices,
     subtasks,
     taskToEdit,
+    isEdit,
   ]);
 
   const handleSubmit = (e) => {
@@ -390,7 +398,6 @@ function TaskModal({
     }
 
     onSave(payload);
-    toast.success(taskToEdit ? "Task updated" : "Task created");
     onClose();
   };
 
@@ -398,7 +405,6 @@ function TaskModal({
     if (!pendingPayload) return;
     const finalPayload = { ...pendingPayload, updateSeries };
     onSave(finalPayload);
-    toast.success(updateSeries ? "Series updated" : "Task updated");
     setShowSeriesPrompt(false);
     onClose();
   };
@@ -416,7 +422,7 @@ function TaskModal({
         <div className="shrink-0 px-6 py-4 border-b border-gray-100/50 bg-white/80 backdrop-blur-md flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div
-              className={`p-2 rounded-lg ${taskToEdit
+              className={`p-2 rounded-lg ${isEdit
                 ? "bg-indigo-50 text-indigo-600"
                 : "bg-gray-100 text-gray-500"
                 }`}
@@ -425,10 +431,10 @@ function TaskModal({
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-800 tracking-tight">
-                {taskToEdit ? "Edit Task" : "Create New Task"}
+                {isEdit ? "Edit Task" : "Create New Task"}
               </h2>
               <p className="text-xs text-gray-500 font-medium">
-                {taskToEdit
+                {isEdit
                   ? "Update task details"
                   : "Add a new task to project"}
               </p>

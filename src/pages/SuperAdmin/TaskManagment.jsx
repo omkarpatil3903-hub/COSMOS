@@ -31,7 +31,8 @@ import {
   FaSpinner,
 } from "react-icons/fa";
 
-import { db } from "../../firebase";
+import { db, app } from "../../firebase";
+import { deleteTaskWithRelations } from "../../services/taskService";
 import { updateProjectProgress } from "../../utils/projectProgress";
 import {
   addDoc,
@@ -48,6 +49,7 @@ import {
 } from "firebase/firestore";
 import { useAuthContext } from "../../context/AuthContext";
 import { logTaskActivity } from "../../services/taskService";
+import { getDatabase, ref as rtdbRef, onValue as onRtdbValue } from "firebase/database";
 
 // Determine if a user/resource is active based on common fields
 const isUserActive = (u) => {
@@ -103,6 +105,7 @@ function TasksManagement() {
 
   // Status definitions from settings/task-statuses-name
   const [statusOptions, setStatusOptions] = useState([]);
+  const [statusColorMap, setStatusColorMap] = useState({});
 
   // Group options (ClickUp-style) modal state
   const [showGroupOptionsModal, setShowGroupOptionsModal] = useState(false);
@@ -197,14 +200,7 @@ function TasksManagement() {
         }
       }
 
-      console.log("Resolved assignees:", {
-        taskId: task.id,
-        taskTitle: task.title,
-        assignees: task.assignees,
-        resolved,
-        userMapSize: Object.keys(userMap).length,
-        clientMapSize: Object.keys(clientMap).length,
-      });
+      
       return resolved;
     },
     [userMap, clientMap]
@@ -219,6 +215,15 @@ function TasksManagement() {
       });
     }
   }, []);
+
+  // If DB has not provided statuses yet, derive them from current tasks
+  const effectiveStatuses = useMemo(() => {
+    if (Array.isArray(statusOptions) && statusOptions.length) return statusOptions;
+    const unique = Array.from(
+      new Set(tasks.map((t) => t.status).filter(Boolean))
+    );
+    return unique;
+  }, [statusOptions, tasks]);
 
   const applyStatusQuickFilter = useCallback(
     (status) => {
@@ -269,23 +274,36 @@ function TasksManagement() {
 
   const wipLimits = useMemo(() => ({}), []);
 
-  // Load task statuses from settings/task-statuses-name in Firestore
+  // Load task statuses from settings/task-statuses document (field: statuses[])
   useEffect(() => {
     const unsub = onSnapshot(
-      collection(db, "settings", "task-statuses-name", "items"),
+      doc(db, "settings", "task-statuses"),
       (snap) => {
-        const list = snap.docs
-          .map((d) => ({ id: d.id, ...(d.data() || {}) }))
-          .map((d) => d.name || d.label || d.value || "")
-          .filter(Boolean);
-        // Fallback to defaults if collection is empty
-        setStatusOptions(
-          list.length > 0 ? list : ["To-Do", "In Progress", "Done"]
-        );
+        const data = snap.data() || {};
+        const arr = Array.isArray(data.statuses) ? data.statuses : [];
+        const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const list = [];
+        const colorMap = {};
+        arr.forEach((item) => {
+          if (typeof item === "string") {
+            const n = item;
+            if (n) list.push(n);
+          } else if (item) {
+            const n = item?.name || item?.label || item?.value || "";
+            if (n) {
+              list.push(n);
+              const c = (item?.color || "").toString().trim();
+              if (c) colorMap[norm(n)] = c;
+            }
+          }
+        });
+        setStatusOptions(list);
+        setStatusColorMap(colorMap);
       },
       () => {
-        // On error, keep a safe default so modal still works
-        setStatusOptions(["To-Do", "In Progress", "Done"]);
+        // On error, avoid injecting static defaults here; leave empty to surface config issues clearly
+        setStatusOptions([]);
+        setStatusColorMap({});
       }
     );
 
@@ -326,10 +344,13 @@ function TasksManagement() {
               : data.dueDate || "",
             priority: data.priority || "Medium",
             status: (() => {
-              // 1. Default global status
-              let s = (data.status === "In Review" ? "In Progress" : data.status) || "To-Do";
+              // Prefer raw status from DB (mapping only legacy 'In Review').
+              const raw = (data.status === "In Review" ? "In Progress" : data.status) || (effectiveStatuses[0] || "To-Do");
+              // If dynamic statuses are configured, do not override with derived values.
+              if (Array.isArray(statusOptions) && statusOptions.length) return raw;
 
-              // 2. Override with derived status from assignees if available
+              // Legacy behavior: derive coarse status if no dynamic statuses configured.
+              let s = raw;
               if (data.assigneeStatus && Object.keys(data.assigneeStatus).length > 0) {
                 const values = Object.values(data.assigneeStatus);
                 if (values.length > 0) {
@@ -413,7 +434,7 @@ function TasksManagement() {
       unsubUsers();
       unsubClients();
     };
-  }, [taskLimit, filters.project, filters.assignee]);
+  }, [taskLimit, filters.project, filters.assignee, statusOptions]);
 
   // Ref to track if we've already checked deadlines in this session to prevent spam
   const hasCheckedDeadlines = useRef(false);
@@ -428,7 +449,8 @@ function TasksManagement() {
       threeDaysFromNow.setDate(today.getDate() + 3);
 
       const dueSoonTasks = tasks.filter((task) => {
-        if (task.status === "Done" || !task.dueDate) return false;
+        const normStatus = (task.status || "").toString().trim().toLowerCase();
+        if (normStatus === "done" || !task.dueDate) return false;
         const dueDate = new Date(task.dueDate);
         return dueDate >= today && dueDate <= threeDaysFromNow;
       });
@@ -453,9 +475,16 @@ function TasksManagement() {
   }, [tasks]); // We still depend on tasks, but the ref prevents re-running logic repeatedly
 
   const openCreate = (status) => {
-    setEditing({
-      status: status === "Today's Tasks" ? "To-Do" : status // Default to "To-Do" for Today's Tasks
-    });
+    // Open modal in pure create mode. React passes MouseEvent when used as onClick.
+    const isString = typeof status === "string" && status.trim() !== "";
+    if (isString) {
+      // If invoked from a synthetic group like "Today's Tasks" or catch-all like "Other",
+      // default to first available status; otherwise use provided status.
+      const synthetic = status === "TODAYS TASK" || status === "Today's Tasks" || status === "Other";
+      setEditing({ status: synthetic ? (effectiveStatuses[0] || "To-Do") : status });
+    } else {
+      setEditing(null);
+    }
     setShowModal(true);
   };
 
@@ -504,7 +533,7 @@ function TasksManagement() {
           } else {
             // Initialize for new assignee
             updatedAssigneeStatus[id] = {
-              status: "To-Do",
+              status: current?.status || (effectiveStatuses[0] || "To-Do"),
               progressPercent: 0,
               completedAt: null,
               completedBy: null,
@@ -526,9 +555,8 @@ function TasksManagement() {
           assignedDate: taskData.assignedDate || "",
           dueDate: taskData.dueDate || "",
           priority: taskData.priority || "Medium",
-          status: taskData.status || "To-Do",
-          progressPercent:
-            taskData.status === "Done" ? 100 : taskData.progressPercent ?? 0,
+          status: taskData.status || (effectiveStatuses[0] || "To-Do"),
+          progressPercent: taskData.progressPercent ?? 0,
           completionComment: taskData.completionComment || "",
           weightage: Number.isNaN(wt) ? null : wt,
           isRecurring: taskData.isRecurring || false,
@@ -545,12 +573,17 @@ function TasksManagement() {
           subtasks: taskData.subtasks || [],
         };
 
-        // Enforce WIP on status change (only for active columns)
+        const normStatus = (v) => (v || "").toString().trim().toLowerCase();
+        const isCurrentlyDone = normStatus(current?.status) === "done";
+        const isUpdatingToDone = normStatus(update.status) === "done" && !isCurrentlyDone;
+
+        // Enforce WIP on status change (only for active columns, excluding Done)
         if (
           update.status &&
           current &&
-          update.status !== current.status &&
+          !isUpdatingToDone &&
           update.status !== "Done" &&
+          update.status !== current.status &&
           isWipExceeded(update.status, taskData.id)
         ) {
           const limit = wipLimits?.[update.status];
@@ -559,11 +592,43 @@ function TasksManagement() {
           );
           return;
         }
-        if (update.status === "Done" && current?.status !== "Done")
-          update.completedAt = serverTimestamp();
-        else if (update.status !== "Done" && current?.status === "Done")
-          update.completedAt = null;
-        await updateDoc(ref, update);
+        // If transitioning to Done via edit/save, open completion comment modal
+        // and defer final Done update to handleSubmitAdminCompletion.
+        if (isUpdatingToDone) {
+          setCompletionTaskId(taskData.id);
+          setShowCompletionModal(true);
+
+          // Do NOT force status/progress/completedAt here; let the modal flow handle it.
+          // Persist other field changes (title, description, etc.) so they aren't lost.
+          const { status, progressPercent, completedAt, ...rest } = update;
+          await updateDoc(ref, rest);
+        } else {
+          if (!isCurrentlyDone && normStatus(update.status) === "done") {
+            update.completedAt = serverTimestamp();
+            update.progressPercent = 100;
+          } else if (isCurrentlyDone && normStatus(update.status) !== "done") {
+            update.completedAt = null;
+          }
+
+          // Propagate admin status change to all assignees so Employee panel reflects it
+          if (Array.isArray(newAssigneeIds) && newAssigneeIds.length > 0 && update.status) {
+            const willBeDone = normStatus(update.status) === "done";
+            newAssigneeIds.forEach((uid) => {
+              update[`assigneeStatus.${uid}.status`] = update.status;
+              if (willBeDone) {
+                update[`assigneeStatus.${uid}.progressPercent`] = 100;
+                update[`assigneeStatus.${uid}.completedAt`] = serverTimestamp();
+                update[`assigneeStatus.${uid}.completedBy`] = user?.uid || "system";
+              } else if (isCurrentlyDone) {
+                update[`assigneeStatus.${uid}.progressPercent`] = 0;
+                update[`assigneeStatus.${uid}.completedAt`] = null;
+                update[`assigneeStatus.${uid}.completedBy`] = null;
+              }
+            });
+          }
+
+          await updateDoc(ref, update);
+        }
 
         // Handle Series Update
         if (taskData.updateSeries) {
@@ -585,12 +650,17 @@ function TasksManagement() {
                 recurringEndAfter: taskData.recurringEndAfter || "",
                 recurringEndType: taskData.recurringEndType || "never",
                 // OKRs
-                okrObjectiveIndex: taskData.okrObjectiveIndex === undefined ? null : taskData.okrObjectiveIndex,
+                okrObjectiveIndex:
+                  taskData.okrObjectiveIndex === undefined
+                    ? null
+                    : taskData.okrObjectiveIndex,
                 okrKeyResultIndices: taskData.okrKeyResultIndices || [],
                 // Assignees
                 assigneeId: taskData.assigneeId || "",
                 assigneeType: taskData.assigneeType || "user",
-                assignees: Array.isArray(taskData.assignees) ? taskData.assignees : [],
+                assignees: Array.isArray(taskData.assignees)
+                  ? taskData.assignees
+                  : [],
                 assigneeIds: newAssigneeIds,
               };
               await updateDoc(rootRef, rootUpdate);
@@ -601,43 +671,7 @@ function TasksManagement() {
             }
           }
         }
-        // If task just transitioned to Done and is recurring, create next instance immediately
-        try {
-          const becameDone =
-            update.status === "Done" && current?.status !== "Done";
-          if (becameDone && (current?.isRecurring || update.isRecurring)) {
-            console.log("Task became done and is recurring. Checking next instance...", { id: taskData.id });
-            const taskForCheck = {
-              ...(current || {}),
-              ...update,
-              id: taskData.id,
-              // Ensure fields required by shouldCreateNextInstance
-              completedAt: new Date(),
-            };
-            const shouldCreate = await shouldCreateNextInstanceAsync(taskForCheck);
-            console.log("Should create next instance?", shouldCreate);
-            if (shouldCreate) {
-              console.log("Creating next recurring instance...");
-              const newId = await createNextRecurringInstance(taskForCheck);
-              console.log("Created next recurring instance:", newId);
-              if (newId && (update.projectId || current?.projectId)) {
-                const pid = update.projectId || current?.projectId;
-                try {
-                  await updateProjectProgress(pid);
-                } catch (err) {
-                  console.warn(
-                    "Failed to refresh project progress for new recurring instance",
-                    err
-                  );
-                }
-              }
-            }
-          } else {
-            console.log("Task update did not trigger recurrence check", { becameDone, isRecurring: current?.isRecurring || update.isRecurring });
-          }
-        } catch (e) {
-          console.warn("Recurring continuation failed (update)", e);
-        }
+
         // Update project progress for previous and possibly new project
         const prevProjectId = current?.projectId;
         const nextProjectId = update.projectId || prevProjectId;
@@ -686,10 +720,14 @@ function TasksManagement() {
           }
         }
 
-        toast.success("Task updated successfully!");
+        // Only show inline success toast when we are not deferring completion
+        // to the CompletionCommentModal (i.e., not transitioning into Done here).
+        if (!isUpdatingToDone) {
+          toast.success("Task updated successfully!");
+        }
       } else {
         // Enforce WIP on creation
-        const initialStatus = taskData.status || "To-Do";
+        const initialStatus = taskData.status || (effectiveStatuses[0] || "To-Do");
         if (initialStatus !== "Done" && isWipExceeded(initialStatus)) {
           const limit = wipLimits?.[initialStatus];
           toast.error(
@@ -736,7 +774,7 @@ function TasksManagement() {
             taskData.assignedDate || new Date().toISOString().slice(0, 10),
           dueDate: taskData.dueDate || "",
           priority: taskData.priority || "Medium",
-          status: taskData.status || "To-Do",
+          status: taskData.status || (effectiveStatuses[0] || "To-Do"),
           progressPercent: taskData.status === "Done" ? 100 : 0,
           createdAt: serverTimestamp(),
           completedAt: taskData.status === "Done" ? serverTimestamp() : null,
@@ -759,6 +797,7 @@ function TasksManagement() {
           recurringOccurrenceCount: 0, // Track how many instances created
         };
         const newRef = await addDoc(collection(db, "tasks"), payload);
+        await updateDoc(newRef, { taskId: newRef.id });
 
         logTaskActivity(newRef.id, "created", "Task created", user);
 
@@ -826,7 +865,7 @@ function TasksManagement() {
   const confirmDelete = async () => {
     if (!taskToDelete) return;
     try {
-      await deleteDoc(doc(db, "tasks", taskToDelete.id));
+      await deleteTaskWithRelations(taskToDelete.id, "tasks");
       toast.success("Task deleted!");
       if (taskToDelete.projectId) {
         try {
@@ -919,7 +958,7 @@ function TasksManagement() {
         if (t?.projectId) affectedProjects.add(t.projectId);
       });
       await Promise.all(
-        selectedList.map((id) => deleteDoc(doc(db, "tasks", id)))
+        selectedList.map((id) => deleteTaskWithRelations(id, "tasks"))
       );
       setSelectedIds(new Set());
       toast.success(`Deleted ${selectedIds.size} task(s)!`);
@@ -1062,7 +1101,7 @@ function TasksManagement() {
         setShowCompletionModal(true);
         return;
       }
-      await updateDoc(doc(db, "tasks", taskId), {
+      const updates = {
         status: newStatus,
         progressPercent: willBeDone
           ? 100
@@ -1074,7 +1113,25 @@ function TasksManagement() {
           : wasDone
             ? null
             : t.completedAt || null,
-      });
+      };
+
+      // Propagate admin status change to all assignees so Employee panel reflects it immediately
+      if (Array.isArray(t.assigneeIds) && t.assigneeIds.length > 0) {
+        t.assigneeIds.forEach((uid) => {
+          updates[`assigneeStatus.${uid}.status`] = newStatus;
+          if (willBeDone) {
+            updates[`assigneeStatus.${uid}.progressPercent`] = 100;
+            updates[`assigneeStatus.${uid}.completedAt`] = serverTimestamp();
+            updates[`assigneeStatus.${uid}.completedBy`] = user?.uid || "system";
+          } else if (wasDone) {
+            updates[`assigneeStatus.${uid}.progressPercent`] = 0;
+            updates[`assigneeStatus.${uid}.completedAt`] = null;
+            updates[`assigneeStatus.${uid}.completedBy`] = null;
+          }
+        });
+      }
+
+      await updateDoc(doc(db, "tasks", taskId), updates);
       if (t.projectId) {
         try {
           await updateProjectProgress(t.projectId);
@@ -1096,12 +1153,25 @@ function TasksManagement() {
     }
     try {
       const t = tasks.find((x) => x.id === completionTaskId);
-      await updateDoc(doc(db, "tasks", completionTaskId), {
+      const updates = {
         status: "Done",
         completedAt: serverTimestamp(),
         progressPercent: 100,
         completionComment: comment,
-      });
+      };
+
+      // Propagate to all assignees
+      if (Array.isArray(t?.assigneeIds) && t.assigneeIds.length > 0) {
+        t.assigneeIds.forEach((uid) => {
+          updates[`assigneeStatus.${uid}.status`] = "Done";
+          updates[`assigneeStatus.${uid}.progressPercent`] = 100;
+          updates[`assigneeStatus.${uid}.completedAt`] = serverTimestamp();
+          updates[`assigneeStatus.${uid}.completedBy`] = user?.uid || "system";
+          if (comment) updates[`assigneeStatus.${uid}.completionComment`] = comment;
+        });
+      }
+
+      await updateDoc(doc(db, "tasks", completionTaskId), updates);
 
       // Log activity for completion
       logTaskActivity(
@@ -1161,6 +1231,7 @@ function TasksManagement() {
     const today = new Date().toISOString().slice(0, 10);
 
     return tasks.filter((t) => {
+      const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
       // 1. Global Visibility Check
       if (t.visibleFrom && t.visibleFrom > today) return false;
       if (!filters.showArchived && t.archived) return false;
@@ -1179,7 +1250,7 @@ function TasksManagement() {
       )
         return false;
       if (filters.priority && t.priority !== filters.priority) return false;
-      if (filters.status && t.status !== filters.status) return false;
+      if (filters.status && norm(t.status) !== norm(filters.status)) return false;
 
       // 4. Assignee ID Check
       if (filters.assignee) {
@@ -1369,9 +1440,7 @@ function TasksManagement() {
         tasksToCreate.push({
           title: title.toString(),
           description: description.toString(),
-          status: ["To-Do", "In Progress", "Done"].includes(statusRaw)
-            ? statusRaw
-            : "To-Do",
+          status: (statusRaw && String(statusRaw).trim()) || (effectiveStatuses[0] || "To-Do"),
           priority: ["Low", "Medium", "High"].includes(priorityRaw)
             ? priorityRaw
             : "Medium",
@@ -1400,6 +1469,7 @@ function TasksManagement() {
         tasksToCreate.map(async (taskData) => {
           try {
             const docRef = await addDoc(collection(db, "tasks"), taskData);
+            await updateDoc(docRef, { taskId: docRef.id });
             await logTaskActivity(
               docRef.id,
               "created",
@@ -1500,47 +1570,67 @@ function TasksManagement() {
   };
   // ... inside TasksManagement function, before return
 
-  // Today's string in YYYY-MM-DD
-  const todayStr = useMemo(
-    () => new Date().toISOString().slice(0, 10),
-    []
-  );
+  // Server 'today' string (YYYY-MM-DD) using Realtime Database server time offset. Fallback to local if unavailable.
+  const [serverTodayStr, setServerTodayStr] = useState("");
+  useEffect(() => {
+    let unsubscribe = null;
+    try {
+      const rtdb = getDatabase(app);
+      const offRef = rtdbRef(rtdb, ".info/serverTimeOffset");
+      unsubscribe = onRtdbValue(offRef, (snap) => {
+        const offset = typeof snap.val() === "number" ? snap.val() : 0;
+        const serverTime = Date.now() + offset;
+        const str = new Date(serverTime).toISOString().slice(0, 10);
+        setServerTodayStr(str);
+      });
+    } catch (e) {
+      // ignore; fallback to local time
+    }
+    return () => {
+      if (typeof unsubscribe === "function") unsubscribe();
+    };
+  }, []);
+
+  const todayStr = useMemo(() => serverTodayStr || new Date().toISOString().slice(0, 10), [serverTodayStr]);
 
   // Grouped task lists (Employee panel-like ordering)
   const todayTasks = useMemo(
-    () =>
-      filtered.filter(
-        (t) => t.status !== "Done" && t.dueDate && t.dueDate === todayStr
-      ),
+    () => {
+      const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      return filtered.filter(
+        (t) => norm(t.status) !== "done" && t.dueDate && t.dueDate === todayStr
+      );
+    },
     [filtered, todayStr]
   );
 
   const inProgressTasks = useMemo(
-    () => filtered.filter((t) => t.status === "In Progress"),
+    () =>
+      filtered.filter((t) =>
+        (t.status || "").toString().trim().toLowerCase() === "in progress"
+      ),
     [filtered]
   );
 
   const todoTasks = useMemo(
-    () => filtered.filter((t) => t.status === "To-Do" || !t.status),
+    () =>
+      filtered.filter((t) => {
+        const s = (t.status || "").toString().trim().toLowerCase();
+        return !s || s === "to-do";
+      }),
     [filtered]
   );
 
   const doneTasks = useMemo(
-    () => filtered.filter((t) => t.status === "Done"),
+    () =>
+      filtered.filter(
+        (t) => (t.status || "").toString().trim().toLowerCase() === "done"
+      ),
     [filtered]
   );
 
   // Reorderable groups (swappable cards)
-  const [groupOrder, setGroupOrder] = useState(() => {
-    try {
-      const raw = localStorage.getItem("tm_group_order");
-      const parsed = raw ? JSON.parse(raw) : null;
-      const def = ["today", "inProgress", "todo", "done"];
-      return Array.isArray(parsed) && parsed.length ? parsed : def;
-    } catch {
-      return ["today", "inProgress", "todo", "done"];
-    }
-  });
+  const [groupOrder, setGroupOrder] = useState([]);
 
   useEffect(() => {
     try {
@@ -1548,31 +1638,89 @@ function TasksManagement() {
     } catch {}
   }, [groupOrder]);
 
-  const groups = useMemo(
-    () => ({
-      today: {
-        title: "Today's Tasks",
-        tasks: todayTasks,
-        colorClass: "bg-indigo-500",
-      },
-      inProgress: {
-        title: "In Progress",
-        tasks: inProgressTasks,
-        colorClass: "bg-blue-500",
-      },
-      todo: {
-        title: "To Do",
-        tasks: todoTasks,
-        colorClass: "bg-gray-500",
-      },
-      done: {
-        title: "Done",
-        tasks: doneTasks,
-        colorClass: "bg-emerald-500",
-      },
-    }),
-    [todayTasks, inProgressTasks, todoTasks, doneTasks]
-  );
+  // Initialize and reconcile group order whenever status options change
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("tm_group_order");
+      const saved = raw ? JSON.parse(raw) : [];
+      const base = Array.isArray(saved) ? saved : [];
+      const filteredSaved = base.filter((k) => effectiveStatuses.includes(k));
+      const extras = effectiveStatuses.filter((s) => !filteredSaved.includes(s));
+      const merged = [...filteredSaved, ...extras];
+      setGroupOrder(merged);
+    } catch {
+      setGroupOrder(effectiveStatuses);
+    }
+  }, [effectiveStatuses]);
+
+  const groups = useMemo(() => {
+    // palette for group header chips
+    const palette = [
+      "bg-blue-500",
+      "bg-indigo-500",
+      "bg-emerald-500",
+      "bg-amber-500",
+      "bg-purple-500",
+      "bg-rose-500",
+      "bg-teal-500",
+      "bg-sky-500",
+      "bg-fuchsia-500",
+      "bg-gray-500",
+    ];
+    const map = {};
+    const normalize = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const optionNorms = new Set(effectiveStatuses.map((s) => normalize(s)));
+
+    // Synthetic group that aggregates all tasks due today (kept in their real status as well)
+    const todaysTasks = filtered.filter(
+      (t) => !t.archived && t.dueDate && t.dueDate === todayStr && normalize(t.status) !== "done"
+    );
+    if (todaysTasks.length) {
+      map["TODAYS TASK"] = {
+        title: "TODAYS TASK",
+        tasks: todaysTasks,
+        colorClass: "bg-red-600",
+      };
+    }
+
+    effectiveStatuses.forEach((s, idx) => {
+      const sNorm = normalize(s);
+      const tasksForStatus = filtered.filter((t) => normalize(t.status) === sNorm);
+      const hex = statusColorMap[sNorm];
+      map[s] = {
+        title: s,
+        tasks: tasksForStatus,
+        colorClass: hex ? "" : palette[idx % palette.length],
+        colorHex: hex || null,
+      };
+    });
+
+    // Fallback: if any tasks have statuses not present in DB options, group them under a catch-all so they still render
+    const orphanTasks = filtered.filter((t) => !optionNorms.has(normalize(t.status)));
+    if (orphanTasks.length && !map["Other"]) {
+      map["Other"] = {
+        title: "Other",
+        tasks: orphanTasks,
+        colorClass: palette[palette.length - 1],
+      };
+    }
+
+    return map;
+  }, [filtered, effectiveStatuses, todayStr, statusColorMap]);
+
+  // Determine which statuses have tasks due today (excluding Done) and should be prioritized
+  const dueTodayStatuses = useMemo(() => {
+    const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const set = new Set();
+    const today = todayStr;
+    filtered.forEach((t) => {
+      if (t.dueDate && t.dueDate === today) {
+        const s = norm(t.status);
+        if (s !== "done") set.add(s);
+      }
+    });
+    return set;
+  }, [filtered, todayStr]);
 
   const [dragKey, setDragKey] = useState(null);
   const handleDragStart = (key) => setDragKey(key);
@@ -1789,9 +1937,11 @@ function TasksManagement() {
                 className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
               >
                 <option value="">All Statuses</option>
-                <option>To-Do</option>
-                <option>In Progress</option>
-                <option>Done</option>
+                {statusOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
               </select>
 
               <label className="flex items-center gap-2 px-3 py-2 text-sm text-content-primary bg-gray-50 rounded-lg border border-subtle cursor-pointer hover:bg-gray-100 transition-colors">
@@ -1979,35 +2129,61 @@ function TasksManagement() {
                 </div>
               ) : (
                 <>
-                  {groupOrder.map((key) => {
-                    const g = groups[key];
-                    if (!g) return null;
-                    return (
-                      <div
-                      key={key}
-                      draggable
-                      onDragStart={() => handleDragStart(key)}
-                      onDragOver={handleDragOver}
-                      onDrop={() => handleDrop(key)}
-                      className="rounded-lg cursor-grab active:cursor-grabbing"
-                    >
-                      <TaskGroup
-                        title={g.title}
-                        tasks={g.tasks}
-                        colorClass={g.colorClass}
-                        onOpenCreate={() => openCreate(g.title)}
-                        selectedIds={selectedIds}
-                        onToggleSelect={toggleSelect}
-                        onView={handleView}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        onArchive={handleTaskArchive}
-                        resolveAssignees={resolveAssignees}
-                        onHeaderMenu={handleHeaderMenu}
-                      />
-                    </div>
-                  );
-                })}
+                  {(() => {
+                    const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                    // Primary keys from saved order with non-empty groups only
+                    const primary = groupOrder.filter(
+                      (k) => groups[k] && groups[k].tasks && groups[k].tasks.length > 0
+                    );
+                    // Extras not in saved order, non-empty only
+                    const extras = Object.keys(groups).filter(
+                      (k) => !groupOrder.includes(k) && groups[k] && groups[k].tasks && groups[k].tasks.length > 0
+                    );
+                    const todaysKey = "TODAYS TASK";
+                    // Merge and sort so statuses with due-today tasks appear first, keeping today's group fixed at top
+                    const restKeys = [...primary, ...extras.filter((k) => k !== todaysKey)];
+                    restKeys.sort((a, b) => {
+                      const aDue = dueTodayStatuses.has(norm(a));
+                      const bDue = dueTodayStatuses.has(norm(b));
+                      if (aDue === bDue) return 0;
+                      return aDue ? -1 : 1;
+                    });
+                    const orderedKeys = groups[todaysKey] && groups[todaysKey].tasks && groups[todaysKey].tasks.length > 0
+                      ? [todaysKey, ...restKeys]
+                      : restKeys;
+                    return orderedKeys.map((key) => {
+                      const g = groups[key];
+                      if (!g || !g.tasks || g.tasks.length === 0) return null;
+                      const isTodays = key === todaysKey;
+                      return (
+                        <div
+                          key={`grp-${key}`}
+                          draggable={!isTodays}
+                          onDragStart={isTodays ? undefined : () => handleDragStart(key)}
+                          onDragOver={isTodays ? undefined : handleDragOver}
+                          onDrop={isTodays ? undefined : () => handleDrop(key)}
+                          className="rounded-lg cursor-grab active:cursor-grabbing"
+                        >
+                          <TaskGroup
+                            title={g.title}
+                            tasks={g.tasks}
+                            colorClass={g.colorClass}
+                            colorHex={g.colorHex}
+                            onOpenCreate={() => openCreate(g.title)}
+                            selectedIds={selectedIds}
+                            onToggleSelect={toggleSelect}
+                            onView={handleView}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            onArchive={handleTaskArchive}
+                            resolveAssignees={resolveAssignees}
+                            onHeaderMenu={handleHeaderMenu}
+                            hideHeaderActions={isTodays}
+                          />
+                        </div>
+                      );
+                    });
+                  })()}
                 </>
               )}
             </div>
@@ -2036,6 +2212,7 @@ function TasksManagement() {
           users={users}
           clients={clients}
           currentUser={user}
+          statuses={statusOptions}
           onClose={() => setShowViewModal(false)}
           onEdit={(updatedTask) => {
             setShowViewModal(false);

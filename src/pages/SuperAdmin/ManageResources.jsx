@@ -349,9 +349,11 @@ function ManageResources() {
 
       const secondaryAuth = getAuthMod(secondaryApp);
 
+      const normalisedEmail = formData.email?.toLowerCase().trim() || "";
+
       const userCredential = await createUserWithEmailAndPassword(
         secondaryAuth,
-        formData.email,
+        normalisedEmail,
         formData.password
       );
       const user = userCredential.user;
@@ -362,7 +364,7 @@ function ManageResources() {
       // 2. Create User Document in Firestore
       const newUser = {
         name: formData.fullName,
-        email: formData.email,
+        email: normalisedEmail,
         phone: formData.mobile,
         resourceType: formData.resourceType,
         employmentType: formData.employmentType,
@@ -443,9 +445,10 @@ function ManageResources() {
 
     try {
       const userRef = doc(db, "users", selectedResource.id);
+      const normalisedEmail = formData.email?.toLowerCase().trim() || "";
       const updates = {
         name: formData.fullName,
-        email: formData.email,
+        email: normalisedEmail,
         phone: formData.mobile,
         resourceType: formData.resourceType,
         employmentType: formData.employmentType,
@@ -669,340 +672,352 @@ function ManageResources() {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        <div className="flex flex-col gap-6">
-          <Card className="p-4">
-            {/* Search & Actions Header */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Search & Actions
-                </h2>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-gray-500">
-                    Showing {filteredResources.length} records
-                  </span>
-                  <Button
-                    onClick={() => setShowAddForm(true)}
-                    className="flex items-center justify-center gap-2"
-                  >
-                    <FaPlus className="h-4 w-4" />
-                    Add Resource
-                  </Button>
-                </div>
-              </div>
-              <hr className="border-gray-200" />
-            </div>
-
-            {/* Search and Filters Row */}
-            <div className="flex flex-col lg:flex-row lg:items-end gap-4">
-              {/* Search Input */}
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Search by name or email
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaSearch className="h-4 w-4 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="e.g. John Doe or john@company.com"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Employment Type Filter */}
-              <div className="w-full lg:w-48">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Employment Type
-                </label>
-                <select
-                  value={employmentTypeFilter}
-                  onChange={(e) => setEmploymentTypeFilter(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                >
-                  <option value="all">All Types</option>
-                  <option value="Full-time">Full-time</option>
-                  <option value="Part-time">Part-time</option>
-                  <option value="Contract">Contract</option>
-                  <option value="Internship">Internship</option>
-                </select>
-              </div>
-
-              {/* Resource Type Filter */}
-              <div className="w-full lg:w-48">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Resource Type
-                </label>
-                <select
-                  value={resourceTypeFilter}
-                  onChange={(e) => setResourceTypeFilter(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                >
-                  <option value="all">All Resources</option>
-                  <option value="In-house">In-house</option>
-                  <option value="Outsourced">Outsourced</option>
-                </select>
-              </div>
-
-              {/* Status Filter */}
-              <div className="w-full lg:w-48">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                >
-                  <option value="all">All Status</option>
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
-
-              {/* Reset Button */}
-              {/* <Button
-                variant="secondary"
-                onClick={handleReset}
-                className="mb-[2px]"
+        <Card
+          title="Search & Actions"
+          actions={
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-500">
+                Showing {filteredResources.length} records
+              </span>
+              <Button
+                onClick={() => {
+                  setFormData({
+                    fullName: "",
+                    email: "",
+                    mobile: "",
+                    password: "",
+                    resourceType: "In-house",
+                    employmentType: "Full-time",
+                    resourceRole: "",
+                    resourceRoleType: "",
+                    status: "Active",
+                    imageUrl: "",
+                  });
+                  setImageFile(null);
+                  setImagePreview(null);
+                  setCreateFieldErrors({});
+                  setShowAddForm(true);
+                }}
+                className="flex items-center justify-center gap-2"
               >
-                <HiMiniArrowPath className="h-5 w-5" />
-              </Button> */}
+                <FaPlus className="h-4 w-4" />
+                Add Resource
+              </Button>
             </div>
-
-            {/* Pagination Controls */}
-            <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
-              <div className="text-sm text-gray-500">
-                Page {currentPage} of {totalPages}
-              </div>
-              <div className="flex items-center gap-4">
-                <select
-                  value={rowsPerPage}
-                  onChange={(e) => {
-                    setRowsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={handlePrevPage}
-                    variant="secondary"
-                    className="px-3 py-1"
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    onClick={handleNextPage}
-                    variant="secondary"
-                    className="px-3 py-1"
-                    disabled={
-                      currentPage === totalPages || !filteredResources.length
-                    }
-                  >
-                    Next
-                  </Button>
+          }
+        >
+          {/* Search & Actions Header */}
+          {/* Search and Filters Row */}
+          <div className="flex flex-col lg:flex-row lg:items-end gap-4">
+            {/* Search Input */}
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Search by name or email
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaSearch className="h-4 w-4 text-gray-400" />
                 </div>
+                <input
+                  type="text"
+                  placeholder="e.g. John Doe or john@company.com"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                />
               </div>
             </div>
 
-            <div className="w-full max-h-[65vh] overflow-x-auto overflow-y-auto rounded-lg border border-gray-200 shadow-sm">
-              <table className="w-full divide-y divide-gray-200 bg-white">
-                <caption className="sr-only">
-                  Filtered resource records with search and pagination controls
-                </caption>
-                <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                  <tr>
-                    {tableHeaders.map((header) => {
-                      const isActive = sortConfig.key === header.key;
-                      const ariaSort = !header.sortable
-                        ? "none"
-                        : isActive
-                          ? sortConfig.direction === "asc"
-                            ? "ascending"
-                            : "descending"
-                          : "none";
-
-                      return (
-                        <th
-                          key={header.key}
-                          scope="col"
-                          aria-sort={ariaSort}
-                          className={`group px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 whitespace-nowrap align-middle ${header.key === "actions"
-                            ? "sticky right-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100"
-                            : ""
-                            }`}
-                        >
-                          {header.sortable ? (
-                            <button
-                              type="button"
-                              onClick={() => handleSort(header.key)}
-                              className="flex items-center gap-2 text-left hover:text-indigo-600 transition-colors duration-200"
-                            >
-                              <span>{header.label}</span>
-                              <span className="transition-colors duration-200">
-                                {sortIndicator(header.key)}
-                              </span>
-                            </button>
-                          ) : (
-                            <span>{header.label}</span>
-                          )}
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
-                  {currentRows.map((resource, index) => (
-                    <tr
-                      key={resource.id}
-                      className="bg-white hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => handleView(resource)}
-                    >
-                      <td className="whitespace-nowrap px-3 py-3 text-sm font-medium text-gray-500">
-                        <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-xs">
-                          {indexOfFirstRow + index + 1}
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-2 py-3">
-                        {resource.imageUrl ? (
-                          <img
-                            src={resource.imageUrl}
-                            alt={resource.fullName}
-                            className="h-10 w-10 rounded-full object-cover border border-gray-200"
-                          />
-                        ) : (
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold text-xs">
-                            {resource.fullName?.charAt(0)?.toUpperCase() || "R"}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-sm font-semibold text-gray-900 max-w-xs">
-                        <span
-                          className="block truncate"
-                          title={resource.fullName || ""}
-                        >
-                          {resource.fullName}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-sm text-gray-600 max-w-xs">
-                        <div className="flex items-center max-w-xs">
-                          <div className="w-2 h-2 rounded-full bg-green-400 mr-2 animate-pulse"></div>
-                          <span
-                            className="flex-1 min-w-0 truncate"
-                            title={resource.email || ""}
-                          >
-                            {resource.email}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-600">
-                        <div className="flex items-center bg-gray-50 rounded-lg px-3 py-1">
-                          {/* <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mr-2"></div> */}
-                          {resource.mobile}
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-3 text-sm">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${resource.resourceType === "In-house"
-                            ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300"
-                            : "bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 border border-orange-300"
-                            }`}
-                        >
-                          <div
-                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${resource.resourceType === "In-house"
-                              ? "bg-blue-500"
-                              : "bg-orange-500"
-                              }`}
-                          ></div>
-                          {resource.resourceType}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-sm text-gray-700 max-w-xs">
-                        <span
-                          className="block truncate"
-                          title={resource.resourceRole || "-"}
-                        >
-                          {resource.resourceRole || "-"}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-3 text-sm">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${resource.status === "Active"
-                            ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300"
-                            : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300"
-                            }`}
-                        >
-                          <div
-                            className={`w-1.5 h-1.5 rounded-full mr-1.5 ${resource.status === "Active"
-                              ? "bg-green-500"
-                              : "bg-gray-500"
-                              }`}
-                          ></div>
-                          {resource.status}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-sm sticky right-0 z-10 bg-white">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEdit(resource);
-                            }}
-                            className="p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md"
-                            title="Edit Resource"
-                          >
-                            <FaEdit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteClick(resource);
-                            }}
-                            className="p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md"
-                            title="Delete Resource"
-                          >
-                            <FaTrash className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {!currentRows.length && (
-                    <tr>
-                      <td
-                        colSpan={tableHeaders.length}
-                        className="px-6 py-16 text-center"
-                      >
-                        <div className="flex flex-col items-center justify-center">
-                          <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gray-100 to-gray-200 flex items-center justify-center mb-4 animate-pulse">
-                            <FaSearch className="h-6 w-6 text-gray-400" />
-                          </div>
-                          <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                            No Resources Found
-                          </h3>
-                          <p className="text-sm text-gray-500">
-                            No resources match the selected filters. Adjust your
-                            search or try resetting filters.
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+            {/* Employment Type Filter */}
+            <div className="w-full lg:w-48">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Employment Type
+              </label>
+              <select
+                value={employmentTypeFilter}
+                onChange={(e) => setEmploymentTypeFilter(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              >
+                <option value="all">All Types</option>
+                <option value="Full-time">Full-time</option>
+                <option value="Part-time">Part-time</option>
+                <option value="Contract">Contract</option>
+                <option value="Internship">Internship</option>
+              </select>
             </div>
-          </Card>
-        </div>
+
+            {/* Resource Type Filter */}
+            <div className="w-full lg:w-48">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Resource Type
+              </label>
+              <select
+                value={resourceTypeFilter}
+                onChange={(e) => setResourceTypeFilter(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              >
+                <option value="all">All Resources</option>
+                <option value="In-house">In-house</option>
+                <option value="Outsourced">Outsourced</option>
+              </select>
+            </div>
+
+            {/* Status Filter */}
+            <div className="w-full lg:w-48">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              >
+                <option value="all">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+
+            {/* Reset Button */}
+            {/* <Button
+              variant="secondary"
+              onClick={handleReset}
+              className="mb-[2px]"
+            >
+              <HiMiniArrowPath className="h-5 w-5" />
+            </Button> */}
+          </div>
+        </Card>
+
+        <Card title="Resource List">
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm text-gray-500">
+              Page {currentPage} of {totalPages}
+            </div>
+            <div className="flex items-center gap-4">
+              <select
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handlePrevPage}
+                  variant="secondary"
+                  className="px-3 py-1"
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  onClick={handleNextPage}
+                  variant="secondary"
+                  className="px-3 py-1"
+                  disabled={
+                    currentPage === totalPages || !filteredResources.length
+                  }
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full max-h-[65vh] overflow-x-auto overflow-y-auto rounded-lg border border-gray-200 shadow-sm">
+            <table className="w-full divide-y divide-gray-200 bg-white">
+              <caption className="sr-only">
+                Filtered resource records with search and pagination controls
+              </caption>
+              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                <tr>
+                  {tableHeaders.map((header) => {
+                    const isActive = sortConfig.key === header.key;
+                    const ariaSort = !header.sortable
+                      ? "none"
+                      : isActive
+                        ? sortConfig.direction === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none";
+
+                    return (
+                      <th
+                        key={header.key}
+                        scope="col"
+                        aria-sort={ariaSort}
+                        className={`group px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 whitespace-nowrap align-middle ${header.key === "actions"
+                          ? "sticky right-0 z-10 bg-gradient-to-r from-gray-50 to-gray-100"
+                          : ""
+                          }`}
+                      >
+                        {header.sortable ? (
+                          <button
+                            type="button"
+                            onClick={() => handleSort(header.key)}
+                            className="flex items-center gap-2 text-left hover:text-indigo-600 transition-colors duration-200"
+                          >
+                            <span>{header.label}</span>
+                            <span className="transition-colors duration-200">
+                              {sortIndicator(header.key)}
+                            </span>
+                          </button>
+                        ) : (
+                          <span>{header.label}</span>
+                        )}
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {currentRows.map((resource, index) => (
+                  <tr
+                    key={resource.id}
+                    className="bg-white hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => handleView(resource)}
+                  >
+                    <td className="whitespace-nowrap px-3 py-3 text-sm font-medium text-gray-500">
+                      <div className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-xs">
+                        {indexOfFirstRow + index + 1}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-3">
+                      {resource.imageUrl ? (
+                        <img
+                          src={resource.imageUrl}
+                          alt={resource.fullName}
+                          className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold text-xs">
+                          {resource.fullName?.charAt(0)?.toUpperCase() || "R"}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-sm font-semibold text-gray-900 max-w-xs">
+                      <span
+                        className="block truncate"
+                        title={resource.fullName || ""}
+                      >
+                        {resource.fullName}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-600 max-w-xs">
+                      <div className="flex items-center max-w-xs">
+                        <div className="w-2 h-2 rounded-full bg-green-400 mr-2 animate-pulse"></div>
+                        <span
+                          className="flex-1 min-w-0 truncate"
+                          title={resource.email || ""}
+                        >
+                          {resource.email}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-600">
+                      <div className="flex items-center bg-gray-50 rounded-lg px-3 py-1">
+                        {/* <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mr-2"></div> */}
+                        {resource.mobile}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-3 text-sm">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${resource.resourceType === "In-house"
+                          ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 border border-blue-300"
+                          : "bg-gradient-to-r from-orange-100 to-orange-200 text-orange-800 border border-orange-300"
+                          }`}
+                      >
+                        <div
+                          className={`w-1.5 h-1.5 rounded-full mr-1.5 ${resource.resourceType === "In-house"
+                            ? "bg-blue-500"
+                            : "bg-orange-500"
+                            }`}
+                        ></div>
+                        {resource.resourceType}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-700 max-w-xs">
+                      <span
+                        className="block truncate"
+                        title={resource.resourceRole || "-"}
+                      >
+                        {resource.resourceRole || "-"}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-3 text-sm">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${resource.status === "Active"
+                          ? "bg-gradient-to-r from-green-100 to-green-200 text-green-800 border border-green-300"
+                          : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300"
+                          }`}
+                      >
+                        <div
+                          className={`w-1.5 h-1.5 rounded-full mr-1.5 ${resource.status === "Active"
+                            ? "bg-green-500"
+                            : "bg-gray-500"
+                            }`}
+                        ></div>
+                        {resource.status}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 text-sm sticky right-0 z-10 bg-white">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(resource);
+                          }}
+                          className="p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md"
+                          title="Edit Resource"
+                        >
+                          <FaEdit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(resource);
+                          }}
+                          className="p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md"
+                          title="Delete Resource"
+                        >
+                          <FaTrash className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {!currentRows.length && (
+                  <tr>
+                    <td
+                      colSpan={tableHeaders.length}
+                      className="px-6 py-16 text-center"
+                    >
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gray-100 to-gray-200 flex items-center justify-center mb-4 animate-pulse">
+                          <FaSearch className="h-6 w-6 text-gray-400" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                          No Resources Found
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          No resources match the selected filters. Adjust your
+                          search or try resetting filters.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       </div>
 
       {/* Modals */}
@@ -1012,7 +1027,24 @@ function ManageResources() {
         formData={formData}
         setFormData={setFormData}
         onSubmit={handleAddSubmit}
-        onClose={() => setShowAddForm(false)}
+        onClose={() => {
+          setShowAddForm(false);
+          setFormData({
+            fullName: "",
+            email: "",
+            mobile: "",
+            password: "",
+            resourceType: "In-house",
+            employmentType: "Full-time",
+            resourceRole: "",
+            resourceRoleType: "",
+            status: "Active",
+            imageUrl: "",
+          });
+          setImageFile(null);
+          setImagePreview(null);
+          setCreateFieldErrors({});
+        }}
         imagePreview={imagePreview}
         onImageChange={handleImageChange}
         onImageRemove={() => {
@@ -1036,6 +1068,21 @@ function ManageResources() {
         onClose={() => {
           setShowEditForm(false);
           setSelectedResource(null);
+          setInitialEditData(null);
+          setFormData({
+            fullName: "",
+            email: "",
+            mobile: "",
+            password: "",
+            resourceType: "In-house",
+            employmentType: "Full-time",
+            resourceRole: "",
+            resourceRoleType: "",
+            status: "Active",
+            imageUrl: "",
+          });
+          setImageFile(null);
+          setImagePreview(null);
         }}
         imagePreview={imagePreview}
         onImageChange={handleImageChange}

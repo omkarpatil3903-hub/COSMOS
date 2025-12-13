@@ -118,22 +118,62 @@ const EmployeeTasks = () => {
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [reminderTask, setReminderTask] = useState(null);
 
+  // Dynamic statuses from settings/task-statuses
+  const [statusOptions, setStatusOptions] = useState([]);
+  const [statusColorMap, setStatusColorMap] = useState({});
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      doc(db, "settings", "task-statuses"),
+      (snap) => {
+        const data = snap.data() || {};
+        const arr = Array.isArray(data.statuses) ? data.statuses : [];
+        const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const list = [];
+        const colorMap = {};
+        arr.forEach((item) => {
+          if (typeof item === "string") {
+            const n = item;
+            if (n) list.push(n);
+          } else if (item) {
+            const n = item?.name || item?.label || item?.value || "";
+            if (n) {
+              list.push(n);
+              const c = (item?.color || "").toString().trim();
+              if (c) colorMap[norm(n)] = c;
+            }
+          }
+        });
+        setStatusOptions(list);
+        setStatusColorMap(colorMap);
+      },
+      () => {
+        setStatusOptions([]);
+        setStatusColorMap({});
+      }
+    );
+    return () => unsub();
+  }, []);
+
+  const effectiveStatuses = useMemo(() => {
+    const configured = Array.isArray(statusOptions)
+      ? statusOptions.filter(Boolean)
+      : [];
+    const present = Array.from(
+      new Set(tasks.map((t) => t.status).filter(Boolean))
+    );
+    // Merge: keep configured order first, then add any present statuses not configured
+    const has = new Set(configured.map((s) => String(s).toLowerCase()));
+    const extras = present.filter(
+      (s) => !has.has(String(s).toLowerCase())
+    );
+    return [...configured, ...extras];
+  }, [statusOptions, tasks]);
+
   // Derived state for TaskGroups
-  const inProgressTasks = useMemo(
-    () =>
-      tasks.filter(
-        (t) => t.status === "In Progress" || t.status === "In Review"
-      ),
-    [tasks]
-  );
-  const todoTasks = useMemo(
-    () => tasks.filter((t) => t.status === "To-Do" || !t.status),
-    [tasks]
-  );
-  const doneTasks = useMemo(
-    () => tasks.filter((t) => t.status === "Done"),
-    [tasks]
-  );
+  // Note: we no longer use these fixed To-Do/In Progress/Done buckets for grouping
+  // because grouping is now fully dynamic based on configured/effective statuses.
+  // The derived groups at the bottom of the file use effectiveStatuses to render.
 
   const toggleSelect = (id) => {
     setSelectedIds((prev) => {
@@ -225,14 +265,16 @@ const EmployeeTasks = () => {
         .map((doc) => {
           const data = doc.data();
           const myStatus = data.assigneeStatus?.[user.uid] || {};
+          const derivedStatus =
+            myStatus.status ||
+            (data.status === "In Review"
+              ? "In Progress"
+              : data.status || "To-Do");
+
           return {
             id: doc.id,
             ...data,
-            status:
-              myStatus.status ||
-              (data.status === "In Review"
-                ? "In Progress"
-                : data.status || "To-Do"),
+            status: derivedStatus,
             progressPercent:
               myStatus.progressPercent ?? data.progressPercent ?? 0,
             completedAt: myStatus.completedAt || data.completedAt,
@@ -242,7 +284,7 @@ const EmployeeTasks = () => {
         })
         .filter((task) => task.assigneeType === "user");
 
-      console.log("🔍 Primary Tasks loaded:", taskData.length);
+      console.log("🔍 Primary Tasks loaded:", taskData.length, taskData.slice(0, 3));
       setPrimaryTasks(taskData);
     }, (error) => {
       console.error("Error fetching primary tasks:", error);
@@ -254,14 +296,16 @@ const EmployeeTasks = () => {
         .map((doc) => {
           const data = doc.data();
           const myStatus = data.assigneeStatus?.[user.uid] || {};
+          const derivedStatus =
+            myStatus.status ||
+            (data.status === "In Review"
+              ? "In Progress"
+              : data.status || "To-Do");
+
           return {
             id: doc.id,
             ...data,
-            status:
-              myStatus.status ||
-              (data.status === "In Review"
-                ? "In Progress"
-                : data.status || "To-Do"),
+            status: derivedStatus,
             progressPercent:
               myStatus.progressPercent ?? data.progressPercent ?? 0,
             completedAt: myStatus.completedAt || data.completedAt,
@@ -271,7 +315,7 @@ const EmployeeTasks = () => {
         })
         .filter((task) => task.assigneeType === "user");
 
-      console.log("🔍 Multi Tasks loaded:", taskData.length);
+      console.log("🔍 Multi Tasks loaded:", taskData.length, taskData.slice(0, 3));
       setMultiTasks(taskData);
     }, (error) => {
       console.error("Error fetching multi-assignee tasks:", error);
@@ -1128,9 +1172,11 @@ const EmployeeTasks = () => {
               className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
             >
               <option value="all">All Status</option>
-              <option value="To-Do">To-Do</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Done">Done</option>
+              {effectiveStatuses.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
             </select>
 
             <select
@@ -1345,16 +1391,18 @@ const EmployeeTasks = () => {
             <>
               <>
                 {taskSource === "self" ? (
-                  // --- SELF TASKS VIEW (Group by Status) ---
+                  // --- SELF TASKS VIEW ---
                   <>
-                    {/* TODAY'S TASKS Group */}
+                    {/* TODAY'S TASKS Group (highlight, does not remove from status groups) */}
                     <TaskGroup
                       title="Today's Tasks"
-                      tasks={filteredTasks.filter(
-                        (t) =>
-                          t.status !== "Done" &&
+                      tasks={filteredTasks.filter((t) => {
+                        const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                        return (
+                          norm(t.status) !== "done" &&
                           isToday(t.dueDate?.toDate?.() || new Date(t.dueDate))
-                      )}
+                        );
+                      })}
                       colorClass="bg-indigo-500"
                       onOpenCreate={() => setShowAddSelfTaskModal(true)}
                       selectedIds={selectedSelfTaskIds}
@@ -1367,74 +1415,57 @@ const EmployeeTasks = () => {
                       showActions={true}
                     />
 
-                    {/* IN PROGRESS Group (Excluding Today's) */}
-                    <TaskGroup
-                      title="In Progress"
-                      tasks={filteredTasks.filter(
-                        (t) =>
-                          (t.status === "In Progress" ||
-                            t.status === "In Review") &&
-                          !isToday(t.dueDate?.toDate?.() || new Date(t.dueDate))
-                      )}
-                      colorClass="bg-blue-500"
-                      onOpenCreate={() => setShowAddSelfTaskModal(true)}
-                      selectedIds={selectedSelfTaskIds}
-                      onToggleSelect={toggleSelectSelfTask}
-                      onView={(task) => setSelectedTask(task)}
-                      onEdit={handleEditTask}
-                      onDelete={handleDeleteTask}
-                      onSetReminder={handleSetReminder}
-                      resolveAssignees={resolveAssignees}
-                      showActions={true}
-                    />
-
-                    {/* TO DO Group (Excluding Today's) */}
-                    <TaskGroup
-                      title="To Do"
-                      tasks={filteredTasks.filter(
-                        (t) =>
-                          (t.status === "To-Do" || !t.status) &&
-                          !isToday(t.dueDate?.toDate?.() || new Date(t.dueDate))
-                      )}
-                      colorClass="bg-gray-500"
-                      onOpenCreate={() => setShowAddSelfTaskModal(true)}
-                      selectedIds={selectedSelfTaskIds}
-                      onToggleSelect={toggleSelectSelfTask}
-                      onView={(task) => setSelectedTask(task)}
-                      onEdit={handleEditTask}
-                      onDelete={handleDeleteTask}
-                      onSetReminder={handleSetReminder}
-                      resolveAssignees={resolveAssignees}
-                      showActions={true}
-                    />
-
-                    {/* DONE Group */}
-                    <TaskGroup
-                      title="Done"
-                      tasks={filteredTasks.filter((t) => t.status === "Done")}
-                      colorClass="bg-emerald-500"
-                      onOpenCreate={() => setShowAddSelfTaskModal(true)}
-                      selectedIds={selectedSelfTaskIds}
-                      onToggleSelect={toggleSelectSelfTask}
-                      onView={(task) => setSelectedTask(task)}
-                      onEdit={handleEditTask}
-                      onDelete={handleDeleteTask}
-                      onSetReminder={handleSetReminder}
-                      resolveAssignees={resolveAssignees}
-                      showActions={true}
-                    />
+                    {/* Dynamic status groups (excluding today's tasks) */}
+                    {effectiveStatuses.map((s, idx) => {
+                      const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                      const tasksForStatus = filteredTasks.filter((t) =>
+                        norm(t.status) === norm(s)
+                      );
+                      if (!tasksForStatus.length) return null;
+                      const palette = [
+                        "bg-blue-500",
+                        "bg-gray-500",
+                        "bg-emerald-500",
+                        "bg-purple-500",
+                        "bg-rose-500",
+                        "bg-teal-500",
+                        "bg-amber-500",
+                      ];
+                      const colorClass = palette[idx % palette.length];
+                      const hex = statusColorMap[norm(s)];
+                      return (
+                        <TaskGroup
+                          key={`self-grp-${s}`}
+                          title={s}
+                          tasks={tasksForStatus}
+                          colorClass={colorClass}
+                          colorHex={hex || null}
+                          onOpenCreate={() => setShowAddSelfTaskModal(true)}
+                          selectedIds={selectedSelfTaskIds}
+                          onToggleSelect={toggleSelectSelfTask}
+                          onView={(task) => setSelectedTask(task)}
+                          onEdit={handleEditTask}
+                          onDelete={handleDeleteTask}
+                          onSetReminder={handleSetReminder}
+                          resolveAssignees={resolveAssignees}
+                          showActions={true}
+                        />
+                      );
+                    })}
                   </>
                 ) : (
-                  // --- ADMIN TASKS VIEW (Group by Status) ---
+                  // --- ADMIN-ASSIGNED TASKS VIEW ---
                   <>
                     {/* TODAY'S TASKS Group */}
                     <TaskGroup
                       title="Today's Tasks"
-                      tasks={filteredTasks.filter(
-                        (t) =>
-                          t.status !== "Done" &&
+                      tasks={filteredTasks.filter((t) => {
+                        const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                        return (
+                          norm(t.status) !== "done" &&
                           isToday(t.dueDate?.toDate?.() || new Date(t.dueDate))
-                      )}
+                        );
+                      })}
                       colorClass="bg-indigo-500"
                       selectedIds={selectedIds}
                       onToggleSelect={toggleSelect}
@@ -1446,59 +1477,42 @@ const EmployeeTasks = () => {
                       resolveAssignees={resolveAssignees}
                     />
 
-                    {/* IN PROGRESS Group (Excluding Today's) */}
-                    <TaskGroup
-                      title="In Progress"
-                      tasks={filteredTasks.filter(
-                        (t) =>
-                          (t.status === "In Progress" ||
-                            t.status === "In Review") &&
-                          !isToday(t.dueDate?.toDate?.() || new Date(t.dueDate))
-                      )}
-                      colorClass="bg-blue-500"
-                      selectedIds={selectedIds}
-                      onToggleSelect={toggleSelect}
-                      onView={(task) => setSelectedTask(task)}
-                      onEdit={handleEditTask}
-                      onSetReminder={handleSetReminder}
-                      showActions={true}
-                      canDelete={false}
-                      resolveAssignees={resolveAssignees}
-                    />
-
-                    {/* TO DO Group (Excluding Today's) */}
-                    <TaskGroup
-                      title="To Do"
-                      tasks={filteredTasks.filter(
-                        (t) =>
-                          (t.status === "To-Do" || !t.status) &&
-                          !isToday(t.dueDate?.toDate?.() || new Date(t.dueDate))
-                      )}
-                      colorClass="bg-gray-500"
-                      selectedIds={selectedIds}
-                      onToggleSelect={toggleSelect}
-                      onView={(task) => setSelectedTask(task)}
-                      onEdit={handleEditTask}
-                      onSetReminder={handleSetReminder}
-                      showActions={true}
-                      canDelete={false}
-                      resolveAssignees={resolveAssignees}
-                    />
-
-                    {/* DONE Group */}
-                    <TaskGroup
-                      title="Done"
-                      tasks={filteredTasks.filter((t) => t.status === "Done")}
-                      colorClass="bg-emerald-500"
-                      selectedIds={selectedIds}
-                      onToggleSelect={toggleSelect}
-                      onView={(task) => setSelectedTask(task)}
-                      onEdit={handleEditTask}
-                      onSetReminder={handleSetReminder}
-                      showActions={true}
-                      canDelete={false}
-                      resolveAssignees={resolveAssignees}
-                    />
+                    {/* Dynamic status groups (include all tasks by status, even if due today) */}
+                    {effectiveStatuses.map((s, idx) => {
+                      const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                      const tasksForStatus = filteredTasks.filter((t) =>
+                        norm(t.status) === norm(s)
+                      );
+                      if (!tasksForStatus.length) return null;
+                      const palette = [
+                        "bg-blue-500",
+                        "bg-gray-500",
+                        "bg-emerald-500",
+                        "bg-purple-500",
+                        "bg-rose-500",
+                        "bg-teal-500",
+                        "bg-amber-500",
+                      ];
+                      const colorClass = palette[idx % palette.length];
+                      const hex = statusColorMap[norm(s)];
+                      return (
+                        <TaskGroup
+                          key={`admin-grp-${s}`}
+                          title={s}
+                          tasks={tasksForStatus}
+                          colorClass={colorClass}
+                          colorHex={hex || null}
+                          selectedIds={selectedIds}
+                          onToggleSelect={toggleSelect}
+                          onView={(task) => setSelectedTask(task)}
+                          onEdit={handleEditTask}
+                          onSetReminder={handleSetReminder}
+                          showActions={true}
+                          canDelete={false}
+                          resolveAssignees={resolveAssignees}
+                        />
+                      );
+                    })}
                   </>
                 )}
               </>
@@ -1540,6 +1554,7 @@ const EmployeeTasks = () => {
           assigneesResolved={resolveAssignees(selectedTask)}
           users={users}
           clients={clients}
+          statuses={effectiveStatuses}
           currentUser={user}
           onClose={() => setSelectedTask(null)}
           onEdit={(updatedTask) => {
