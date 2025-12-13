@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Button from "../../components/Button";
 import Card from "../../components/Card";
@@ -12,6 +12,7 @@ import {
   arrayUnion,
   arrayRemove,
   onSnapshot,
+  getDoc,
 } from "firebase/firestore";
 import { FaTimes, FaEdit, FaTrash, FaPlus, FaSearch, FaSave } from "react-icons/fa";
 
@@ -27,6 +28,8 @@ export default function StatusSettings() {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [color, setColor] = useState("#4F46E5");
+  const colorInputRef = useRef(null);
   const [deleteModal, setDeleteModal] = useState({
     open: false,
     item: null,
@@ -82,6 +85,7 @@ export default function StatusSettings() {
     setOpen(false);
     setValue("");
     setEditing(null);
+    setColor("#4F46E5");
   };
 
   const save = async () => {
@@ -90,32 +94,42 @@ export default function StatusSettings() {
       toast.error("Enter a status name");
       return;
     }
-    const exists = items.some(
-      (it) => it.name.toLowerCase() === v.toLowerCase() && (!editing || it.id !== editing.id)
-    );
-    if (exists) {
-      toast.error("Status already exists");
+    if (!color || typeof color !== "string" || color.trim() === "") {
+      toast.error("Pick a color for the status");
       return;
     }
 
     setSaving(true);
     try {
       const ref = doc(db, "settings", "task-statuses");
-      if (editing) {
-        await setDoc(
-          ref,
-          {
-            statuses: arrayRemove({ name: editing.name, color: editing.color || "" }),
-          },
-          { merge: true }
-        );
+      const snap = await getDoc(ref);
+      const data = snap.data() || {};
+      const arr = Array.isArray(data.statuses) ? data.statuses : [];
+      const nameLc = v.toLowerCase();
+
+      // For new adds, block duplicates against raw array (strings or objects)
+      if (!editing) {
+        const dup = arr.some((s) => {
+          const n = typeof s === "string" ? s : s?.name || s?.label || s?.value || "";
+          return n.toLowerCase() === nameLc;
+        });
+        if (dup) {
+          toast.error("Status already exists");
+          setSaving(false);
+          return;
+        }
       }
+
+      // Build next array: remove any existing with same name (ignore case), then add updated/new object
+      const next = arr.filter((s) => {
+        const n = typeof s === "string" ? s : s?.name || s?.label || s?.value || "";
+        return n.toLowerCase() !== (editing ? (editing.name || "").toLowerCase() : nameLc);
+      });
+      next.push({ name: v, color: color || "" });
+
       await setDoc(
         ref,
-        {
-          statuses: arrayUnion({ name: v }),
-          updatedAt: serverTimestamp(),
-        },
+        { statuses: next, updatedAt: serverTimestamp() },
         { merge: true }
       );
       toast.success("Status saved");
@@ -131,12 +145,14 @@ export default function StatusSettings() {
   const openAdd = () => {
     setEditing(null);
     setValue("");
+    setColor("#4F46E5");
     setOpen(true);
   };
 
   const openEdit = (item) => {
     setEditing(item);
     setValue(item.name || "");
+    setColor(item.color || "#4F46E5");
     setOpen(true);
   };
 
@@ -149,14 +165,15 @@ export default function StatusSettings() {
     setDeleteModal((prev) => ({ ...prev, loading: true }));
     try {
       const ref = doc(db, "settings", "task-statuses");
-      await setDoc(
-        ref,
-        {
-          statuses: arrayRemove({ name: deleteModal.item.name, color: deleteModal.item.color || "" }),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
+      const snap = await getDoc(ref);
+      const data = snap.data() || {};
+      const arr = Array.isArray(data.statuses) ? data.statuses : [];
+      const nameLc = (deleteModal.item.name || "").toLowerCase();
+      const next = arr.filter((s) => {
+        const n = typeof s === "string" ? s : s?.name || s?.label || s?.value || "";
+        return n.toLowerCase() !== nameLc;
+      });
+      await setDoc(ref, { statuses: next, updatedAt: serverTimestamp() }, { merge: true });
       toast.success("Status deleted");
       setDeleteModal({ open: false, item: null, loading: false });
     } catch (e) {
@@ -276,11 +293,14 @@ export default function StatusSettings() {
                       </div>
                     </td>
                     <td className="px-6 py-2.5">
-                      <div
-                        className="max-w-[200px] text-sm font-semibold text-gray-900 group-hover:text-blue-600 truncate transition-colors"
-                        title={it.name}
-                      >
-                        {it.name}
+                      <div className="max-w-[200px]">
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase text-white"
+                          style={{ backgroundColor: it.color || "#6b7280" }}
+                          title={it.name}
+                        >
+                          {it.name}
+                        </span>
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-6 py-2.5 text-sm sticky right-0 z-10 bg-transparent transition-colors">
@@ -336,13 +356,31 @@ export default function StatusSettings() {
                 <label className="mb-1 block text-sm font-medium">
                   Status Name
                 </label>
-                <input
-                  type="text"
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  className="w-full rounded-lg border border-subtle px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  placeholder="e.g. On Hold, Awaiting Client, In QA"
-                />
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => colorInputRef.current?.click()}
+                    className="h-7 w-7 rounded-full border border-gray-200 shadow-sm"
+                    style={{ backgroundColor: color || "#4F46E5" }}
+                    title="Pick color"
+                    aria-label="Pick color"
+                  />
+                  <input
+                    ref={colorInputRef}
+                    type="color"
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="sr-only"
+                  />
+                  <input
+                    type="text"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    required
+                    className="flex-1 rounded-lg border border-subtle px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    placeholder="e.g. On Hold, Awaiting Client, In QA"
+                  />
+                </div>
               </div>
             </div>
 
@@ -353,7 +391,7 @@ export default function StatusSettings() {
               <Button
                 variant="primary"
                 onClick={save}
-                disabled={saving}
+                disabled={saving || !value.trim() || !color}
                 className="flex items-center gap-2"
               >
                 {saving ? <FaPlus className="animate-spin" /> : <FaSave />}
@@ -366,18 +404,23 @@ export default function StatusSettings() {
 
       {/* Delete confirmation modal */}
       {deleteModal.open && (
-        <DeleteConfirmationModal
-          isOpen={deleteModal.open}
-          title="Delete Status"
-          message={`Are you sure you want to delete status "${deleteModal.item?.name}"? This cannot be undone.`}
-          confirmLabel="Delete"
-          confirmTone="danger"
-          onCancel={() =>
-            setDeleteModal({ open: false, item: null, loading: false })
-          }
-          onConfirm={handleDelete}
-          isLoading={deleteModal.loading}
-        />
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setDeleteModal({ open: false, item: null, loading: false })}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <DeleteConfirmationModal
+              title="Delete Status"
+              description={`Are you sure you want to delete status "${deleteModal.item?.name}"?`}
+              permanentMessage="This action cannot be undone."
+              cancelLabel="Cancel"
+              confirmLabel="Delete"
+              onClose={() => setDeleteModal({ open: false, item: null, loading: false })}
+              onConfirm={handleDelete}
+              isLoading={deleteModal.loading}
+            />
+          </div>
+        </div>
       )}
 
       {/* Preview simple modal */}
@@ -393,9 +436,15 @@ export default function StatusSettings() {
                 <FaTimes />
               </button>
             </div>
-            <p className="text-sm text-content-primary">
-              {preview.name}
-            </p>
+            <div>
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase text-white"
+                style={{ backgroundColor: preview.color || "#6b7280" }}
+                title={preview.name}
+              >
+                {preview.name}
+              </span>
+            </div>
           </div>
         </div>
       )}

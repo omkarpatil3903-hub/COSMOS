@@ -255,7 +255,7 @@ function AddResourceModal({
                     value={formData.email}
                     placeholder="Work email"
                     onChange={(e) => {
-                      const v = e.target.value;
+                      const v = e.target.value.toLowerCase();
                       setFormData({ ...formData, email: v });
                       setErrors((prev) => ({
                         ...prev,

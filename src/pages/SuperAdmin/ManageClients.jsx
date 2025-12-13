@@ -172,9 +172,11 @@ function ManageClients() {
         : initApp(primaryApp.options, secondaryName);
       const secondaryAuth = getAuthMod(secondaryApp);
 
+      const email = submittedData.email?.toLowerCase().trim() || "";
+
       const cred = await createUserWithEmailAndPassword(
         secondaryAuth,
-        submittedData.email,
+        email,
         submittedData.password
       );
       const uid = cred.user.uid;
@@ -182,6 +184,7 @@ function ManageClients() {
       // 2. Create Firestore Document
       await setDoc(doc(db, CLIENTS_COLLECTION, uid), {
         ...submittedData,
+        email,
         // Ensure we store the password for dev reference (as per your original requirement)
         password: submittedData.password || "******",
         status: "Active",
@@ -215,7 +218,13 @@ function ManageClients() {
     try {
       setIsUpdating(true);
       // Remove password from update if not provided or needed
-      const { password, ...updateData } = submittedData;
+      const { password, ...rest } = submittedData;
+      const updateData = {
+        ...rest,
+        ...(submittedData.email
+          ? { email: submittedData.email.toLowerCase().trim() }
+          : {}),
+      };
 
       if (submittedData.password) {
         // Call Cloud Function to update Auth password

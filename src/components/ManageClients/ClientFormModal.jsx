@@ -97,7 +97,8 @@ const ClientFormModal = ({
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        const nextValue = name === "email" ? value.toLowerCase() : value;
+        setFormData((prev) => ({ ...prev, [name]: nextValue }));
         if (errors[name]) {
             setErrors((prev) => ({ ...prev, [name]: "" }));
         }
@@ -207,7 +208,7 @@ const ClientFormModal = ({
                                         value={formData.contactNo}
                                         onChange={handleChange}
                                         className="w-full rounded-lg border border-gray-200 bg-white py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all duration-200"
-                                        placeholder="+1 (555) 000-0000"
+                                        placeholder="Enter 10 digit Mobile No"
                                         required
                                     />
                                 </div>

@@ -68,6 +68,7 @@ const TaskViewModal = ({
   canDelete = true,
   canArchive = true,
   canEdit = true,
+  statuses = [],
 }) => {
   const [task, setTask] = useState(initialTask);
 
@@ -95,6 +96,11 @@ const TaskViewModal = ({
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+
+  const statusOptions = useMemo(() => {
+    if (Array.isArray(statuses) && statuses.length) return statuses;
+    return ["To-Do", "In Progress", "Done"]; // fallback when settings not loaded
+  }, [statuses]);
 
   // Resolve assignees locally to ensure real-time updates
   const localAssigneesResolved = useMemo(() => {
@@ -951,12 +957,13 @@ const TaskViewModal = ({
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setShowStatusDropdown(false)}></div>
                       <div className="absolute top-full left-0 w-full mt-1 bg-white rounded-lg shadow-xl border border-gray-100 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                        {["To-Do", "In Progress", "Done"].map(status => (
+                        {statusOptions.map(status => (
                           <button
                             key={status}
                             onClick={() => {
                               console.log(`Status dropdown clicked: ${status}`);
-                              if (status === "Done") {
+                              const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                              if (norm(status) === "done") {
                                 console.log("Opening Completion Modal");
                                 setShowCompletionModal(true);
                                 setShowStatusDropdown(false);
@@ -965,10 +972,10 @@ const TaskViewModal = ({
                                 setShowStatusDropdown(false);
                               }
                             }}
-                            className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between ${displayStatus === status ? "bg-indigo-50 text-indigo-700 font-medium" : "text-gray-700"}`}
+                            className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between ${String(displayStatus || "").toLowerCase().replace(/[^a-z0-9]/g, "") === String(status || "").toLowerCase().replace(/[^a-z0-9]/g, "") ? "bg-indigo-50 text-indigo-700 font-medium" : "text-gray-700"}`}
                           >
                             {status}
-                            {displayStatus === status && <FaCheck />}
+                            {String(displayStatus || "").toLowerCase().replace(/[^a-z0-9]/g, "") === String(status || "").toLowerCase().replace(/[^a-z0-9]/g, "") && <FaCheck />}
                           </button>
                         ))}
                       </div>

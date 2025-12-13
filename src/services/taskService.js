@@ -16,6 +16,7 @@ import {
   serverTimestamp,
   arrayUnion,
   limit,
+  getDocs,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { tsToDate } from "../utils/dateUtils";
@@ -62,6 +63,7 @@ export const createTask = async (taskData, collectionName = "tasks") => {
     createdAt: serverTimestamp(),
     archived: false,
   });
+  await updateDoc(docRef, { taskId: docRef.id });
   return docRef.id;
 };
 
@@ -163,6 +165,24 @@ export const subscribeToTaskComments = (taskId, callback, limitCount = 20, colle
  */
 export const deleteTask = async (taskId, collectionName = "tasks") => {
   await deleteDoc(doc(db, collectionName, taskId));
+};
+
+export const deleteTaskWithRelations = async (taskId, collectionName = "tasks") => {
+  const taskRef = doc(db, collectionName, taskId);
+
+  const deleteSubcollection = async (subName) => {
+    const subRef = collection(taskRef, subName);
+    const snap = await getDocs(subRef);
+    const deletions = snap.docs.map((d) => deleteDoc(d.ref));
+    await Promise.all(deletions);
+  };
+
+  await Promise.all([
+    deleteSubcollection("activities"),
+    deleteSubcollection("comments"),
+  ]);
+
+  await deleteDoc(taskRef);
 };
 
 /**
