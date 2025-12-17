@@ -13,24 +13,12 @@ import {
 import { LuNotebookPen, LuAlarmClock } from "react-icons/lu";
 import { db } from "../../firebase";
 import { TYPE_HEX, PRIORITY_HEX, getTypeHex } from "../../utils/colorMaps";
-import {
-  collection,
-  onSnapshot,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  addDoc,
-  deleteDoc,
-  getDocs,
-  query,
-  where,
-  serverTimestamp,
-} from "firebase/firestore";
+import { collection, onSnapshot, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, getDocs, query, where, serverTimestamp } from "firebase/firestore";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
 import StatCard from "../../components/StatCard";
 import DashboardSkeleton from "../../components/DashboardSkeleton";
+import toast from "react-hot-toast";
 function DashboardPage() {
   const navigate = useNavigate();
   const { user, userData } = useAuthContext(); // Get user data for personalization
@@ -112,7 +100,7 @@ function DashboardPage() {
     };
   }, []);
 
-  // Load notes for this SuperAdmin from dedicated notes collection (notes by userUid)
+  // Load notes for this Admin from dedicated notes collection (notes/{uid})
   useEffect(() => {
     const uid = userData?.uid || user?.uid;
     if (!uid) return;
@@ -862,9 +850,9 @@ function DashboardPage() {
                     Quick Reminders
                   </div>
                   <ul className="space-y-1 text-gray-600">
-                    <li>• Review at-risk projects today.</li>
-                    <li>• Check upcoming client meetings.</li>
-                    <li>• Follow up on overdue tasks.</li>
+                    <li>• Review active projects and deadlines.</li>
+                    <li>• Check resource allocation issues.</li>
+                    <li>• Follow up on pending approvals.</li>
                   </ul>
                 </div>
               )}
@@ -885,7 +873,11 @@ function DashboardPage() {
                           const trimmed = noteInput.trim();
                           const activeUid = userData?.uid || user?.uid;
                           const activeEmail = userData?.email || user?.email || "";
-                          if (!trimmed || !activeUid) return;
+                          if (!trimmed) return;
+                          if (!activeUid) {
+                            toast.error("User not ready. Please wait a moment and try again.");
+                            return;
+                          }
 
                           try {
                             if (editingNoteId) {
@@ -938,6 +930,7 @@ function DashboardPage() {
                             setEditingNoteId(null);
                           } catch (e) {
                             console.error("Failed to save note", e);
+                            toast.error("Failed to save note");
                           }
                         }}
                         className="px-2 py-1 rounded-md bg-indigo-600 text-white text-[10px] font-medium hover:bg-indigo-700 disabled:opacity-50"
@@ -954,9 +947,11 @@ function DashboardPage() {
                     className="w-full border border-gray-200 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="Write a quick note..."
                   />
-                  {notes.length > 0 && (
-                    <div className="mt-3 border-t border-gray-100 pt-2 max-h-40 overflow-y-auto space-y-2">
-                      {notes.map((note) => (
+                  <div className="mt-3 border-t border-gray-100 pt-2 max-h-40 overflow-y-auto space-y-2">
+                    {notes.length === 0 ? (
+                      <div className="text-xs text-gray-400">No saved notes yet.</div>
+                    ) : (
+                      notes.map((note) => (
                         <div
                           key={note.id}
                           className="group flex items-start justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-2 py-1.5"
@@ -993,32 +988,30 @@ function DashboardPage() {
                             >
                               <FaThumbtack className="h-3 w-3" />
                             </button>
-                            <p className="text-xs text-gray-700 leading-snug whitespace-pre-wrap break-all flex-1">
+                            <div className="text-xs text-gray-700 leading-snug whitespace-pre-wrap break-all flex-1">
                               {note.text}
-                            </p>
+                            </div>
                           </div>
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              onClick={() => {
-                                setNoteInput(note.text);
-                                setEditingNoteId(note.id);
-                              }}
                               className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-800"
                               title="Edit note"
+                              onClick={() => {
+                                setEditingNoteId(note.id);
+                                setNoteInput(note.text);
+                              }}
                             >
                               <span className="sr-only">Edit</span>
-                              <svg
-                                className="h-3 w-3"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                              >
+                              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793z" />
                                 <path d="M11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                               </svg>
                             </button>
                             <button
                               type="button"
+                              className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-red-600"
+                              title="Delete note"
                               onClick={async () => {
                                 const activeUid = userData?.uid || user?.uid;
                                 if (!activeUid) return;
@@ -1033,15 +1026,9 @@ function DashboardPage() {
                                   console.error("Failed to delete note", e);
                                 }
                               }}
-                              className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-red-600"
-                              title="Delete note"
                             >
                               <span className="sr-only">Delete</span>
-                              <svg
-                                className="h-3 w-3"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                              >
+                              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                                 <path
                                   fillRule="evenodd"
                                   d="M6 8a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1z"
@@ -1052,9 +1039,10 @@ function DashboardPage() {
                             </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      ))
+                    )}
+                  </div>
+                 
                 </div>
               )}
             </div>

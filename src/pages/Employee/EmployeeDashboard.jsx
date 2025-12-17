@@ -7,6 +7,9 @@ import {
   updateDoc,
   doc,
   serverTimestamp,
+  addDoc,
+  deleteDoc,
+  getDocs,
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuthContext } from "../../context/useAuthContext";
@@ -28,7 +31,10 @@ import {
   FaCalendarAlt,
   FaFileAlt,
   FaBell,
+  FaStickyNote,
+  FaThumbtack,
 } from "react-icons/fa";
+import { LuNotebookPen } from "react-icons/lu";
 import toast from "react-hot-toast";
 
 const EmployeeDashboard = () => {
@@ -68,6 +74,45 @@ const EmployeeDashboard = () => {
   const notificationRef = useRef(null);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [reminderTask, setReminderTask] = useState(null);
+  const [showQuickReminderMenu, setShowQuickReminderMenu] = useState(false);
+  const [showQuickNotesMenu, setShowQuickNotesMenu] = useState(false);
+  const [showQuickActionsMenu, setShowQuickActionsMenu] = useState(false);
+  const [quickNoteDraft, setQuickNoteDraft] = useState("");
+  const [quickNotes, setQuickNotes] = useState([]);
+  const [editingQuickNoteId, setEditingQuickNoteId] = useState(null);
+
+  // Load employee quick notes from top-level notes collection (one doc per note)
+  useEffect(() => {
+    if (!user?.uid) return;
+    const q = query(collection(db, "notes"), where("userUid", "==", user.uid));
+    const load = async () => {
+      try {
+        const snap = await getDocs(q);
+        const items = snap.docs.map((d) => {
+          const data = d.data() || {};
+          return {
+            id: d.id,
+            text: data.bodyText || data.text || data.title || "",
+            isPinned: data.isPinned === true,
+            createdAt: data.createdAt || null,
+            updatedAt: data.updatedAt || null,
+          };
+        });
+        const sorted = [...items].sort((a, b) => {
+          if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+          const at = (a.updatedAt?.toMillis?.() || (a.updatedAt?.seconds ? a.updatedAt.seconds * 1000 : 0) || 0) ||
+            (a.createdAt?.toMillis?.() || (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0) || 0);
+          const bt = (b.updatedAt?.toMillis?.() || (b.updatedAt?.seconds ? b.updatedAt.seconds * 1000 : 0) || 0) ||
+            (b.createdAt?.toMillis?.() || (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0) || 0);
+          return bt - at;
+        });
+        setQuickNotes(sorted);
+      } catch (e) {
+        console.error("Failed to load quick notes", e);
+      }
+    };
+    load();
+  }, [user?.uid]);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -568,82 +613,228 @@ ${todayTasks.length > 0
             description="Overview of your tasks and activities"
           />
         </div>
-        <div className="relative" ref={notificationRef}>
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <FaBell className="h-6 w-6" />
-            {/* Notification Badge */}
-            {notifications.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {notifications.length > 9 ? "9+" : notifications.length}
-              </span>
-            )}
-          </button>
-
-          {/* Notifications Dropdown */}
-          {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-              <div className="p-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Notifications
-                </h3>
+        <div className="flex items-center gap-2" ref={notificationRef}>
+          <div className="relative flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                setShowQuickActionsMenu((v) => !v);
+                setShowQuickReminderMenu(false);
+                setShowQuickNotesMenu(false);
+              }}
+              className="p-2 rounded-full hover:bg-gray-100 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              title="Quick actions"
+            >
+              <LuNotebookPen className="h-4 w-4" />
+            </button>
+            {showQuickActionsMenu && (
+              <div className="absolute right-0 top-9 z-30 w-40 rounded-lg bg-white shadow-lg border border-gray-200 text-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowQuickReminderMenu(true);
+                    setShowQuickNotesMenu(false);
+                    setShowQuickActionsMenu(false);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50 text-gray-700"
+                >
+                  Reminders
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowQuickNotesMenu(true);
+                    setShowQuickReminderMenu(false);
+                    setShowQuickActionsMenu(false);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50 text-gray-700 border-t border-gray-100"
+                >
+                  Notes
+                </button>
               </div>
-              <div className="max-h-96 overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500">
-                    <FaBell className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                    <p>No new notifications</p>
+            )}
+
+            {showQuickReminderMenu && (
+              <div className="absolute right-0 top-11 z-20 w-64 rounded-lg bg-white shadow-lg border border-gray-200 p-3 text-sm">
+                <div className="font-semibold mb-2 text-gray-800">
+                  Quick Reminders
+                </div>
+                <ul className="space-y-1 text-gray-600">
+                  <li>• Check today's tasks.</li>
+                  <li>• Review overdue items.</li>
+                  <li>• Plan tomorrow's priorities.</li>
+                </ul>
+              </div>
+            )}
+
+            {showQuickNotesMenu && (
+              <div className="absolute right-0 top-11 z-20 w-72 rounded-lg bg-white shadow-lg border border-gray-200 p-3 text-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-semibold text-gray-900">Quick Notes</div>
+                  <div className="flex items-center gap-2">
+                    {quickNotes.length > 0 && (
+                      <span className="text-xs text-gray-400">{quickNotes.length} saved</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const value = quickNoteDraft.trim();
+                        if (!value || !user?.uid) return;
+                        try {
+                          if (editingQuickNoteId) {
+                            await updateDoc(doc(db, "notes", editingQuickNoteId), {
+                              title: value,
+                              bodyText: value,
+                              updatedAt: serverTimestamp(),
+                            });
+                          } else {
+                            await addDoc(collection(db, "notes"), {
+                              title: value,
+                              bodyText: value,
+                              category: "General",
+                              color: "Yellow",
+                              isPinned: false,
+                              userUid: user.uid,
+                              userEmail: user?.email || "",
+                              createdAt: serverTimestamp(),
+                              updatedAt: serverTimestamp(),
+                            });
+                          }
+
+                          // Reload notes for this user
+                          const q = query(collection(db, "notes"), where("userUid", "==", user.uid));
+                          const snap = await getDocs(q);
+                          const items = snap.docs.map((d) => {
+                            const data = d.data() || {};
+                            return {
+                              id: d.id,
+                              text: data.bodyText || data.text || data.title || "",
+                              isPinned: data.isPinned === true,
+                              createdAt: data.createdAt || null,
+                              updatedAt: data.updatedAt || null,
+                            };
+                          });
+                          const sorted = [...items].sort((a, b) => {
+                            if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+                            const at = (a.updatedAt?.toMillis?.() || (a.updatedAt?.seconds ? a.updatedAt.seconds * 1000 : 0) || 0) ||
+                              (a.createdAt?.toMillis?.() || (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0) || 0);
+                            const bt = (b.updatedAt?.toMillis?.() || (b.updatedAt?.seconds ? b.updatedAt.seconds * 1000 : 0) || 0) ||
+                              (b.createdAt?.toMillis?.() || (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0) || 0);
+                            return bt - at;
+                          });
+                          setQuickNotes(sorted);
+                          setQuickNoteDraft("");
+                          setEditingQuickNoteId(null);
+                        } catch (e) {
+                          console.error("Failed to save quick note", e);
+                        }
+                      }}
+                      className="px-2 py-1 rounded-md bg-indigo-600 text-white text-[10px] font-medium hover:bg-indigo-700 disabled:opacity-50"
+                      disabled={!quickNoteDraft.trim()}
+                    >
+                      {editingQuickNoteId ? "Update" : "Save"}
+                    </button>
                   </div>
-                ) : (
-                  <div className="divide-y divide-gray-100">
-                    {notifications.map((notification) => (
+                </div>
+                <textarea
+                  rows={3}
+                  className="w-full border border-gray-200 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Write a note..."
+                  value={quickNoteDraft}
+                  onChange={(e) => setQuickNoteDraft(e.target.value)}
+                />
+                <div className="mt-1 text-xs text-gray-400">
+                  {editingQuickNoteId ? "Editing existing note" : "Saved to your account"}
+                </div>
+
+                {quickNotes.length > 0 && (
+                  <div className="mt-3 border-t border-gray-100 pt-2 max-h-40 overflow-y-auto space-y-2">
+                    {quickNotes.map((note) => (
                       <div
-                        key={notification.id}
-                        className="p-4 hover:bg-gray-50 transition-colors cursor-pointer relative group"
-                        onClick={() => handleNotificationClick(notification)}
+                        key={note.id}
+                        className="group flex items-start justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-2 py-1.5"
                       >
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0">
-                            {notification.type === "task" && (
-                              <FaTasks className="h-4 w-4 text-blue-500 mt-1" />
-                            )}
-                            {notification.type === "overdue" && (
-                              <FaExclamationTriangle className="h-4 w-4 text-red-500 mt-1" />
-                            )}
-                            {notification.type === "reminder" && (
-                              <FaBell className="h-4 w-4 text-indigo-500 mt-1" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0 pr-8">
-                            <p className="text-sm font-medium text-gray-900 hover:text-indigo-600 transition-colors">
-                              {notification.title}
-                            </p>
-                            <p className="text-sm text-gray-600 mt-1">
-                              {notification.message}
-                            </p>
-                          </div>
-                          {/* Individual Remove Button - For all notifications */}
+                        <p className="text-xs text-gray-700 leading-snug flex-1 whitespace-pre-wrap break-all">
+                          {note.isPinned && (
+                            <span className="inline-flex items-center gap-1 text-amber-600 mr-1 align-top">
+                              <FaThumbtack className="h-3 w-3" />
+                            </span>
+                          )}
+                          {note.text}
+                        </p>
+                        <div className="flex items-center gap-1">
                           <button
-                            onClick={(e) =>
-                              removeNotification(notification.id, e)
-                            }
-                            className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100"
-                            title="Remove notification"
+                            type="button"
+                            onClick={async () => {
+                              const nextPinned = !note.isPinned;
+                              try {
+                                await updateDoc(doc(db, "notes", note.id), {
+                                  isPinned: nextPinned,
+                                  updatedAt: serverTimestamp(),
+                                });
+                                setQuickNotes((prev) => {
+                                  const updated = prev.map((n) =>
+                                    n.id === note.id ? { ...n, isPinned: nextPinned } : n
+                                  );
+                                  return [...updated].sort((a, b) => {
+                                    if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+                                    const at = (a.updatedAt?.toMillis?.() || (a.updatedAt?.seconds ? a.updatedAt.seconds * 1000 : 0) || 0) ||
+                                      (a.createdAt?.toMillis?.() || (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0) || 0);
+                                    const bt = (b.updatedAt?.toMillis?.() || (b.updatedAt?.seconds ? b.updatedAt.seconds * 1000 : 0) || 0) ||
+                                      (b.createdAt?.toMillis?.() || (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0) || 0);
+                                    return bt - at;
+                                  });
+                                });
+                              } catch (err) {
+                                console.error("Failed to toggle pin", err);
+                              }
+                            }}
+                            className={`p-1 rounded hover:bg-gray-200 ${note.isPinned ? "text-amber-600" : "text-gray-400 hover:text-gray-600"}`}
+                            title={note.isPinned ? "Unpin note" : "Pin note"}
                           >
-                            <svg
-                              className="w-4 h-4 text-gray-400 hover:text-gray-600"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
+                            <FaThumbtack className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setQuickNoteDraft(note.text);
+                              setEditingQuickNoteId(note.id);
+                            }}
+                            className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-800"
+                            title="Edit note"
+                          >
+                            <span className="sr-only">Edit</span>
+                            <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793z" />
+                              <path d="M11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!user?.uid) return;
+                              try {
+                                await deleteDoc(doc(db, "notes", note.id));
+                                setQuickNotes((prev) => prev.filter((n) => n.id !== note.id));
+                                if (editingQuickNoteId === note.id) {
+                                  setEditingQuickNoteId(null);
+                                  setQuickNoteDraft("");
+                                }
+                              } catch (e) {
+                                console.error("Failed to delete quick note", e);
+                              }
+                            }}
+                            className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-red-600"
+                            title="Delete note"
+                          >
+                            <span className="sr-only">Delete</span>
+                            <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                               <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 18L18 6M6 6l12 12"
+                                fillRule="evenodd"
+                                d="M6 8a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1z"
+                                clipRule="evenodd"
                               />
+                              <path d="M4 5h12v2H4z" />
                             </svg>
                           </button>
                         </div>
@@ -652,18 +843,106 @@ ${todayTasks.length > 0
                   </div>
                 )}
               </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <FaBell className="h-6 w-6" />
+              {/* Notification Badge */}
               {notifications.length > 0 && (
-                <div className="p-3 border-t border-gray-200">
-                  <button
-                    onClick={clearAllNotifications}
-                    className="w-full text-sm text-indigo-600 hover:text-indigo-800 font-medium hover:bg-indigo-50 py-2 px-3 rounded-md transition-colors"
-                  >
-                    Clear All Notifications
-                  </button>
-                </div>
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {notifications.length > 9 ? "9+" : notifications.length}
+                </span>
               )}
-            </div>
-          )}
+            </button>
+
+            {/* Notifications Dropdown */}
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                <div className="p-4 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Notifications
+                  </h3>
+                </div>
+                <div className="max-h-96 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500">
+                      <FaBell className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                      <p>No new notifications</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-100">
+                      {notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className="p-4 hover:bg-gray-50 transition-colors cursor-pointer relative group"
+                          onClick={() => handleNotificationClick(notification)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0">
+                              {notification.type === "task" && (
+                                <FaTasks className="h-4 w-4 text-blue-500 mt-1" />
+                              )}
+                              {notification.type === "overdue" && (
+                                <FaExclamationTriangle className="h-4 w-4 text-red-500 mt-1" />
+                              )}
+                              {notification.type === "reminder" && (
+                                <FaBell className="h-4 w-4 text-indigo-500 mt-1" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0 pr-8">
+                              <p className="text-sm font-medium text-gray-900 hover:text-indigo-600 transition-colors">
+                                {notification.title}
+                              </p>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {notification.message}
+                              </p>
+                            </div>
+                            {/* Individual Remove Button - For all notifications */}
+                            <button
+                              onClick={(e) =>
+                                removeNotification(notification.id, e)
+                              }
+                              className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-200 transition-colors opacity-0 group-hover:opacity-100"
+                              title="Remove notification"
+                            >
+                              <svg
+                                className="w-4 h-4 text-gray-400 hover:text-gray-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {notifications.length > 0 && (
+                  <div className="p-3 border-t border-gray-200">
+                    <button
+                      onClick={clearAllNotifications}
+                      className="w-full text-sm text-indigo-600 hover:text-indigo-800 font-medium hover:bg-indigo-50 py-2 px-3 rounded-md transition-colors"
+                    >
+                      Clear All Notifications
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

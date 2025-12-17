@@ -13,6 +13,7 @@ import {
     FaTrash,
     FaBell,
     FaUserFriends,
+    FaUpload,
 } from "react-icons/fa";
 import { MdReplayCircleFilled } from "react-icons/md";
 import { getPriorityBadge, getStatusBadge } from "../../utils/colorMaps";
@@ -27,6 +28,7 @@ const TaskRow = ({
     onEdit,
     onDelete,
     onSetReminder,
+    onUpload,
     showActions = true,
 }) => {
     return (
@@ -178,48 +180,90 @@ const TaskRow = ({
             </div>
 
             {/* Col 8: Actions */}
-            {
-                showActions && (
-                    <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {onSetReminder && (
+            {showActions && (
+                <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {onUpload && (
+                        <div className="relative group">
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    onSetReminder(task);
+                                    onUpload(task);
                                 }}
-                                className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors"
-                                title="Set Reminder"
-                            >
-                                <FaBell />
-                            </button>
-                        )}
-                        {onEdit && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onEdit(task);
+                                className="p-1.5 text-blue-600 bg-blue-100 hover:bg-blue-200 rounded-full transition-colors flex items-center justify-center w-8 h-8"
+                                aria-label="Upload Document"
+                                onMouseEnter={(e) => {
+                                    const tooltip = e.currentTarget.nextElementSibling;
+                                    tooltip.classList.remove('invisible', 'opacity-0');
+                                    tooltip.classList.add('opacity-100');
+                                    
+                                    // Clear any existing timeout
+                                    if (tooltip.timeoutId) {
+                                        clearTimeout(tooltip.timeoutId);
+                                    }
+                                    
+                                    // Hide after 3 seconds
+                                    tooltip.timeoutId = setTimeout(() => {
+                                        tooltip.classList.add('opacity-0');
+                                        tooltip.classList.remove('opacity-100');
+                                    }, 3000);
                                 }}
-                                className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
-                                title="Edit Task"
-                            >
-                                <FaEdit />
-                            </button>
-                        )}
-                        {onDelete && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDelete(task);
+                                onMouseLeave={(e) => {
+                                    const tooltip = e.currentTarget.nextElementSibling;
+                                    tooltip.classList.add('opacity-0');
+                                    tooltip.classList.remove('opacity-100');
+                                    
+                                    // Clear any existing timeout
+                                    if (tooltip.timeoutId) {
+                                        clearTimeout(tooltip.timeoutId);
+                                    }
                                 }}
-                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                title="Delete Task"
                             >
-                                <FaTrash />
+                                <FaUpload className="text-sm" />
                             </button>
-                        )}
-                    </div>
-                )
-            }
+                            <div className="invisible absolute z-50 w-30 left-1/2 transform -translate-x-1/2 -translate-y-full top-0 mt-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 transition-opacity duration-200 shadow-lg">
+                                Upload Document
+                                <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-t-gray-800 border-l-transparent border-r-transparent"></div>
+                            </div>
+                        </div>
+                    )}
+                    {onEdit && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onEdit(task);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                            title="Edit Task"
+                        >
+                            <FaEdit />
+                        </button>
+                    )}
+                    {onSetReminder && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onSetReminder(task);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors"
+                            title="Set Reminder"
+                        >
+                            <FaBell />
+                        </button>
+                    )}
+                    {onDelete && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(task);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                            title="Delete Task"
+                        >
+                            <FaTrash />
+                        </button>
+                    )}
+                </div>
+            )}
         </div >
     );
 };

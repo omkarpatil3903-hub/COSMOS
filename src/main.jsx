@@ -12,29 +12,17 @@ import "./index.css";
 // Import all your components
 import LoginPage from "./pages/LoginPage";
 import MainLayout from "./components/layout/MainLayout";
+import AdminLayout from "./components/layout/AdminLayout.jsx";
+import ClientLayout from "./components/layout/ClientLayout";
+import EmployeeLayout from "./components/layout/EmployeeLayout";
+
+import Unauthorized from "./pages/Unauthorized";
 import ProtectedRoute from "./components/ProtectedRoute";
+
 import DashboardPage from "./pages/SuperAdmin/DashboardPage.jsx";
 import ReportsPage from "./pages/SuperAdmin/ReportsPage.jsx";
-import ClientLayout from "./components/layout/ClientLayout";
-import ClientDashboard from "./pages/Client/ClientDashboard.jsx";
-import ClientProjects from "./pages/Client/ClientProjects.jsx";
-import ClientTasks from "./pages/Client/ClientTasks.jsx";
-import ClientCalendar from "./pages/Client/ClientCalendar.jsx";
-import ClientReports from "./pages/Client/ClientReports.jsx";
-import EmployeeLayout from "./components/layout/EmployeeLayout";
-import EmployeeDashboard from "./pages/Employee/EmployeeDashboard.jsx";
-import EmployeeTasks from "./pages/Employee/EmployeeTasks.jsx";
-import EmployeeProjects from "./pages/Employee/EmployeeProjects.jsx";
-import EmployeeCalendar from "./pages/Employee/EmployeeCalendar.jsx";
-import EmployeeReports from "./pages/Employee/EmployeeReports.jsx";
 import Documents from "./pages/SuperAdmin/Documents.jsx";
-import EmployeeDocuments from "./pages/Employee/EmployeeDocuments.jsx";
-import ClientDocuments from "./pages/Client/ClientDocuments.jsx";
 import ManageDocument from "./pages/SuperAdmin/ManageDocument.jsx";
-import ClientManageDocument from "./pages/Client/ClientManageDocument.jsx";
-import EmployeeManageDocument from "./pages/Employee/EmployeeManageDocument.jsx";
-import Unauthorized from "./pages/Unauthorized";
-
 import ManageResources from "./pages/SuperAdmin/ManageResources.jsx";
 import ManageClients from "./pages/SuperAdmin/ManageClients.jsx";
 import ManageProjects from "./pages/SuperAdmin/ManageProjects.jsx";
@@ -43,16 +31,48 @@ import MomGeneratorPro from "./pages/SuperAdmin/MomGeneratorPro.jsx";
 import Mom from "./pages/Mom";
 import TaskManagment from "./pages/SuperAdmin/TaskManagment.jsx";
 import Calendar from "./pages/SuperAdmin/Calendar.jsx";
-import EmployeeExpenses from "./pages/Employee/EmployeeExpenses.jsx";
-
-import ExpenseManagement from "./pages/SuperAdmin/ExpenseManagement.jsx";
-
 import Settings from "./pages/SuperAdmin/Settings.jsx";
 import AddHierarchy from "./pages/SuperAdmin/AddHierarchy.jsx";
 import ProjectSettings from "./pages/SuperAdmin/ProjectSettings.jsx"; // TODO: Verify path
 import StatusSettings from "./pages/SuperAdmin/StatusSettings.jsx"; // TODO: Verify path
 import ManagerLayout from "./components/layout/ManagerLayout";
 import KnowledgeProjectDetail from "./pages/SuperAdmin/KnowledgeProjectDetail.jsx";
+import ExpenseManagement from "./pages/SuperAdmin/ExpenseManagement.jsx";
+
+
+import ClientDashboard from "./pages/Client/ClientDashboard.jsx";
+import ClientProjects from "./pages/Client/ClientProjects.jsx";
+import ClientTasks from "./pages/Client/ClientTasks.jsx";
+import ClientCalendar from "./pages/Client/ClientCalendar.jsx";
+import ClientReports from "./pages/Client/ClientReports.jsx";
+import ClientDocuments from "./pages/Client/ClientDocuments.jsx";
+import ClientManageDocument from "./pages/Client/ClientManageDocument.jsx";
+
+import EmployeeDashboard from "./pages/Employee/EmployeeDashboard.jsx";
+import EmployeeTasks from "./pages/Employee/EmployeeTasks.jsx";
+import EmployeeProjects from "./pages/Employee/EmployeeProjects.jsx";
+import EmployeeCalendar from "./pages/Employee/EmployeeCalendar.jsx";
+import EmployeeReports from "./pages/Employee/EmployeeReports.jsx";
+import EmployeeDocuments from "./pages/Employee/EmployeeDocuments.jsx";
+import EmployeeManageDocument from "./pages/Employee/EmployeeManageDocument.jsx";
+import EmployeeExpenses from "./pages/Employee/EmployeeExpenses.jsx";
+
+import AdminDashboardPage from "./pages/Admin/AdminDashboardPage.jsx";
+import AdminReportsPage from "./pages/Admin/AdminReportsPage.jsx";
+import AdminExpenseManagement from "./pages/Admin/AdminExpenseManagement.jsx";
+import AdminAddHierarchy from "./pages/Admin/AdminAddHierarchy.jsx";
+import AdminProjectSettings from "./pages/Admin/AdminProjectSettings.jsx";
+import AdminStatusSettings from "./pages/Admin/AdminStatusSettings.jsx";
+import AdminManageProjects from "./pages/Admin/AdminManageProjects.jsx";
+import AdminManageDocument from "./pages/Admin/AdminManageDocument.jsx";
+import AdminTaskManagment from "./pages/Admin/AdminTaskManagment.jsx";
+import AdminCalendar from "./pages/Admin/AdminCalendar.jsx";
+import AdminMomGeneratorPro from "./pages/Admin/AdminMomGeneratorPro.jsx";
+import AdminDocuments from "./pages/Admin/AdminDocuments.jsx";
+import AdminManageClients from "./pages/Admin/AdminManageClients.jsx";
+import AdminManageResources from "./pages/Admin/AdminManageResources.jsx";
+import AdminSettings from "./pages/Admin/AdminSettings.jsx";
+import AdminKnowledgeProjectDetail from "./pages/Admin/AdminKnowledgeProjectDetail.jsx";
 
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -102,11 +122,44 @@ const router = createBrowserRouter([
     ],
   },
 
+
+  {
+  path: "/admin",
+  element: (
+    <ProtectedRoute allowedRoles={["admin"]}>
+      <AdminLayout />
+    </ProtectedRoute>
+  ),
+  children: [
+    { path: "/admin", element: <AdminDashboardPage /> },
+    { path: "/admin/manage-resources", element: <AdminManageResources /> },
+    { path: "/admin/manage-clients", element: <AdminManageClients /> },
+    { path: "/admin/manage-projects", element: <AdminManageProjects /> },
+    { path: "/admin/knowledge-management", element: <AdminDocuments /> },
+    { path: "/admin/knowledge-management/:projectName", element: <AdminKnowledgeProjectDetail /> },
+    { path: "/admin/manage-knowledge", element: <AdminManageDocument /> },
+    { path: "/admin/mom-pro", element: <AdminMomGeneratorPro /> },
+    { path: "/admin/task-management", element: <AdminTaskManagment /> },
+    { path: "/admin/reports", element: <AdminReportsPage /> },
+    { path: "/admin/expenses", element: <AdminExpenseManagement /> },
+    { path: "/admin/calendar", element: <AdminCalendar /> },
+    {
+      path: "/admin/settings",
+      element: <AdminSettings />,
+      children: [
+        { index: true, element: <Navigate to="add-hierarchy" replace /> },
+        { path: "add-hierarchy", element: <AdminAddHierarchy /> },
+        { path: "project-settings", element: <AdminProjectSettings /> },
+        { path: "status-settings", element: <AdminStatusSettings /> },
+      ],
+    },
+  ],
+},
   // Project Manager Portal Routes (using "admin" role)
   {
     path: "/manager",
     element: (
-      <ProtectedRoute allowedRoles={["admin"]}>
+      <ProtectedRoute allowedRoles={["manager"]}>
         <ManagerLayout />
       </ProtectedRoute>
     ),

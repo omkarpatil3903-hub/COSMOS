@@ -38,6 +38,7 @@ import {
   FaRedo,
   FaChartBar,
 } from "react-icons/fa";
+import TaskGroup from "../../components/TaskManagment/TaskGroup";
 
 // Circular Progress Component
 const CircularProgress = ({ percentage, size = 16, strokeWidth = 2 }) => {
@@ -98,6 +99,13 @@ export default function ClientTasks() {
   const [uploadingImages, setUploadingImages] = useState({});
   const [showImageUploadModal, setShowImageUploadModal] = useState(false);
   const [selectedTaskForUpload, setSelectedTaskForUpload] = useState(null);
+  // Dynamic grouping support like Task Management
+  const [users, setUsers] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [statusOptions, setStatusOptions] = useState([]);
+  const [statusColorMap, setStatusColorMap] = useState({});
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   // Handle navigation state from dashboard
   useEffect(() => {
@@ -134,6 +142,114 @@ export default function ClientTasks() {
 
     return () => unsub();
   }, [uid]);
+
+  // Load dynamic statuses and colors similar to Task Management
+  useEffect(() => {
+    const unsub = onSnapshot(
+      doc(db, "settings", "task-statuses"),
+      (snap) => {
+        const data = snap.data() || {};
+        const arr = Array.isArray(data.statuses) ? data.statuses : [];
+        const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const list = [];
+        const colorMap = {};
+        arr.forEach((item) => {
+          if (typeof item === "string") {
+            const n = item;
+            if (n) list.push(n);
+          } else if (item) {
+            const n = item?.name || item?.label || item?.value || "";
+            if (n) {
+              list.push(n);
+              const c = (item?.color || "").toString().trim();
+              if (c) colorMap[norm(n)] = c;
+            }
+          }
+        });
+        setStatusOptions(list);
+        setStatusColorMap(colorMap);
+      },
+      () => {
+        setStatusOptions([]);
+        setStatusColorMap({});
+      }
+    );
+    return () => unsub();
+  }, []);
+
+  // Fast lookup maps for assignee resolution
+  const userMap = useMemo(() => {
+    return users.reduce((acc, u) => ({ ...acc, [u.id]: u }), {});
+  }, [users]);
+  const clientMap = useMemo(() => {
+    return clients.reduce((acc, c) => ({ ...acc, [c.id]: c }), {});
+  }, [clients]);
+
+  const resolveAssignees = (task) => {
+    const list = Array.isArray(task.assignees) ? task.assignees : [];
+    const resolved = list
+      .map((a) => {
+        if (!a || !a.id) return null;
+        const person = a.type === "client" ? clientMap[a.id] : userMap[a.id];
+        const name = person?.name || person?.clientName || null;
+        const company = person?.companyName || null;
+        const role = person?.role || null;
+        return { type: a.type || "user", id: a.id, name, company, role };
+      })
+      .filter(Boolean);
+
+    if (resolved.length === 0 && task.assigneeId) {
+      const person = task.assigneeType === "client" ? clientMap[task.assigneeId] : userMap[task.assigneeId];
+      if (person) {
+        const name = person?.name || person?.clientName || null;
+        const company = person?.companyName || null;
+        const role = person?.role || null;
+        return [
+          {
+            type: task.assigneeType || "user",
+            id: task.assigneeId,
+            name,
+            company,
+            role,
+          },
+        ];
+      }
+    }
+    return resolved;
+  };
+
+  // Effective statuses like Task Management (configured first, plus extras)
+  const effectiveStatuses = useMemo(() => {
+    const configured = Array.isArray(statusOptions) ? statusOptions.filter(Boolean) : [];
+    const present = Array.from(new Set(tasks.map((t) => t.status).filter(Boolean)));
+    const has = new Set(configured.map((s) => String(s).toLowerCase()));
+    const extras = present.filter((s) => !has.has(String(s).toLowerCase()));
+    return [...configured, ...extras];
+  }, [statusOptions, tasks]);
+
+  // Selection toggle for TaskRow
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Load users/clients to resolve assignee names for TaskGroup rows
+  useEffect(() => {
+    const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
+      setUsers(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
+    });
+    const unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
+      setClients(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
+    });
+    return () => {
+      unsubUsers();
+      unsubClients();
+    };
+  }, []);
 
   const commitProgress = async (taskId) => {
     try {
@@ -459,6 +575,19 @@ export default function ClientTasks() {
   const completedTasks = filteredTasks.filter((t) => t.status === "Done");
   const activeTasks = [...todoTasks, ...inProgressTasks];
 
+  // Today's tasks group (server-date based), exclude Done
+  const todaysTasks = useMemo(() => {
+    const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    return filteredTasks.filter((t) => {
+      const dueStr = t?.dueDate
+        ? (t.dueDate?.toDate
+            ? t.dueDate.toDate().toISOString().slice(0, 10)
+            : String(t.dueDate).slice(0, 10))
+        : "";
+      return norm(t.status) !== "done" && dueStr && todayStr && dueStr === todayStr;
+    });
+  }, [filteredTasks, todayStr]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -596,13 +725,13 @@ export default function ClientTasks() {
       )}
 
       <select
-        value={task.status || "To-Do"}
+        value={task.status || (effectiveStatuses[0] || "To-Do")}
         onChange={(e) => handleStatusChange(task.id, e.target.value)}
         className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >
-        <option value="To-Do">To-Do</option>
-        <option value="In Progress">In Progress</option>
-        <option value="Done">Done</option>
+        {effectiveStatuses.map((s) => (
+          <option key={s} value={s}>{s}</option>
+        ))}
       </select>
     </div>
   );
@@ -686,9 +815,9 @@ export default function ClientTasks() {
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
               >
                 <option value="All Status">All Status</option>
-                <option value="To-Do">To-Do</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Done">Done</option>
+                {effectiveStatuses.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
               </select>
 
               <select
@@ -881,15 +1010,15 @@ export default function ClientTasks() {
 
                   {/* Status Dropdown */}
                   <select
-                    value={task.status || "To-Do"}
+                    value={task.status || (effectiveStatuses[0] || "To-Do")}
                     onChange={(e) =>
                       handleStatusChange(task.id, e.target.value)
                     }
                     className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="To-Do">To-Do</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Done">Done</option>
+                    {effectiveStatuses.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
                   </select>
                 </div>
               ))}
@@ -1049,15 +1178,15 @@ export default function ClientTasks() {
                   </div>
 
                   <select
-                    value={task.status || "In Progress"}
+                    value={task.status || (effectiveStatuses[0] || "To-Do")}
                     onChange={(e) =>
                       handleStatusChange(task.id, e.target.value)
                     }
                     className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="To-Do">To-Do</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Done">Done</option>
+                    {effectiveStatuses.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
                   </select>
                 </div>
               ))}
@@ -1186,15 +1315,15 @@ export default function ClientTasks() {
                       View Task Details
                     </button>
                     <select
-                      value={task.status || "Done"}
+                      value={task.status || (effectiveStatuses[0] || "To-Do")}
                       onChange={(e) =>
                         handleStatusChange(task.id, e.target.value)
                       }
                       className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
-                      <option value="To-Do">To-Do</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Done">Done</option>
+                      {effectiveStatuses.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -1209,6 +1338,54 @@ export default function ClientTasks() {
         </div>
       ) : (
         <Card>
+          {todaysTasks.length > 0 && (
+            <TaskGroup
+              title="Today's Tasks"
+              tasks={todaysTasks}
+              colorClass="bg-red-600"
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
+              onView={handleViewTaskDetails}
+              onUpload={(task) => handleOpenImageUpload(task.id)}
+              resolveAssignees={resolveAssignees}
+              showActions={true}
+              hideHeaderActions={true}
+            />
+          )}
+
+          {effectiveStatuses.map((s, idx) => {
+            const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            const tasksForStatus = filteredTasks.filter((t) => norm(t.status) === norm(s));
+            if (!tasksForStatus.length) return null;
+            const palette = [
+              "bg-blue-500",
+              "bg-gray-500",
+              "bg-emerald-500",
+              "bg-purple-500",
+              "bg-rose-500",
+              "bg-teal-500",
+              "bg-amber-500",
+            ];
+            const colorClass = palette[idx % palette.length];
+            const hex = statusColorMap[norm(s)];
+            return (
+              <TaskGroup
+                key={`client-grp-${s}`}
+                title={s}
+                tasks={tasksForStatus}
+                colorClass={colorClass}
+                colorHex={hex || null}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onView={handleViewTaskDetails}
+                onUpload={(task) => handleOpenImageUpload(task.id)}
+                resolveAssignees={resolveAssignees}
+                showActions={true}
+                hideHeaderActions={true}
+              />
+            );
+          })}
+          {false && (
           <div className="space-y-6">
             <div>
               <div className="mb-3 flex items-center justify-between">
@@ -1422,15 +1599,15 @@ export default function ClientTasks() {
                             Status:
                           </label>
                           <select
-                            value={task.status || "To-Do"}
+                            value={task.status || (effectiveStatuses[0] || "To-Do")}
                             onChange={(e) =>
                               handleStatusChange(task.id, e.target.value)
                             }
                             className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           >
-                            <option value="To-Do">To-Do</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Done">Done</option>
+                            {effectiveStatuses.map((s) => (
+                              <option key={s} value={s}>{s}</option>
+                            ))}
                           </select>
                         </div>
                       </div>
@@ -1561,6 +1738,7 @@ export default function ClientTasks() {
               )}
             </div>
           </div>
+          )}
         </Card>
       )}
 
@@ -1743,15 +1921,15 @@ export default function ClientTasks() {
                   Change Status
                 </label>
                 <select
-                  value={selectedTaskForDetails.status || "To-Do"}
+                  value={selectedTaskForDetails.status || (effectiveStatuses[0] || "To-Do")}
                   onChange={(e) =>
                     handleTaskStatusChangeFromModal(e.target.value)
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  <option value="To-Do">To-Do</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Done">Done</option>
+                  {effectiveStatuses.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
                 </select>
                 <p className="mt-1 text-xs text-gray-500">
                   Changing the status will move the task to the appropriate

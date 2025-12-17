@@ -730,7 +730,7 @@ const TaskViewModal = ({
                   onClick={() => canEdit && setIsEditingDesc(true)}
                 >
                   {task.description ? (
-                    <p className="whitespace-pre-wrap">{task.description}</p>
+                    <p className="whitespace-pre-wrap break-words">{task.description}</p>
                   ) : (
                     <span className="text-gray-400 italic">
                       No description provided. Click to add one.
