@@ -547,14 +547,22 @@ const EmployeeTasks = () => {
         const updateKey = `assigneeStatus.${user.uid}`;
         updates[`${updateKey}.status`] = newStatus;
 
+        // Also update root status for Admin visibility
+        updates.status = newStatus;
+
         if (newStatus === "In Progress") {
           updates[`${updateKey}.progressPercent`] = 0;
+          updates.progressPercent = 0;
         }
         if (newStatus !== "Done") {
           updates[`${updateKey}.completedAt`] = null;
           updates[`${updateKey}.completedBy`] = null;
           updates[`${updateKey}.progressPercent`] =
             newStatus === "In Progress" ? 0 : null;
+
+          updates.completedAt = null;
+          updates.completedBy = null;
+          updates.progressPercent = newStatus === "In Progress" ? 0 : null;
         }
       } else {
         // Self task
@@ -607,6 +615,13 @@ const EmployeeTasks = () => {
           [`${updateKey}.progressPercent`]: 100,
           [`${updateKey}.completedBy`]: user?.uid || "",
           [`${updateKey}.completionComment`]: comment || "",
+
+          // Also update root status for Admin visibility
+          status: "Done",
+          completedAt: serverTimestamp(),
+          progressPercent: 100,
+          completedBy: user?.uid || "",
+          completionComment: comment || "",
         });
       } else {
         await updateDoc(doc(db, col, completionTaskId), {
@@ -672,10 +687,17 @@ const EmployeeTasks = () => {
         const updateKey = `assigneeStatus.${user.uid}`;
         updateData[`${updateKey}.progressPercent`] = value;
 
+        // Also update root progress
+        updateData.progressPercent = value;
+
         if (value === 100) {
           updateData[`${updateKey}.status`] = "Done";
           updateData[`${updateKey}.completedAt`] = serverTimestamp();
           updateData[`${updateKey}.completedBy`] = user?.uid || "";
+
+          updateData.status = "Done";
+          updateData.completedAt = serverTimestamp();
+          updateData.completedBy = user?.uid || "";
         }
       } else {
         updateData = { progressPercent: value };
@@ -1408,6 +1430,7 @@ const EmployeeTasks = () => {
                         onEdit={handleEditTask}
                         onDelete={handleDeleteTask}
                         onSetReminder={handleSetReminder}
+                        onStatusChange={handleStatusChange}
                         resolveAssignees={resolveAssignees}
                         showActions={true}
                       />
@@ -1445,6 +1468,7 @@ const EmployeeTasks = () => {
                           onEdit={handleEditTask}
                           onDelete={handleDeleteTask}
                           onSetReminder={handleSetReminder}
+                          onStatusChange={handleStatusChange}
                           resolveAssignees={resolveAssignees}
                           showActions={true}
                         />
@@ -1465,6 +1489,7 @@ const EmployeeTasks = () => {
                         onView={(task) => setSelectedTask(task)}
                         onEdit={handleEditTask}
                         onSetReminder={handleSetReminder}
+                        onStatusChange={handleStatusChange}
                         showActions={true}
                         canDelete={false}
                         resolveAssignees={resolveAssignees}
@@ -1501,6 +1526,7 @@ const EmployeeTasks = () => {
                           onView={(task) => setSelectedTask(task)}
                           onEdit={handleEditTask}
                           onSetReminder={handleSetReminder}
+                          onStatusChange={handleStatusChange}
                           showActions={true}
                           canDelete={false}
                           resolveAssignees={resolveAssignees}

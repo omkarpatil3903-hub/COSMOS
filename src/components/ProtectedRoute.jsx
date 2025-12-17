@@ -26,8 +26,10 @@ function ProtectedRoute({ children, allowedRoles = [] }) {
   if (effectiveRole && allowedRoles.includes(effectiveRole)) return children;
 
   // Fallback for 'resource' role in routes (legacy support)
-  if (effectiveRole === "member" && allowedRoles.includes("resource")) return children;
-  if (effectiveRole === "resource" && allowedRoles.includes("member")) return children;
+  if (effectiveRole === "member" && allowedRoles.includes("resource"))
+    return children;
+  if (effectiveRole === "resource" && allowedRoles.includes("member"))
+    return children;
 
   // If user has the required role, allow access
   if (effectiveRole && allowedRoles.includes(effectiveRole)) return children;

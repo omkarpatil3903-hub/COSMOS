@@ -16,6 +16,7 @@ import {
     FaCamera
 } from "react-icons/fa";
 import Button from "../Button";
+import VoiceInput from "../Common/VoiceInput";
 
 const ClientFormModal = ({
     isOpen,
@@ -160,7 +161,7 @@ const ClientFormModal = ({
                                     <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                                         Company Name <span className="text-red-500">*</span>
                                     </label>
-                                    <input
+                                    <VoiceInput
                                         name="companyName"
                                         value={formData.companyName}
                                         onChange={handleChange}
@@ -173,7 +174,7 @@ const ClientFormModal = ({
                                     <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                                         Client Name <span className="text-red-500">*</span>
                                     </label>
-                                    <input
+                                    <VoiceInput
                                         name="clientName"
                                         value={formData.clientName}
                                         onChange={handleChange}
@@ -228,7 +229,7 @@ const ClientFormModal = ({
                                     <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                                         Type of Business <span className="text-red-500">*</span>
                                     </label>
-                                    <input
+                                    <VoiceInput
                                         name="typeOfBusiness"
                                         value={formData.typeOfBusiness}
                                         onChange={handleChange}
@@ -256,7 +257,8 @@ const ClientFormModal = ({
                                         <FaMapMarkerAlt className="text-gray-400 text-xs" />
                                         Address <span className="text-red-500">*</span>
                                     </label>
-                                    <textarea
+                                    <VoiceInput
+                                        as="textarea"
                                         name="address"
                                         value={formData.address}
                                         onChange={handleChange}

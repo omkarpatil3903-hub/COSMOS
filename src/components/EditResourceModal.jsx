@@ -12,6 +12,7 @@ import {
   FaCamera,
   FaEdit,
 } from "react-icons/fa";
+import VoiceInput from "./Common/VoiceInput";
 import Button from "./Button";
 import { db } from "../firebase";
 import { doc, onSnapshot } from "firebase/firestore";
@@ -213,8 +214,7 @@ function EditResourceModal({
                     <FaUser className="text-gray-400" />
                     Full Name <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <VoiceInput
                     value={formData.fullName}
                     placeholder="e.g. Priya Sharma"
                     onChange={(e) => {
@@ -226,8 +226,8 @@ function EditResourceModal({
                       }));
                     }}
                     className={`w-full rounded-lg border ${errors.fullName
-                        ? "border-red-500 focus:ring-red-100"
-                        : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
+                      ? "border-red-500 focus:ring-red-100"
+                      : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
                       } bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
                     required
                   />
@@ -257,8 +257,8 @@ function EditResourceModal({
                       }));
                     }}
                     className={`w-full rounded-lg border ${errors.email
-                        ? "border-red-500 focus:ring-red-100"
-                        : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
+                      ? "border-red-500 focus:ring-red-100"
+                      : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
                       } bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
                     required
                   />
@@ -291,8 +291,8 @@ function EditResourceModal({
                       }));
                     }}
                     className={`w-full rounded-lg border ${errors.mobile
-                        ? "border-red-500 focus:ring-red-100"
-                        : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
+                      ? "border-red-500 focus:ring-red-100"
+                      : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
                       } bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
                     required
                   />
@@ -431,8 +431,8 @@ function EditResourceModal({
                         }));
                       }}
                       className={`w-full rounded-lg border ${errors.password
-                          ? "border-red-500 focus:ring-red-100"
-                          : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
+                        ? "border-red-500 focus:ring-red-100"
+                        : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
                         } bg-white py-2.5 pl-4 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
                     />
                     <button

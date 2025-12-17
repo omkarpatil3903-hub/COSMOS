@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import ColorSwatchPicker from "../../components/ColorSwatchPicker";
 import { FaTimes, FaEdit, FaTrash, FaPlus, FaSearch, FaSave } from "react-icons/fa";
+import VoiceInput from "../../components/Common/VoiceInput";
 
 export default function StatusSettings() {
   const location = useLocation();
@@ -377,8 +378,7 @@ export default function StatusSettings() {
                     onChange={(e) => setColor(e.target.value)}
                     className="sr-only"
                   />
-                  <input
-                    type="text"
+                  <VoiceInput
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     required

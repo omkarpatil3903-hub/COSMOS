@@ -28,6 +28,7 @@ import {
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import toast from "react-hot-toast";
+import VoiceInput from "../../components/Common/VoiceInput";
 
 const statusColors = {
   Draft: "bg-gray-100 text-gray-700",
@@ -502,10 +503,9 @@ const EmployeeExpenses = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex flex-col items-center gap-2">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            statusColors[e.status] ||
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[e.status] ||
                             "bg-gray-100 text-gray-800"
-                          }`}
+                            }`}
                         >
                           {e.status || "Unknown"}
                         </span>
@@ -569,8 +569,7 @@ const EmployeeExpenses = () => {
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                       <FaTag />
                     </div>
-                    <input
-                      type="text"
+                    <VoiceInput
                       value={form.title}
                       onChange={(e) => handleChange("title", e.target.value)}
                       placeholder="e.g. Client Lunch"
@@ -709,7 +708,8 @@ const EmployeeExpenses = () => {
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
                   Description
                 </label>
-                <textarea
+                <VoiceInput
+                  as="textarea"
                   rows={3}
                   value={form.description}
                   onChange={(e) => handleChange("description", e.target.value)}

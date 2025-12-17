@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import PageHeader from "../../components/PageHeader";
@@ -16,6 +16,7 @@ import {
   FaEnvelope,
   FaShareAlt,
 } from "react-icons/fa";
+import VoiceInput from "../../components/Common/VoiceInput";
 import toast from "react-hot-toast";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
@@ -130,14 +131,14 @@ export default function EmployeeReports() {
     today.getMonth() + 1
   ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-  const todayTasks = tasks.filter((t) => {
+  const todayTasks = useMemo(() => tasks.filter((t) => {
     if (!t.dueDate) return false;
     const dueDate = t.dueDate?.toDate?.() || new Date(t.dueDate);
     const dueDateStr = `${dueDate.getFullYear()}-${String(
       dueDate.getMonth() + 1
     ).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
     return dueDateStr === todayStr && t.status !== "Done";
-  });
+  }), [tasks, todayStr]);
 
   // Recent activity (last 7 days completed tasks)
   const sevenDaysAgo = new Date();
@@ -710,8 +711,7 @@ Generated on: ${formatDateToDDMMYYYY(
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Client Name
                     </label>
-                    <input
-                      type="text"
+                    <VoiceInput
                       value={reportData.clientName}
                       onChange={(e) =>
                         setReportData((prev) => ({
@@ -727,8 +727,7 @@ Generated on: ${formatDateToDDMMYYYY(
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Project Name
                     </label>
-                    <input
-                      type="text"
+                    <VoiceInput
                       value={reportData.projectName}
                       onChange={(e) =>
                         setReportData((prev) => ({
@@ -761,8 +760,7 @@ Generated on: ${formatDateToDDMMYYYY(
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Objective for the Day
                     </label>
-                    <input
-                      type="text"
+                    <VoiceInput
                       value={reportData.objective}
                       onChange={(e) =>
                         setReportData((prev) => ({
@@ -778,7 +776,8 @@ Generated on: ${formatDateToDDMMYYYY(
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Obstacles / Challenges (One per line)
                     </label>
-                    <textarea
+                    <VoiceInput
+                      as="textarea"
                       value={reportData.obstacles}
                       onChange={(e) =>
                         setReportData((prev) => ({
@@ -794,7 +793,8 @@ Generated on: ${formatDateToDDMMYYYY(
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Next Action Plan (One per line)
                     </label>
-                    <textarea
+                    <VoiceInput
+                      as="textarea"
                       value={reportData.nextActionPlan}
                       onChange={(e) =>
                         setReportData((prev) => ({
@@ -810,7 +810,8 @@ Generated on: ${formatDateToDDMMYYYY(
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Summary
                     </label>
-                    <textarea
+                    <VoiceInput
+                      as="textarea"
                       value={reportData.summary}
                       onChange={(e) =>
                         setReportData((prev) => ({

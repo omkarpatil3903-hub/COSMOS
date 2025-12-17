@@ -3,6 +3,7 @@ import { HiXMark } from "react-icons/hi2";
 import Button from "../Button";
 import { db } from "../../firebase";
 import { collection, onSnapshot, orderBy, query, where, doc, getDoc } from "firebase/firestore";
+import VoiceInput from "../Common/VoiceInput";
 
 function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, projectId, canEditAccess = true }) {
   const [title, setTitle] = useState("");
@@ -149,8 +150,7 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
                 <div className="space-y-4">
                   <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                     Title *
-                    <input
-                      type="text"
+                    <VoiceInput
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       placeholder="e.g. What I learned"
@@ -162,7 +162,8 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
 
                   <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
                     Description *
-                    <textarea
+                    <VoiceInput
+                      as="textarea"
                       rows={8}
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
