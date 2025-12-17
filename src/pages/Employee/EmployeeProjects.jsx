@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { useState, useEffect, useRef } from "react";
+import { collection, query, where, onSnapshot, documentId } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuthContext } from "../../context/useAuthContext";
 import PageHeader from "../../components/PageHeader";
@@ -93,6 +93,8 @@ const EmployeeProjects = () => {
   };
 
   const [projects, setProjects] = useState([]);
+  const [primaryTasks, setPrimaryTasks] = useState([]);
+  const [multiTasks, setMultiTasks] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -102,57 +104,89 @@ const EmployeeProjects = () => {
   const [hoveredProject, setHoveredProject] = useState(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
+  // Subscribe to tasks (both primary and multi-assignee) in real-time
   useEffect(() => {
     if (!user?.uid) return;
 
-    // Get tasks assigned to this employee
-    const tasksQuery = query(
+    const qPrimary = query(
       collection(db, "tasks"),
       where("assigneeId", "==", user.uid)
     );
+    const qMulti = query(
+      collection(db, "tasks"),
+      where("assigneeIds", "array-contains", user.uid)
+    );
 
-    const unsubTasks = onSnapshot(tasksQuery, (snapshot) => {
-      const taskData = snapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }))
-        .filter((task) => task.assigneeType === "user");
-      setTasks(taskData);
-
-      // Get unique project IDs from tasks
-      const projectIds = [
-        ...new Set(taskData.map((t) => t.projectId).filter(Boolean)),
-      ];
-
-      // Get projects
-      if (projectIds.length > 0) {
-        const projectsQuery = query(
-          collection(db, "projects"),
-          where("__name__", "in", projectIds)
-        );
-
-        const unsubProjects = onSnapshot(projectsQuery, (projectSnapshot) => {
-          const projectData = projectSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setProjects(projectData);
-          setLoading(false);
-        });
-
-        return () => {
-          unsubProjects();
-          unsubTasks();
-        };
-      } else {
-        setProjects([]);
-        setLoading(false);
-      }
+    const unsubPrimary = onSnapshot(qPrimary, (snapshot) => {
+      const list = snapshot.docs
+        .map((d) => ({ id: d.id, ...(d.data() || {}) }))
+        .filter((t) => t.assigneeType === "user");
+      setPrimaryTasks(list);
+    });
+    const unsubMulti = onSnapshot(qMulti, (snapshot) => {
+      const list = snapshot.docs
+        .map((d) => ({ id: d.id, ...(d.data() || {}) }))
+        .filter((t) => t.assigneeType === "user");
+      setMultiTasks(list);
     });
 
-    return () => unsubTasks();
+    return () => {
+      unsubPrimary();
+      unsubMulti();
+    };
   }, [user]);
+
+  // Merge tasks from both subscriptions (dedupe by id)
+  useEffect(() => {
+    const map = new Map();
+    primaryTasks.forEach((t) => map.set(t.id, t));
+    multiTasks.forEach((t) => map.set(t.id, t));
+    setTasks(Array.from(map.values()));
+  }, [primaryTasks, multiTasks]);
+
+  // Manage project listeners for unique projectIds (chunked due to Firestore 'in' 10-limit)
+  const projectUnsubsRef = useRef([]);
+  useEffect(() => {
+    // Cleanup previous project listeners
+    projectUnsubsRef.current.forEach((fn) => {
+      try { typeof fn === "function" && fn(); } catch {}
+    });
+    projectUnsubsRef.current = [];
+
+    const ids = Array.from(new Set(tasks.map((t) => t.projectId).filter(Boolean)));
+    if (ids.length === 0) {
+      setProjects([]);
+      setLoading(false);
+      return;
+    }
+
+    // Chunk into groups of 10 for Firestore 'in' operator
+    const chunks = [];
+    for (let i = 0; i < ids.length; i += 10) chunks.push(ids.slice(i, i + 10));
+
+    // Aggregate results across chunks
+    const aggregate = new Map();
+    chunks.forEach((chunk) => {
+      const q = query(collection(db, "projects"), where(documentId(), "in", chunk));
+      const unsub = onSnapshot(q, (snap) => {
+        snap.docs.forEach((d) => {
+          aggregate.set(d.id, { id: d.id, ...(d.data() || {}) });
+        });
+        // Keep order aligned with ids
+        const list = ids.map((id) => aggregate.get(id)).filter(Boolean);
+        setProjects(list);
+        if (loading) setLoading(false);
+      });
+      projectUnsubsRef.current.push(unsub);
+    });
+
+    return () => {
+      projectUnsubsRef.current.forEach((fn) => {
+        try { typeof fn === "function" && fn(); } catch {}
+      });
+      projectUnsubsRef.current = [];
+    };
+  }, [tasks]);
 
   const getProjectTasks = (projectId) => {
     return tasks.filter((t) => t.projectId === projectId);

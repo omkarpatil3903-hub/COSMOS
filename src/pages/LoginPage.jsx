@@ -102,7 +102,9 @@ function LoginPage() {
 
             // Auto-recovery for Super Admin
             if (emailTrimmed.toLowerCase() === "admin@gmail.com") {
-              console.log("Detected orphan Super Admin account. Attempting recovery...");
+              console.log(
+                "Detected orphan Super Admin account. Attempting recovery..."
+              );
 
               const newAdminData = {
                 name: "Super Admin",
@@ -112,7 +114,7 @@ function LoginPage() {
                 status: "Active",
                 createdAt: serverTimestamp(),
                 resourceType: "In-house",
-                employmentType: "Full-time"
+                employmentType: "Full-time",
               };
 
               await setDoc(doc(db, "users", cred.user.uid), newAdminData);
@@ -130,7 +132,7 @@ function LoginPage() {
       console.log("Final resourceRoleType:", resourceRoleType);
 
       // Wait for auth state to update
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Redirect based on role priority: client > resourceRoleType > role
       if (role === "client") {
@@ -140,9 +142,18 @@ function LoginPage() {
         console.log("Redirecting to / (superadmin)");
         navigate("/", { replace: true });
       } else if (role === "admin") {
+        // Admin: dedicated admin dashboard
+        console.log("Redirecting to /admin");
+        navigate("/admin", { replace: true });
+      } else if (role === "manager") {
+        // Manager: manager dashboard
         console.log("Redirecting to /manager");
         navigate("/manager", { replace: true });
-      } else if (role === "member" || role === "resource" || resourceRoleType === "member") {
+      } else if (
+        role === "member" ||
+        role === "resource" ||
+        resourceRoleType === "member"
+      ) {
         console.log("Redirecting to /employee");
         navigate("/employee", { replace: true });
       } else {

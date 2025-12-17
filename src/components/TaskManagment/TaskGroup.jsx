@@ -33,6 +33,7 @@ const TaskGroup = ({
     onEdit,
     onDelete,
     onSetReminder,
+    onUpload,
     showActions = true,
     onHeaderMenu,
     hideHeaderActions = false,
@@ -88,17 +89,16 @@ const TaskGroup = ({
                             {tasks.length}
                         </span>
                         {!hideHeaderActions && (
-                            <div className="relative flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" ref={menuRef}>
+                            <div className="relative flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" ref={menuRef} onClick={(e) => e.stopPropagation()}>
                                 <button
                                     type="button"
                                     title="More"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowMenu((prev) => !prev);
-                                    }}
                                     className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 font-normal"
                                 >
-                                    <FaEllipsisH className="h-3 w-3" />
+                                    <FaEllipsisH className="h-3 w-3" onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowMenu(prev => !prev);
+                                    }} />
                                 </button>
                                 {onOpenCreate && (
                                     <button
@@ -115,11 +115,13 @@ const TaskGroup = ({
                                 )}
                                 {showMenu && (
                                     <div
-                                        className="absolute top-full -right-2 mt-1 z-20 w-44 rounded-lg bg-white shadow-md border border-gray-200/60 py-2 text-sm"
+                                        className={`absolute ${title === 'Done' ? 'bottom-full right-0 mb-2' : 'top-0 left-full'} w-30 bg-white rounded-md shadow-lg z-50 border border-gray-200`}
+                                        style={{ minWidth: '12rem' }}
                                         onClick={(e) => e.stopPropagation()}
                                     >
-                                        <div className="px-4 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+                                        <div className="px-3 py-2 text-xs font-medium text-gray-500">
                                             Group options
+                                            <div className="border-t border-gray-100 mt-2"></div>
                                         </div>
 
                                         {/* Edit statuses */}
@@ -256,6 +258,7 @@ const TaskGroup = ({
                             onView={onView}
                             onEdit={onEdit}
                             onDelete={onDelete}
+                            onUpload={onUpload}
                             onSetReminder={onSetReminder}
                             showActions={showActions}
                         />

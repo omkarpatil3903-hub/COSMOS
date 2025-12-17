@@ -50,7 +50,7 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   );
 };
 
-function MainLayout() {
+function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -77,50 +77,50 @@ function MainLayout() {
 
     };
 
-    const title = pathToTitle[location.pathname] || "Super Admin Panel";
+    const title = pathToTitle[location.pathname] || "Admin Panel";
     document.title = title;
   }, [location.pathname]);
 
   const navigationItems = [
     {
-      to: "/",
+      to: "/admin",
       text: "Dashboard",
       icon: <FaTachometerAlt className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/manage-resources",
+      to: "/admin/manage-resources",
       text: "Manage Resources",
       icon: <FaSearch className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/manage-clients",
+      to: "/admin/manage-clients",
       text: "Manage Clients",
       icon: <FaUserCheck className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/manage-projects",
+      to: "/admin/manage-projects",
       text: "Manage Projects",
       icon: <FaProjectDiagram className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/task-management",
+      to: "/admin/task-management",
       text: "Task Management",
       icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/knowledge-management",
+      to: "/admin/knowledge-management",
       text: "Knowledge Management",
       icon: <FaFileAlt className="h-4 w-4" aria-hidden="true" />,
     },
 
     {
-      to: "/expenses",
+      to: "/admin/expenses",
       text: "Expenses",
       icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
     },
 
     {
-      to: "/reports",
+      to: "/admin/reports",
       text: "Reports",
       icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
     },
@@ -131,18 +131,18 @@ function MainLayout() {
     //   icon: <FaListAlt className="h-4 w-4" aria-hidden="true" />,
     // },
     {
-      to: "/mom-pro",
+      to: "/admin/mom-pro",
       text: "Minutes of Meeting ",
       icon: <FaListAlt className="h-4 w-4" aria-hidden="true" />,
     },
 
     {
-      to: "/calendar",
+      to: "/admin/calendar",
       text: "Calendar",
       icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
     },
     {
-      to: "/settings",
+      to: "/admin/settings",
       text: "Settings",
       icon: <FaCog className="h-4 w-4" aria-hidden="true" />,
     },
@@ -194,7 +194,7 @@ function MainLayout() {
                   COSMOS
                 </p>
                 <h2 className="text-lg font-semibold text-content-primary">
-                  Super <br/>Admin Panel
+                  Admin Panel
                 </h2>
               </div>
             )}
@@ -285,4 +285,4 @@ function MainLayout() {
   );
 }
 
-export default MainLayout;
+export default AdminLayout;

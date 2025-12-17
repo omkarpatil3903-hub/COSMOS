@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Button from "../../components/Button";
 import Card from "../../components/Card";
@@ -13,75 +13,42 @@ import {
   arrayRemove,
   onSnapshot,
 } from "firebase/firestore";
-import {
-  FaTimes,
-  FaEdit,
-  FaTrash,
-  FaChevronLeft,
-  FaChevronRight,
-  FaPlus,
-  FaSearch,
-} from "react-icons/fa";
+import { FaTimes, FaEdit, FaTrash, FaPlus, FaSearch } from "react-icons/fa";
 
-export default function AddHierarchy() {
+export default function ProjectSettings() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const [type, setType] = useState("admin");
-  const [value, setValue] = useState("");
-  const [saving, setSaving] = useState(false);
   const [items, setItems] = useState([]);
-  const [editing, setEditing] = useState(null);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [preview, setPreview] = useState(null);
   const [deleteModal, setDeleteModal] = useState({
     open: false,
     item: null,
     loading: false,
   });
+  const [level, setLevel] = useState("");
+  const [levelError, setLevelError] = useState("");
 
+  // Load Project Levels from Firestore
   useEffect(() => {
-    const p = new URLSearchParams(location.search);
-    if (p.get("add") === "1") setOpen(true);
-  }, [location.search]);
-
-  useEffect(() => {
-    const ref = doc(db, "settings", "hierarchy");
+    const ref = doc(db, "settings", "project-levels");
     const unsub = onSnapshot(ref, (snap) => {
       const d = snap.data() || {};
-      const roles = Array.isArray(d.roles) ? d.roles : [];
-      let list = [];
-      if (roles.length > 0) {
-        list = roles
-          .filter((r) => r && r.name && r.role)
-          .map((r) => ({
-            id: `${(r.role || "r")}_${r.name}`,
-            type: (r.role || "").toLowerCase(),
-            name: r.name,
-          }));
-      } else {
-        // Legacy fallback for existing data
-        const sup = Array.isArray(d.superior) ? d.superior : [];
-        const inf = Array.isArray(d.inferior) ? d.inferior : [];
-        const adminArr = Array.isArray(d.admin) ? d.admin : [];
-        const memberArr = Array.isArray(d.member) ? d.member : [];
-        const adminSet = new Set([...(adminArr || []), ...(sup || [])]);
-        const memberSet = new Set([...(memberArr || []), ...(inf || [])]);
-        list = [
-          ...Array.from(adminSet).map((v) => ({
-            id: `a_${v}`,
-            type: "admin",
-            name: v,
-          })),
-          ...Array.from(memberSet).map((v) => ({
-            id: `m_${v}`,
-            type: "member",
-            name: v,
-          })),
-        ];
-      }
+      const levels = Array.isArray(d.levels) ? d.levels : [];
+      const list = levels
+        .filter((r) => r && r.name)
+        .map((r) => ({
+          id: `lvl_${r.level ?? ""}_${r.name}`.replace(/\s+/g, "-"),
+          type: "level",
+          name: r.name,
+          level: r.level ?? "",
+        }));
       setItems(list);
     });
     return () => unsub();
@@ -101,36 +68,65 @@ export default function AddHierarchy() {
     }
     setOpen(false);
     setValue("");
+    setEditing(null);
+    setLevel("");
+    setLevelError("");
   };
 
   const save = async () => {
     const v = value.trim();
+    const lvInput = String(level).trim();
+    setLevelError("");
     if (!v) {
-      toast.error("Enter a value");
+      toast.error("Enter a name");
+      return;
+    }
+    if (!lvInput) {
+      setLevelError("Enter a level");
+      return;
+    }
+    const normalizeLevel = (s) => {
+      const t = String(s ?? "").trim();
+      const num = Number(t);
+      if (!Number.isNaN(num) && /^[-+]?\d*(?:\.\d+)?$/.test(t))
+        return String(num);
+      return t.toLowerCase();
+    };
+    const lv = normalizeLevel(lvInput);
+    const exists = items.some(
+      (it) =>
+        normalizeLevel(it.level) === lv && (!editing || it.id !== editing.id)
+    );
+    if (exists) {
+      setLevelError("Level already exists");
       return;
     }
     setSaving(true);
     try {
-      const ref = doc(db, "settings", "hierarchy");
-      const field = type;
+      const ref = doc(db, "settings", "project-levels");
       if (editing) {
+        // remove both possible legacy and new shapes
         await setDoc(
           ref,
-          { roles: arrayRemove({ name: editing.name, role: editing.type }) },
+          {
+            levels: arrayRemove(
+              { name: editing.name, level: editing.level },
+              { name: editing.name }
+            ),
+          },
           { merge: true }
         );
       }
       await setDoc(
         ref,
         {
-          roles: arrayUnion({ name: v, role: field }),
+          levels: arrayUnion({ name: v, level: lv }),
           updatedAt: serverTimestamp(),
         },
         { merge: true }
       );
       toast.success("Saved");
       close();
-      setEditing(null);
     } catch (e) {
       toast.error("Failed to save");
     } finally {
@@ -140,18 +136,21 @@ export default function AddHierarchy() {
 
   const startEdit = (item) => {
     setEditing(item);
-    setType(item.type);
     setValue(item.name);
+    setLevel(item.level ?? "");
     setOpen(true);
   };
 
   const removeItem = async (item) => {
     try {
-      const ref = doc(db, "settings", "hierarchy");
+      const ref = doc(db, "settings", "project-levels");
       await setDoc(
         ref,
         {
-          roles: arrayRemove({ name: item.name, role: item.type }),
+          levels: arrayRemove(
+            { name: item.name, level: item.level },
+            { name: item.name }
+          ),
           updatedAt: serverTimestamp(),
         },
         { merge: true }
@@ -171,26 +170,34 @@ export default function AddHierarchy() {
 
   const filtered = useMemo(() => {
     const s = query.trim().toLowerCase();
-    if (!s) return items;
-    return items.filter(
-      (x) =>
-        x.name.toLowerCase().includes(s) || x.type.toLowerCase().includes(s)
-    );
-  }, [items, query]);
-  const ordered = useMemo(() => {
-    const order = { superadmin: 0, admin: 1, manager: 2, member: 3 };
-    return [...filtered].sort((a, b) => {
-      const ao = order[a.type] ?? 99;
-      const bo = order[b.type] ?? 99;
-      if (ao !== bo) return ao - bo;
-      return a.name.localeCompare(b.name);
+    const base = s
+      ? items.filter(
+          (x) =>
+            (x.name || "").toLowerCase().includes(s) ||
+            (x.level || "").toLowerCase().includes(s)
+        )
+      : [...items];
+    const getNum = (val) => {
+      const m = String(val ?? "").match(/\d+(?:\.\d+)?/);
+      return m ? parseFloat(m[0]) : NaN;
+    };
+    base.sort((a, b) => {
+      const na = getNum(a.level);
+      const nb = getNum(b.level);
+      if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+      if (!Number.isNaN(na) && Number.isNaN(nb)) return -1;
+      if (Number.isNaN(na) && !Number.isNaN(nb)) return 1;
+      const lv = String(a.level || "").localeCompare(String(b.level || ""));
+      if (lv !== 0) return lv;
+      return String(a.name || "").localeCompare(String(b.name || ""));
     });
-  }, [filtered]);
-  const totalPages = Math.max(1, Math.ceil(ordered.length / pageSize));
+    return base;
+  }, [items, query]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageItems = useMemo(() => {
     const start = (page - 1) * pageSize;
-    return ordered.slice(start, start + pageSize);
-  }, [ordered, page, pageSize]);
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
 
   useEffect(() => {
     setPage(1);
@@ -231,13 +238,13 @@ export default function AddHierarchy() {
               Showing {filtered.length} records
             </span>
             <Button variant="primary" onClick={openCreate} className="shrink-0">
-              <FaPlus /> Add Hierarchy
+              <FaPlus /> Add Project Level
             </Button>
           </div>
         }
       >
         <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-          Search by hierarchy type or name
+          Search by level name
           <div className="relative">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary">
               <FaSearch />
@@ -246,14 +253,14 @@ export default function AddHierarchy() {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by type or name"
+              placeholder="Search by level name"
               className="w-full rounded-lg border border-subtle bg-surface py-2 pl-9 pr-3 text-sm"
             />
           </div>
         </label>
       </Card>
 
-      <Card title="Hierarchy List" tone="muted">
+      <Card title="Project Level" tone="muted">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-2">
           <div className="text-sm text-content-secondary">
             Page {Math.min(page, totalPages)} of {totalPages}
@@ -298,10 +305,10 @@ export default function AddHierarchy() {
                   Sr. No.
                 </th>
                 <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
-                  Name
+                  Level
                 </th>
                 <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
-                  Type
+                  Name
                 </th>
                 <th className="px-6 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 sticky right-0 z-10 bg-gray-50">
                   Actions
@@ -330,29 +337,21 @@ export default function AddHierarchy() {
                         {(page - 1) * pageSize + idx + 1}
                       </div>
                     </td>
-                    <td className="px-6 py-2.5 text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                      <div className="max-w-[240px] truncate">{item.name}</div>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-2.5 text-sm">
-                      <span
-                        className={`inline-flex items-center justify-center rounded-xs px-3 py-1 text-xs font-semibold tracking-wide uppercase transition-colors ${
-                          item.type === "admin"
-                            ? "bg-blue-500 text-white"
-                            : item.type === "superadmin"
-                            ? "bg-purple-500 text-white"
-                            : item.type === "manager"
-                            ? "bg-green-500 text-white"
-                            : "bg-gray-600 text-white"
-                        }`}
+                    <td className="px-6 py-2.5">
+                      <div
+                        className="max-w-[100px] text-sm font-semibold text-gray-900 group-hover:text-blue-600 truncate transition-colors"
+                        title={item.level || "-"}
                       >
-                        {item.type === "admin"
-                          ? "Admin Role"
-                          : item.type === "superadmin"
-                          ? "Super Admin Role"
-                          : item.type === "manager"
-                          ? "Manager Role"
-                          : "Member Role"}
-                      </span>
+                        {item.level || "-"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-2.5">
+                      <div
+                        className="max-w-[200px] text-sm font-semibold text-gray-900 group-hover:text-blue-600 truncate transition-colors"
+                        title={item.name}
+                      >
+                        {item.name}
+                      </div>
                     </td>
                     <td className="whitespace-nowrap px-6 py-2.5 text-sm sticky right-0 z-10 bg-transparent transition-colors">
                       <div className="flex items-center justify-center space-x-3">
@@ -384,7 +383,7 @@ export default function AddHierarchy() {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/30">
           <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between px-6 pt-6">
-              <h3 className="text-xl font-semibold">Create Hierarchy</h3>
+              <h3 className="text-xl font-semibold">Create Project Level</h3>
               <button
                 onClick={close}
                 className="text-gray-400 hover:text-gray-600"
@@ -393,70 +392,40 @@ export default function AddHierarchy() {
               </button>
             </div>
 
-            <div className="px-6 pt-4">
-              <div className="grid grid-cols-4 rounded-full bg-gray-100 p-1 text-sm font-medium">
-                <button
-                  onClick={() => setType("superadmin")}
-                  className={`rounded-full px-4 py-2 transition ${
-                    type === "superadmin"
-                      ? "bg-white shadow-sm"
-                      : "text-gray-500"
-                  }`}
-                >
-                  Super Admin Role
-                </button>
-                <button
-                  onClick={() => setType("admin")}
-                  className={`rounded-full px-4 py-2 transition ${
-                    type === "admin" ? "bg-white shadow-sm" : "text-gray-500"
-                  }`}
-                >
-                  Admin Role
-                </button>
-                <button
-                  onClick={() => setType("manager")}
-                  className={`rounded-full px-4 py-2 transition ${
-                    type === "manager" ? "bg-white shadow-sm" : "text-gray-500"
-                  }`}
-                >
-                  Manager Role
-                </button>
-                <button
-                  onClick={() => setType("member")}
-                  className={`rounded-full px-4 py-2 transition ${
-                    type === "member" ? "bg-white shadow-sm" : "text-gray-500"
-                  }`}
-                >
-                  Member Role
-                </button>
-              </div>
-            </div>
-
             <div className="px-6 py-4">
-              <label className="block text-sm font-medium mb-1">
-                {type === "admin"
-                  ? "Add Admin Role"
-                  : type === "superadmin"
-                  ? "Add Super Admin Role"
-                  : type === "manager"
-                  ? "Add Manager Role"
-                  : "Add Member Role"}
-              </label>
-              <input
-                type="text"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2"
-                placeholder={
-                  type === "admin"
-                    ? "e.g., Admin"
-                    : type === "superadmin"
-                    ? "e.g., Super Admin"
-                    : type === "manager"
-                    ? "e.g., Manager"
-                    : "e.g., Member"
-                }
-              />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="block text-sm font-medium">
+                  Project Level
+                  <input
+                    type="number"
+                    min="1"
+                    value={level}
+                    onChange={(e) => {
+                      setLevel(e.target.value);
+                      if (levelError) setLevelError("");
+                    }}
+                    className={`mt-1 w-full rounded border px-3 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                      levelError ? "border-red-500" : "border-gray-300"
+                    }`}
+                    placeholder="e.g., 1, 2, 3..."
+                  />
+                  {levelError && (
+                    <div className="mt-1 text-xs text-red-600">
+                      {levelError}
+                    </div>
+                  )}
+                </label>
+                <label className="block text-sm font-medium">
+                  Name
+                  <input
+                    type="text"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                    placeholder="e.g., Discovery"
+                  />
+                </label>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 px-6 pb-6">
@@ -484,17 +453,10 @@ export default function AddHierarchy() {
                 setDeleteModal({ open: false, item: null, loading: false })
               }
               onConfirm={handleConfirmDelete}
-              itemType="hierarchy role"
-              title="Delete Hierarchy"
-              description="Are you sure you want to delete this role from the hierarchy?"
+              itemType="project level"
+              title="Delete Project Level"
+              description="Are you sure you want to delete this project level?"
               itemTitle={deleteModal.item?.name}
-              itemSubtitle={
-                deleteModal.item?.type === "admin"
-                  ? "Admin Role"
-                  : deleteModal.item?.type === "superadmin"
-                  ? "Super Admin Role"
-                  : "Member Role"
-              }
               confirmLabel="Delete"
               isLoading={deleteModal.loading}
             />
@@ -515,19 +477,15 @@ export default function AddHierarchy() {
               </button>
             </div>
             <div className="px-6 py-4 space-y-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-content-secondary">Name</span>
-                <span className="font-medium">{preview.name}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-content-secondary">Type</span>
-                <span className="font-medium">
-                  {preview.type === "admin"
-                    ? "Admin Role"
-                    : preview.type === "superadmin"
-                    ? "Super Admin Role"
-                    : "Member Role"}
-                </span>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">Name</div>
+                  <div className="font-medium">{preview?.name}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">Type</div>
+                  <div className="font-medium">Project Level</div>
+                </div>
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 px-6 pb-6">
