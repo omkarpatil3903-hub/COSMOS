@@ -56,17 +56,47 @@ export default function StatusSettings() {
     return () => unsub();
   }, []);
 
+  // Reserved core statuses that are fixed and always shown first
+  const coreStatusKeys = ["to do", "in progress", "done"];
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return items;
     return items.filter((it) => it.name.toLowerCase().includes(q));
   }, [items, query]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  // Split into core (fixed) and custom statuses, with core always first
+  const { coreStatuses, customStatuses } = useMemo(() => {
+    const norm = (v) => v.toLowerCase().trim();
+    const core = [];
+    const rest = [];
+
+    filtered.forEach((it) => {
+      const k = norm(it.name);
+      if (coreStatusKeys.includes(k)) core.push(it);
+      else rest.push(it);
+    });
+
+    // Sort core according to fixed order TO DO, IN PROGRESS, DONE
+    core.sort(
+      (a, b) =>
+        coreStatusKeys.indexOf(norm(a.name)) -
+        coreStatusKeys.indexOf(norm(b.name))
+    );
+
+    return { coreStatuses: core, customStatuses: rest };
+  }, [filtered]);
+
+  const orderedForPaging = useMemo(
+    () => [...coreStatuses, ...customStatuses],
+    [coreStatuses, customStatuses]
+  );
+
+  const totalPages = Math.max(1, Math.ceil(orderedForPaging.length / pageSize));
   const pageItems = useMemo(() => {
     const start = (page - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, page, pageSize]);
+    return orderedForPaging.slice(start, start + pageSize);
+  }, [orderedForPaging, page, pageSize]);
 
   useEffect(() => {
     setPage(1);
@@ -109,6 +139,13 @@ export default function StatusSettings() {
       const data = snap.data() || {};
       const arr = Array.isArray(data.statuses) ? data.statuses : [];
       const nameLc = v.toLowerCase();
+
+      // Prevent creating/editing reserved core statuses via UI
+      if (coreStatusKeys.includes(nameLc)) {
+        toast.error("This status name is reserved and cannot be modified.");
+        setSaving(false);
+        return;
+      }
 
       // For new adds, block duplicates against raw array (strings or objects)
       if (!editing) {
@@ -286,7 +323,16 @@ export default function StatusSettings() {
                   </td>
                 </tr>
               ) : (
-                pageItems.map((it, idx) => (
+                pageItems.map((it, idx) => {
+                  const normName = it.name.toLowerCase().trim();
+                  const isCore = coreStatusKeys.includes(normName);
+                  // Display name in uppercased words (TO DO, IN PROGRESS, DONE, etc.)
+                  const displayName = it.name
+                    .split(" ")
+                    .map((w) => w.toUpperCase())
+                    .join(" ");
+
+                  return (
                   <tr
                     key={it.id}
                     onClick={() => setPreview(it)}
@@ -304,36 +350,50 @@ export default function StatusSettings() {
                           style={{ backgroundColor: it.color || "#6b7280" }}
                           title={it.name}
                         >
-                          {it.name}
+                          {displayName}
                         </span>
+                        {isCore && (
+                          <span className="ml-2 text-[10px] uppercase tracking-wide text-gray-400">
+                            Default
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-6 py-2.5 text-sm sticky right-0 z-10 bg-transparent transition-colors">
                       <div className="flex items-center justify-center space-x-3">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openEdit(it);
-                          }}
-                          className="flex items-center justify-center p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md transition-colors"
-                          title="Edit"
-                        >
-                          <FaEdit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            confirmDelete(it);
-                          }}
-                          className="flex items-center justify-center p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md transition-colors"
-                          title="Delete"
-                        >
-                          <FaTrash className="h-4 w-4" />
-                        </button>
+                        {isCore ? (
+                          <span className="text-[11px] text-gray-400">
+                            Fixed status (cannot edit/delete)
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEdit(it);
+                              }}
+                              className="flex items-center justify-center p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md transition-colors"
+                              title="Edit"
+                            >
+                              <FaEdit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                confirmDelete(it);
+                              }}
+                              className="flex items-center justify-center p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md transition-colors"
+                              title="Delete"
+                            >
+                              <FaTrash className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

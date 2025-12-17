@@ -33,6 +33,8 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
     ? "/manager/knowledge-management"
     : location.pathname.startsWith("/employee")
     ? "/employee/knowledge-management"
+    : location.pathname.startsWith("/admin")
+    ? "/admin/knowledge-management"
     : "/knowledge-management";
   useEffect(() => {
     if (location.pathname === "/knowledge-management") {
@@ -400,7 +402,10 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
                   key={project.id}
                   className="bg-white hover:bg-gray-50 transition-colors cursor-pointer"
                   onClick={() =>
-                    navigate(`${basePath}/${encodeURIComponent(project.projectName || "")}`)
+                    navigate(
+                      `${basePath}/${encodeURIComponent(project.projectName || "")}`,
+                      { state: { fromDocsTab: true } }
+                    )
                   }
                 >
                   <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-500">

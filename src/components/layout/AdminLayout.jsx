@@ -34,7 +34,7 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   return (
     <NavLink
       to={to}
-      end={to === "/"}
+      end={to === "/admin"}
       // The 'title' attribute provides a native browser tooltip
       title={isCollapsed ? text : ""}
       className={({ isActive }) =>
