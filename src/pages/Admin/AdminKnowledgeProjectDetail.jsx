@@ -18,6 +18,7 @@ export default function KnowledgeProjectDetail() {
   const { projectName } = useParams();
   const location = useLocation();
   const isSuperAdminRoute = location.pathname.startsWith("/knowledge-management");
+  const fromDocsTab = Boolean(location.state && location.state.fromDocsTab);
   const isManagerRoute = location.pathname.startsWith("/manager");
   const isEmployeeRoute = location.pathname.startsWith("/employee");
 
@@ -25,7 +26,7 @@ export default function KnowledgeProjectDetail() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [resolvedProjectId, setResolvedProjectId] = useState("");
-  const [activeTab, setActiveTab] = useState("knowledge"); 
+  const [activeTab, setActiveTab] = useState(fromDocsTab ? "documentation" : "knowledge"); 
   const [docSearch, setDocSearch] = useState("");
   const [docs, setDocs] = useState([]);
   const [openAddDoc, setOpenAddDoc] = useState(false);
@@ -588,32 +589,34 @@ export default function KnowledgeProjectDetail() {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 px-3">
-        <button
-          onClick={() => setActiveTab("knowledge")}
-          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border ${
-            activeTab === "knowledge"
-              ? "bg-indigo-600 text-white border-indigo-600"
-              : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-          }`}
-          aria-pressed={activeTab === "knowledge"}
-        >
-          <FaBookOpen className="h-4 w-4" />
-          Knowledge
-        </button>
-        <button
-          onClick={() => setActiveTab("documentation")}
-          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border ${
-            activeTab === "documentation"
-              ? "bg-indigo-600 text-white border-indigo-600"
-              : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-          }`}
-          aria-pressed={activeTab === "documentation"}
-        >
-          <FaFileAlt className="h-4 w-4" />
-          Documentation
-        </button>
-      </div>
+      {!fromDocsTab && (
+        <div className="flex items-center gap-2 px-3">
+          <button
+            onClick={() => setActiveTab("knowledge")}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border ${
+              activeTab === "knowledge"
+                ? "bg-indigo-600 text-white border-indigo-600"
+                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+            }`}
+            aria-pressed={activeTab === "knowledge"}
+          >
+            <FaBookOpen className="h-4 w-4" />
+            Knowledge
+          </button>
+          <button
+            onClick={() => setActiveTab("documentation")}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border ${
+              activeTab === "documentation"
+                ? "bg-indigo-600 text-white border-indigo-600"
+                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+            }`}
+            aria-pressed={activeTab === "documentation"}
+          >
+            <FaFileAlt className="h-4 w-4" />
+            Documentation
+          </button>
+        </div>
+      )}
 
       {activeTab === "knowledge" ? (
         <>

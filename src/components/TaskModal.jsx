@@ -71,7 +71,9 @@ function TaskModal({
   const [description, setDescription] = useState("");
   const [projectId, setProjectId] = useState("");
   const [priority, setPriority] = useState("Medium");
-  const [status, setStatus] = useState(taskToEdit?.status || (Array.isArray(statuses) && statuses[0]) || "");
+  const [status, setStatus] = useState(
+    taskToEdit?.status || (Array.isArray(statuses) && statuses[0]) || ""
+  );
   const [weightage, setWeightage] = useState("");
 
   const [assigneeType, setAssigneeType] = useState("user"); // 'user' | 'client'
@@ -552,17 +554,36 @@ function TaskModal({
                     <label className="block text-xs font-medium text-gray-500 mb-1.5">
                       Status
                     </label>
-                    <select
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
-                      className="block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
-                    >
-                      {statuses.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                        className="block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                      >
+                        {statuses
+                          .filter((s) => s !== "Done")
+                          .map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                      </select>
+
+                      {/* Separate Done control */}
+                      {statuses.includes("Done") && (
+                        <button
+                          type="button"
+                          onClick={() => setStatus("Done")}
+                          className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors whitespace-nowrap ${
+                            status === "Done"
+                              ? "bg-emerald-500 text-white border-emerald-500"
+                              : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                          }`}
+                        >
+                          Done
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

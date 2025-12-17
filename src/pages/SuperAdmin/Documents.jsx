@@ -26,13 +26,15 @@ const tableHeaders = [
   { key: "endDate", label: "End Date", sortable: true },
 ];
 
-export default function Documents({ onlyMyManaged = false, onlyMyAssigned = false }) {
+export default function Documents({ onlyMyManaged = false, onlyMyAssigned = false, hideHeader = false }) {
   const navigate = useNavigate();
   const location = useLocation();
   const basePath = location.pathname.startsWith("/manager")
     ? "/manager/knowledge-management"
     : location.pathname.startsWith("/employee")
     ? "/employee/knowledge-management"
+    : location.pathname.startsWith("/admin")
+    ? "/admin/knowledge-management"
     : "/knowledge-management";
   useEffect(() => {
     if (location.pathname === "/knowledge-management") {
@@ -231,9 +233,11 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
   if (loading) {
     return (
       <div>
-        <PageHeader title="Knowledge Management">
-          View all projects as part of organizational knowledge.
-        </PageHeader>
+        {!hideHeader && (
+          <PageHeader title="Knowledge Management">
+            View all projects as part of organizational knowledge.
+          </PageHeader>
+        )}
         <div className="space-y-6">
           <Card title="Search & Actions" tone="muted">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -271,9 +275,11 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Knowledge Management">
-        View all projects as part of organizational knowledge.
-      </PageHeader>
+      {!hideHeader && (
+        <PageHeader title="Knowledge Management">
+          View all projects as part of organizational knowledge.
+        </PageHeader>
+      )}
 
       <Card
         title="Search"
@@ -400,7 +406,10 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
                   key={project.id}
                   className="bg-white hover:bg-gray-50 transition-colors cursor-pointer"
                   onClick={() =>
-                    navigate(`${basePath}/${encodeURIComponent(project.projectName || "")}`)
+                    navigate(
+                      `${basePath}/${encodeURIComponent(project.projectName || "")}`,
+                      { state: { fromDocsTab: true } }
+                    )
                   }
                 >
                   <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-500">

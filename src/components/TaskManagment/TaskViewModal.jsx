@@ -945,39 +945,78 @@ const TaskViewModal = ({
                   <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
                     Status
                   </label>
-                  <button
-                    onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                    className={`w-full px-3 py-2 rounded-lg text-xs border border-gray-200 bg-white flex items-center justify-between hover:border-indigo-300 transition-colors ${getStatusBadge(displayStatus)}`}
-                  >
-                    <span className="font-medium">{displayStatus}</span>
-                    <FaChevronDown className="text-[10px] opacity-50" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {/* Status dropdown trigger (without Done in menu) */}
+                    <button
+                      onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                      className={`flex-1 px-3 py-2 rounded-lg text-xs border border-gray-200 bg-white flex items-center justify-between hover:border-indigo-300 transition-colors ${getStatusBadge(displayStatus)}`}
+                    >
+                      <span className="font-medium">{displayStatus}</span>
+                      <FaChevronDown className="text-[10px] opacity-50" />
+                    </button>
+
+                    {/* Separate Done control */}
+                    {statusOptions.includes("Done") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          console.log("Status Done via pill in metadata row");
+                          // Use same completion path as other status Done flows
+                          const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                          if (norm("Done") === "done") {
+                            setShowCompletionModal(true);
+                          } else {
+                            handleQuickUpdate("status", "Done");
+                          }
+                        }}
+                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors whitespace-nowrap ${
+                          String(displayStatus || "").toLowerCase().replace(/[^a-z0-9]/g, "") === "done"
+                            ? "bg-emerald-500 text-white border-emerald-500"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                        }`}
+                      >
+                        Done
+                      </button>
+                    )}
+                  </div>
 
                   {showStatusDropdown && (
                     <>
-                      <div className="fixed inset-0 z-10" onClick={() => setShowStatusDropdown(false)}></div>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setShowStatusDropdown(false)}
+                      ></div>
                       <div className="absolute top-full left-0 w-full mt-1 bg-white rounded-lg shadow-xl border border-gray-100 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                        {statusOptions.map(status => (
-                          <button
-                            key={status}
-                            onClick={() => {
-                              console.log(`Status dropdown clicked: ${status}`);
-                              const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-                              if (norm(status) === "done") {
-                                console.log("Opening Completion Modal");
-                                setShowCompletionModal(true);
-                                setShowStatusDropdown(false);
-                              } else {
+                        {statusOptions
+                          .filter((st) => st !== "Done")
+                          .map((status) => (
+                            <button
+                              key={status}
+                              onClick={() => {
+                                console.log(`Status dropdown clicked: ${status}`);
                                 handleQuickUpdate("status", status);
                                 setShowStatusDropdown(false);
-                              }
-                            }}
-                            className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between ${String(displayStatus || "").toLowerCase().replace(/[^a-z0-9]/g, "") === String(status || "").toLowerCase().replace(/[^a-z0-9]/g, "") ? "bg-indigo-50 text-indigo-700 font-medium" : "text-gray-700"}`}
-                          >
-                            {status}
-                            {String(displayStatus || "").toLowerCase().replace(/[^a-z0-9]/g, "") === String(status || "").toLowerCase().replace(/[^a-z0-9]/g, "") && <FaCheck />}
-                          </button>
-                        ))}
+                              }}
+                              className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between ${
+                                String(displayStatus || "")
+                                  .toLowerCase()
+                                  .replace(/[^a-z0-9]/g, "") ===
+                                String(status || "")
+                                  .toLowerCase()
+                                  .replace(/[^a-z0-9]/g, "")
+                                  ? "bg-indigo-50 text-indigo-700 font-medium"
+                                  : "text-gray-700"
+                              }`}
+                            >
+                              {status}
+                              {String(displayStatus || "")
+                                .toLowerCase()
+                                .replace(/[^a-z0-9]/g, "") ===
+                                String(status || "")
+                                  .toLowerCase()
+                                  .replace(/[^a-z0-9]/g, "") && <FaCheck />}
+                            </button>
+                          ))}
                       </div>
                     </>
                   )}

@@ -21,7 +21,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 import DashboardPage from "./pages/SuperAdmin/DashboardPage.jsx";
 import ReportsPage from "./pages/SuperAdmin/ReportsPage.jsx";
-import Documents from "./pages/SuperAdmin/Documents.jsx";
+import Documents from "./pages/SuperAdmin/Documents";
+import SuperAdminKnowledgeManagement from "./pages/SuperAdmin/SuperAdminKnowledgeManagement.jsx";
 import ManageDocument from "./pages/SuperAdmin/ManageDocument.jsx";
 import ManageResources from "./pages/SuperAdmin/ManageResources.jsx";
 import ManageClients from "./pages/SuperAdmin/ManageClients.jsx";
@@ -37,6 +38,7 @@ import ProjectSettings from "./pages/SuperAdmin/ProjectSettings.jsx"; // TODO: V
 import StatusSettings from "./pages/SuperAdmin/StatusSettings.jsx"; // TODO: Verify path
 import ManagerLayout from "./components/layout/ManagerLayout";
 import KnowledgeProjectDetail from "./pages/SuperAdmin/KnowledgeProjectDetail.jsx";
+import ManagerKnowledgeManagement from "./pages/Manager/ManagerKnowledgeManagement.jsx";
 import ExpenseManagement from "./pages/SuperAdmin/ExpenseManagement.jsx";
 
 
@@ -56,6 +58,7 @@ import EmployeeReports from "./pages/Employee/EmployeeReports.jsx";
 import EmployeeDocuments from "./pages/Employee/EmployeeDocuments.jsx";
 import EmployeeManageDocument from "./pages/Employee/EmployeeManageDocument.jsx";
 import EmployeeExpenses from "./pages/Employee/EmployeeExpenses.jsx";
+import EmployeeKnowledgeManagement from "./pages/Employee/EmployeeKnowledgeManagement.jsx";
 
 import AdminDashboardPage from "./pages/Admin/AdminDashboardPage.jsx";
 import AdminReportsPage from "./pages/Admin/AdminReportsPage.jsx";
@@ -69,6 +72,7 @@ import AdminTaskManagment from "./pages/Admin/AdminTaskManagment.jsx";
 import AdminCalendar from "./pages/Admin/AdminCalendar.jsx";
 import AdminMomGeneratorPro from "./pages/Admin/AdminMomGeneratorPro.jsx";
 import AdminDocuments from "./pages/Admin/AdminDocuments.jsx";
+import AdminKnowledgeManagement from "./pages/Admin/AdminKnowledgeManagement.jsx";
 import AdminManageClients from "./pages/Admin/AdminManageClients.jsx";
 import AdminManageResources from "./pages/Admin/AdminManageResources.jsx";
 import AdminSettings from "./pages/Admin/AdminSettings.jsx";
@@ -112,7 +116,7 @@ const router = createBrowserRouter([
       { path: "/employee/calendar", element: <EmployeeCalendar /> },
       { path: "/employee/reports", element: <EmployeeReports /> },
       { path: "/employee/documents", element: <EmployeeDocuments /> },
-      { path: "/employee/knowledge-management", element: <Documents onlyMyAssigned={true} /> },
+      { path: "/employee/knowledge-management", element: <EmployeeKnowledgeManagement /> },
       { path: "/employee/knowledge-management/:projectName", element: <KnowledgeProjectDetail /> },
       {
         path: "/employee/manage-documents",
@@ -135,7 +139,7 @@ const router = createBrowserRouter([
     { path: "/admin/manage-resources", element: <AdminManageResources /> },
     { path: "/admin/manage-clients", element: <AdminManageClients /> },
     { path: "/admin/manage-projects", element: <AdminManageProjects /> },
-    { path: "/admin/knowledge-management", element: <AdminDocuments /> },
+    { path: "/admin/knowledge-management", element: <AdminKnowledgeManagement /> },
     { path: "/admin/knowledge-management/:projectName", element: <AdminKnowledgeProjectDetail /> },
     { path: "/admin/manage-knowledge", element: <AdminManageDocument /> },
     { path: "/admin/mom-pro", element: <AdminMomGeneratorPro /> },
@@ -169,7 +173,7 @@ const router = createBrowserRouter([
       { path: "/manager/tasks", element: <TaskManagment /> },
       { path: "/manager/reports", element: <ReportsPage /> },
       { path: "/manager/calendar", element: <Calendar /> },
-      { path: "/manager/knowledge-management", element: <Documents onlyMyManaged={true} /> },
+      { path: "/manager/knowledge-management", element: <ManagerKnowledgeManagement /> },
       { path: "/manager/knowledge-management/:projectName", element: <KnowledgeProjectDetail /> },
     ],
   },
@@ -187,7 +191,7 @@ const router = createBrowserRouter([
       { path: "/manage-resources", element: <ManageResources /> },
       { path: "/manage-clients", element: <ManageClients /> },
       { path: "/manage-projects", element: <ManageProjects /> },
-      { path: "/knowledge-management", element: <Documents /> },
+      { path: "/knowledge-management", element: <SuperAdminKnowledgeManagement /> },
       { path: "/knowledge-management/:projectName", element: <KnowledgeProjectDetail /> },
       { path: "/manage-knowledge", element: <ManageDocument /> },
       { path: "/mom", element: <Mom /> },

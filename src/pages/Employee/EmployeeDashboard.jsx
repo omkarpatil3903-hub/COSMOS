@@ -19,9 +19,10 @@ import Card from "../../components/Card";
 import StatCard from "../../components/StatCard";
 import Button from "../../components/Button";
 import CompletionCommentModal from "../../components/CompletionCommentModal";
+import { LuAlarmClock } from "react-icons/lu";
+import { FaStickyNote } from "react-icons/fa";
 
 import RemindersList from "../../components/Reminders/RemindersList";
-import AddReminderModal from "../../components/Reminders/AddReminderModal";
 import {
   FaTasks,
   FaCheckCircle,
@@ -31,8 +32,9 @@ import {
   FaCalendarAlt,
   FaFileAlt,
   FaBell,
-  FaStickyNote,
+  
   FaThumbtack,
+  FaPlus,
 } from "react-icons/fa";
 import { LuNotebookPen } from "react-icons/lu";
 import toast from "react-hot-toast";
@@ -72,6 +74,7 @@ const EmployeeDashboard = () => {
     new Set()
   );
   const notificationRef = useRef(null);
+  const quickMenusRef = useRef(null);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [reminderTask, setReminderTask] = useState(null);
   const [showQuickReminderMenu, setShowQuickReminderMenu] = useState(false);
@@ -80,6 +83,24 @@ const EmployeeDashboard = () => {
   const [quickNoteDraft, setQuickNoteDraft] = useState("");
   const [quickNotes, setQuickNotes] = useState([]);
   const [editingQuickNoteId, setEditingQuickNoteId] = useState(null);
+  const [quickReminders, setQuickReminders] = useState([]);
+  const [showInlineReminderForm, setShowInlineReminderForm] = useState(false);
+  const [remTitle, setRemTitle] = useState("");
+  const [remDate, setRemDate] = useState("");
+  const [remTime, setRemTime] = useState("");
+  const [remDesc, setRemDesc] = useState("");
+  const [savingReminder, setSavingReminder] = useState(false);
+  const [editingReminderId, setEditingReminderId] = useState(null);
+
+  const isTaskExpired = (task) => {
+    const created = task.createdAt;
+    if (!created) return false;
+    const createdDate = created?.toDate ? created.toDate() : new Date(created);
+    const now = new Date();
+    const diffMs = now - createdDate;
+    const twelveHoursMs = 12 * 60 * 60 * 1000;
+    return diffMs >= twelveHoursMs;
+  };
 
   // Load employee quick notes from top-level notes collection (one doc per note)
   useEffect(() => {
@@ -114,6 +135,35 @@ const EmployeeDashboard = () => {
     load();
   }, [user?.uid]);
 
+  // Load quick reminders list for the popover preview
+  useEffect(() => {
+    if (!user?.uid) return;
+    const qRem = query(
+      collection(db, "reminders"),
+      where("userId", "==", user.uid),
+      where("status", "==", "pending")
+    );
+    const unsub = onSnapshot(qRem, (snap) => {
+      const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      items.sort((a, b) => {
+        const ad = a.dueAt?.toDate ? a.dueAt.toDate() : new Date(a.dueAt);
+        const bd = b.dueAt?.toDate ? b.dueAt.toDate() : new Date(b.dueAt);
+        return ad - bd;
+      });
+      setQuickReminders(items);
+    });
+    return () => unsub();
+  }, [user?.uid]);
+
+  const formatDueTime = (ts) => {
+    if (!ts) return "";
+    const d = ts?.toDate ? ts.toDate() : new Date(ts);
+    const now = new Date();
+    const isToday = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    const timeStr = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return isToday ? `Today at ${timeStr}` : `${d.toLocaleDateString()} at ${timeStr}`;
+  };
+
   useEffect(() => {
     if (!user?.uid) {
       console.log("No user UID found");
@@ -143,7 +193,9 @@ const EmployeeDashboard = () => {
                 : doc.data().status) || "To-Do",
           }))
           // Filter by assigneeType in client-side
-          .filter((task) => task.assigneeType === "user");
+          .filter((task) => task.assigneeType === "user")
+          // Auto-expire tasks after 12 hours based on createdAt (server time)
+          .filter((task) => !isTaskExpired(task));
 
         console.log("Tasks after filtering:", taskData.length);
 
@@ -219,22 +271,93 @@ const EmployeeDashboard = () => {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const now = new Date();
-      const due = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(r => {
-          const dueAt = r.dueAt?.toDate?.() || new Date(r.dueAt);
-          return dueAt <= now && !r.isRead;
-        })
-        .map(r => ({
-          id: `reminder-${r.id}`,
+      const raw = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const due = raw.filter((r) => {
+        const dueAt = r.dueAt?.toDate?.() || new Date(r.dueAt);
+        return dueAt <= now && !r.isRead;
+      });
+
+      // Show snackbar for each due reminder (SuperAdmin-style)
+      const notificationsPayload = due.map((r) => {
+        const toastId = `reminder-${r.id}`;
+        const when = r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt);
+        const timeLabel = isNaN(when.getTime())
+          ? ""
+          : when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+        toast.custom(
+          (t) => (
+            <div
+              className={`
+                pointer-events-auto w-72 max-w-xs transform transition-all duration-300
+                ${t.visible ? "translate-x-0 opacity-100" : "translate-x-3 opacity-0"}
+              `}
+            >
+              <div className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 rounded-xl p-[2px] shadow-lg">
+                <div className="bg-white rounded-xl px-4 py-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0 max-h-16 overflow-y-auto">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <div className="text-[11px] font-semibold text-indigo-600 tracking-wide uppercase">
+                        Reminder
+                      </div>
+                      {timeLabel && (
+                        <div className="ml-2 text-[10px] text-gray-500 font-medium whitespace-nowrap">
+                          {timeLabel}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs font-medium text-gray-900 break-words leading-snug">
+                      {r.title || "Untitled reminder"}
+                    </div>
+                    {r.description && (
+                      <div className="text-[11px] text-gray-600 mt-0.5 break-words leading-snug">
+                        {r.description}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await deleteDoc(doc(db, "reminders", r.id));
+                      } catch (e) {
+                        console.error("Failed to delete reminder", e);
+                      }
+                      toast.dismiss(toastId);
+                    }}
+                    className="shrink-0 ml-1 text-gray-400 hover:text-red-500 transition-colors"
+                    aria-label="Dismiss reminder"
+                  >
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path
+                        fillRule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ),
+          {
+            id: toastId,
+            duration: Infinity,
+            position: "top-right",
+          }
+        );
+
+        return {
+          id: toastId,
           type: "reminder",
-          title: "Reminder Due",
+          title: "Reminder",
           message: r.title,
           reminderId: r.id,
-          redirectTo: null // Or open a modal?
-        }));
+          redirectTo: null,
+        };
+      });
 
-      setReminderNotifications(due);
+      setReminderNotifications(notificationsPayload);
     });
 
     return () => unsubscribe();
@@ -434,6 +557,25 @@ const EmployeeDashboard = () => {
     };
   }, [showNotifications]);
 
+  // Close quick menus (reminders/notes) when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        quickMenusRef.current &&
+        !quickMenusRef.current.contains(event.target)
+      ) {
+        setShowQuickActionsMenu(false);
+        setShowQuickReminderMenu(false);
+        setShowQuickNotesMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   // Handle notification click
   const handleNotificationClick = async (notification) => {
     if (notification.type === "overdue" || notification.type === "task") {
@@ -614,7 +756,7 @@ ${todayTasks.length > 0
           />
         </div>
         <div className="flex items-center gap-2" ref={notificationRef}>
-          <div className="relative flex items-center gap-1">
+          <div className="relative flex items-center gap-1" ref={quickMenusRef}>
             <button
               type="button"
               onClick={() => {
@@ -628,7 +770,7 @@ ${todayTasks.length > 0
               <LuNotebookPen className="h-4 w-4" />
             </button>
             {showQuickActionsMenu && (
-              <div className="absolute right-0 top-9 z-30 w-40 rounded-lg bg-white shadow-lg border border-gray-200 text-sm">
+              <div className="absolute right-0 top-9 z-30 w-44 rounded-lg bg-white shadow-lg border border-gray-200 text-sm">
                 <button
                   type="button"
                   onClick={() => {
@@ -636,9 +778,10 @@ ${todayTasks.length > 0
                     setShowQuickNotesMenu(false);
                     setShowQuickActionsMenu(false);
                   }}
-                  className="w-full text-left px-3 py-2 hover:bg-gray-50 text-gray-700"
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50 text-gray-700 flex items-center gap-2"
                 >
-                  Reminders
+                  <LuAlarmClock className="h-3.5 w-3.5 text-indigo-500" />
+                  <span>Reminders</span>
                 </button>
                 <button
                   type="button"
@@ -647,23 +790,222 @@ ${todayTasks.length > 0
                     setShowQuickReminderMenu(false);
                     setShowQuickActionsMenu(false);
                   }}
-                  className="w-full text-left px-3 py-2 hover:bg-gray-50 text-gray-700 border-t border-gray-100"
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50 text-gray-700 border-t border-gray-100 flex items-center gap-2"
                 >
-                  Notes
+                  <FaStickyNote className="h-3.5 w-3.5 text-yellow-500" />
+                  <span>Notes</span>
                 </button>
               </div>
             )}
 
             {showQuickReminderMenu && (
-              <div className="absolute right-0 top-11 z-20 w-64 rounded-lg bg-white shadow-lg border border-gray-200 p-3 text-sm">
-                <div className="font-semibold mb-2 text-gray-800">
-                  Quick Reminders
+              <div className="absolute right-0 top-11 z-20 w-72 rounded-lg bg-white shadow-lg border border-gray-200 p-3 text-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-semibold text-gray-800">Quick Reminders</div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!showInlineReminderForm) {
+                        const now = new Date();
+                        const yyyy = now.getFullYear();
+                        const mm = String(now.getMonth() + 1).padStart(2, "0");
+                        const dd = String(now.getDate()).padStart(2, "0");
+                        setRemDate(`${yyyy}-${mm}-${dd}`);
+                        const next = new Date(now.getTime() + 60 * 60 * 1000);
+                        const hh = String(next.getHours()).padStart(2, "0");
+                        const min = String(next.getMinutes()).padStart(2, "0");
+                        setRemTime(`${hh}:${min}`);
+                      }
+                      setShowInlineReminderForm((v) => !v);
+                      setEditingReminderId(null);
+                      setRemTitle("");
+                      setRemDesc("");
+                    }}
+                    className="p-1.5 rounded-md hover:bg-gray-100 text-indigo-600"
+                    title="Add reminder"
+                  >
+                    <FaPlus className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-                <ul className="space-y-1 text-gray-600">
-                  <li>• Check today's tasks.</li>
-                  <li>• Review overdue items.</li>
-                  <li>• Plan tomorrow's priorities.</li>
-                </ul>
+                {showInlineReminderForm && (
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!user?.uid) {
+                        toast.error("User not ready. Please wait a moment and try again.");
+                        return;
+                      }
+                      if (!remTitle || !remDate || !remTime) {
+                        toast.error("Please fill in title, date and time");
+                        return;
+                      }
+                      try {
+                        setSavingReminder(true);
+                        const dueAt = new Date(`${remDate}T${remTime}`);
+                        if (editingReminderId) {
+                          await updateDoc(doc(db, "reminders", editingReminderId), {
+                            title: remTitle,
+                            description: remDesc,
+                            dueAt,
+                            updatedAt: serverTimestamp(),
+                          });
+                          toast.success("Reminder updated!");
+                        } else {
+                          await addDoc(collection(db, "reminders"), {
+                            userId: user.uid,
+                            title: remTitle,
+                            description: remDesc,
+                            dueAt,
+                            status: "pending",
+                            isRead: false,
+                            createdAt: serverTimestamp(),
+                          });
+                          toast.success("Reminder set successfully!");
+                        }
+                        setShowInlineReminderForm(false);
+                        setRemTitle("");
+                        setRemDesc("");
+                        setEditingReminderId(null);
+                      } catch (err) {
+                        console.error("Failed to save reminder", err);
+                        toast.error("Failed to save reminder");
+                      } finally {
+                        setSavingReminder(false);
+                      }
+                    }}
+                    className="mb-3 space-y-2 border border-gray-100 rounded-md p-2 bg-gray-50"
+                  >
+                    <input
+                      type="text"
+                      className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Reminder title"
+                      value={remTitle}
+                      onChange={(e) => setRemTitle(e.target.value)}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="date"
+                        className="rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={remDate}
+                        onChange={(e) => setRemDate(e.target.value)}
+                      />
+                      <input
+                        type="time"
+                        className="rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        value={remTime}
+                        onChange={(e) => setRemTime(e.target.value)}
+                      />
+                    </div>
+                    <textarea
+                      rows={2}
+                      className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Description (optional)"
+                      value={remDesc}
+                      onChange={(e) => setRemDesc(e.target.value)}
+                    />
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        className="px-2 py-1 text-xs rounded-md hover:bg-gray-100"
+                        onClick={() => {
+                          setShowInlineReminderForm(false);
+                          setEditingReminderId(null);
+                        }}
+                        disabled={savingReminder}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-2 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                        disabled={savingReminder}
+                      >
+                        {savingReminder ? "Saving..." : editingReminderId ? "Update" : "Save"}
+                      </button>
+                    </div>
+                  </form>
+                )}
+                {quickReminders.length === 0 ? (
+                  <div className="text-xs text-gray-400">No reminders yet.</div>
+                ) : (
+                  <ul className="space-y-2 text-gray-700 max-h-60 overflow-y-auto">
+                    {quickReminders.slice(0, 5).map((r) => (
+                      <li
+                        key={r.id}
+                        className="group flex items-start justify-between gap-2"
+                      >
+                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                          <span className="mt-1">•</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm truncate">{r.title}</div>
+                            <div className="text-[11px] text-gray-500">
+                              {formatDueTime(r.dueAt)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-800"
+                            title="Edit reminder"
+                            onClick={() => {
+                              setShowInlineReminderForm(true);
+                              setEditingReminderId(r.id);
+                              setRemTitle(r.title || "");
+                              setRemDesc(r.description || "");
+                              const d = r.dueAt?.toDate
+                                ? r.dueAt.toDate()
+                                : new Date(r.dueAt);
+                              const yyyy = d.getFullYear();
+                              const mm = String(d.getMonth() + 1).padStart(2, "0");
+                              const dd = String(d.getDate()).padStart(2, "0");
+                              const hh = String(d.getHours()).padStart(2, "0");
+                              const min = String(d.getMinutes()).padStart(2, "0");
+                              setRemDate(`${yyyy}-${mm}-${dd}`);
+                              setRemTime(`${hh}:${min}`);
+                            }}
+                          >
+                            <span className="sr-only">Edit</span>
+                            <svg
+                              className="h-3 w-3"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793z" />
+                              <path d="M11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-red-600"
+                            title="Delete reminder"
+                            onClick={async () => {
+                              try {
+                                await deleteDoc(doc(db, "reminders", r.id));
+                              } catch (e) {
+                                console.error("Failed to delete reminder", e);
+                              }
+                            }}
+                          >
+                            <span className="sr-only">Delete</span>
+                            <svg
+                              className="h-3 w-3"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M6 8a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1z"
+                                clipRule="evenodd"
+                              />
+                              <path d="M4 5h12v2H4z" />
+                            </svg>
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
 
@@ -673,7 +1015,7 @@ ${todayTasks.length > 0
                   <div className="font-semibold text-gray-900">Quick Notes</div>
                   <div className="flex items-center gap-2">
                     {quickNotes.length > 0 && (
-                      <span className="text-xs text-gray-400">{quickNotes.length} saved</span>
+                      <span className="text-xs text-gray-400">{quickNotes.length} {quickNotes.length === 1 ? "Note" : "Notes"}</span>
                     )}
                     <button
                       type="button"
@@ -844,9 +1186,6 @@ ${todayTasks.length > 0
                 )}
               </div>
             )}
-          </div>
-
-          <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
@@ -1427,18 +1766,7 @@ ${todayTasks.length > 0
         </div>
       )}
 
-      {/* Add Reminder Modal */}
-      <AddReminderModal
-        isOpen={showReminderModal}
-        onClose={() => {
-          setShowReminderModal(false);
-          setReminderTask(null);
-        }}
-        initialData={{
-          title: reminderTask?.title,
-          relatedTaskId: reminderTask?.id,
-        }}
-      />
+      {/* Reminder functionality is now handled inline */}
     </div>
   );
 };

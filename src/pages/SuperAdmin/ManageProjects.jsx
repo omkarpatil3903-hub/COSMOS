@@ -142,7 +142,7 @@ function ManageProjects({ onlyMyManaged = false }) {
     return () => unsub();
   }, []);
 
-  // Load managers from users where resource role type is admin
+  // Load managers from users where resourceRoleType is manager
   useEffect(() => {
     const uq = query(collection(db, "users"), orderBy("name", "asc"));
     const unsub = onSnapshot(uq, (snap) => {
@@ -153,8 +153,10 @@ function ManageProjects({ onlyMyManaged = false }) {
         resourceRoleType: String(u.resourceRoleType || "").toLowerCase(),
         status: u.status || "Active",
       }));
-      const admins = normalized.filter((u) => u.resourceRoleType === "admin");
-      setManagers(admins);
+      const managersOnly = normalized.filter(
+        (u) => u.resourceRoleType === "manager"
+      );
+      setManagers(managersOnly);
       const assignables = normalized.filter(
         (u) => u.resourceRoleType === "member" && u.status === "Active"
       );
