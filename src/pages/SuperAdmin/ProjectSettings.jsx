@@ -14,6 +14,7 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { FaTimes, FaEdit, FaTrash, FaPlus, FaSearch } from "react-icons/fa";
+import VoiceInput from "../../components/Common/VoiceInput";
 
 export default function ProjectSettings() {
   const location = useLocation();
@@ -172,10 +173,10 @@ export default function ProjectSettings() {
     const s = query.trim().toLowerCase();
     const base = s
       ? items.filter(
-          (x) =>
-            (x.name || "").toLowerCase().includes(s) ||
-            (x.level || "").toLowerCase().includes(s)
-        )
+        (x) =>
+          (x.name || "").toLowerCase().includes(s) ||
+          (x.level || "").toLowerCase().includes(s)
+      )
       : [...items];
     const getNum = (val) => {
       const m = String(val ?? "").match(/\d+(?:\.\d+)?/);
@@ -404,9 +405,8 @@ export default function ProjectSettings() {
                       setLevel(e.target.value);
                       if (levelError) setLevelError("");
                     }}
-                    className={`mt-1 w-full rounded border px-3 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                      levelError ? "border-red-500" : "border-gray-300"
-                    }`}
+                    className={`mt-1 w-full rounded border px-3 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${levelError ? "border-red-500" : "border-gray-300"
+                      }`}
                     placeholder="e.g., 1, 2, 3..."
                   />
                   {levelError && (
@@ -417,8 +417,7 @@ export default function ProjectSettings() {
                 </label>
                 <label className="block text-sm font-medium">
                   Name
-                  <input
-                    type="text"
+                  <VoiceInput
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     className="mt-1 w-full rounded border border-gray-300 px-3 py-2"

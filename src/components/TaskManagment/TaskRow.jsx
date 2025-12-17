@@ -14,6 +14,7 @@ import {
     FaBell,
     FaUserFriends,
     FaUpload,
+    FaCheck,
 } from "react-icons/fa";
 import { MdReplayCircleFilled } from "react-icons/md";
 import { getPriorityBadge, getStatusBadge } from "../../utils/colorMaps";
@@ -29,6 +30,7 @@ const TaskRow = ({
     onDelete,
     onSetReminder,
     onUpload,
+    onStatusChange,
     showActions = true,
 }) => {
     return (
@@ -182,6 +184,18 @@ const TaskRow = ({
             {/* Col 8: Actions */}
             {showActions && (
                 <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {onStatusChange && task.status !== "Done" && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onStatusChange(task.id, "Done");
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                            title="Mark as Done"
+                        >
+                            <FaCheck />
+                        </button>
+                    )}
                     {onUpload && (
                         <div className="relative group">
                             <button

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FaTasks, FaTimes } from "react-icons/fa";
+import VoiceInput from "../Common/VoiceInput";
 import { addDoc, collection, serverTimestamp, onSnapshot, doc } from "firebase/firestore";
 import { db } from "../../firebase";
 import toast from "react-hot-toast";
@@ -139,7 +140,7 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
                                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
                                             Task Title
                                         </label>
-                                        <input
+                                        <VoiceInput
                                             value={title}
                                             onChange={(e) => setTitle(e.target.value)}
                                             className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
@@ -152,7 +153,8 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
                                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
                                             Description
                                         </label>
-                                        <textarea
+                                        <VoiceInput
+                                            as="textarea"
                                             value={description}
                                             onChange={(e) => setDescription(e.target.value)}
                                             className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm h-24 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none transition-colors"

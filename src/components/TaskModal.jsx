@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Button from "./Button";
 import toast from "react-hot-toast";
+import VoiceInput from "./Common/VoiceInput";
 import { validateTaskForm } from "../utils/formBuilders";
 import { MdReplayCircleFilled } from "react-icons/md";
 import { FaTimes, FaRegCalendarAlt, FaArrowRight } from "react-icons/fa";
@@ -469,8 +470,7 @@ function TaskModal({
                   <label className="block text-xs font-medium text-gray-500 mb-1.5">
                     Task Title
                   </label>
-                  <input
-                    type="text"
+                  <VoiceInput
                     value={title}
                     onChange={(e) => {
                       setTitle(e.target.value);
@@ -494,7 +494,8 @@ function TaskModal({
                   <label className="block text-xs font-medium text-gray-500 mb-1.5">
                     Description
                   </label>
-                  <textarea
+                  <VoiceInput
+                    as="textarea"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     rows={6}
@@ -1055,8 +1056,7 @@ function TaskModal({
                           }}
                           className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                         />
-                        <input
-                          type="text"
+                        <VoiceInput
                           value={st.title}
                           onChange={(e) => {
                             const next = [...subtasks];
@@ -1080,8 +1080,7 @@ function TaskModal({
                     ))}
 
                     <div className="flex items-center gap-2 mt-2">
-                      <input
-                        type="text"
+                      <VoiceInput
                         value={newSubtask}
                         onChange={(e) => setNewSubtask(e.target.value)}
                         onKeyDown={(e) => {

@@ -12,6 +12,8 @@ import {
   FaFilePdf,
   FaEllipsisV,
 } from "react-icons/fa";
+import VoiceInput from "../../components/Common/VoiceInput";
+
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import toast from "react-hot-toast";
@@ -786,23 +788,21 @@ export default function MomGeneratorPro() {
                             setShowSaveConfirm(true);
                           }}
                           disabled={disableSave}
-                          className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${
-                            disableSave
-                              ? "text-gray-400 cursor-not-allowed"
-                              : "text-gray-700 hover:bg-gray-100"
-                          }`}
+                          className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${disableSave
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-gray-700 hover:bg-gray-100"
+                            }`}
                         >
                           <FaSave
-                            className={`flex-shrink-0 ${
-                              disableSave ? "text-gray-400" : "text-indigo-600"
-                            }`}
+                            className={`flex-shrink-0 ${disableSave ? "text-gray-400" : "text-indigo-600"
+                              }`}
                           />
                           <span>
                             {saveLoading
                               ? "Saving..."
                               : isChangedSinceSave
-                              ? "Save MOM"
-                              : "Saved"}
+                                ? "Save MOM"
+                                : "Saved"}
                           </span>
                         </button>
                       )}
@@ -1088,15 +1088,15 @@ export default function MomGeneratorPro() {
               </DragDropContext>
 
               <div className="space-y-2 mt-3">
-                <input
-                  type="text"
+                <VoiceInput
                   value={newDiscussionTopic}
                   onChange={(e) => setNewDiscussionTopic(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2"
                   placeholder="Discussion topic (required)..."
                   spellCheck="true"
                 />
-                <textarea
+                <VoiceInput
+                  as="textarea"
                   value={newDiscussionNotes}
                   onChange={(e) => setNewDiscussionNotes(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2 resize-vertical"
@@ -1174,16 +1174,14 @@ export default function MomGeneratorPro() {
               </DragDropContext>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3">
-                <input
-                  type="text"
+                <VoiceInput
                   value={newActionTask}
                   onChange={(e) => setNewActionTask(e.target.value)}
                   className="rounded border border-gray-300 px-3 py-2"
                   placeholder="Task description..."
                   spellCheck="true"
                 />
-                <input
-                  type="text"
+                <VoiceInput
                   value={newActionPerson}
                   onChange={(e) => setNewActionPerson(e.target.value)}
                   className="rounded border border-gray-300 px-3 py-2"

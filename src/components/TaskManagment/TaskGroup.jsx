@@ -34,6 +34,7 @@ const TaskGroup = ({
     onDelete,
     onSetReminder,
     onUpload,
+    onStatusChange,
     showActions = true,
     onHeaderMenu,
     hideHeaderActions = false,
@@ -260,6 +261,7 @@ const TaskGroup = ({
                             onDelete={onDelete}
                             onUpload={onUpload}
                             onSetReminder={onSetReminder}
+                            onStatusChange={onStatusChange}
                             showActions={showActions}
                         />
                     ))}

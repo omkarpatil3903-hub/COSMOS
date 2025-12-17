@@ -1,5 +1,6 @@
 import React from "react";
 import { FaTimes, FaPlus, FaEdit } from "react-icons/fa";
+import VoiceInput from "./Common/VoiceInput";
 
 const EditProjectModal = ({
   showEditForm,
@@ -101,18 +102,16 @@ const EditProjectModal = ({
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Project Name <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <VoiceInput
                     placeholder="e.g. Website Redesign"
                     value={formData.projectName}
                     onChange={(e) =>
                       setFormData({ ...formData, projectName: e.target.value })
                     }
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${
-                      editErrors.projectName
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${editErrors.projectName
                         ? "border-red-500"
                         : "border-gray-300"
-                    }`}
+                      }`}
                   />
                   {editErrors.projectName && (
                     <p className="mt-1 text-sm text-red-600">
@@ -131,9 +130,8 @@ const EditProjectModal = ({
                     onChange={(e) =>
                       setFormData({ ...formData, clientId: e.target.value })
                     }
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${
-                      editErrors.clientId ? "border-red-500" : "border-gray-300"
-                    }`}
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${editErrors.clientId ? "border-red-500" : "border-gray-300"
+                      }`}
                   >
                     <option value="">Select a company</option>
                     {clients.map((client) => (
@@ -162,11 +160,10 @@ const EditProjectModal = ({
                         projectManagerId: e.target.value,
                       })
                     }
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${
-                      editErrors.projectManagerId
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${editErrors.projectManagerId
                         ? "border-red-500"
                         : "border-gray-300"
-                    }`}
+                      }`}
                   >
                     <option value="">Select a project manager</option>
                     {managers.map((manager) => (
@@ -233,11 +230,10 @@ const EditProjectModal = ({
                     onChange={(e) =>
                       setFormData({ ...formData, startDate: e.target.value })
                     }
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${
-                      editErrors.startDate
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${editErrors.startDate
                         ? "border-red-500"
                         : "border-gray-300"
-                    }`}
+                      }`}
                   />
                   {editErrors.startDate && (
                     <p className="mt-1 text-sm text-red-600">
@@ -256,9 +252,8 @@ const EditProjectModal = ({
                     onChange={(e) =>
                       setFormData({ ...formData, endDate: e.target.value })
                     }
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${
-                      editErrors.endDate ? "border-red-500" : "border-gray-300"
-                    }`}
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${editErrors.endDate ? "border-red-500" : "border-gray-300"
+                      }`}
                   />
                   {editErrors.endDate && (
                     <p className="mt-1 text-sm text-red-600">
@@ -308,8 +303,7 @@ const EditProjectModal = ({
                       <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
                         OBJECTIVE
                       </label>
-                      <input
-                        type="text"
+                      <VoiceInput
                         placeholder="Objective..."
                         value={okr.objective}
                         onChange={(e) =>
@@ -327,8 +321,7 @@ const EditProjectModal = ({
                             key={krIndex}
                             className="flex items-center gap-2"
                           >
-                            <input
-                              type="text"
+                            <VoiceInput
                               placeholder={`Result ${krIndex + 1}...`}
                               value={kr}
                               onChange={(e) =>

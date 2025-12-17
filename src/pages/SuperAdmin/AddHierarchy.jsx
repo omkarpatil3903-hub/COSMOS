@@ -22,6 +22,7 @@ import {
   FaPlus,
   FaSearch,
 } from "react-icons/fa";
+import VoiceInput from "../../components/Common/VoiceInput";
 
 export default function AddHierarchy() {
   const location = useLocation();
@@ -335,23 +336,22 @@ export default function AddHierarchy() {
                     </td>
                     <td className="whitespace-nowrap px-6 py-2.5 text-sm">
                       <span
-                        className={`inline-flex items-center justify-center rounded-xs px-3 py-1 text-xs font-semibold tracking-wide uppercase transition-colors ${
-                          item.type === "admin"
+                        className={`inline-flex items-center justify-center rounded-xs px-3 py-1 text-xs font-semibold tracking-wide uppercase transition-colors ${item.type === "admin"
                             ? "bg-blue-500 text-white"
                             : item.type === "superadmin"
-                            ? "bg-purple-500 text-white"
-                            : item.type === "manager"
-                            ? "bg-green-500 text-white"
-                            : "bg-gray-600 text-white"
-                        }`}
+                              ? "bg-purple-500 text-white"
+                              : item.type === "manager"
+                                ? "bg-green-500 text-white"
+                                : "bg-gray-600 text-white"
+                          }`}
                       >
                         {item.type === "admin"
                           ? "Admin Role"
                           : item.type === "superadmin"
-                          ? "Super Admin Role"
-                          : item.type === "manager"
-                          ? "Manager Role"
-                          : "Member Role"}
+                            ? "Super Admin Role"
+                            : item.type === "manager"
+                              ? "Manager Role"
+                              : "Member Role"}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-6 py-2.5 text-sm sticky right-0 z-10 bg-transparent transition-colors">
@@ -397,35 +397,31 @@ export default function AddHierarchy() {
               <div className="grid grid-cols-4 rounded-full bg-gray-100 p-1 text-sm font-medium">
                 <button
                   onClick={() => setType("superadmin")}
-                  className={`rounded-full px-4 py-2 transition ${
-                    type === "superadmin"
+                  className={`rounded-full px-4 py-2 transition ${type === "superadmin"
                       ? "bg-white shadow-sm"
                       : "text-gray-500"
-                  }`}
+                    }`}
                 >
                   Super Admin Role
                 </button>
                 <button
                   onClick={() => setType("admin")}
-                  className={`rounded-full px-4 py-2 transition ${
-                    type === "admin" ? "bg-white shadow-sm" : "text-gray-500"
-                  }`}
+                  className={`rounded-full px-4 py-2 transition ${type === "admin" ? "bg-white shadow-sm" : "text-gray-500"
+                    }`}
                 >
                   Admin Role
                 </button>
                 <button
                   onClick={() => setType("manager")}
-                  className={`rounded-full px-4 py-2 transition ${
-                    type === "manager" ? "bg-white shadow-sm" : "text-gray-500"
-                  }`}
+                  className={`rounded-full px-4 py-2 transition ${type === "manager" ? "bg-white shadow-sm" : "text-gray-500"
+                    }`}
                 >
                   Manager Role
                 </button>
                 <button
                   onClick={() => setType("member")}
-                  className={`rounded-full px-4 py-2 transition ${
-                    type === "member" ? "bg-white shadow-sm" : "text-gray-500"
-                  }`}
+                  className={`rounded-full px-4 py-2 transition ${type === "member" ? "bg-white shadow-sm" : "text-gray-500"
+                    }`}
                 >
                   Member Role
                 </button>
@@ -437,13 +433,12 @@ export default function AddHierarchy() {
                 {type === "admin"
                   ? "Add Admin Role"
                   : type === "superadmin"
-                  ? "Add Super Admin Role"
-                  : type === "manager"
-                  ? "Add Manager Role"
-                  : "Add Member Role"}
+                    ? "Add Super Admin Role"
+                    : type === "manager"
+                      ? "Add Manager Role"
+                      : "Add Member Role"}
               </label>
-              <input
-                type="text"
+              <VoiceInput
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 className="w-full rounded border border-gray-300 px-3 py-2"
@@ -451,10 +446,10 @@ export default function AddHierarchy() {
                   type === "admin"
                     ? "e.g., Admin"
                     : type === "superadmin"
-                    ? "e.g., Super Admin"
-                    : type === "manager"
-                    ? "e.g., Manager"
-                    : "e.g., Member"
+                      ? "e.g., Super Admin"
+                      : type === "manager"
+                        ? "e.g., Manager"
+                        : "e.g., Member"
                 }
               />
             </div>
@@ -492,8 +487,8 @@ export default function AddHierarchy() {
                 deleteModal.item?.type === "admin"
                   ? "Admin Role"
                   : deleteModal.item?.type === "superadmin"
-                  ? "Super Admin Role"
-                  : "Member Role"
+                    ? "Super Admin Role"
+                    : "Member Role"
               }
               confirmLabel="Delete"
               isLoading={deleteModal.loading}
@@ -525,8 +520,8 @@ export default function AddHierarchy() {
                   {preview.type === "admin"
                     ? "Admin Role"
                     : preview.type === "superadmin"
-                    ? "Super Admin Role"
-                    : "Member Role"}
+                      ? "Super Admin Role"
+                      : "Member Role"}
                 </span>
               </div>
             </div>

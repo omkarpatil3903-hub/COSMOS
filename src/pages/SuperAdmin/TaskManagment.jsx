@@ -2253,6 +2253,7 @@ function TasksManagement() {
                             onEdit={handleEdit}
                             onDelete={handleDelete}
                             onArchive={handleTaskArchive}
+                            onStatusChange={(taskId, newStatus) => moveTask(taskId, newStatus)}
                             resolveAssignees={resolveAssignees}
                             onHeaderMenu={handleHeaderMenu}
                             hideHeaderActions={isTodays}

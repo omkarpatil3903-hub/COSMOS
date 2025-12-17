@@ -11,6 +11,7 @@ import {
   FaUsers,
 } from "react-icons/fa";
 import Button from "./Button";
+import VoiceInput from "./Common/VoiceInput";
 
 const AddProjectModal = ({
   showAddForm,
@@ -79,8 +80,7 @@ const AddProjectModal = ({
                       <FaLayerGroup className="text-gray-400" />
                       Project Name <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
+                    <VoiceInput
                       value={formData.projectName}
                       onChange={(e) => {
                         setFormData({
@@ -95,11 +95,10 @@ const AddProjectModal = ({
                         }
                       }}
                       placeholder="e.g. Website Redesign"
-                      className={`w-full rounded-lg border ${
-                        addErrors.projectName
+                      className={`w-full rounded-lg border ${addErrors.projectName
                           ? "border-red-500 focus:ring-red-100"
                           : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                      } bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
+                        } bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
                       required
                     />
                     {addErrors.projectName && (
@@ -139,11 +138,10 @@ const AddProjectModal = ({
                             }));
                           }
                         }}
-                        className={`w-full rounded-lg border ${
-                          addErrors.clientId
+                        className={`w-full rounded-lg border ${addErrors.clientId
                             ? "border-red-500 focus:ring-red-100"
                             : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                        } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200 appearance-none`}
+                          } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200 appearance-none`}
                         required
                       >
                         <option value="" disabled>
@@ -199,11 +197,10 @@ const AddProjectModal = ({
                             }));
                           }
                         }}
-                        className={`w-full rounded-lg border ${
-                          addErrors.projectManagerId
+                        className={`w-full rounded-lg border ${addErrors.projectManagerId
                             ? "border-red-500 focus:ring-red-100"
                             : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                        } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200 appearance-none`}
+                          } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200 appearance-none`}
                         required
                       >
                         <option value="" disabled>
@@ -244,7 +241,7 @@ const AddProjectModal = ({
                       <FaUsers className="text-gray-400" />
                       Assignees
                     </label>
-                      <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-1">
+                    <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-1">
                       {assigneesOptions.map((u) => {
                         const current = Array.isArray(formData.assigneeIds)
                           ? formData.assigneeIds
@@ -327,11 +324,10 @@ const AddProjectModal = ({
                           }));
                         }
                       }}
-                      className={`w-full rounded-lg border ${
-                        addErrors.startDate
+                      className={`w-full rounded-lg border ${addErrors.startDate
                           ? "border-red-500 focus:ring-red-100"
                           : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                      } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200`}
+                        } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200`}
                       required
                     />
                   </div>
@@ -357,11 +353,10 @@ const AddProjectModal = ({
                           }));
                         }
                       }}
-                      className={`w-full rounded-lg border ${
-                        addErrors.endDate
+                      className={`w-full rounded-lg border ${addErrors.endDate
                           ? "border-red-500 focus:ring-red-100"
                           : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                      } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200`}
+                        } bg-white py-2.5 px-4 text-sm text-gray-900 focus:outline-none focus:ring-4 transition-all duration-200`}
                       required
                     />
                   </div>
@@ -430,8 +425,7 @@ const AddProjectModal = ({
                       )}
                     </div>
 
-                    <input
-                      type="text"
+                    <VoiceInput
                       value={okr.objective}
                       onChange={(e) => {
                         const newOkrs = [...formData.okrs];
@@ -454,8 +448,7 @@ const AddProjectModal = ({
                       </label>
                       {okr.keyResults.map((kr, krIndex) => (
                         <div key={krIndex} className="flex gap-2">
-                          <input
-                            type="text"
+                          <VoiceInput
                             value={kr}
                             onChange={(e) => {
                               const newOkrs = [...formData.okrs];
@@ -484,18 +477,18 @@ const AddProjectModal = ({
                             )}
                             {krIndex ===
                               formData.okrs[okrIndex].keyResults.length - 1 && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const newOkrs = [...formData.okrs];
-                                  newOkrs[okrIndex].keyResults.push("");
-                                  setFormData({ ...formData, okrs: newOkrs });
-                                }}
-                                className="text-indigo-400 hover:text-indigo-600"
-                              >
-                                <FaPlus className="h-3 w-3" />
-                              </button>
-                            )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newOkrs = [...formData.okrs];
+                                    newOkrs[okrIndex].keyResults.push("");
+                                    setFormData({ ...formData, okrs: newOkrs });
+                                  }}
+                                  className="text-indigo-400 hover:text-indigo-600"
+                                >
+                                  <FaPlus className="h-3 w-3" />
+                                </button>
+                              )}
                           </div>
                         </div>
                       ))}
