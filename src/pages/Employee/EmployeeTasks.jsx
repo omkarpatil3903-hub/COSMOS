@@ -128,7 +128,10 @@ const EmployeeTasks = () => {
       (snap) => {
         const data = snap.data() || {};
         const arr = Array.isArray(data.statuses) ? data.statuses : [];
-        const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const norm = (v) =>
+          String(v || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "");
         const list = [];
         const colorMap = {};
         arr.forEach((item) => {
@@ -164,9 +167,7 @@ const EmployeeTasks = () => {
     );
     // Merge: keep configured order first, then add any present statuses not configured
     const has = new Set(configured.map((s) => String(s).toLowerCase()));
-    const extras = present.filter(
-      (s) => !has.has(String(s).toLowerCase())
-    );
+    const extras = present.filter((s) => !has.has(String(s).toLowerCase()));
     return [...configured, ...extras];
   }, [statusOptions, tasks]);
 
@@ -219,14 +220,12 @@ const EmployeeTasks = () => {
     }
   }, [taskSource, selectedSelfTaskIds.size]);
 
-
-
   // Combine tasks whenever primary or multi change
   useEffect(() => {
     const combined = [...primaryTasks];
-    const primaryIds = new Set(primaryTasks.map(t => t.id));
+    const primaryIds = new Set(primaryTasks.map((t) => t.id));
 
-    multiTasks.forEach(t => {
+    multiTasks.forEach((t) => {
       if (!primaryIds.has(t.id)) {
         combined.push(t);
       }
@@ -242,10 +241,7 @@ const EmployeeTasks = () => {
     setTasks(combined);
   }, [primaryTasks, multiTasks]);
   // Today's date string (YYYY-MM-DD) using local time only (no Realtime DB)
-  const todayStr = useMemo(
-    () => new Date().toISOString().slice(0, 10),
-    []
-  );
+  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -265,60 +261,70 @@ const EmployeeTasks = () => {
       limit(taskLimit)
     );
 
-    const unsubscribePrimary = onSnapshot(qPrimary, (snapshot) => {
-      const taskData = snapshot.docs
-        .map((doc) => {
-          const data = doc.data();
-          const myStatus = data.assigneeStatus?.[user.uid] || {};
-          const derivedStatus =
-            (typeof myStatus.status === "string" && myStatus.status.trim() !== "")
-              ? myStatus.status
-              : "To-Do";
+    const unsubscribePrimary = onSnapshot(
+      qPrimary,
+      (snapshot) => {
+        const taskData = snapshot.docs
+          .map((doc) => {
+            const data = doc.data();
+            const myStatus = data.assigneeStatus?.[user.uid] || {};
+            const derivedStatus =
+              typeof myStatus.status === "string" &&
+              myStatus.status.trim() !== ""
+                ? myStatus.status
+                : "To-Do";
 
-          return {
-            id: doc.id,
-            ...data,
-            status: derivedStatus,
-            progressPercent: myStatus.progressPercent ?? 0,
-            completedAt: myStatus.completedAt || null,
-            source: "admin",
-            collectionName: "tasks",
-          };
-        })
-        .filter((task) => task.assigneeType === "user");
+            return {
+              id: doc.id,
+              ...data,
+              status: derivedStatus,
+              progressPercent: myStatus.progressPercent ?? 0,
+              completedAt: myStatus.completedAt || null,
+              source: "admin",
+              collectionName: "tasks",
+            };
+          })
+          .filter((task) => task.assigneeType === "user");
 
-      setPrimaryTasks(taskData);
-    }, (error) => {
-      console.error("Error fetching primary tasks:", error);
-      toast.error("Failed to load tasks. Check console for details.");
-    });
+        setPrimaryTasks(taskData);
+      },
+      (error) => {
+        console.error("Error fetching primary tasks:", error);
+        toast.error("Failed to load tasks. Check console for details.");
+      }
+    );
 
-    const unsubscribeMulti = onSnapshot(qMulti, (snapshot) => {
-      const taskData = snapshot.docs
-        .map((doc) => {
-          const data = doc.data();
-          const myStatus = data.assigneeStatus?.[user.uid] || {};
-          const derivedStatus =
-            (typeof myStatus.status === "string" && myStatus.status.trim() !== "")
-              ? myStatus.status
-              : "To-Do";
+    const unsubscribeMulti = onSnapshot(
+      qMulti,
+      (snapshot) => {
+        const taskData = snapshot.docs
+          .map((doc) => {
+            const data = doc.data();
+            const myStatus = data.assigneeStatus?.[user.uid] || {};
+            const derivedStatus =
+              typeof myStatus.status === "string" &&
+              myStatus.status.trim() !== ""
+                ? myStatus.status
+                : "To-Do";
 
-          return {
-            id: doc.id,
-            ...data,
-            status: derivedStatus,
-            progressPercent: myStatus.progressPercent ?? 0,
-            completedAt: myStatus.completedAt || null,
-            source: "admin",
-            collectionName: "tasks",
-          };
-        })
-        .filter((task) => task.assigneeType === "user");
+            return {
+              id: doc.id,
+              ...data,
+              status: derivedStatus,
+              progressPercent: myStatus.progressPercent ?? 0,
+              completedAt: myStatus.completedAt || null,
+              source: "admin",
+              collectionName: "tasks",
+            };
+          })
+          .filter((task) => task.assigneeType === "user");
 
-      setMultiTasks(taskData);
-    }, (error) => {
-      console.error("Error fetching multi-assignee tasks:", error);
-    });
+        setMultiTasks(taskData);
+      },
+      (error) => {
+        console.error("Error fetching multi-assignee tasks:", error);
+      }
+    );
 
     // Self tasks subscription
     const qSelf = query(
@@ -327,31 +333,35 @@ const EmployeeTasks = () => {
       orderBy("dueDate", "asc"),
       limit(taskLimit)
     );
-    const unsubscribeSelf = onSnapshot(qSelf, (snapshot) => {
-      const taskData = snapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          status:
-            doc.data().status === "In Review"
-              ? "In Progress"
-              : doc.data().status || "To-Do",
-          progressPercent: doc.data().progressPercent ?? 0,
-          assigneeType: "user",
-          source: "self",
-          collectionName: "selfTasks",
-        }))
-        .sort((a, b) => {
-          const dateA = a.dueDate?.toDate?.() || new Date(a.dueDate || 0);
-          const dateB = b.dueDate?.toDate?.() || new Date(b.dueDate || 0);
-          return dateA - dateB;
-        });
-      setSelfTasks(taskData);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching self tasks:", error);
-      setLoading(false);
-    });
+    const unsubscribeSelf = onSnapshot(
+      qSelf,
+      (snapshot) => {
+        const taskData = snapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            status:
+              doc.data().status === "In Review"
+                ? "In Progress"
+                : doc.data().status || "To-Do",
+            progressPercent: doc.data().progressPercent ?? 0,
+            assigneeType: "user",
+            source: "self",
+            collectionName: "selfTasks",
+          }))
+          .sort((a, b) => {
+            const dateA = a.dueDate?.toDate?.() || new Date(a.dueDate || 0);
+            const dateB = b.dueDate?.toDate?.() || new Date(b.dueDate || 0);
+            return dateA - dateB;
+          });
+        setSelfTasks(taskData);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error fetching self tasks:", error);
+        setLoading(false);
+      }
+    );
 
     const unsubscribeProjects = onSnapshot(
       collection(db, "projects"),
@@ -492,7 +502,6 @@ const EmployeeTasks = () => {
   };
 
   // Handle save edited task
-
 
   // Handle delete task
   const handleDeleteTask = async (task) => {
@@ -770,7 +779,6 @@ const EmployeeTasks = () => {
   const availableProjects = [
     ...new Set(baseTasks.map((task) => task.projectName).filter(Boolean)),
   ];
-  
 
   // Calculate task statistics
   const stats = {
@@ -869,14 +877,19 @@ const EmployeeTasks = () => {
 
   // Today's tasks group (server-date based), exclude Done
   const todaysTasks = useMemo(() => {
-    const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const norm = (v) =>
+      String(v || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
     return filteredTasks.filter((t) => {
       const dueStr = t?.dueDate?.toDate
         ? t.dueDate.toDate().toISOString().slice(0, 10)
         : typeof t?.dueDate === "string"
         ? t.dueDate.slice(0, 10)
         : "";
-      return norm(t.status) !== "done" && dueStr && todayStr && dueStr === todayStr;
+      return (
+        norm(t.status) !== "done" && dueStr && todayStr && dueStr === todayStr
+      );
     });
   }, [filteredTasks, todayStr]);
 
@@ -1052,19 +1065,21 @@ const EmployeeTasks = () => {
             <div className="flex bg-gray-100 p-1 rounded-lg mr-4">
               <button
                 onClick={() => setTaskSource("admin")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${taskSource === "admin"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-                  }`}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  taskSource === "admin"
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
               >
                 Assigned Tasks
               </button>
               <button
                 onClick={() => setTaskSource("self")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${taskSource === "self"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-                  }`}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  taskSource === "self"
+                    ? "bg-white text-indigo-600 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
               >
                 My Tasks
               </button>
@@ -1072,38 +1087,42 @@ const EmployeeTasks = () => {
 
             <button
               onClick={() => setViewMode("all")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "all"
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                viewMode === "all"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
             >
               All Tasks
             </button>
             <button
               onClick={() => setViewMode("today")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "today"
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                viewMode === "today"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
             >
               <FaCalendar className="inline mr-1" />
               Due Today
             </button>
             <button
               onClick={() => setViewMode("week")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "week"
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                viewMode === "week"
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
             >
               This Week
             </button>
             <button
               onClick={() => setViewMode("overdue")}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "overdue"
-                ? "bg-red-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                viewMode === "overdue"
+                  ? "bg-red-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
             >
               <FaExclamationTriangle className="inline mr-1" />
               Overdue
@@ -1114,20 +1133,22 @@ const EmployeeTasks = () => {
           <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setDisplayMode("list")}
-              className={`p-2 rounded transition-colors ${displayMode === "list"
-                ? "bg-white text-indigo-600 shadow"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
+              className={`p-2 rounded transition-colors ${
+                displayMode === "list"
+                  ? "bg-white text-indigo-600 shadow"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
               title="List View"
             >
               <FaList className="w-4 h-4" />
             </button>
             <button
               onClick={() => setDisplayMode("kanban")}
-              className={`p-2 rounded transition-colors ${displayMode === "kanban"
-                ? "bg-white text-indigo-600 shadow"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
+              className={`p-2 rounded transition-colors ${
+                displayMode === "kanban"
+                  ? "bg-white text-indigo-600 shadow"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
               title="Kanban View"
             >
               <FaTh className="w-4 h-4" />
@@ -1258,64 +1279,64 @@ const EmployeeTasks = () => {
             priorityFilter !== "all" ||
             projectFilter !== "all" ||
             viewMode !== "all") && (
-              <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
-                <span className="text-sm text-gray-600">Active filters:</span>
-                {searchQuery && (
-                  <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full flex items-center gap-1">
-                    Search: "{searchQuery}"
-                    <button onClick={() => setSearchQuery("")}>
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </span>
-                )}
-                {statusFilter !== "all" && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
-                    Status: {statusFilter}
-                    <button onClick={() => setStatusFilter("all")}>
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </span>
-                )}
-                {priorityFilter !== "all" && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
-                    Priority: {priorityFilter}
-                    <button onClick={() => setPriorityFilter("all")}>
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </span>
-                )}
-                {projectFilter !== "all" && (
-                  <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full flex items-center gap-1">
-                    Project:{" "}
-                    {projectFilter === "no-project"
-                      ? "No Project"
-                      : projectFilter}
-                    <button onClick={() => setProjectFilter("all")}>
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </span>
-                )}
-                {viewMode !== "all" && (
-                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center gap-1">
-                    View: {viewMode}
-                    <button onClick={() => setViewMode("all")}>
-                      <FaTimes className="text-xs" />
-                    </button>
-                  </span>
-                )}
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setStatusFilter("all");
-                    setPriorityFilter("all");
-                    setViewMode("all");
-                  }}
-                  className="text-xs text-red-600 hover:text-red-800 font-medium ml-2"
-                >
-                  Clear All
-                </button>
-              </div>
-            )}
+            <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
+              <span className="text-sm text-gray-600">Active filters:</span>
+              {searchQuery && (
+                <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full flex items-center gap-1">
+                  Search: "{searchQuery}"
+                  <button onClick={() => setSearchQuery("")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              {statusFilter !== "all" && (
+                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
+                  Status: {statusFilter}
+                  <button onClick={() => setStatusFilter("all")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              {priorityFilter !== "all" && (
+                <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
+                  Priority: {priorityFilter}
+                  <button onClick={() => setPriorityFilter("all")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              {projectFilter !== "all" && (
+                <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full flex items-center gap-1">
+                  Project:{" "}
+                  {projectFilter === "no-project"
+                    ? "No Project"
+                    : projectFilter}
+                  <button onClick={() => setProjectFilter("all")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              {viewMode !== "all" && (
+                <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center gap-1">
+                  View: {viewMode}
+                  <button onClick={() => setViewMode("all")}>
+                    <FaTimes className="text-xs" />
+                  </button>
+                </span>
+              )}
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter("all");
+                  setPriorityFilter("all");
+                  setViewMode("all");
+                }}
+                className="text-xs text-red-600 hover:text-red-800 font-medium ml-2"
+              >
+                Clear All
+              </button>
+            </div>
+          )}
 
           {/* Add Self Task Modal (UI matched to provided screenshot) */}
           <AddSelfTaskModal
@@ -1356,9 +1377,13 @@ const EmployeeTasks = () => {
                 onClose={() => setShowDeleteConfirmModal(false)}
                 onConfirm={deleteSelectedSelfTasks}
                 title="Delete Self Tasks"
-                description={`Are you sure you want to delete ${selectedSelfTaskIds.size} self task${selectedSelfTaskIds.size > 1 ? "s" : ""}?`}
+                description={`Are you sure you want to delete ${
+                  selectedSelfTaskIds.size
+                } self task${selectedSelfTaskIds.size > 1 ? "s" : ""}?`}
                 permanentMessage="This action cannot be undone."
-                confirmLabel={`Delete ${selectedSelfTaskIds.size} Task${selectedSelfTaskIds.size > 1 ? "s" : ""}`}
+                confirmLabel={`Delete ${selectedSelfTaskIds.size} Task${
+                  selectedSelfTaskIds.size > 1 ? "s" : ""
+                }`}
               />
             </div>
           )}
@@ -1373,7 +1398,11 @@ const EmployeeTasks = () => {
                 }}
                 onConfirm={confirmDeleteTask}
                 title="Delete Task"
-                description={`Are you sure you want to delete "${taskToDelete.title.length > 50 ? `${taskToDelete.title.substring(0, 30)}...` : taskToDelete.title}"?`}
+                description={`Are you sure you want to delete "${
+                  taskToDelete.title.length > 50
+                    ? `${taskToDelete.title.substring(0, 30)}...`
+                    : taskToDelete.title
+                }"?`}
                 permanentMessage="This action cannot be undone."
                 confirmLabel="Delete Task"
               />
@@ -1438,9 +1467,12 @@ const EmployeeTasks = () => {
 
                     {/* Dynamic status groups (excluding today's tasks) */}
                     {effectiveStatuses.map((s, idx) => {
-                      const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-                      const tasksForStatus = filteredTasks.filter((t) =>
-                        norm(t.status) === norm(s)
+                      const norm = (v) =>
+                        String(v || "")
+                          .toLowerCase()
+                          .replace(/[^a-z0-9]/g, "");
+                      const tasksForStatus = filteredTasks.filter(
+                        (t) => norm(t.status) === norm(s)
                       );
                       if (!tasksForStatus.length) return null;
                       const palette = [
@@ -1498,9 +1530,12 @@ const EmployeeTasks = () => {
 
                     {/* Dynamic status groups (include all tasks by status, even if due today) */}
                     {effectiveStatuses.map((s, idx) => {
-                      const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-                      const tasksForStatus = filteredTasks.filter((t) =>
-                        norm(t.status) === norm(s)
+                      const norm = (v) =>
+                        String(v || "")
+                          .toLowerCase()
+                          .replace(/[^a-z0-9]/g, "");
+                      const tasksForStatus = filteredTasks.filter(
+                        (t) => norm(t.status) === norm(s)
                       );
                       if (!tasksForStatus.length) return null;
                       const palette = [

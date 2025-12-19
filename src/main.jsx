@@ -66,7 +66,6 @@ import AdminStatusSettings from "./pages/Admin/AdminStatusSettings.jsx";
 import AdminManageProjects from "./pages/Admin/AdminManageProjects.jsx";
 import AdminManageDocument from "./pages/Admin/AdminManageDocument.jsx";
 import AdminTaskManagment from "./pages/Admin/AdminTaskManagment.jsx";
-import AdminCalendar from "./pages/Admin/AdminCalendar.jsx";
 import AdminMomGeneratorPro from "./pages/Admin/AdminMomGeneratorPro.jsx";
 import AdminDocuments from "./pages/Admin/AdminDocuments.jsx";
 import AdminManageClients from "./pages/Admin/AdminManageClients.jsx";
@@ -124,37 +123,37 @@ const router = createBrowserRouter([
 
 
   {
-  path: "/admin",
-  element: (
-    <ProtectedRoute allowedRoles={["admin"]}>
-      <AdminLayout />
-    </ProtectedRoute>
-  ),
-  children: [
-    { path: "/admin", element: <AdminDashboardPage /> },
-    { path: "/admin/manage-resources", element: <AdminManageResources /> },
-    { path: "/admin/manage-clients", element: <AdminManageClients /> },
-    { path: "/admin/manage-projects", element: <AdminManageProjects /> },
-    { path: "/admin/knowledge-management", element: <AdminDocuments /> },
-    { path: "/admin/knowledge-management/:projectName", element: <AdminKnowledgeProjectDetail /> },
-    { path: "/admin/manage-knowledge", element: <AdminManageDocument /> },
-    { path: "/admin/mom-pro", element: <AdminMomGeneratorPro /> },
-    { path: "/admin/task-management", element: <AdminTaskManagment /> },
-    { path: "/admin/reports", element: <AdminReportsPage /> },
-    { path: "/admin/expenses", element: <AdminExpenseManagement /> },
-    { path: "/admin/calendar", element: <AdminCalendar /> },
-    {
-      path: "/admin/settings",
-      element: <AdminSettings />,
-      children: [
-        { index: true, element: <Navigate to="add-hierarchy" replace /> },
-        { path: "add-hierarchy", element: <AdminAddHierarchy /> },
-        { path: "project-settings", element: <AdminProjectSettings /> },
-        { path: "status-settings", element: <AdminStatusSettings /> },
-      ],
-    },
-  ],
-},
+    path: "/admin",
+    element: (
+      <ProtectedRoute allowedRoles={["admin"]}>
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { path: "/admin", element: <AdminDashboardPage /> },
+      { path: "/admin/manage-resources", element: <AdminManageResources /> },
+      { path: "/admin/manage-clients", element: <AdminManageClients /> },
+      { path: "/admin/manage-projects", element: <AdminManageProjects /> },
+      { path: "/admin/knowledge-management", element: <AdminDocuments /> },
+      { path: "/admin/knowledge-management/:projectName", element: <AdminKnowledgeProjectDetail /> },
+      { path: "/admin/manage-knowledge", element: <AdminManageDocument /> },
+      { path: "/admin/mom-pro", element: <AdminMomGeneratorPro /> },
+      { path: "/admin/task-management", element: <AdminTaskManagment /> },
+      { path: "/admin/reports", element: <AdminReportsPage /> },
+      { path: "/admin/expenses", element: <AdminExpenseManagement /> },
+      { path: "/admin/calendar", element: <Calendar /> },
+      {
+        path: "/admin/settings",
+        element: <AdminSettings />,
+        children: [
+          { index: true, element: <Navigate to="add-hierarchy" replace /> },
+          { path: "add-hierarchy", element: <AdminAddHierarchy /> },
+          { path: "project-settings", element: <AdminProjectSettings /> },
+          { path: "status-settings", element: <AdminStatusSettings /> },
+        ],
+      },
+    ],
+  },
   // Project Manager Portal Routes (using "admin" role)
   {
     path: "/manager",

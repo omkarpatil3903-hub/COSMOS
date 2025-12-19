@@ -52,7 +52,11 @@ import {
 } from "firebase/firestore";
 import { useAuthContext } from "../../context/AuthContext";
 import { logTaskActivity } from "../../services/taskService";
-import { getDatabase, ref as rtdbRef, onValue as onRtdbValue } from "firebase/database";
+import {
+  getDatabase,
+  ref as rtdbRef,
+  onValue as onRtdbValue,
+} from "firebase/database";
 
 // Determine if a user/resource is active based on common fields
 const isUserActive = (u) => {
@@ -209,7 +213,6 @@ function TasksManagement() {
         }
       }
 
-      
       return resolved;
     },
     [userMap, clientMap]
@@ -227,7 +230,8 @@ function TasksManagement() {
 
   // If DB has not provided statuses yet, derive them from current tasks
   const effectiveStatuses = useMemo(() => {
-    if (Array.isArray(statusOptions) && statusOptions.length) return statusOptions;
+    if (Array.isArray(statusOptions) && statusOptions.length)
+      return statusOptions;
     const unique = Array.from(
       new Set(tasks.map((t) => t.status).filter(Boolean))
     );
@@ -290,7 +294,10 @@ function TasksManagement() {
       (snap) => {
         const data = snap.data() || {};
         const arr = Array.isArray(data.statuses) ? data.statuses : [];
-        const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const norm = (v) =>
+          String(v || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "");
         const list = [];
         const colorMap = {};
         arr.forEach((item) => {
@@ -354,17 +361,27 @@ function TasksManagement() {
             priority: data.priority || "Medium",
             status: (() => {
               // Prefer raw status from DB (mapping only legacy 'In Review').
-              const raw = (data.status === "In Review" ? "In Progress" : data.status) || (effectiveStatuses[0] || "To-Do");
+              const raw =
+                (data.status === "In Review" ? "In Progress" : data.status) ||
+                effectiveStatuses[0] ||
+                "To-Do";
               // If dynamic statuses are configured, do not override with derived values.
-              if (Array.isArray(statusOptions) && statusOptions.length) return raw;
+              if (Array.isArray(statusOptions) && statusOptions.length)
+                return raw;
 
               // Legacy behavior: derive coarse status if no dynamic statuses configured.
               let s = raw;
-              if (data.assigneeStatus && Object.keys(data.assigneeStatus).length > 0) {
+              if (
+                data.assigneeStatus &&
+                Object.keys(data.assigneeStatus).length > 0
+              ) {
                 const values = Object.values(data.assigneeStatus);
                 if (values.length > 0) {
                   const allDone = values.every((v) => v.status === "Done");
-                  const anyInProgress = values.some((v) => v.status === "In Progress" || v.status === "In Review");
+                  const anyInProgress = values.some(
+                    (v) =>
+                      v.status === "In Progress" || v.status === "In Review"
+                  );
                   const anyDone = values.some((v) => v.status === "Done");
 
                   if (allDone) s = "Done";
@@ -375,7 +392,10 @@ function TasksManagement() {
               return s;
             })(),
             isDerivedStatus: (() => {
-              if (data.assigneeStatus && Object.keys(data.assigneeStatus).length > 0) {
+              if (
+                data.assigneeStatus &&
+                Object.keys(data.assigneeStatus).length > 0
+              ) {
                 const values = Object.values(data.assigneeStatus);
                 return values.length > 0;
               }
@@ -393,8 +413,8 @@ function TasksManagement() {
                 : typeof data.weightage === "string" &&
                   data.weightage.trim() !== "" &&
                   !isNaN(Number(data.weightage))
-                  ? Number(data.weightage)
-                  : null,
+                ? Number(data.weightage)
+                : null,
             archived: !!data.archived,
             isRecurring: data.isRecurring || false,
             recurringPattern: data.recurringPattern || "daily",
@@ -489,8 +509,13 @@ function TasksManagement() {
     if (isString) {
       // If invoked from a synthetic group like "Today's Tasks" or catch-all like "Other",
       // default to first available status; otherwise use provided status.
-      const synthetic = status === "TODAYS TASK" || status === "Today's Tasks" || status === "Other";
-      setEditing({ status: synthetic ? (effectiveStatuses[0] || "To-Do") : status });
+      const synthetic =
+        status === "TODAYS TASK" ||
+        status === "Today's Tasks" ||
+        status === "Other";
+      setEditing({
+        status: synthetic ? effectiveStatuses[0] || "To-Do" : status,
+      });
     } else {
       setEditing(null);
     }
@@ -517,8 +542,8 @@ function TasksManagement() {
         const ref = doc(db, "tasks", taskData.id);
         const wt =
           taskData.weightage === "" ||
-            taskData.weightage === undefined ||
-            taskData.weightage === null
+          taskData.weightage === undefined ||
+          taskData.weightage === null
             ? null
             : Number(taskData.weightage);
 
@@ -528,8 +553,8 @@ function TasksManagement() {
         const newAssigneeIds = Array.isArray(taskData.assignees)
           ? taskData.assignees.map((a) => a.id).filter(Boolean)
           : taskData.assigneeId
-            ? [taskData.assigneeId]
-            : [];
+          ? [taskData.assigneeId]
+          : [];
 
         // Build or update assigneeStatus map
         const currentStatusMap = current?.assigneeStatus || {};
@@ -542,7 +567,7 @@ function TasksManagement() {
           } else {
             // Initialize for new assignee
             updatedAssigneeStatus[id] = {
-              status: current?.status || (effectiveStatuses[0] || "To-Do"),
+              status: current?.status || effectiveStatuses[0] || "To-Do",
               progressPercent: 0,
               completedAt: null,
               completedBy: null,
@@ -564,7 +589,7 @@ function TasksManagement() {
           assignedDate: taskData.assignedDate || "",
           dueDate: taskData.dueDate || "",
           priority: taskData.priority || "Medium",
-          status: taskData.status || (effectiveStatuses[0] || "To-Do"),
+          status: taskData.status || effectiveStatuses[0] || "To-Do",
           progressPercent: taskData.progressPercent ?? 0,
           completionComment: taskData.completionComment || "",
           weightage: Number.isNaN(wt) ? null : wt,
@@ -584,7 +609,8 @@ function TasksManagement() {
 
         const normStatus = (v) => (v || "").toString().trim().toLowerCase();
         const isCurrentlyDone = normStatus(current?.status) === "done";
-        const isUpdatingToDone = normStatus(update.status) === "done" && !isCurrentlyDone;
+        const isUpdatingToDone =
+          normStatus(update.status) === "done" && !isCurrentlyDone;
 
         // Enforce WIP on status change (only for active columns, excluding Done)
         if (
@@ -620,14 +646,19 @@ function TasksManagement() {
           }
 
           // Propagate admin status change to all assignees so Employee panel reflects it
-          if (Array.isArray(newAssigneeIds) && newAssigneeIds.length > 0 && update.status) {
+          if (
+            Array.isArray(newAssigneeIds) &&
+            newAssigneeIds.length > 0 &&
+            update.status
+          ) {
             const willBeDone = normStatus(update.status) === "done";
             newAssigneeIds.forEach((uid) => {
               update[`assigneeStatus.${uid}.status`] = update.status;
               if (willBeDone) {
                 update[`assigneeStatus.${uid}.progressPercent`] = 100;
                 update[`assigneeStatus.${uid}.completedAt`] = serverTimestamp();
-                update[`assigneeStatus.${uid}.completedBy`] = user?.uid || "system";
+                update[`assigneeStatus.${uid}.completedBy`] =
+                  user?.uid || "system";
               } else if (isCurrentlyDone) {
                 update[`assigneeStatus.${uid}.progressPercent`] = 0;
                 update[`assigneeStatus.${uid}.completedAt`] = null;
@@ -736,7 +767,8 @@ function TasksManagement() {
         }
       } else {
         // Enforce WIP on creation
-        const initialStatus = taskData.status || (effectiveStatuses[0] || "To-Do");
+        const initialStatus =
+          taskData.status || effectiveStatuses[0] || "To-Do";
         if (initialStatus !== "Done" && isWipExceeded(initialStatus)) {
           const limit = wipLimits?.[initialStatus];
           toast.error(
@@ -746,16 +778,16 @@ function TasksManagement() {
         }
         const wt =
           taskData.weightage === "" ||
-            taskData.weightage === undefined ||
-            taskData.weightage === null
+          taskData.weightage === undefined ||
+          taskData.weightage === null
             ? null
             : Number(taskData.weightage);
 
         const assigneeIds = Array.isArray(taskData.assignees)
           ? taskData.assignees.map((a) => a.id).filter(Boolean)
           : taskData.assigneeId
-            ? [taskData.assigneeId]
-            : [];
+          ? [taskData.assigneeId]
+          : [];
 
         // Initialize assigneeStatus map
         const initialAssigneeStatus = {};
@@ -783,7 +815,7 @@ function TasksManagement() {
             taskData.assignedDate || new Date().toISOString().slice(0, 10),
           dueDate: taskData.dueDate || "",
           priority: taskData.priority || "Medium",
-          status: taskData.status || (effectiveStatuses[0] || "To-Do"),
+          status: taskData.status || effectiveStatuses[0] || "To-Do",
           progressPercent: taskData.status === "Done" ? 100 : 0,
           createdAt: serverTimestamp(),
           completedAt: taskData.status === "Done" ? serverTimestamp() : null,
@@ -911,7 +943,10 @@ function TasksManagement() {
     if (!payload) return;
     if (payload.action === "change-color") {
       const name = payload.title || "";
-      const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const norm = (v) =>
+        String(v || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "");
       const current = statusColorMap[norm(name)] || "#6b7280";
       setStatusColorTarget(name);
       setStatusColorTemp(current);
@@ -984,7 +1019,7 @@ function TasksManagement() {
       // refresh project progress for affected projects
       await Promise.all(
         Array.from(affectedProjects).map((pid) =>
-          updateProjectProgress(pid).catch(() => { })
+          updateProjectProgress(pid).catch(() => {})
         )
       );
     } catch (err) {
@@ -1023,7 +1058,7 @@ function TasksManagement() {
             .filter(Boolean)
         );
         affected.forEach((pid) => {
-          updateProjectProgress(pid).catch(() => { });
+          updateProjectProgress(pid).catch(() => {});
         });
       })
       .catch((err) => {
@@ -1047,7 +1082,7 @@ function TasksManagement() {
             .filter(Boolean)
         );
         affected.forEach((pid) => {
-          updateProjectProgress(pid).catch(() => { });
+          updateProjectProgress(pid).catch(() => {});
         });
       })
       .catch((err) => {
@@ -1094,7 +1129,8 @@ function TasksManagement() {
         assigneeType: newType || (newRes ? "user" : newCli ? "client" : "user"),
       });
       toast.success(
-        `Task reassigned from ${oldRes?.name || oldCli?.clientName || "Unassigned"
+        `Task reassigned from ${
+          oldRes?.name || oldCli?.clientName || "Unassigned"
         } to ${newRes?.name || newCli?.clientName || "Unassigned"}`
       );
       logTaskActivity(
@@ -1125,26 +1161,32 @@ function TasksManagement() {
         progressPercent: willBeDone
           ? 100
           : wasDone
-            ? 0
-            : t.progressPercent ?? 0,
+          ? 0
+          : t.progressPercent ?? 0,
         completedAt: willBeDone
           ? serverTimestamp()
           : wasDone
-            ? null
-            : t.completedAt || null,
+          ? null
+          : t.completedAt || null,
       };
 
       // Propagate admin status change to all assignees (multi + single fallback)
       {
         const targetUids = Array.from(
-          new Set([...(Array.isArray(t.assigneeIds) ? t.assigneeIds : []), t.assigneeId].filter(Boolean))
+          new Set(
+            [
+              ...(Array.isArray(t.assigneeIds) ? t.assigneeIds : []),
+              t.assigneeId,
+            ].filter(Boolean)
+          )
         );
         targetUids.forEach((uid) => {
           updates[`assigneeStatus.${uid}.status`] = newStatus;
           if (willBeDone) {
             updates[`assigneeStatus.${uid}.progressPercent`] = 100;
             updates[`assigneeStatus.${uid}.completedAt`] = serverTimestamp();
-            updates[`assigneeStatus.${uid}.completedBy`] = user?.uid || "system";
+            updates[`assigneeStatus.${uid}.completedBy`] =
+              user?.uid || "system";
           } else if (wasDone) {
             updates[`assigneeStatus.${uid}.progressPercent`] = 0;
             updates[`assigneeStatus.${uid}.completedAt`] = null;
@@ -1185,14 +1227,20 @@ function TasksManagement() {
       // Propagate to all assignees (multi + single fallback)
       {
         const targetUids = Array.from(
-          new Set([...(Array.isArray(t?.assigneeIds) ? t.assigneeIds : []), t?.assigneeId].filter(Boolean))
+          new Set(
+            [
+              ...(Array.isArray(t?.assigneeIds) ? t.assigneeIds : []),
+              t?.assigneeId,
+            ].filter(Boolean)
+          )
         );
         targetUids.forEach((uid) => {
           updates[`assigneeStatus.${uid}.status`] = "Done";
           updates[`assigneeStatus.${uid}.progressPercent`] = 100;
           updates[`assigneeStatus.${uid}.completedAt`] = serverTimestamp();
           updates[`assigneeStatus.${uid}.completedBy`] = user?.uid || "system";
-          if (comment) updates[`assigneeStatus.${uid}.completionComment`] = comment;
+          if (comment)
+            updates[`assigneeStatus.${uid}.completionComment`] = comment;
         });
       }
 
@@ -1206,7 +1254,10 @@ function TasksManagement() {
         user
       );
 
-      console.log("Admin completion updated doc. Checking recurrence for:", t?.id);
+      console.log(
+        "Admin completion updated doc. Checking recurrence for:",
+        t?.id
+      );
 
       // Attempt to create next recurring instance if applicable
       try {
@@ -1256,7 +1307,10 @@ function TasksManagement() {
     const today = new Date().toISOString().slice(0, 10);
 
     return tasks.filter((t) => {
-      const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const norm = (v) =>
+        String(v || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "");
       // 1. Global Visibility Check
       if (t.visibleFrom && t.visibleFrom > today) return false;
       if (!filters.showArchived && t.archived) return false;
@@ -1275,7 +1329,8 @@ function TasksManagement() {
       )
         return false;
       if (filters.priority && t.priority !== filters.priority) return false;
-      if (filters.status && norm(t.status) !== norm(filters.status)) return false;
+      if (filters.status && norm(t.status) !== norm(filters.status))
+        return false;
 
       // 4. Assignee ID Check
       if (filters.assignee) {
@@ -1292,8 +1347,9 @@ function TasksManagement() {
         const project = projectMap[t.projectId];
         const assignee = userMap[t.assigneeId] || clientMap[t.assigneeId];
 
-        const searchText = `${t.title} ${t.description} ${project?.name || ""
-          } ${assignee?.name || assignee?.clientName || ""}`.toLowerCase();
+        const searchText = `${t.title} ${t.description} ${
+          project?.name || ""
+        } ${assignee?.name || assignee?.clientName || ""}`.toLowerCase();
 
         if (!searchText.includes(s)) return false;
       }
@@ -1465,7 +1521,10 @@ function TasksManagement() {
         tasksToCreate.push({
           title: title.toString(),
           description: description.toString(),
-          status: (statusRaw && String(statusRaw).trim()) || (effectiveStatuses[0] || "To-Do"),
+          status:
+            (statusRaw && String(statusRaw).trim()) ||
+            effectiveStatuses[0] ||
+            "To-Do",
           priority: ["Low", "Medium", "High"].includes(priorityRaw)
             ? priorityRaw
             : "Medium",
@@ -1502,7 +1561,7 @@ function TasksManagement() {
               user
             );
             if (taskData.projectId) {
-              updateProjectProgress(taskData.projectId).catch(() => { });
+              updateProjectProgress(taskData.projectId).catch(() => {});
             }
             createdCount++;
           } catch (err) {
@@ -1616,23 +1675,27 @@ function TasksManagement() {
     };
   }, []);
 
-  const todayStr = useMemo(() => serverTodayStr || new Date().toISOString().slice(0, 10), [serverTodayStr]);
+  const todayStr = useMemo(
+    () => serverTodayStr || new Date().toISOString().slice(0, 10),
+    [serverTodayStr]
+  );
 
   // Grouped task lists (Employee panel-like ordering)
-  const todayTasks = useMemo(
-    () => {
-      const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-      return filtered.filter(
-        (t) => norm(t.status) !== "done" && t.dueDate && t.dueDate === todayStr
-      );
-    },
-    [filtered, todayStr]
-  );
+  const todayTasks = useMemo(() => {
+    const norm = (v) =>
+      String(v || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+    return filtered.filter(
+      (t) => norm(t.status) !== "done" && t.dueDate && t.dueDate === todayStr
+    );
+  }, [filtered, todayStr]);
 
   const inProgressTasks = useMemo(
     () =>
-      filtered.filter((t) =>
-        (t.status || "").toString().trim().toLowerCase() === "in progress"
+      filtered.filter(
+        (t) =>
+          (t.status || "").toString().trim().toLowerCase() === "in progress"
       ),
     [filtered]
   );
@@ -1670,7 +1733,9 @@ function TasksManagement() {
       const saved = raw ? JSON.parse(raw) : [];
       const base = Array.isArray(saved) ? saved : [];
       const filteredSaved = base.filter((k) => effectiveStatuses.includes(k));
-      const extras = effectiveStatuses.filter((s) => !filteredSaved.includes(s));
+      const extras = effectiveStatuses.filter(
+        (s) => !filteredSaved.includes(s)
+      );
       const merged = [...filteredSaved, ...extras];
       setGroupOrder(merged);
     } catch {
@@ -1693,12 +1758,19 @@ function TasksManagement() {
       "bg-gray-500",
     ];
     const map = {};
-    const normalize = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const normalize = (v) =>
+      String(v || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
     const optionNorms = new Set(effectiveStatuses.map((s) => normalize(s)));
 
     // Synthetic group that aggregates all tasks due today (kept in their real status as well)
     const todaysTasks = filtered.filter(
-      (t) => !t.archived && t.dueDate && t.dueDate === todayStr && normalize(t.status) !== "done"
+      (t) =>
+        !t.archived &&
+        t.dueDate &&
+        t.dueDate === todayStr &&
+        normalize(t.status) !== "done"
     );
     if (todaysTasks.length) {
       map["TODAYS TASK"] = {
@@ -1710,7 +1782,9 @@ function TasksManagement() {
 
     effectiveStatuses.forEach((s, idx) => {
       const sNorm = normalize(s);
-      const tasksForStatus = filtered.filter((t) => normalize(t.status) === sNorm);
+      const tasksForStatus = filtered.filter(
+        (t) => normalize(t.status) === sNorm
+      );
       const hex = statusColorMap[sNorm];
       map[s] = {
         title: s,
@@ -1721,7 +1795,9 @@ function TasksManagement() {
     });
 
     // Fallback: if any tasks have statuses not present in DB options, group them under a catch-all so they still render
-    const orphanTasks = filtered.filter((t) => !optionNorms.has(normalize(t.status)));
+    const orphanTasks = filtered.filter(
+      (t) => !optionNorms.has(normalize(t.status))
+    );
     if (orphanTasks.length && !map["Other"]) {
       map["Other"] = {
         title: "Other",
@@ -1733,61 +1809,75 @@ function TasksManagement() {
     return map;
   }, [filtered, effectiveStatuses, todayStr, statusColorMap]);
 
-  
-
-  const saveStatusColorToDB = useCallback(async (name, hex) => {
-    try {
-      const ref = doc(db, "settings", "task-statuses");
-      const snap = await getDoc(ref);
-      const data = snap.data() || {};
-      const arr = Array.isArray(data.statuses) ? data.statuses : [];
-      const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-      const currentMap = { ...statusColorMap };
-
-      const next = [];
-      let found = false;
-      arr.forEach((item) => {
-        if (!item) return;
-        if (typeof item === "string") {
-          const n = item;
-          if (norm(n) === norm(name)) {
-            found = true;
-            next.push({ name: n, color: hex });
-          } else {
-            next.push({ name: n, color: currentMap[norm(n)] || "" });
-          }
-        } else {
-          const n = item?.name || item?.label || item?.value || "";
-          if (!n) return;
-          if (norm(n) === norm(name)) {
-            found = true;
-            next.push({ name: n, color: hex });
-          } else {
-            next.push({ name: n, color: (item.color || currentMap[norm(n)] || "") });
-          }
-        }
-      });
-      if (!found && name) {
-        next.push({ name, color: hex });
-      }
-
-      await updateDoc(ref, { statuses: next, updatedAt: serverTimestamp() });
-      toast.success("Status color updated");
-    } catch (e) {
+  const saveStatusColorToDB = useCallback(
+    async (name, hex) => {
       try {
         const ref = doc(db, "settings", "task-statuses");
-        await setDoc(ref, { statuses: [{ name, color: hex }], updatedAt: serverTimestamp() }, { merge: true });
-        toast.success("Status color set");
-      } catch (err) {
-        console.error(err);
-        toast.error("Failed to update status color");
+        const snap = await getDoc(ref);
+        const data = snap.data() || {};
+        const arr = Array.isArray(data.statuses) ? data.statuses : [];
+        const norm = (v) =>
+          String(v || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, "");
+        const currentMap = { ...statusColorMap };
+
+        const next = [];
+        let found = false;
+        arr.forEach((item) => {
+          if (!item) return;
+          if (typeof item === "string") {
+            const n = item;
+            if (norm(n) === norm(name)) {
+              found = true;
+              next.push({ name: n, color: hex });
+            } else {
+              next.push({ name: n, color: currentMap[norm(n)] || "" });
+            }
+          } else {
+            const n = item?.name || item?.label || item?.value || "";
+            if (!n) return;
+            if (norm(n) === norm(name)) {
+              found = true;
+              next.push({ name: n, color: hex });
+            } else {
+              next.push({
+                name: n,
+                color: item.color || currentMap[norm(n)] || "",
+              });
+            }
+          }
+        });
+        if (!found && name) {
+          next.push({ name, color: hex });
+        }
+
+        await updateDoc(ref, { statuses: next, updatedAt: serverTimestamp() });
+        toast.success("Status color updated");
+      } catch (e) {
+        try {
+          const ref = doc(db, "settings", "task-statuses");
+          await setDoc(
+            ref,
+            { statuses: [{ name, color: hex }], updatedAt: serverTimestamp() },
+            { merge: true }
+          );
+          toast.success("Status color set");
+        } catch (err) {
+          console.error(err);
+          toast.error("Failed to update status color");
+        }
       }
-    }
-  }, [db, statusColorMap]);
+    },
+    [db, statusColorMap]
+  );
 
   // Determine which statuses have tasks due today (excluding Done) and should be prioritized
   const dueTodayStatuses = useMemo(() => {
-    const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const norm = (v) =>
+      String(v || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
     const set = new Set();
     const today = todayStr;
     filtered.forEach((t) => {
@@ -1878,35 +1968,39 @@ function TasksManagement() {
           </Card>
           <Card
             onClick={applyOverdueQuickFilter}
-            className={`cursor-pointer transition-all duration-300 ${globalOverdueTasks.length > 0
-              ? "bg-red-50 border-red-300 ring-2 ring-red-100 ring-offset-2"
-              : "hover:bg-surface-subtle"
-              }`}
+            className={`cursor-pointer transition-all duration-300 ${
+              globalOverdueTasks.length > 0
+                ? "bg-red-50 border-red-300 ring-2 ring-red-100 ring-offset-2"
+                : "hover:bg-surface-subtle"
+            }`}
           >
             <div className="flex items-center justify-between">
               <div>
                 <div
-                  className={`text-sm ${globalOverdueTasks.length > 0
-                    ? "text-red-700 font-medium"
-                    : "text-content-secondary"
-                    }`}
+                  className={`text-sm ${
+                    globalOverdueTasks.length > 0
+                      ? "text-red-700 font-medium"
+                      : "text-content-secondary"
+                  }`}
                 >
                   Overdue
                 </div>
                 <div
-                  className={`mt-1 text-2xl font-bold ${globalOverdueTasks.length > 0
-                    ? "text-red-800"
-                    : "text-red-600"
-                    }`}
+                  className={`mt-1 text-2xl font-bold ${
+                    globalOverdueTasks.length > 0
+                      ? "text-red-800"
+                      : "text-red-600"
+                  }`}
                 >
                   {globalOverdueTasks.length}
                 </div>
               </div>
               <FaExclamationTriangle
-                className={`h-8 w-8 ${globalOverdueTasks.length > 0
-                  ? "text-red-600 animate-bounce"
-                  : "text-red-500"
-                  }`}
+                className={`h-8 w-8 ${
+                  globalOverdueTasks.length > 0
+                    ? "text-red-600 animate-bounce"
+                    : "text-red-500"
+                }`}
               />
             </div>
           </Card>
@@ -1984,15 +2078,15 @@ function TasksManagement() {
                 )}
                 {(!filters.assigneeType ||
                   filters.assigneeType === "client") && (
-                    <optgroup label="Clients">
-                      {filteredAssigneeClients.map((c) => (
-                        <option key={c.id} value={`client:${c.id}`}>
-                          {c.clientName}{" "}
-                          {c.companyName ? `(${c.companyName})` : ""}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
+                  <optgroup label="Clients">
+                    {filteredAssigneeClients.map((c) => (
+                      <option key={c.id} value={`client:${c.id}`}>
+                        {c.clientName}{" "}
+                        {c.companyName ? `(${c.companyName})` : ""}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
 
               <select
@@ -2079,30 +2173,33 @@ function TasksManagement() {
 
                 <div className="flex items-center rounded-lg border border-subtle bg-white p-0.5">
                   <button
-                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === ""
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-content-primary hover:bg-gray-100"
-                      }`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                      filters.assigneeType === ""
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "text-content-primary hover:bg-gray-100"
+                    }`}
                     onClick={() => updateFilter("assigneeType", "")}
                     type="button"
                   >
                     All
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "user"
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-content-primary hover:bg-gray-100"
-                      }`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                      filters.assigneeType === "user"
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "text-content-primary hover:bg-gray-100"
+                    }`}
                     onClick={() => updateFilter("assigneeType", "user")}
                     type="button"
                   >
                     Resources
                   </button>
                   <button
-                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "client"
-                      ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-content-primary hover:bg-gray-100"
-                      }`}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                      filters.assigneeType === "client"
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "text-content-primary hover:bg-gray-100"
+                    }`}
                     onClick={() => updateFilter("assigneeType", "client")}
                     type="button"
                   >
@@ -2115,20 +2212,22 @@ function TasksManagement() {
                 <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                   <button
                     onClick={() => setView("list")}
-                    className={`p-2 rounded transition-all ${view === "list"
-                      ? "bg-white text-indigo-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
-                      }`}
+                    className={`p-2 rounded transition-all ${
+                      view === "list"
+                        ? "bg-white text-indigo-600 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                    }`}
                     title="List View"
                   >
                     <FaList className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setView("board")}
-                    className={`p-2 rounded transition-all ${view === "board"
-                      ? "bg-white text-indigo-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
-                      }`}
+                    className={`p-2 rounded transition-all ${
+                      view === "board"
+                        ? "bg-white text-indigo-600 shadow-sm"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                    }`}
                     title="Kanban View"
                   >
                     <FaTh className="w-4 h-4" />
@@ -2143,7 +2242,11 @@ function TasksManagement() {
                 <Button variant="secondary" onClick={handleUnarchive} size="sm">
                   Unarchive Selected
                 </Button>
-                <Button variant="danger" onClick={() => setShowBulkDeleteModal(true)} size="sm">
+                <Button
+                  variant="danger"
+                  onClick={() => setShowBulkDeleteModal(true)}
+                  size="sm"
+                >
                   Delete Selected
                 </Button>
                 <Button
@@ -2207,27 +2310,43 @@ function TasksManagement() {
               ) : (
                 <>
                   {(() => {
-                    const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                    const norm = (v) =>
+                      String(v || "")
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]/g, "");
                     // Primary keys from saved order with non-empty groups only
                     const primary = groupOrder.filter(
-                      (k) => groups[k] && groups[k].tasks && groups[k].tasks.length > 0
+                      (k) =>
+                        groups[k] &&
+                        groups[k].tasks &&
+                        groups[k].tasks.length > 0
                     );
                     // Extras not in saved order, non-empty only
                     const extras = Object.keys(groups).filter(
-                      (k) => !groupOrder.includes(k) && groups[k] && groups[k].tasks && groups[k].tasks.length > 0
+                      (k) =>
+                        !groupOrder.includes(k) &&
+                        groups[k] &&
+                        groups[k].tasks &&
+                        groups[k].tasks.length > 0
                     );
                     const todaysKey = "TODAYS TASK";
                     // Merge and sort so statuses with due-today tasks appear first, keeping today's group fixed at top
-                    const restKeys = [...primary, ...extras.filter((k) => k !== todaysKey)];
+                    const restKeys = [
+                      ...primary,
+                      ...extras.filter((k) => k !== todaysKey),
+                    ];
                     restKeys.sort((a, b) => {
                       const aDue = dueTodayStatuses.has(norm(a));
                       const bDue = dueTodayStatuses.has(norm(b));
                       if (aDue === bDue) return 0;
                       return aDue ? -1 : 1;
                     });
-                    const orderedKeys = groups[todaysKey] && groups[todaysKey].tasks && groups[todaysKey].tasks.length > 0
-                      ? [todaysKey, ...restKeys]
-                      : restKeys;
+                    const orderedKeys =
+                      groups[todaysKey] &&
+                      groups[todaysKey].tasks &&
+                      groups[todaysKey].tasks.length > 0
+                        ? [todaysKey, ...restKeys]
+                        : restKeys;
                     return orderedKeys.map((key) => {
                       const g = groups[key];
                       if (!g || !g.tasks || g.tasks.length === 0) return null;
@@ -2236,7 +2355,9 @@ function TasksManagement() {
                         <div
                           key={`grp-${key}`}
                           draggable={!isTodays}
-                          onDragStart={isTodays ? undefined : () => handleDragStart(key)}
+                          onDragStart={
+                            isTodays ? undefined : () => handleDragStart(key)
+                          }
                           onDragOver={isTodays ? undefined : handleDragOver}
                           onDrop={isTodays ? undefined : () => handleDrop(key)}
                           className="rounded-lg cursor-grab active:cursor-grabbing"
@@ -2253,7 +2374,9 @@ function TasksManagement() {
                             onEdit={handleEdit}
                             onDelete={handleDelete}
                             onArchive={handleTaskArchive}
-                            onStatusChange={(taskId, newStatus) => moveTask(taskId, newStatus)}
+                            onStatusChange={(taskId, newStatus) =>
+                              moveTask(taskId, newStatus)
+                            }
                             resolveAssignees={resolveAssignees}
                             onHeaderMenu={handleHeaderMenu}
                             hideHeaderActions={isTodays}

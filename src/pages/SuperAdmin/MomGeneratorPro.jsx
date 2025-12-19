@@ -951,8 +951,7 @@ export default function MomGeneratorPro() {
                     <label className="block text-sm font-medium mb-1">
                       Venue
                     </label>
-                    <input
-                      type="text"
+                    <VoiceInput
                       value={meetingVenue}
                       onChange={(e) => setMeetingVenue(e.target.value)}
                       className="w-full rounded border border-gray-300 px-3 py-2"
@@ -987,8 +986,7 @@ export default function MomGeneratorPro() {
                   <label className="block text-sm font-medium mb-1">
                     External Attendees (comma separated)
                   </label>
-                  <input
-                    type="text"
+                  <VoiceInput
                     value={externalAttendees}
                     onChange={(e) => setExternalAttendees(e.target.value)}
                     className="w-full rounded border border-gray-300 px-3 py-2"
@@ -1005,8 +1003,7 @@ export default function MomGeneratorPro() {
                   <label className="block text-sm font-medium mb-1">
                     MoM Prepared by*
                   </label>
-                  <input
-                    type="text"
+                  <VoiceInput
                     value={momPreparedBy}
                     onChange={(e) => setMomPreparedBy(e.target.value)}
                     className="w-full rounded border border-gray-300 px-3 py-2"

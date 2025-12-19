@@ -26,6 +26,7 @@ import {
 import { MdReplayCircleFilled } from "react-icons/md";
 import { TYPE_CLASSES, PRIORITY_CLASSES } from "../../utils/colorMaps";
 import { occursOnDate } from "../../utils/recurringTasks";
+import { MONTH_NAMES } from "../../utils/dateUtils";
 
 const EmployeeCalendar = () => {
   const { user } = useAuthContext();
@@ -36,7 +37,6 @@ const EmployeeCalendar = () => {
   const [loading, setLoading] = useState(true);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
-  const [showFloatingMenu, setShowFloatingMenu] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [filterType, setFilterType] = useState("all"); // all, meetings, tasks
   const [filterStatus, setFilterStatus] = useState("all"); // all, approved, request, pending (for meetings) | in_progress, done (for tasks)
@@ -150,11 +150,6 @@ const EmployeeCalendar = () => {
       unsubResources();
     };
   }, [user]);
-
-  // Reference editingEvent to satisfy lint (used in modal logic)
-  useEffect(() => {
-    // no-op; keeps state reactive for external consumers
-  }, [editingEvent]);
 
   const navigateMonth = (direction) => {
     const newDate = new Date(currentDate);
@@ -301,38 +296,34 @@ const EmployeeCalendar = () => {
       const dayItems = getItemsForDate(date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const currentDate = new Date(date);
-      currentDate.setHours(0, 0, 0, 0);
-      const isPast = currentDate < today;
+      const normalizedDate = new Date(date);
+      normalizedDate.setHours(0, 0, 0, 0);
+      const isPast = normalizedDate < today;
       const isToday = date.toDateString() === new Date().toDateString();
       const isSelected = selectedDate?.toDateString() === date.toDateString();
 
       days.push(
         <div
           key={day}
-          className={`h-28 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 ${
-            isPast
-              ? "bg-gray-50 hover:bg-gray-100 opacity-60"
-              : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
-          } ${
-            isToday
+          className={`h-28 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 ${isPast
+            ? "bg-gray-50 hover:bg-gray-100 opacity-60"
+            : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
+            } ${isToday
               ? "bg-gradient-to-br from-blue-100 to-blue-50 border-blue-400 border-2 opacity-100 ring-2 ring-blue-200"
               : ""
-          } ${
-            isSelected
+            } ${isSelected
               ? "bg-gradient-to-br from-indigo-100 to-indigo-50 border-indigo-400 border-2 opacity-100 ring-2 ring-indigo-200"
               : ""
-          }`}
+            }`}
           onClick={() => setSelectedDate(date)}
         >
           <div
-            className={`text-sm font-bold mb-1 ${
-              isPast && !isToday
-                ? "text-gray-400"
-                : isToday
+            className={`text-sm font-bold mb-1 ${isPast && !isToday
+              ? "text-gray-400"
+              : isToday
                 ? "text-blue-700 text-base"
                 : "text-gray-800"
-            } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
+              } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
           >
             {day}
           </div>
@@ -343,8 +334,8 @@ const EmployeeCalendar = () => {
               const typeKey = isEvent
                 ? String(item.type || "meeting").toLowerCase()
                 : item.isRecurring
-                ? "recurring"
-                : "task";
+                  ? "recurring"
+                  : "task";
               const priorityKey = String(
                 item.priority || "medium"
               ).toLowerCase();
@@ -356,9 +347,8 @@ const EmployeeCalendar = () => {
               return (
                 <div
                   key={item.id}
-                  className={`text-xs p-1.5 rounded-md ${
-                    isPast ? "bg-gray-200 text-gray-500" : typeBadge
-                  } truncate relative shadow-sm hover:shadow-md transition-shadow cursor-pointer`}
+                  className={`text-xs p-1.5 rounded-md ${isPast ? "bg-gray-200 text-gray-500" : typeBadge
+                    } truncate relative shadow-sm hover:shadow-md transition-shadow cursor-pointer`}
                   title={item.title}
                 >
                   {/* Priority strip on the left -- hidden for meetings */}
@@ -393,21 +383,6 @@ const EmployeeCalendar = () => {
 
     return days;
   };
-
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
 
   // Task creation handlers
   const handleTaskSave = async (taskData) => {
@@ -562,7 +537,7 @@ const EmployeeCalendar = () => {
                   <FaChevronLeft />
                 </button>
                 <h2 className="text-lg font-semibold min-w-[200px] text-center">
-                  {monthNames[currentDate.getMonth()]}{" "}
+                  {MONTH_NAMES[currentDate.getMonth()]}{" "}
                   {currentDate.getFullYear()}
                 </h2>
                 <button
@@ -670,6 +645,9 @@ const EmployeeCalendar = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-content-tertiary">Pending Tasks</p>
+                <p className="text-3xl font-bold mt-1">
+                  {calendarStats.pendingTasks}
+                </p>
               </div>
               <FaTasks className="h-8 w-8 text-yellow-600 opacity-60" />
             </div>
@@ -710,10 +688,10 @@ const EmployeeCalendar = () => {
             <h3 className="font-semibold text-lg mb-4 border-b pb-2">
               {selectedDate
                 ? selectedDate.toLocaleDateString("en-US", {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                  })
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                })
                 : "Select a date"}
             </h3>
 
@@ -750,8 +728,8 @@ const EmployeeCalendar = () => {
                       const displayLabel = isAdminCreated
                         ? "by admin"
                         : item.status
-                        ? item.status.replace(/\b\w/g, (ch) => ch.toUpperCase())
-                        : "Pending";
+                          ? item.status.replace(/\b\w/g, (ch) => ch.toUpperCase())
+                          : "Pending";
                       const displayClass = isAdminCreated
                         ? "bg-blue-100 text-blue-700"
                         : statusClass;
@@ -866,19 +844,18 @@ const EmployeeCalendar = () => {
                             Due Date:{" "}
                             {item.dueDate
                               ? new Date(
-                                  item.dueDate?.toDate?.() || item.dueDate
-                                ).toLocaleDateString()
+                                item.dueDate?.toDate?.() || item.dueDate
+                              ).toLocaleDateString()
                               : "No due date"}
                           </div>
                           {item.priority && (
                             <div>
                               Priority:{" "}
                               <span
-                                className={`inline-block ml-1 px-2 py-0.5 rounded ${
-                                  PRIORITY_CLASSES[
-                                    String(item.priority).toLowerCase()
-                                  ]?.badge || "bg-gray-100 text-gray-700"
-                                }`}
+                                className={`inline-block ml-1 px-2 py-0.5 rounded ${PRIORITY_CLASSES[
+                                  String(item.priority).toLowerCase()
+                                ]?.badge || "bg-gray-100 text-gray-700"
+                                  }`}
                               >
                                 {item.priority}
                               </span>
@@ -920,7 +897,7 @@ const EmployeeCalendar = () => {
                               Assigned:{" "}
                               {new Date(
                                 item.assignedDate?.toDate?.() ||
-                                  item.assignedDate
+                                item.assignedDate
                               ).toLocaleDateString()}
                             </div>
                           )}
@@ -972,9 +949,8 @@ const EmployeeCalendar = () => {
           {/* Main Floating Button */}
           <button
             onClick={() => setShowFloatingMenu(!showFloatingMenu)}
-            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${
-              showFloatingMenu ? "rotate-45" : ""
-            }`}
+            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${showFloatingMenu ? "rotate-45" : ""
+              }`}
             title="Add Task"
           >
             <FaPlus className="text-xl group-hover:scale-110 transition-transform" />

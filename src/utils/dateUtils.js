@@ -193,3 +193,17 @@ export const getDaysUntil = (deadline) => {
   const diff = deadlineDate - today;
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 };
+
+/**
+ * Format date to DD/MM/YYYY format
+ * @param {Date|object} date - Date object or Firestore timestamp
+ * @returns {string}
+ */
+export const formatDateToDDMMYYYY = (date) => {
+  if (!date) return "";
+  const d = date instanceof Date ? date : date?.toDate?.() || new Date(date);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+};

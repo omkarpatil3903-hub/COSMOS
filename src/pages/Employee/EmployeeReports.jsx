@@ -18,14 +18,22 @@ import {
 } from "react-icons/fa";
 import VoiceInput from "../../components/Common/VoiceInput";
 import toast from "react-hot-toast";
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
+import { pdf } from "@react-pdf/renderer";
+import { formatDateToDDMMYYYY } from "../../utils/dateUtils";
+import {
+  DailyReportPDF,
+  WeeklyReportPDF,
+  MonthlyReportPDF,
+} from "../../components/reports/ReportPDFTemplates";
 
 export default function EmployeeReports() {
   const { user, userData } = useAuthContext();
   const uid = user?.uid || userData?.uid;
+  // Company name - uses userData if available, fallback to default
+  const companyName = userData?.companyName || "Your Company";
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportType, setReportType] = useState("Daily"); // "Daily" or "Weekly"
@@ -58,15 +66,9 @@ export default function EmployeeReports() {
   const [generatingReport, setGeneratingReport] = useState(false);
   const [savingReport, setSavingReport] = useState(false);
 
-  // Utility function to format dates in dd/mm/yyyy format
-  const formatDateToDDMMYYYY = (date) => {
-    if (!date) return "";
-    const d = date instanceof Date ? date : date?.toDate?.() || new Date(date);
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
+
+  // Track project subscription for cleanup
+  const projectUnsubRef = React.useRef(null);
 
   useEffect(() => {
     if (!uid) return;
@@ -76,30 +78,36 @@ export default function EmployeeReports() {
       collection(db, "tasks"),
       where("assigneeId", "==", uid)
     );
+
     const unsubT = onSnapshot(qTasks, (snap) => {
       const allTasks = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
         .filter((task) => task.assigneeType === "user");
       setTasks(allTasks);
       setLoading(false);
-    });
-    // Fetch projects where employee has tasks
-    const projectIds = new Set();
-    const unsubTasksForProjects = onSnapshot(qTasks, (snap) => {
+
+      // Collect project IDs from tasks
+      const projectIds = new Set();
       snap.docs.forEach((doc) => {
         const projectId = doc.data().projectId;
         if (projectId) projectIds.add(projectId);
       });
 
+      // Cleanup previous project subscription if exists
+      if (projectUnsubRef.current) {
+        projectUnsubRef.current();
+        projectUnsubRef.current = null;
+      }
+
+      // Subscribe to projects if there are any
       if (projectIds.size > 0) {
         const qProjects = query(
           collection(db, "projects"),
           where("__name__", "in", Array.from(projectIds))
         );
-        const unsubP = onSnapshot(qProjects, (projectSnap) => {
+        projectUnsubRef.current = onSnapshot(qProjects, (projectSnap) => {
           setProjects(projectSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
         });
-        return () => unsubP();
       } else {
         setProjects([]);
       }
@@ -107,9 +115,20 @@ export default function EmployeeReports() {
 
     return () => {
       unsubT();
-      unsubTasksForProjects();
+      // Cleanup project subscription on unmount
+      if (projectUnsubRef.current) {
+        projectUnsubRef.current();
+      }
     };
   }, [uid]);
+
+  // Fetch clients for dropdown
+  useEffect(() => {
+    const unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
+      setClients(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsubClients();
+  }, []);
 
   // Calculate statistics
   const totalProjects = projects.length;
@@ -145,14 +164,18 @@ export default function EmployeeReports() {
     today.getMonth() + 1
   ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-  const todayTasks = useMemo(() => tasks.filter((t) => {
-    if (!t.dueDate) return false;
-    const dueDate = t.dueDate?.toDate?.() || new Date(t.dueDate);
-    const dueDateStr = `${dueDate.getFullYear()}-${String(
-      dueDate.getMonth() + 1
-    ).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
-    return dueDateStr === todayStr && t.status !== "Done";
-  }), [tasks, todayStr]);
+  const todayTasks = useMemo(
+    () =>
+      tasks.filter((t) => {
+        if (!t.dueDate) return false;
+        const dueDate = t.dueDate?.toDate?.() || new Date(t.dueDate);
+        const dueDateStr = `${dueDate.getFullYear()}-${String(
+          dueDate.getMonth() + 1
+        ).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
+        return dueDateStr === todayStr && t.status !== "Done";
+      }),
+    [tasks, todayStr]
+  );
 
   // Recent activity (last 7 days completed tasks)
   const sevenDaysAgo = new Date();
@@ -182,6 +205,33 @@ export default function EmployeeReports() {
     return completedDateStr === todayStr;
   });
 
+  // Tasks completed THIS WEEK (Monday to current day)
+  const tasksCompletedThisWeek = useMemo(() => {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    const day = startOfWeek.getDay() || 7;
+    if (day !== 1) startOfWeek.setDate(startOfWeek.getDate() - (day - 1));
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    return tasks.filter((t) => {
+      if (t.status !== "Done" || !t.completedAt) return false;
+      const completedDate = t.completedAt?.toDate?.() || new Date(t.completedAt);
+      return completedDate >= startOfWeek;
+    });
+  }, [tasks]);
+
+  // Tasks completed THIS MONTH
+  const tasksCompletedThisMonth = useMemo(() => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    return tasks.filter((t) => {
+      if (t.status !== "Done" || !t.completedAt) return false;
+      const completedDate = t.completedAt?.toDate?.() || new Date(t.completedAt);
+      return completedDate >= startOfMonth;
+    });
+  }, [tasks]);
+
   // Initialize report data when modal opens
   useEffect(() => {
     if (showReportModal) {
@@ -201,17 +251,17 @@ export default function EmployeeReports() {
       const startOfWeek = new Date(now);
       const day = startOfWeek.getDay() || 7; // Get current day number, converting Sun (0) to 7
       if (day !== 1) startOfWeek.setHours(-24 * (day - 1)); // Set to Monday
-      
+
       const endOfWeek = new Date(startOfWeek);
       endOfWeek.setDate(startOfWeek.getDate() + 4); // Friday
-      
+
       const getWeekNumber = (d) => {
         d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
-        var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-        var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
+        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+        var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        var weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
         return weekNo;
-      }
+      };
 
       setReportData({
         employeeName: userData?.name || "Employee",
@@ -225,22 +275,27 @@ export default function EmployeeReports() {
         nextActionPlan: pendingTasksList,
         summary: "",
         reportContent: "",
-        // Weekly Report Fields
+        // Weekly Report Fields - Auto-fill with weekly completed tasks
         weekNumber: `Week ${getWeekNumber(now)}`,
         weekStartDate: formatDateToDDMMYYYY(startOfWeek),
         weekEndDate: formatDateToDDMMYYYY(endOfWeek),
         weeklyHours: "40.0",
-        keyAchievements: "",
+        keyAchievements: tasksCompletedThisWeek
+          .map((t) => `• ${t.title}`)
+          .join("\n") || "",
         urgentActions: "",
-        // Monthly Report Fields
-        monthName: now.toLocaleString('default', { month: 'long', year: 'numeric' }),
-        executiveSummary: "",
+        // Monthly Report Fields - Auto-fill with monthly stats
+        monthName: now.toLocaleString("default", {
+          month: "long",
+          year: "numeric",
+        }),
+        executiveSummary: `Completed ${tasksCompletedThisMonth.length} tasks this month.`,
         learnings: "",
         consultantNote: "",
         nextMonthObjectives: "",
       });
     }
-  }, [showReportModal, userData, projects, todayTasks]);
+  }, [showReportModal, userData, projects, todayTasks, tasksCompletedThisWeek, tasksCompletedThisMonth]);
 
   // Generate Report handler
   const handleGenerateReport = () => {
@@ -324,8 +379,8 @@ ${reportData.summary || "(No summary provided)"}
 
 ==========================================
 Generated on: ${formatDateToDDMMYYYY(
-            new Date()
-          )} at ${new Date().toLocaleTimeString()}
+          new Date()
+        )} at ${new Date().toLocaleTimeString()}
 ==========================================`;
       } else {
         // Monthly Report Content
@@ -374,8 +429,8 @@ ${reportData.consultantNote || "(No notes provided)"}
 
 ==========================================
 Generated on: ${formatDateToDDMMYYYY(
-            new Date()
-          )} at ${new Date().toLocaleTimeString()}
+          new Date()
+        )} at ${new Date().toLocaleTimeString()}
 ==========================================`;
       }
 
@@ -389,113 +444,48 @@ Generated on: ${formatDateToDDMMYYYY(
     }
   };
 
-  // Helper to generate PDF Blob
+  // Helper to generate PDF Blob using @react-pdf/renderer
   const getPDFBlob = async () => {
-    const element = document.getElementById("report-preview");
-    if (!element) return null;
-
     try {
-      // Clone the element to avoid modifying the original
-      const clonedElement = element.cloneNode(true);
-      
-      // Remove all style attributes from elements to avoid oklch issues
-      const removeOklchStyles = (el) => {
-        // Remove the style attribute entirely to let html2canvas use defaults
-        el.removeAttribute('style');
-        
-        // Remove classes that might have problematic styles
-        el.removeAttribute('class');
-        
-        // Process all children
-        el.querySelectorAll('*').forEach(child => {
-          child.removeAttribute('style');
-          child.removeAttribute('class');
-        });
-      };
+      let pdfDocument;
 
-      removeOklchStyles(clonedElement);
+      if (reportType === "Daily") {
+        pdfDocument = (
+          <DailyReportPDF
+            reportData={reportData}
+            tasksCompletedToday={tasksCompletedToday}
+            todayTasks={todayTasks}
+            pendingTasks={pendingTasks}
+          />
+        );
+      } else if (reportType === "Weekly") {
+        pdfDocument = <WeeklyReportPDF reportData={reportData} />;
+      } else {
+        pdfDocument = (
+          <MonthlyReportPDF reportData={reportData} companyName={companyName} />
+        );
+      }
 
-      // Add basic CSS to a style tag for the cloned element
-      const styleTag = document.createElement('style');
-      styleTag.textContent = `
-        body { margin: 0; padding: 0; }
-        * { 
-          color: #000; 
-          background-color: transparent;
-          font-family: 'Times New Roman', Times, serif;
-        }
-        table { border-collapse: collapse; width: 100%; }
-        td, th { border: 1px solid #000; padding: 8px; text-align: left; }
-        th { background-color: #f0f0f0; font-weight: bold; }
-        h1 { font-size: 24px; margin: 10px 0; }
-        h2 { font-size: 18px; margin: 8px 0; }
-        h3 { font-size: 14px; margin: 6px 0; }
-        p { margin: 4px 0; line-height: 1.6; }
-        div { page-break-inside: avoid; }
-      `;
-      clonedElement.insertBefore(styleTag, clonedElement.firstChild);
-
-      // Create a temporary container
-      const tempContainer = document.createElement("div");
-      tempContainer.style.position = "fixed";
-      tempContainer.style.left = "-9999px";
-      tempContainer.style.top = "-9999px";
-      tempContainer.style.width = "210mm";
-      tempContainer.appendChild(clonedElement);
-      document.body.appendChild(tempContainer);
-
-      const canvas = await html2canvas(clonedElement, {
-        scale: 2,
-        logging: false,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        ignoreElements: (element) => {
-          // Ignore style tags and script tags
-          return element.tagName === 'STYLE' || element.tagName === 'SCRIPT';
-        },
-      });
-
-      // Clean up
-      document.body.removeChild(tempContainer);
-
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-
-      pdf.addImage(
-        imgData,
-        "PNG",
-        0,
-        0,
-        pdfWidth,
-        (imgHeight * pdfWidth) / imgWidth
-      );
-
-      return pdf.output("blob");
+      const blob = await pdf(pdfDocument).toBlob();
+      return blob;
     } catch (error) {
-      console.error("Error in getPDFBlob:", error);
+      console.error("Error generating PDF blob:", error);
       throw error;
     }
   };
 
-  // Generate PDF using html2canvas
+  // Generate and download PDF
   const generatePDF = async () => {
     try {
       setGeneratingReport(true);
       const pdfBlob = await getPDFBlob();
-      if (!pdfBlob) {
-        toast.error("Report preview not found");
-        return;
-      }
 
-      const filename = reportType === "Daily"
-        ? `Daily_Report_${reportData.reportDate.replace(/\//g, "-")}_${reportData.employeeName}.pdf`
-        : reportType === "Weekly"
-        ? `Weekly_Report_${reportData.weekNumber.replace(/\s/g, "_")}_${reportData.employeeName}.pdf`
-        : `Monthly_Report_${reportData.monthName.replace(/\s/g, "_")}_${reportData.employeeName}.pdf`;
+      const filename =
+        reportType === "Daily"
+          ? `Daily_Report_${reportData.reportDate.replace(/\//g, "-")}_${reportData.employeeName}.pdf`
+          : reportType === "Weekly"
+            ? `Weekly_Report_${reportData.weekNumber.replace(/\s/g, "_")}_${reportData.employeeName}.pdf`
+            : `Monthly_Report_${reportData.monthName.replace(/\s/g, "_")}_${reportData.employeeName}.pdf`;
 
       const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement("a");
@@ -519,17 +509,22 @@ Generated on: ${formatDateToDDMMYYYY(
   const handleShare = async () => {
     if (!reportData.reportContent) return;
 
-    const title = reportType === "Daily"
-      ? `Daily Report - ${reportData.reportDate}`
-      : reportType === "Weekly"
-      ? `Weekly Report - ${reportData.weekNumber}`
-      : `Monthly Report - ${reportData.monthName}`;
+    const title =
+      reportType === "Daily"
+        ? `Daily Report - ${reportData.reportDate}`
+        : reportType === "Weekly"
+          ? `Weekly Report - ${reportData.weekNumber}`
+          : `Monthly Report - ${reportData.monthName}`;
 
-    const filename = reportType === "Daily"
-      ? `Daily_Report_${reportData.reportDate.replace(/\//g, "-")}_${reportData.employeeName}.pdf`
-      : reportType === "Weekly"
-      ? `Weekly_Report_${reportData.weekNumber.replace(/\s/g, "_")}_${reportData.employeeName}.pdf`
-      : `Monthly_Report_${reportData.monthName.replace(/\s/g, "_")}_${reportData.employeeName}.pdf`;
+    const filename =
+      reportType === "Daily"
+        ? `Daily_Report_${reportData.reportDate.replace(/\//g, "-")}_${reportData.employeeName
+        }.pdf`
+        : reportType === "Weekly"
+          ? `Weekly_Report_${reportData.weekNumber.replace(/\s/g, "_")}_${reportData.employeeName
+          }.pdf`
+          : `Monthly_Report_${reportData.monthName.replace(/\s/g, "_")}_${reportData.employeeName
+          }.pdf`;
 
     try {
       // Try sharing PDF file first
@@ -538,13 +533,15 @@ Generated on: ${formatDateToDDMMYYYY(
         try {
           const pdfBlob = await getPDFBlob();
           if (pdfBlob) {
-            const file = new File([pdfBlob], filename, { type: "application/pdf" });
+            const file = new File([pdfBlob], filename, {
+              type: "application/pdf",
+            });
             const shareData = {
               files: [file],
               title: title,
               text: `Here is the ${reportType} report for ${reportData.employeeName}.`,
             };
-            
+
             if (navigator.canShare(shareData)) {
               await navigator.share(shareData);
               toast.success("Report PDF shared successfully!");
@@ -557,7 +554,7 @@ Generated on: ${formatDateToDDMMYYYY(
           // Continue to text fallback if PDF fails
         }
       }
-      
+
       // Fallback to text sharing
       const shareData = {
         title: title,
@@ -574,7 +571,7 @@ Generated on: ${formatDateToDDMMYYYY(
     } catch (err) {
       console.error("Error sharing:", err);
       // Don't show error if user cancelled share
-      if (err.name !== 'AbortError') {
+      if (err.name !== "AbortError") {
         toast.error("Failed to share report");
       }
     } finally {
@@ -584,11 +581,12 @@ Generated on: ${formatDateToDDMMYYYY(
 
   // Send via Email
   const sendViaEmail = () => {
-    const subject = reportType === "Daily"
-      ? `Daily Report - ${reportData.reportDate} - ${reportData.employeeName}`
-      : reportType === "Weekly"
-      ? `Weekly Report - ${reportData.weekNumber} - ${reportData.employeeName}`
-      : `Monthly Report - ${reportData.monthName} - ${reportData.employeeName}`;
+    const subject =
+      reportType === "Daily"
+        ? `Daily Report - ${reportData.reportDate} - ${reportData.employeeName}`
+        : reportType === "Weekly"
+          ? `Weekly Report - ${reportData.weekNumber} - ${reportData.employeeName}`
+          : `Monthly Report - ${reportData.monthName} - ${reportData.employeeName}`;
     const body = encodeURIComponent(reportData.reportContent);
     window.open(`mailto:?subject=${subject}&body=${body}`);
   };
@@ -601,11 +599,12 @@ Generated on: ${formatDateToDDMMYYYY(
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      const filename = reportType === "Daily"
-        ? `employee-report-${reportData.reportDate.replace(/\//g, "-")}.txt`
-        : reportType === "Weekly"
-        ? `employee-report-${reportData.weekNumber.replace(/\s/g, "-")}.txt`
-        : `employee-report-${reportData.monthName.replace(/\s/g, "-")}.txt`;
+      const filename =
+        reportType === "Daily"
+          ? `employee-report-${reportData.reportDate.replace(/\//g, "-")}.txt`
+          : reportType === "Weekly"
+            ? `employee-report-${reportData.weekNumber.replace(/\s/g, "-")}.txt`
+            : `employee-report-${reportData.monthName.replace(/\s/g, "-")}.txt`;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
@@ -948,31 +947,28 @@ Generated on: ${formatDateToDDMMYYYY(
                 <div className="flex bg-gray-100 p-1 rounded-lg w-fit">
                   <button
                     onClick={() => setReportType("Daily")}
-                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
-                      reportType === "Daily"
-                        ? "bg-white text-indigo-600 shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${reportType === "Daily"
+                      ? "bg-white text-indigo-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                      }`}
                   >
                     Daily Report
                   </button>
                   <button
                     onClick={() => setReportType("Weekly")}
-                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
-                      reportType === "Weekly"
-                        ? "bg-white text-indigo-600 shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${reportType === "Weekly"
+                      ? "bg-white text-indigo-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                      }`}
                   >
                     Weekly Report
                   </button>
                   <button
                     onClick={() => setReportType("Monthly")}
-                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
-                      reportType === "Monthly"
-                        ? "bg-white text-indigo-600 shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${reportType === "Monthly"
+                      ? "bg-white text-indigo-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                      }`}
                   >
                     Monthly Report
                   </button>
@@ -1008,7 +1004,7 @@ Generated on: ${formatDateToDDMMYYYY(
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Client Name
                       </label>
-                      <VoiceInput
+                      <select
                         value={reportData.clientName}
                         onChange={(e) =>
                           setReportData((prev) => ({
@@ -1016,51 +1012,201 @@ Generated on: ${formatDateToDDMMYYYY(
                             clientName: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                        placeholder="e.g. Acme Corp"
-                      />
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+                      >
+                        <option value="">Select a client...</option>
+                        {clients.map((client) => (
+                          <option key={client.id} value={client.name || client.companyName}>
+                            {client.name || client.companyName}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Project Name
-                    </label>
-                    <VoiceInput
-                      value={reportData.projectName}
-                      onChange={(e) =>
-                        setReportData((prev) => ({
-                          ...prev,
-                          projectName: e.target.value,
-                        }))
-                      }
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                      placeholder="e.g. Website Redesign"
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Project Name
+                      </label>
+                      <select
+                        value={reportData.projectName}
+                        onChange={(e) =>
+                          setReportData((prev) => ({
+                            ...prev,
+                            projectName: e.target.value,
+                          }))
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white"
+                      >
+                        <option value="">Select a project...</option>
+                        {projects.map((project) => (
+                          <option key={project.id} value={project.name}>
+                            {project.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                  {reportType === "Daily" ? (
-                    <>
+                    {reportType === "Daily" ? (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Daily Hours
+                          </label>
+                          <input
+                            type="text"
+                            value={reportData.dailyHours}
+                            onChange={(e) =>
+                              setReportData((prev) => ({
+                                ...prev,
+                                dailyHours: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            placeholder="e.g. 8.0 Hrs"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Objective for the Day
+                          </label>
+                          <VoiceInput
+                            value={reportData.objective}
+                            onChange={(e) =>
+                              setReportData((prev) => ({
+                                ...prev,
+                                objective: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            placeholder="Main goal for today"
+                          />
+                        </div>
+                      </>
+                    ) : reportType === "Weekly" ? (
+                      <>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Week Number
+                            </label>
+                            <input
+                              type="text"
+                              value={reportData.weekNumber}
+                              onChange={(e) =>
+                                setReportData((prev) => ({
+                                  ...prev,
+                                  weekNumber: e.target.value,
+                                }))
+                              }
+                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                              placeholder="e.g. Week 42"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Weekly Hours
+                            </label>
+                            <input
+                              type="text"
+                              value={reportData.weeklyHours}
+                              onChange={(e) =>
+                                setReportData((prev) => ({
+                                  ...prev,
+                                  weeklyHours: e.target.value,
+                                }))
+                              }
+                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                              placeholder="e.g. 40.0 Hrs"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Start Date
+                            </label>
+                            <input
+                              type="text"
+                              value={reportData.weekStartDate}
+                              onChange={(e) =>
+                                setReportData((prev) => ({
+                                  ...prev,
+                                  weekStartDate: e.target.value,
+                                }))
+                              }
+                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                              placeholder="dd/mm/yyyy"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              End Date
+                            </label>
+                            <input
+                              type="text"
+                              value={reportData.weekEndDate}
+                              onChange={(e) =>
+                                setReportData((prev) => ({
+                                  ...prev,
+                                  weekEndDate: e.target.value,
+                                }))
+                              }
+                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                              placeholder="dd/mm/yyyy"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      // Monthly Report Inputs
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Daily Hours
+                          Month
                         </label>
                         <input
                           type="text"
-                          value={reportData.dailyHours}
+                          value={reportData.monthName}
                           onChange={(e) =>
                             setReportData((prev) => ({
                               ...prev,
-                              dailyHours: e.target.value,
+                              monthName: e.target.value,
                             }))
                           }
                           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                          placeholder="e.g. 8.0 Hrs"
+                          placeholder="e.g. July 2025"
                         />
                       </div>
+                    )}
+
+                    {reportType === "Monthly" && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Objective for the Day
+                          Executive Summary
                         </label>
                         <VoiceInput
+                          as="textarea"
+                          value={reportData.executiveSummary}
+                          onChange={(e) =>
+                            setReportData((prev) => ({
+                              ...prev,
+                              executiveSummary: e.target.value,
+                            }))
+                          }
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-24"
+                          placeholder="Executive summary of the month..."
+                        />
+                      </div>
+                    )}
+
+                    {reportType === "Monthly" && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Key Activities (One per line)
+                        </label>
+                        <p className="text-xs text-gray-500 mb-1">
+                          Format: Area | Activity | Outcome
+                        </p>
+                        <VoiceInput
+                          as="textarea"
                           value={reportData.objective}
                           onChange={(e) =>
                             setReportData((prev) => ({
@@ -1068,308 +1214,174 @@ Generated on: ${formatDateToDDMMYYYY(
                               objective: e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                          placeholder="Main goal for today"
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-24"
+                          placeholder="Marketing | Launched Campaign | 20% Growth"
                         />
                       </div>
-                    </>
-                  ) : reportType === "Weekly" ? (
-                    <>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Week Number
-                          </label>
-                          <input
-                            type="text"
-                            value={reportData.weekNumber}
-                            onChange={(e) =>
-                              setReportData((prev) => ({
-                                ...prev,
-                                weekNumber: e.target.value,
-                              }))
-                            }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                            placeholder="e.g. Week 42"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Weekly Hours
-                          </label>
-                          <input
-                            type="text"
-                            value={reportData.weeklyHours}
-                            onChange={(e) =>
-                              setReportData((prev) => ({
-                                ...prev,
-                                weeklyHours: e.target.value,
-                              }))
-                            }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                            placeholder="e.g. 40.0 Hrs"
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Start Date
-                          </label>
-                          <input
-                            type="text"
-                            value={reportData.weekStartDate}
-                            onChange={(e) =>
-                              setReportData((prev) => ({
-                                ...prev,
-                                weekStartDate: e.target.value,
-                              }))
-                            }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                            placeholder="dd/mm/yyyy"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            End Date
-                          </label>
-                          <input
-                            type="text"
-                            value={reportData.weekEndDate}
-                            onChange={(e) =>
-                              setReportData((prev) => ({
-                                ...prev,
-                                weekEndDate: e.target.value,
-                              }))
-                            }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                            placeholder="dd/mm/yyyy"
-                          />
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    // Monthly Report Inputs
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Month
-                      </label>
-                      <input
-                        type="text"
-                        value={reportData.monthName}
-                        onChange={(e) =>
-                          setReportData((prev) => ({
-                            ...prev,
-                            monthName: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                        placeholder="e.g. July 2025"
-                      />
-                    </div>
-                  )}
+                    )}
 
-                  {reportType === "Monthly" && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Executive Summary
+                        {reportType === "Daily"
+                          ? "Obstacles / Challenges"
+                          : reportType === "Weekly"
+                            ? "Challenges"
+                            : "Challenges & Risks (One per line)"}
                       </label>
+                      {reportType === "Monthly" && (
+                        <p className="text-xs text-gray-500 mb-1">
+                          Format: Risk | Cause | Impact | Plan
+                        </p>
+                      )}
                       <VoiceInput
                         as="textarea"
-                        value={reportData.executiveSummary}
+                        value={reportData.obstacles}
                         onChange={(e) =>
                           setReportData((prev) => ({
                             ...prev,
-                            executiveSummary: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-24"
-                        placeholder="Executive summary of the month..."
-                      />
-                    </div>
-                  )}
-
-                  {reportType === "Monthly" && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Key Activities (One per line)
-                      </label>
-                      <p className="text-xs text-gray-500 mb-1">Format: Area | Activity | Outcome</p>
-                      <VoiceInput
-                        as="textarea"
-                        value={reportData.keyAchievements} // Reusing keyAchievements for Activities input in Monthly context or create new? 
-                        // Wait, Monthly has "Key Activities" AND "Achievements".
-                        // Let's use a separate field or reuse if appropriate.
-                        // I'll use keyAchievements for "Achievements" section.
-                        // I need a field for "Key Activities Completed" table.
-                        // I'll reuse 'objective' or create a new one? I created 'keyActivities' in my thought process but didn't add it to state?
-                        // Ah, I didn't add 'keyActivities' to state in the previous step. I added 'nextMonthObjectives'.
-                        // I'll use 'objective' for "Key Activities" in Monthly context since Daily uses it for "Objective".
-                        // Or better, I'll just use 'objective' field for "Key Activities" input to save state space, or add it.
-                        // Let's check state again. I added: monthName, executiveSummary, learnings, consultantNote, nextMonthObjectives.
-                        // I missed 'keyActivities'. I will use 'objective' for now as it is a large text field.
-                        value={reportData.objective} 
-                        onChange={(e) =>
-                          setReportData((prev) => ({
-                            ...prev,
-                            objective: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-24"
-                        placeholder="Marketing | Launched Campaign | 20% Growth"
-                      />
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {reportType === "Daily" ? "Obstacles / Challenges" : reportType === "Weekly" ? "Challenges" : "Challenges & Risks (One per line)"}
-                    </label>
-                    {reportType === "Monthly" && <p className="text-xs text-gray-500 mb-1">Format: Risk | Cause | Impact | Plan</p>}
-                    <VoiceInput
-                      as="textarea"
-                      value={reportData.obstacles}
-                      onChange={(e) =>
-                        setReportData((prev) => ({
-                          ...prev,
-                          obstacles: e.target.value,
-                        }))
-                      }
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
-                      placeholder={reportType === "Monthly" ? "Risk | Cause | Impact | Plan" : "List any roadblocks..."}
-                    />
-                  </div>
-
-                  {reportType === "Daily" ? (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Next Action Plan (One per line)
-                      </label>
-                      <VoiceInput
-                        as="textarea"
-                        value={reportData.nextActionPlan}
-                        onChange={(e) =>
-                          setReportData((prev) => ({
-                            ...prev,
-                            nextActionPlan: e.target.value,
+                            obstacles: e.target.value,
                           }))
                         }
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
-                        placeholder="What's next..."
+                        placeholder={
+                          reportType === "Monthly"
+                            ? "Risk | Cause | Impact | Plan"
+                            : "List any roadblocks..."
+                        }
                       />
                     </div>
-                  ) : reportType === "Weekly" ? (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Key Achievements (One per line)
-                        </label>
-                        <VoiceInput
-                          as="textarea"
-                          value={reportData.keyAchievements}
-                          onChange={(e) =>
-                            setReportData((prev) => ({
-                              ...prev,
-                              keyAchievements: e.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
-                          placeholder="List key achievements..."
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Urgent Action Items (One per line)
-                        </label>
-                        <VoiceInput
-                          as="textarea"
-                          value={reportData.urgentActions}
-                          onChange={(e) =>
-                            setReportData((prev) => ({
-                              ...prev,
-                              urgentActions: e.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
-                          placeholder="Urgent items..."
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    // Monthly Report Extra Fields
-                    <>
-                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Achievements / Highlights (One per line)
-                        </label>
-                        <VoiceInput
-                          as="textarea"
-                          value={reportData.keyAchievements}
-                          onChange={(e) =>
-                            setReportData((prev) => ({
-                              ...prev,
-                              keyAchievements: e.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
-                          placeholder="List highlights..."
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Learnings & Observations
-                        </label>
-                        <VoiceInput
-                          as="textarea"
-                          value={reportData.learnings}
-                          onChange={(e) =>
-                            setReportData((prev) => ({
-                              ...prev,
-                              learnings: e.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
-                          placeholder="Key learnings..."
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Next Month's Objectives (One per line)
-                        </label>
-                        <p className="text-xs text-gray-500 mb-1">Format: Objective | Key Result</p>
-                        <VoiceInput
-                          as="textarea"
-                          value={reportData.nextMonthObjectives}
-                          onChange={(e) =>
-                            setReportData((prev) => ({
-                              ...prev,
-                              nextMonthObjectives: e.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
-                          placeholder="Objective | Key Result"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Consultant's Note / Recommendations
-                        </label>
-                        <VoiceInput
-                          as="textarea"
-                          value={reportData.consultantNote}
-                          onChange={(e) =>
-                            setReportData((prev) => ({
-                              ...prev,
-                              consultantNote: e.target.value,
-                            }))
-                          }
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
-                          placeholder="Notes..."
-                        />
-                      </div>
-                    </>
-                  )}
 
+                    {reportType === "Daily" ? (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Next Action Plan (One per line)
+                        </label>
+                        <VoiceInput
+                          as="textarea"
+                          value={reportData.nextActionPlan}
+                          onChange={(e) =>
+                            setReportData((prev) => ({
+                              ...prev,
+                              nextActionPlan: e.target.value,
+                            }))
+                          }
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                          placeholder="What's next..."
+                        />
+                      </div>
+                    ) : reportType === "Weekly" ? (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Key Achievements (One per line)
+                          </label>
+                          <VoiceInput
+                            as="textarea"
+                            value={reportData.keyAchievements}
+                            onChange={(e) =>
+                              setReportData((prev) => ({
+                                ...prev,
+                                keyAchievements: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                            placeholder="List key achievements..."
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Urgent Action Items (One per line)
+                          </label>
+                          <VoiceInput
+                            as="textarea"
+                            value={reportData.urgentActions}
+                            onChange={(e) =>
+                              setReportData((prev) => ({
+                                ...prev,
+                                urgentActions: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                            placeholder="Urgent items..."
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      // Monthly Report Extra Fields
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Achievements / Highlights (One per line)
+                          </label>
+                          <VoiceInput
+                            as="textarea"
+                            value={reportData.keyAchievements}
+                            onChange={(e) =>
+                              setReportData((prev) => ({
+                                ...prev,
+                                keyAchievements: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                            placeholder="List highlights..."
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Learnings & Observations
+                          </label>
+                          <VoiceInput
+                            as="textarea"
+                            value={reportData.learnings}
+                            onChange={(e) =>
+                              setReportData((prev) => ({
+                                ...prev,
+                                learnings: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                            placeholder="Key learnings..."
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Next Month's Objectives (One per line)
+                          </label>
+                          <p className="text-xs text-gray-500 mb-1">
+                            Format: Objective | Key Result
+                          </p>
+                          <VoiceInput
+                            as="textarea"
+                            value={reportData.nextMonthObjectives}
+                            onChange={(e) =>
+                              setReportData((prev) => ({
+                                ...prev,
+                                nextMonthObjectives: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                            placeholder="Objective | Key Result"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Consultant's Note / Recommendations
+                          </label>
+                          <VoiceInput
+                            as="textarea"
+                            value={reportData.consultantNote}
+                            onChange={(e) =>
+                              setReportData((prev) => ({
+                                ...prev,
+                                consultantNote: e.target.value,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                            placeholder="Notes..."
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -1394,7 +1406,9 @@ Generated on: ${formatDateToDDMMYYYY(
               <div className="w-full lg:w-2/3 flex flex-col">
                 {/* Preview Header with Action Buttons */}
                 <div className="flex-shrink-0 flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">Report Preview</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Report Preview
+                  </h3>
                   {reportData.reportContent && (
                     <div className="flex gap-3">
                       <button
@@ -1426,693 +1440,751 @@ Generated on: ${formatDateToDDMMYYYY(
 
                 {/* Preview Content */}
                 <div className="flex-1 bg-gray-100 rounded-xl border border-gray-200 overflow-y-auto p-4 flex justify-center">
-                {/* VISUAL PREVIEW - MATCHING SCREENSHOT */}
-                <div
-                  id="report-preview"
-                  className="bg-white p-8 shadow-lg text-black transform scale-90 origin-top"
-                  style={{
-                    width: "210mm",
-                    minHeight: "297mm",
-                    fontFamily: '"Times New Roman", Times, serif',
-                  }}
-                >
-                  {reportType === "Daily" ? (
-                    <>
-                      {/* Title */}
-                      <h1
-                        className="text-center text-2xl font-bold mb-6"
-                        style={{
-                          fontFamily: '"Arial", sans-serif',
-                          fontStyle: "italic",
-                        }}
-                      >
-                        Daily Progress Report
-                      </h1>
+                  {/* VISUAL PREVIEW - MATCHING SCREENSHOT */}
+                  <div
+                    id="report-preview"
+                    className="bg-white p-8 shadow-lg text-black transform scale-90 origin-top"
+                    style={{
+                      width: "210mm",
+                      minHeight: "297mm",
+                      fontFamily: '"Times New Roman", Times, serif',
+                    }}
+                  >
+                    {reportType === "Daily" ? (
+                      <>
+                        {/* Title */}
+                        <h1
+                          className="text-center text-2xl font-bold mb-6"
+                          style={{
+                            fontFamily: '"Arial", sans-serif',
+                            fontStyle: "italic",
+                          }}
+                        >
+                          Daily Progress Report
+                        </h1>
 
-                      <hr className="border-t-2 border-gray-300 mb-6" />
+                        <hr className="border-t-2 border-gray-300 mb-6" />
 
-                      {/* Metadata Table */}
-                      <table className="w-full border-collapse border border-black mb-6 text-sm">
-                        <tbody>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
-                              Report No.
-                            </td>
-                            <td className="border border-black p-2 w-1/4">
-                              MFI_DR_{new Date().getDate()}
-                            </td>
-                            <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
-                              Day & Date
-                            </td>
-                            <td className="border border-black p-2 w-1/4">
-                              {reportData.reportDate}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-100">
-                              Client Name -
-                            </td>
-                            <td className="border border-black p-2" colSpan="3">
-                              {reportData.clientName}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-100">
-                              Project Name -
-                            </td>
-                            <td className="border border-black p-2" colSpan="3">
-                              {reportData.projectName}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-100">
-                              Consultant Name:
-                            </td>
-                            <td className="border border-black p-2" colSpan="3">
-                              {reportData.employeeName}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-100">
-                              Daily Hours:
-                            </td>
-                            <td className="border border-black p-2" colSpan="3">
-                              Hours Worked: {reportData.dailyHours}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-
-                      {/* Objective */}
-                      <div className="mb-4">
-                        <h3 className="font-bold mb-1 italic">
-                          Objective for the Day:
-                        </h3>
-                        <p className="ml-4">{reportData.objective}</p>
-                      </div>
-
-                      {/* Key Activities */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-2 italic">
-                          1. Key Activities Completed:
-                        </h3>
-                        <table className="w-full border-collapse border border-black text-sm">
-                          <thead>
-                            <tr className="bg-gray-100">
-                              <th className="border border-black p-2 text-left w-1/2">
-                                Task Detail
-                              </th>
-                              <th className="border border-black p-2 text-left w-1/4">
-                                Task Status
-                              </th>
-                              <th className="border border-black p-2 text-left w-1/4">
-                                Comments/Remarks
-                              </th>
+                        {/* Metadata Table */}
+                        <table className="w-full border-collapse border border-black mb-6 text-sm">
+                          <tbody>
+                            <tr>
+                              <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
+                                Report No.
+                              </td>
+                              <td className="border border-black p-2 w-1/4">
+                                MFI_DR_{new Date().getDate()}
+                              </td>
+                              <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
+                                Day & Date
+                              </td>
+                              <td className="border border-black p-2 w-1/4">
+                                {reportData.reportDate}
+                              </td>
                             </tr>
-                          </thead>
-                          <tbody>
-                            {tasksCompletedToday.length > 0 ? (
-                              tasksCompletedToday.map((task, index) => (
-                                <tr key={task.id}>
-                                  <td className="border border-black p-2">
-                                    {index + 1}. {task.title}
-                                  </td>
-                                  <td className="border border-black p-2">
-                                    {task.status}
-                                  </td>
-                                  <td className="border border-black p-2">
-                                    {task.completionComment || "-"}
-                                  </td>
-                                </tr>
-                              ))
-                            ) : (
-                              <tr>
-                                <td
-                                  className="border border-black p-2 text-center text-gray-500"
-                                  colSpan="3"
-                                >
-                                  No tasks completed today
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Obstacles */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-2 italic">
-                          Obstacles/Challenges Faced/ Roadblocks (if any)
-                        </h3>
-                        <table className="w-full border-collapse border border-black text-sm">
-                          <tbody>
-                            {reportData.obstacles
-                              .split("\n")
-                              .filter((line) => line.trim() !== "")
-                              .map((line, index) => (
-                                <tr key={index}>
-                                  <td className="border border-black p-2 w-10 text-center">
-                                    {index + 1}
-                                  </td>
-                                  <td className="border border-black p-2">
-                                    {line}
-                                  </td>
-                                </tr>
-                              ))}
-                            {reportData.obstacles.trim() === "" && (
-                              <tr>
-                                <td className="border border-black p-2 w-10 text-center">
-                                  1
-                                </td>
-                                <td className="border border-black p-2"></td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Next Action Plan */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-2 italic">Next Action Plan</h3>
-                        <table className="w-full border-collapse border border-black text-sm">
-                          <tbody>
-                            {reportData.nextActionPlan
-                              .split("\n")
-                              .filter((line) => line.trim() !== "")
-                              .map((line, index) => (
-                                <tr key={index}>
-                                  <td className="border border-black p-2 w-10 text-center">
-                                    {index + 1}
-                                  </td>
-                                  <td className="border border-black p-2">
-                                    {line}
-                                  </td>
-                                </tr>
-                              ))}
-                            {reportData.nextActionPlan.trim() === "" && (
-                              <tr>
-                                <td className="border border-black p-2 w-10 text-center">
-                                  1
-                                </td>
-                                <td className="border border-black p-2"></td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Summary */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-1 italic">Summary:</h3>
-                        <p className="ml-4 border-b border-black min-h-[2rem]">
-                          {reportData.summary}
-                        </p>
-                      </div>
-                    </>
-                  ) : reportType === "Weekly" ? (
-                    <>
-                      {/* Title */}
-                      <h1
-                        className="text-center text-2xl font-bold mb-6"
-                        style={{
-                          fontFamily: '"Arial", sans-serif',
-                          fontStyle: "italic",
-                        }}
-                      >
-                        Weekly Progress Report
-                      </h1>
-
-                      <hr className="border-t-2 border-gray-300 mb-6" />
-
-                      {/* Metadata Table */}
-                      <table className="w-full border-collapse border border-black mb-6 text-sm">
-                        <tbody>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
-                              Week No.
-                            </td>
-                            <td className="border border-black p-2 w-1/4">
-                              {reportData.weekNumber}
-                            </td>
-                            <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
-                              Date Range
-                            </td>
-                            <td className="border border-black p-2 w-1/4">
-                              {reportData.weekStartDate} - {reportData.weekEndDate}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-100">
-                              Client Name -
-                            </td>
-                            <td className="border border-black p-2" colSpan="3">
-                              {reportData.clientName}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-100">
-                              Project Name -
-                            </td>
-                            <td className="border border-black p-2" colSpan="3">
-                              {reportData.projectName}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-100">
-                              Consultant Name:
-                            </td>
-                            <td className="border border-black p-2" colSpan="3">
-                              {reportData.employeeName}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-100">
-                              Weekly Hours:
-                            </td>
-                            <td className="border border-black p-2" colSpan="3">
-                              Hours Worked: {reportData.weeklyHours}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-
-                      {/* Summary of Activities */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-2 italic">
-                          1. Summary of Activities:
-                        </h3>
-                        <table className="w-full border-collapse border border-black text-sm">
-                          <thead>
-                            <tr className="bg-gray-100">
-                              <th className="border border-black p-2 text-left w-1/2">
-                                Task Detail
-                              </th>
-                              <th className="border border-black p-2 text-left w-1/4">
-                                Task Status
-                              </th>
-                              <th className="border border-black p-2 text-left w-1/4">
-                                Comments/Remarks
-                              </th>
+                            <tr>
+                              <td className="border border-black p-2 font-bold bg-gray-100">
+                                Client Name -
+                              </td>
+                              <td
+                                className="border border-black p-2"
+                                colSpan="3"
+                              >
+                                {reportData.clientName}
+                              </td>
                             </tr>
-                          </thead>
-                          <tbody>
-                             {tasks.filter(t => {
-                                if (!t.updatedAt) return false;
-                                const updated = t.updatedAt.toDate ? t.updatedAt.toDate() : new Date(t.updatedAt);
-                                const sevenDaysAgo = new Date();
-                                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                                return updated >= sevenDaysAgo;
-                             }).slice(0, 10).map((task, index) => (
-                                <tr key={task.id}>
-                                  <td className="border border-black p-2">
-                                    {index + 1}. {task.title}
-                                  </td>
-                                  <td className="border border-black p-2">
-                                    {task.status}
-                                  </td>
-                                  <td className="border border-black p-2">
-                                    {task.completionComment || "-"}
-                                  </td>
-                                </tr>
-                              ))}
-                              {tasks.filter(t => {
-                                if (!t.updatedAt) return false;
-                                const updated = t.updatedAt.toDate ? t.updatedAt.toDate() : new Date(t.updatedAt);
-                                const sevenDaysAgo = new Date();
-                                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                                return updated >= sevenDaysAgo;
-                             }).length === 0 && (
-                                <tr>
-                                    <td className="border border-black p-2 text-center text-gray-500" colSpan="3">
-                                        No activity recorded this week
+                            <tr>
+                              <td className="border border-black p-2 font-bold bg-gray-100">
+                                Project Name -
+                              </td>
+                              <td
+                                className="border border-black p-2"
+                                colSpan="3"
+                              >
+                                {reportData.projectName}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="border border-black p-2 font-bold bg-gray-100">
+                                Consultant Name:
+                              </td>
+                              <td
+                                className="border border-black p-2"
+                                colSpan="3"
+                              >
+                                {reportData.employeeName}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="border border-black p-2 font-bold bg-gray-100">
+                                Daily Hours:
+                              </td>
+                              <td
+                                className="border border-black p-2"
+                                colSpan="3"
+                              >
+                                Hours Worked: {reportData.dailyHours}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+
+                        {/* Objective */}
+                        <div className="mb-4">
+                          <h3 className="font-bold mb-1 italic">
+                            Objective for the Day:
+                          </h3>
+                          <p className="ml-4">{reportData.objective}</p>
+                        </div>
+
+                        {/* Key Activities */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-2 italic">
+                            1. Key Activities Completed:
+                          </h3>
+                          <table className="w-full border-collapse border border-black text-sm">
+                            <thead>
+                              <tr className="bg-gray-100">
+                                <th className="border border-black p-2 text-left w-1/2">
+                                  Task Detail
+                                </th>
+                                <th className="border border-black p-2 text-left w-1/4">
+                                  Task Status
+                                </th>
+                                <th className="border border-black p-2 text-left w-1/4">
+                                  Comments/Remarks
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {tasksCompletedToday.length > 0 ? (
+                                tasksCompletedToday.map((task, index) => (
+                                  <tr key={task.id}>
+                                    <td className="border border-black p-2">
+                                      {index + 1}. {task.title}
                                     </td>
+                                    <td className="border border-black p-2">
+                                      {task.status}
+                                    </td>
+                                    <td className="border border-black p-2">
+                                      {task.completionComment || "-"}
+                                    </td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td
+                                    className="border border-black p-2 text-center text-gray-500"
+                                    colSpan="3"
+                                  >
+                                    No tasks completed today
+                                  </td>
                                 </tr>
                               )}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Key Achievements */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-2 italic">
-                          2. Key Achievements
-                        </h3>
-                        <table className="w-full border-collapse border border-black text-sm">
-                          <tbody>
-                            {reportData.keyAchievements
-                              .split("\n")
-                              .filter((line) => line.trim() !== "")
-                              .map((line, index) => (
-                                <tr key={index}>
-                                  <td className="border border-black p-2 w-10 text-center">
-                                    {index + 1}
-                                  </td>
-                                  <td className="border border-black p-2">
-                                    {line}
-                                  </td>
-                                </tr>
-                              ))}
-                             {reportData.keyAchievements.trim() === "" && (
-                              <tr>
-                                <td className="border border-black p-2 w-10 text-center">1</td>
-                                <td className="border border-black p-2"></td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Challenges */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-2 italic">
-                          3. Challenges
-                        </h3>
-                        <table className="w-full border-collapse border border-black text-sm">
-                          <tbody>
-                            {reportData.obstacles
-                              .split("\n")
-                              .filter((line) => line.trim() !== "")
-                              .map((line, index) => (
-                                <tr key={index}>
-                                  <td className="border border-black p-2 w-10 text-center">
-                                    {index + 1}
-                                  </td>
-                                  <td className="border border-black p-2">
-                                    {line}
-                                  </td>
-                                </tr>
-                              ))}
-                            {reportData.obstacles.trim() === "" && (
-                              <tr>
-                                <td className="border border-black p-2 w-10 text-center">1</td>
-                                <td className="border border-black p-2"></td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Urgent Action Items */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-2 italic">
-                          4. Urgent Action Items
-                        </h3>
-                        <table className="w-full border-collapse border border-black text-sm">
-                          <tbody>
-                            {reportData.urgentActions
-                              .split("\n")
-                              .filter((line) => line.trim() !== "")
-                              .map((line, index) => (
-                                <tr key={index}>
-                                  <td className="border border-black p-2 w-10 text-center">
-                                    {index + 1}
-                                  </td>
-                                  <td className="border border-black p-2">
-                                    {line}
-                                  </td>
-                                </tr>
-                              ))}
-                            {reportData.urgentActions.trim() === "" && (
-                              <tr>
-                                <td className="border border-black p-2 w-10 text-center">1</td>
-                                <td className="border border-black p-2"></td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Summary */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-1 italic">Summary:</h3>
-                        <p className="ml-4 border-b border-black min-h-[2rem]">
-                          {reportData.summary}
-                        </p>
-                      </div>
-                    </>
-                  ) : (
-                    // Monthly Report Preview
-                    <>
-                      {/* Title */}
-                      <h1
-                        className="text-center text-2xl font-bold mb-6"
-                        style={{
-                          fontFamily: '"Arial", sans-serif',
-                          fontStyle: "italic",
-                        }}
-                      >
-                        Monthly Report
-                      </h1>
-
-                      <hr className="border-t-2 border-gray-300 mb-6" />
-
-                      {/* Metadata Table */}
-                      <table className="w-full border-collapse border border-black mb-6 text-sm">
-                        <tbody>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
-                              Report No.
-                            </td>
-                            <td className="border border-black p-2 w-1/4">
-                              <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
-                              MR_{reportData.monthName.replace(/\s/g, "_")}
-                            </td>
-                            <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
-                              Date
-                            </td>
-                            <td className="border border-black p-2 w-1/4">
-                              {reportData.reportDate}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-100">
-                              Client Name -
-                            </td>
-                            <td className="border border-black p-2" colSpan="3">
-                              {reportData.clientName}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-100">
-                              Consultant Name:
-                            </td>
-                            <td className="border border-black p-2" colSpan="3">
-                              {reportData.employeeName}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td className="border border-black p-2 font-bold bg-gray-100">
-                              Month:
-                            </td>
-                            <td className="border border-black p-2" colSpan="3">
-                              {reportData.monthName}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-
-                      {/* Executive Summary */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-2 italic">
-                          Executive Summary
-                        </h3>
-                        <div className="border border-black p-4 min-h-[100px] text-sm whitespace-pre-wrap">
-                          {reportData.executiveSummary}
+                            </tbody>
+                          </table>
                         </div>
-                      </div>
 
-                      {/* Key Activities Completed */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-2 italic">
-                          2. Key Activities Completed
-                        </h3>
-                        <table className="w-full border-collapse border border-black text-sm">
-                          <thead>
-                            <tr className="bg-gray-100">
-                              <th className="border border-black p-2 text-left w-1/4">
-                                Area / Department
-                              </th>
-                              <th className="border border-black p-2 text-left w-1/2">
-                                Activities Done
-                              </th>
-                              <th className="border border-black p-2 text-left w-1/4">
-                                Outcome / Impact
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {reportData.objective
-                              .split("\n")
-                              .filter((line) => line.trim() !== "")
-                              .map((line, index) => {
-                                const parts = line.split("|");
-                                return (
+                        {/* Obstacles */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-2 italic">
+                            Obstacles/Challenges Faced/ Roadblocks (if any)
+                          </h3>
+                          <table className="w-full border-collapse border border-black text-sm">
+                            <tbody>
+                              {reportData.obstacles
+                                .split("\n")
+                                .filter((line) => line.trim() !== "")
+                                .map((line, index) => (
                                   <tr key={index}>
-                                    <td className="border border-black p-2">
-                                      {parts[0]?.trim() || "-"}
+                                    <td className="border border-black p-2 w-10 text-center">
+                                      {index + 1}
                                     </td>
                                     <td className="border border-black p-2">
-                                      {parts[1]?.trim() || "-"}
-                                    </td>
-                                    <td className="border border-black p-2">
-                                      {parts[2]?.trim() || "-"}
+                                      {line}
                                     </td>
                                   </tr>
-                                );
-                              })}
-                            {reportData.objective.trim() === "" && (
-                              <tr>
-                                <td className="border border-black p-2 h-8"></td>
-                                <td className="border border-black p-2 h-8"></td>
-                                <td className="border border-black p-2 h-8"></td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Achievements */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-2 italic">
-                          3. Achievements / Highlights of the Month
-                        </h3>
-                        <div className="border border-black p-4 min-h-[80px] text-sm whitespace-pre-wrap">
-                          {reportData.keyAchievements}
+                                ))}
+                              {reportData.obstacles.trim() === "" && (
+                                <tr>
+                                  <td className="border border-black p-2 w-10 text-center">
+                                    1
+                                  </td>
+                                  <td className="border border-black p-2"></td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
                         </div>
-                      </div>
 
-                      {/* Challenges & Risks */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-2 italic">
-                          4. Challenges & Risks Identified
-                        </h3>
-                        <table className="w-full border-collapse border border-black text-sm">
-                          <thead>
-                            <tr className="bg-gray-100">
-                              <th className="border border-black p-2 text-left w-1/4">
-                                Challenge / Risk
-                              </th>
-                              <th className="border border-black p-2 text-left w-1/4">
-                                Cause
-                              </th>
-                              <th className="border border-black p-2 text-left w-1/4">
-                                Impact
-                              </th>
-                              <th className="border border-black p-2 text-left w-1/4">
-                                Action Taken / Plan
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {reportData.obstacles
-                              .split("\n")
-                              .filter((line) => line.trim() !== "")
-                              .map((line, index) => {
-                                const parts = line.split("|");
-                                return (
+                        {/* Next Action Plan */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-2 italic">
+                            Next Action Plan
+                          </h3>
+                          <table className="w-full border-collapse border border-black text-sm">
+                            <tbody>
+                              {reportData.nextActionPlan
+                                .split("\n")
+                                .filter((line) => line.trim() !== "")
+                                .map((line, index) => (
                                   <tr key={index}>
-                                    <td className="border border-black p-2">
-                                      {parts[0]?.trim() || "-"}
+                                    <td className="border border-black p-2 w-10 text-center">
+                                      {index + 1}
                                     </td>
                                     <td className="border border-black p-2">
-                                      {parts[1]?.trim() || "-"}
-                                    </td>
-                                    <td className="border border-black p-2">
-                                      {parts[2]?.trim() || "-"}
-                                    </td>
-                                    <td className="border border-black p-2">
-                                      {parts[3]?.trim() || "-"}
+                                      {line}
                                     </td>
                                   </tr>
-                                );
-                              })}
-                            {reportData.obstacles.trim() === "" && (
-                              <tr>
-                                <td className="border border-black p-2 h-8"></td>
-                                <td className="border border-black p-2 h-8"></td>
-                                <td className="border border-black p-2 h-8"></td>
-                                <td className="border border-black p-2 h-8"></td>
-                              </tr>
-                            )}
+                                ))}
+                              {reportData.nextActionPlan.trim() === "" && (
+                                <tr>
+                                  <td className="border border-black p-2 w-10 text-center">
+                                    1
+                                  </td>
+                                  <td className="border border-black p-2"></td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Summary */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-1 italic">Summary:</h3>
+                          <p className="ml-4 border-b border-black min-h-[2rem]">
+                            {reportData.summary}
+                          </p>
+                        </div>
+                      </>
+                    ) : reportType === "Weekly" ? (
+                      <>
+                        {/* Title */}
+                        <h1
+                          className="text-center text-2xl font-bold mb-6"
+                          style={{
+                            fontFamily: '"Arial", sans-serif',
+                            fontStyle: "italic",
+                          }}
+                        >
+                          Weekly Progress Report
+                        </h1>
+
+                        <hr className="border-t-2 border-gray-300 mb-6" />
+
+                        {/* Metadata Table */}
+                        <table className="w-full border-collapse border border-black mb-6 text-sm">
+                          <tbody>
+                            <tr>
+                              <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
+                                Week No.
+                              </td>
+                              <td className="border border-black p-2 w-1/4">
+                                {reportData.weekNumber}
+                              </td>
+                              <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
+                                Date Range
+                              </td>
+                              <td className="border border-black p-2 w-1/4">
+                                {reportData.weekStartDate} -{" "}
+                                {reportData.weekEndDate}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="border border-black p-2 font-bold bg-gray-100">
+                                Client Name -
+                              </td>
+                              <td
+                                className="border border-black p-2"
+                                colSpan="3"
+                              >
+                                {reportData.clientName}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="border border-black p-2 font-bold bg-gray-100">
+                                Project Name -
+                              </td>
+                              <td
+                                className="border border-black p-2"
+                                colSpan="3"
+                              >
+                                {reportData.projectName}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="border border-black p-2 font-bold bg-gray-100">
+                                Consultant Name:
+                              </td>
+                              <td
+                                className="border border-black p-2"
+                                colSpan="3"
+                              >
+                                {reportData.employeeName}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="border border-black p-2 font-bold bg-gray-100">
+                                Weekly Hours:
+                              </td>
+                              <td
+                                className="border border-black p-2"
+                                colSpan="3"
+                              >
+                                Hours Worked: {reportData.weeklyHours}
+                              </td>
+                            </tr>
                           </tbody>
                         </table>
-                      </div>
 
-                      {/* Learnings */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-2 italic">
-                          5. Learnings & Observations
-                        </h3>
-                        <div className="border-b border-black min-h-[60px] text-sm whitespace-pre-wrap">
-                          {reportData.learnings}
-                        </div>
-                      </div>
-
-                      {/* Next Month Objectives */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-2 italic">
-                          6. Next Month's Objective & Key Results
-                        </h3>
-                        <table className="w-full border-collapse border border-black text-sm">
-                          <thead>
-                            <tr className="bg-gray-100">
-                              <th className="border border-black p-2 text-left w-1/2">
-                                Objectives
-                              </th>
-                              <th className="border border-black p-2 text-left w-1/2">
-                                Key Results
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {reportData.nextMonthObjectives
-                              .split("\n")
-                              .filter((line) => line.trim() !== "")
-                              .map((line, index) => {
-                                const parts = line.split("|");
-                                return (
-                                  <tr key={index}>
+                        {/* Summary of Activities */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-2 italic">
+                            1. Summary of Activities:
+                          </h3>
+                          <table className="w-full border-collapse border border-black text-sm">
+                            <thead>
+                              <tr className="bg-gray-100">
+                                <th className="border border-black p-2 text-left w-1/2">
+                                  Task Detail
+                                </th>
+                                <th className="border border-black p-2 text-left w-1/4">
+                                  Task Status
+                                </th>
+                                <th className="border border-black p-2 text-left w-1/4">
+                                  Comments/Remarks
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {tasks
+                                .filter((t) => {
+                                  if (!t.updatedAt) return false;
+                                  const updated = t.updatedAt.toDate
+                                    ? t.updatedAt.toDate()
+                                    : new Date(t.updatedAt);
+                                  const sevenDaysAgo = new Date();
+                                  sevenDaysAgo.setDate(
+                                    sevenDaysAgo.getDate() - 7
+                                  );
+                                  return updated >= sevenDaysAgo;
+                                })
+                                .slice(0, 10)
+                                .map((task, index) => (
+                                  <tr key={task.id}>
                                     <td className="border border-black p-2">
-                                      {parts[0]?.trim() || "-"}
+                                      {index + 1}. {task.title}
                                     </td>
                                     <td className="border border-black p-2">
-                                      {parts[1]?.trim() || "-"}
+                                      {task.status}
+                                    </td>
+                                    <td className="border border-black p-2">
+                                      {task.completionComment || "-"}
                                     </td>
                                   </tr>
+                                ))}
+                              {tasks.filter((t) => {
+                                if (!t.updatedAt) return false;
+                                const updated = t.updatedAt.toDate
+                                  ? t.updatedAt.toDate()
+                                  : new Date(t.updatedAt);
+                                const sevenDaysAgo = new Date();
+                                sevenDaysAgo.setDate(
+                                  sevenDaysAgo.getDate() - 7
                                 );
-                              })}
-                            {reportData.nextMonthObjectives.trim() === "" && (
-                              <tr>
-                                <td className="border border-black p-2 h-8"></td>
-                                <td className="border border-black p-2 h-8"></td>
-                              </tr>
-                            )}
+                                return updated >= sevenDaysAgo;
+                              }).length === 0 && (
+                                  <tr>
+                                    <td
+                                      className="border border-black p-2 text-center text-gray-500"
+                                      colSpan="3"
+                                    >
+                                      No activity recorded this week
+                                    </td>
+                                  </tr>
+                                )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Key Achievements */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-2 italic">
+                            2. Key Achievements
+                          </h3>
+                          <table className="w-full border-collapse border border-black text-sm">
+                            <tbody>
+                              {reportData.keyAchievements
+                                .split("\n")
+                                .filter((line) => line.trim() !== "")
+                                .map((line, index) => (
+                                  <tr key={index}>
+                                    <td className="border border-black p-2 w-10 text-center">
+                                      {index + 1}
+                                    </td>
+                                    <td className="border border-black p-2">
+                                      {line}
+                                    </td>
+                                  </tr>
+                                ))}
+                              {reportData.keyAchievements.trim() === "" && (
+                                <tr>
+                                  <td className="border border-black p-2 w-10 text-center">
+                                    1
+                                  </td>
+                                  <td className="border border-black p-2"></td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Challenges */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-2 italic">
+                            3. Challenges
+                          </h3>
+                          <table className="w-full border-collapse border border-black text-sm">
+                            <tbody>
+                              {reportData.obstacles
+                                .split("\n")
+                                .filter((line) => line.trim() !== "")
+                                .map((line, index) => (
+                                  <tr key={index}>
+                                    <td className="border border-black p-2 w-10 text-center">
+                                      {index + 1}
+                                    </td>
+                                    <td className="border border-black p-2">
+                                      {line}
+                                    </td>
+                                  </tr>
+                                ))}
+                              {reportData.obstacles.trim() === "" && (
+                                <tr>
+                                  <td className="border border-black p-2 w-10 text-center">
+                                    1
+                                  </td>
+                                  <td className="border border-black p-2"></td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Urgent Action Items */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-2 italic">
+                            4. Urgent Action Items
+                          </h3>
+                          <table className="w-full border-collapse border border-black text-sm">
+                            <tbody>
+                              {reportData.urgentActions
+                                .split("\n")
+                                .filter((line) => line.trim() !== "")
+                                .map((line, index) => (
+                                  <tr key={index}>
+                                    <td className="border border-black p-2 w-10 text-center">
+                                      {index + 1}
+                                    </td>
+                                    <td className="border border-black p-2">
+                                      {line}
+                                    </td>
+                                  </tr>
+                                ))}
+                              {reportData.urgentActions.trim() === "" && (
+                                <tr>
+                                  <td className="border border-black p-2 w-10 text-center">
+                                    1
+                                  </td>
+                                  <td className="border border-black p-2"></td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Summary */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-1 italic">Summary:</h3>
+                          <p className="ml-4 border-b border-black min-h-[2rem]">
+                            {reportData.summary}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      // Monthly Report Preview
+                      <>
+                        {/* Title */}
+                        <h1
+                          className="text-center text-2xl font-bold mb-6"
+                          style={{
+                            fontFamily: '"Arial", sans-serif',
+                            fontStyle: "italic",
+                          }}
+                        >
+                          Monthly Report
+                        </h1>
+
+                        <hr className="border-t-2 border-gray-300 mb-6" />
+
+                        {/* Metadata Table */}
+                        <table className="w-full border-collapse border border-black mb-6 text-sm">
+                          <tbody>
+                            <tr>
+                              <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
+                                Report No.
+                              </td>
+                              <td className="border border-black p-2 w-1/4">
+                                <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
+                                MR_{reportData.monthName.replace(/\s/g, "_")}
+                              </td>
+                              <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
+                                Date
+                              </td>
+                              <td className="border border-black p-2 w-1/4">
+                                {reportData.reportDate}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="border border-black p-2 font-bold bg-gray-100">
+                                Client Name -
+                              </td>
+                              <td
+                                className="border border-black p-2"
+                                colSpan="3"
+                              >
+                                {reportData.clientName}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="border border-black p-2 font-bold bg-gray-100">
+                                Consultant Name:
+                              </td>
+                              <td
+                                className="border border-black p-2"
+                                colSpan="3"
+                              >
+                                {reportData.employeeName}
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="border border-black p-2 font-bold bg-gray-100">
+                                Month:
+                              </td>
+                              <td
+                                className="border border-black p-2"
+                                colSpan="3"
+                              >
+                                {reportData.monthName}
+                              </td>
+                            </tr>
                           </tbody>
                         </table>
-                      </div>
 
-                      {/* Consultant Note */}
-                      <div className="mb-6">
-                        <h3 className="font-bold mb-2 italic">
-                          Consultant's Note / Recommendations
-                        </h3>
-                        <div className="border border-black p-4 min-h-[60px] text-sm whitespace-pre-wrap">
-                          {reportData.consultantNote}
+                        {/* Executive Summary */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-2 italic">
+                            Executive Summary
+                          </h3>
+                          <div className="border border-black p-4 min-h-[100px] text-sm whitespace-pre-wrap">
+                            {reportData.executiveSummary}
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Signature */}
-                      <div className="mt-12 flex justify-end">
-                        <div className="text-sm">
-                          <span className="font-bold">Consultant Signature:</span>{" "}
-                          <span className="italic border-b border-black px-4">
-                            {reportData.employeeName}, Triology Solutions
-                          </span>
+                        {/* Key Activities Completed */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-2 italic">
+                            2. Key Activities Completed
+                          </h3>
+                          <table className="w-full border-collapse border border-black text-sm">
+                            <thead>
+                              <tr className="bg-gray-100">
+                                <th className="border border-black p-2 text-left w-1/4">
+                                  Area / Department
+                                </th>
+                                <th className="border border-black p-2 text-left w-1/2">
+                                  Activities Done
+                                </th>
+                                <th className="border border-black p-2 text-left w-1/4">
+                                  Outcome / Impact
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {reportData.objective
+                                .split("\n")
+                                .filter((line) => line.trim() !== "")
+                                .map((line, index) => {
+                                  const parts = line.split("|");
+                                  return (
+                                    <tr key={index}>
+                                      <td className="border border-black p-2">
+                                        {parts[0]?.trim() || "-"}
+                                      </td>
+                                      <td className="border border-black p-2">
+                                        {parts[1]?.trim() || "-"}
+                                      </td>
+                                      <td className="border border-black p-2">
+                                        {parts[2]?.trim() || "-"}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              {reportData.objective.trim() === "" && (
+                                <tr>
+                                  <td className="border border-black p-2 h-8"></td>
+                                  <td className="border border-black p-2 h-8"></td>
+                                  <td className="border border-black p-2 h-8"></td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
                         </div>
-                      </div>
-                    </>
-                  )}
-                </div>
+
+                        {/* Achievements */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-2 italic">
+                            3. Achievements / Highlights of the Month
+                          </h3>
+                          <div className="border border-black p-4 min-h-[80px] text-sm whitespace-pre-wrap">
+                            {reportData.keyAchievements}
+                          </div>
+                        </div>
+
+                        {/* Challenges & Risks */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-2 italic">
+                            4. Challenges & Risks Identified
+                          </h3>
+                          <table className="w-full border-collapse border border-black text-sm">
+                            <thead>
+                              <tr className="bg-gray-100">
+                                <th className="border border-black p-2 text-left w-1/4">
+                                  Challenge / Risk
+                                </th>
+                                <th className="border border-black p-2 text-left w-1/4">
+                                  Cause
+                                </th>
+                                <th className="border border-black p-2 text-left w-1/4">
+                                  Impact
+                                </th>
+                                <th className="border border-black p-2 text-left w-1/4">
+                                  Action Taken / Plan
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {reportData.obstacles
+                                .split("\n")
+                                .filter((line) => line.trim() !== "")
+                                .map((line, index) => {
+                                  const parts = line.split("|");
+                                  return (
+                                    <tr key={index}>
+                                      <td className="border border-black p-2">
+                                        {parts[0]?.trim() || "-"}
+                                      </td>
+                                      <td className="border border-black p-2">
+                                        {parts[1]?.trim() || "-"}
+                                      </td>
+                                      <td className="border border-black p-2">
+                                        {parts[2]?.trim() || "-"}
+                                      </td>
+                                      <td className="border border-black p-2">
+                                        {parts[3]?.trim() || "-"}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              {reportData.obstacles.trim() === "" && (
+                                <tr>
+                                  <td className="border border-black p-2 h-8"></td>
+                                  <td className="border border-black p-2 h-8"></td>
+                                  <td className="border border-black p-2 h-8"></td>
+                                  <td className="border border-black p-2 h-8"></td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Learnings */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-2 italic">
+                            5. Learnings & Observations
+                          </h3>
+                          <div className="border-b border-black min-h-[60px] text-sm whitespace-pre-wrap">
+                            {reportData.learnings}
+                          </div>
+                        </div>
+
+                        {/* Next Month Objectives */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-2 italic">
+                            6. Next Month's Objective & Key Results
+                          </h3>
+                          <table className="w-full border-collapse border border-black text-sm">
+                            <thead>
+                              <tr className="bg-gray-100">
+                                <th className="border border-black p-2 text-left w-1/2">
+                                  Objectives
+                                </th>
+                                <th className="border border-black p-2 text-left w-1/2">
+                                  Key Results
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {reportData.nextMonthObjectives
+                                .split("\n")
+                                .filter((line) => line.trim() !== "")
+                                .map((line, index) => {
+                                  const parts = line.split("|");
+                                  return (
+                                    <tr key={index}>
+                                      <td className="border border-black p-2">
+                                        {parts[0]?.trim() || "-"}
+                                      </td>
+                                      <td className="border border-black p-2">
+                                        {parts[1]?.trim() || "-"}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              {reportData.nextMonthObjectives.trim() === "" && (
+                                <tr>
+                                  <td className="border border-black p-2 h-8"></td>
+                                  <td className="border border-black p-2 h-8"></td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Consultant Note */}
+                        <div className="mb-6">
+                          <h3 className="font-bold mb-2 italic">
+                            Consultant's Note / Recommendations
+                          </h3>
+                          <div className="border border-black p-4 min-h-[60px] text-sm whitespace-pre-wrap">
+                            {reportData.consultantNote}
+                          </div>
+                        </div>
+
+                        {/* Signature */}
+                        <div className="mt-12 flex justify-end">
+                          <div className="text-sm">
+                            <span className="font-bold">
+                              Consultant Signature:
+                            </span>{" "}
+                            <span className="italic border-b border-black px-4">
+                              {reportData.employeeName}, {companyName}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

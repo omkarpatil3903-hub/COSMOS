@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
+    "@react-pdf/renderer": "^4.3.1",
     "@tailwindcss/vite": "^4.1.14",
     "dhtmlx-gantt": "^9.1.0",
     "dotenv": "^17.2.3",

@@ -38,6 +38,7 @@ import { calculateCalendarStats } from "../../utils/calendarUtils";
 import StatsCards from "../../components/calendar/StatsCards";
 import CalendarHeader from "../../components/calendar/CalendarHeader";
 import { expandRecurringOccurrences } from "../../utils/recurringTasks";
+import { useCalendarData } from "../../services/useCalendarData";
 
 // Refactored: Utility functions moved to utils/dateUtils.js and utils/calendarUtils.js
 const buildDefaultEventForm = (baseDate = new Date()) => ({
@@ -55,13 +56,17 @@ const buildDefaultEventForm = (baseDate = new Date()) => ({
 });
 
 function Calendar() {
-  const [events, setEvents] = useState([]);
-  const [meetingRequests, setMeetingRequests] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [resources, setResources] = useState([]);
-  const [tasks, setTasks] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Use shared data hook instead of inline subscriptions
+  const {
+    events,
+    meetingRequests,
+    clients,
+    resources,
+    tasks,
+    projects,
+    loading,
+  } = useCalendarData();
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -87,166 +92,6 @@ function Calendar() {
     });
     return map;
   }, [clients]);
-
-  // Firestore subscriptions
-  useEffect(() => {
-    let unsubEvents,
-      unsubMeetingRequests,
-      unsubClients,
-      unsubTasks,
-      unsubResources,
-      unsubProjects;
-
-    const initSubscriptions = async () => {
-      unsubEvents = onSnapshot(
-        query(collection(db, "events"), orderBy("date", "asc")),
-        (snap) => {
-          const loadedEvents = snap.docs.map((d) => {
-            const data = d.data() || {};
-            const cancelledAt = tsToDate(data.cancelledAt);
-            const completedAt = tsToDate(data.completedAt);
-            const createdAt = tsToDate(data.createdAt);
-            const status = String(data.status || "pending").toLowerCase();
-            const type = String(data.type || "meeting").toLowerCase();
-            const priority = String(data.priority || "medium").toLowerCase();
-            return {
-              id: d.id,
-              title: data.title || "",
-              type,
-              status,
-              date: data.date || "",
-              time: data.time || "",
-              duration: data.duration || 60,
-              clientId: data.clientId || "",
-              clientName: data.clientName || "",
-              description: data.description || "",
-              priority,
-              location: data.location || "",
-              attendees: data.attendees || [],
-              attendeeIds: data.attendeeIds || [],
-              createdBy: data.createdBy || "",
-              objectives: data.objectives || [],
-              cancelReason: data.cancelReason || "",
-              cancelledBy: data.cancelledBy || "",
-              cancelledAt,
-              completedAt,
-              createdAt,
-              assignee: data.assignee || "",
-              progress: data.progress || 0,
-            };
-          });
-          console.log("📅 Events loaded:", loadedEvents.length, loadedEvents);
-          setEvents(loadedEvents);
-        }
-      );
-
-      unsubMeetingRequests = onSnapshot(
-        collection(db, "meetingRequests"),
-        (snap) => {
-          setMeetingRequests(
-            snap.docs.map((d) => {
-              const data = d.data() || {};
-              const requestedAt = tsToDate(data.requestedAt);
-              const rejectedAt = tsToDate(data.rejectedAt);
-              return {
-                id: d.id,
-                clientId: data.clientId || "",
-                clientName: data.clientName || "",
-                companyName: data.companyName || "",
-                requestedDate: data.requestedDate || "",
-                requestedTime: data.requestedTime || "",
-                duration: data.duration || 60,
-                purpose: data.purpose || "",
-                priority: data.priority || "medium",
-                status: data.status || "pending",
-                requestedAt,
-                rejectedAt,
-                rejectedBy: data.rejectedBy || "",
-                rejectionReason: data.rejectionReason || "",
-                email: data.email || "",
-                phone: data.phone || "",
-              };
-            })
-          );
-        }
-      );
-
-      unsubClients = onSnapshot(collection(db, "clients"), (snap) => {
-        setClients(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
-      });
-
-      unsubTasks = onSnapshot(
-        query(collection(db, "tasks"), orderBy("dueDate", "asc")),
-        (snap) => {
-          setTasks(
-            snap.docs.map((d) => {
-              const data = d.data() || {};
-              const dueDate = tsToDate(data.dueDate);
-              const createdAt = tsToDate(data.createdAt);
-              const completedAt = tsToDate(data.completedAt);
-              return {
-                id: d.id,
-                title: data.title || "",
-                projectId: data.projectId || "",
-                assigneeId: data.assigneeId || "",
-                assigneeType: data.assigneeType || "user",
-                status: data.status || "To-Do",
-                priority: data.priority || "Medium",
-                dueDate,
-                createdAt,
-                completedAt,
-                archived: data.archived || false,
-              };
-            })
-          );
-          setLoading(false);
-        }
-      );
-
-      // Load resources (employees)
-      unsubResources = onSnapshot(
-        query(collection(db, "users"), orderBy("name", "asc")),
-        (snap) => {
-          const loadedResources = snap.docs.map((d) => ({
-            id: d.id,
-            name: d.data().name || d.data().email || "Unknown",
-            email: d.data().email || "",
-            role: d.data().role || "resource",
-          }));
-          setResources(loadedResources);
-        }
-      );
-
-      // Load projects
-      unsubProjects = onSnapshot(
-        query(collection(db, "projects"), orderBy("projectName", "asc")),
-        (snap) => {
-          const loadedProjects = snap.docs
-            .map((d) => {
-              const data = d.data() || {};
-              return {
-                id: d.id,
-                name: data.projectName || data.name || "",
-                ...data,
-              };
-            })
-            .filter((p) => !p.deleted && !p.isDeleted);
-          setProjects(loadedProjects);
-        }
-      );
-    };
-
-    initSubscriptions();
-
-    return () => {
-      if (unsubEvents) unsubEvents();
-      if (unsubMeetingRequests) unsubMeetingRequests();
-      if (unsubClients) unsubClients();
-      if (unsubTasks) unsubTasks();
-      if (unsubResources) unsubResources();
-      if (unsubProjects) unsubProjects();
-    };
-  }, []);
 
   // Combine events and tasks with dueDate, expanding recurring tasks within the visible month
   const allEvents = useMemo(() => {
@@ -290,8 +135,8 @@ function Calendar() {
             task.status === "Done"
               ? "completed"
               : task.status === "In Progress"
-              ? "pending"
-              : "pending",
+                ? "pending"
+                : "pending",
           date: dateStr,
           time: "23:59",
           duration: 0,
@@ -308,8 +153,8 @@ function Calendar() {
             task.status === "Done"
               ? 100
               : task.status === "In Progress"
-              ? 50
-              : 0,
+                ? 50
+                : 0,
           isTask: true,
           taskId: task.id,
         });
@@ -468,7 +313,8 @@ function Calendar() {
         toast.success("Event created successfully!");
       }
       closeEventModal();
-    } catch {
+    } catch (error) {
+      console.error("Failed to save event:", error);
       toast.error("Failed to save event");
     }
   };
@@ -498,7 +344,7 @@ function Calendar() {
         filterProject === "all" ||
         (event.isTask &&
           tasks.find((t) => t.id === event.taskId)?.projectId ===
-            filterProject);
+          filterProject);
 
       // Employee filter: check if employee is assigned to task or is attendee of event
       let employeeMatch = filterEmployee === "all";
@@ -546,7 +392,8 @@ function Calendar() {
         status: "approved",
       });
       toast.success("Event approved successfully!");
-    } catch {
+    } catch (error) {
+      console.error("Failed to approve event:", error);
       toast.error("Failed to approve event");
     }
   };
@@ -560,7 +407,8 @@ function Calendar() {
         cancelledAt: serverTimestamp(),
       });
       toast.success("Event cancelled successfully!");
-    } catch {
+    } catch (error) {
+      console.error("Failed to cancel event:", error);
       toast.error("Failed to cancel event");
     }
   };
@@ -570,7 +418,8 @@ function Calendar() {
       try {
         await deleteDoc(doc(db, "events", eventId));
         toast.success("Event deleted successfully!");
-      } catch {
+      } catch (error) {
+        console.error("Failed to delete event:", error);
         toast.error("Failed to delete event");
       }
     }
@@ -660,7 +509,8 @@ function Calendar() {
       setShowRejectModal(false);
       setRejectingRequest(null);
       setRejectReason("");
-    } catch {
+    } catch (error) {
+      console.error("Failed to reject meeting request:", error);
       toast.error("Failed to reject meeting request");
     }
   };
@@ -753,38 +603,34 @@ function Calendar() {
       const dayRequests = getMeetingRequestsForDate(date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const currentDate = new Date(date);
-      currentDate.setHours(0, 0, 0, 0);
-      const isPast = currentDate < today;
+      const normalizedDate = new Date(date);
+      normalizedDate.setHours(0, 0, 0, 0);
+      const isPast = normalizedDate < today;
       const isToday = date.toDateString() === new Date().toDateString();
       const isSelected = selectedDate?.toDateString() === date.toDateString();
 
       days.push(
         <div
           key={day}
-          className={`min-h-28 max-h-48 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 overflow-hidden ${
-            isPast
-              ? "bg-gray-50 hover:bg-gray-100"
-              : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
-          } ${
-            isToday
+          className={`min-h-28 max-h-48 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 overflow-hidden ${isPast
+            ? "bg-gray-50 hover:bg-gray-100"
+            : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
+            } ${isToday
               ? "bg-gradient-to-br from-blue-100 to-blue-50 border-blue-400 border-2 opacity-100 ring-2 ring-blue-200"
               : ""
-          } ${
-            isSelected
+            } ${isSelected
               ? "bg-gradient-to-br from-indigo-100 to-indigo-50 border-indigo-400 border-2 opacity-100 ring-2 ring-indigo-200"
               : ""
-          }`}
+            }`}
           onClick={() => setSelectedDate(date)}
         >
           <div
-            className={`text-sm font-bold mb-1 ${
-              isPast && !isToday
-                ? "text-gray-500"
-                : isToday
+            className={`text-sm font-bold mb-1 ${isPast && !isToday
+              ? "text-gray-500"
+              : isToday
                 ? "text-blue-700 text-base"
                 : "text-gray-800"
-            } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
+              } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
           >
             {day}
           </div>
@@ -926,10 +772,10 @@ function Calendar() {
             employeeScheduleInfo={
               filterEmployee !== "all"
                 ? {
-                    name:
-                      resources.find((r) => r.id === filterEmployee)?.name ||
-                      "Unknown Employee",
-                  }
+                  name:
+                    resources.find((r) => r.id === filterEmployee)?.name ||
+                    "Unknown Employee",
+                }
                 : null
             }
             onClearEmployeeFilter={() => setFilterEmployee("all")}
@@ -961,10 +807,10 @@ function Calendar() {
               <h3 className="font-semibold text-lg mb-4 border-b pb-2">
                 {selectedDate
                   ? selectedDate.toLocaleDateString("en-US", {
-                      weekday: "long",
-                      month: "long",
-                      day: "numeric",
-                    })
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                  })
                   : "Select a date"}
               </h3>
 
@@ -1019,10 +865,10 @@ function Calendar() {
                         const displayLabel = isAdminCreated
                           ? "by admin"
                           : event.status
-                          ? event.status.replace(/\b\w/g, (ch) =>
+                            ? event.status.replace(/\b\w/g, (ch) =>
                               ch.toUpperCase()
                             )
-                          : "Pending";
+                            : "Pending";
                         const displayClass = isAdminCreated
                           ? "bg-blue-100 text-blue-700"
                           : statusClass;
@@ -1426,8 +1272,8 @@ function Calendar() {
                     Meeting Requests -{" "}
                     {activeRequestDate
                       ? new Date(
-                          activeRequestDate + "T00:00"
-                        ).toLocaleDateString()
+                        activeRequestDate + "T00:00"
+                      ).toLocaleDateString()
                       : ""}
                   </h2>
                   <button
@@ -1674,9 +1520,8 @@ function Calendar() {
           {/* Main Floating Button */}
           <button
             onClick={() => setShowFloatingMenu(!showFloatingMenu)}
-            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${
-              showFloatingMenu ? "rotate-45" : ""
-            }`}
+            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${showFloatingMenu ? "rotate-45" : ""
+              }`}
             title="Add Event or Task"
           >
             <FaPlus className="text-xl group-hover:scale-110 transition-transform" />

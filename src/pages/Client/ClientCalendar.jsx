@@ -30,13 +30,7 @@ import {
   PRIORITY_CLASSES,
   getPriorityBadge,
 } from "../../utils/colorMaps";
-const tsToDate = (value) => {
-  if (!value) return null;
-  if (typeof value.toDate === "function") return value.toDate();
-  if (typeof value.seconds === "number") return new Date(value.seconds * 1000);
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
+import { tsToDate, MONTH_NAMES, DAY_NAMES } from "../../utils/dateUtils";
 
 export default function ClientCalendar() {
   const { user, userData } = useAuthContext();
@@ -49,7 +43,6 @@ export default function ClientCalendar() {
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [showRequestModal, setShowRequestModal] = useState(false);
-  const [showFloatingMenu, setShowFloatingMenu] = useState(false);
   const [requestForm, setRequestForm] = useState({
     requestedDate: "",
     requestedTime: "09:00",
@@ -157,7 +150,11 @@ export default function ClientCalendar() {
 
   // Get events for a specific date
   const getEventsForDate = (date) => {
-    const dateStr = date.toISOString().slice(0, 10);
+    // Use local date string to avoid timezone issues (toISOString converts to UTC)
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const dateStr = `${year}-${month}-${day}`;
     return events.filter((event) => {
       const eventDate = event.date;
       let typeMatch = filterType === "all" || event.type === filterType;
@@ -193,38 +190,34 @@ export default function ClientCalendar() {
       const dayEvents = getEventsForDate(date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const currentDate = new Date(date);
-      currentDate.setHours(0, 0, 0, 0);
-      const isPast = currentDate < today;
+      const normalizedDate = new Date(date);
+      normalizedDate.setHours(0, 0, 0, 0);
+      const isPast = normalizedDate < today;
       const isToday = date.toDateString() === new Date().toDateString();
       const isSelected = selectedDate?.toDateString() === date.toDateString();
 
       days.push(
         <div
           key={day}
-          className={`h-28 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 ${
-            isPast
-              ? "bg-gray-50 hover:bg-gray-100 opacity-60"
-              : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
-          } ${
-            isToday
+          className={`h-28 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 ${isPast
+            ? "bg-gray-50 hover:bg-gray-100 opacity-60"
+            : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
+            } ${isToday
               ? "bg-gradient-to-br from-blue-100 to-blue-50 border-blue-400 border-2 opacity-100 ring-2 ring-blue-200"
               : ""
-          } ${
-            isSelected
+            } ${isSelected
               ? "bg-gradient-to-br from-indigo-100 to-indigo-50 border-indigo-400 border-2 opacity-100 ring-2 ring-indigo-200"
               : ""
-          }`}
+            }`}
           onClick={() => setSelectedDate(date)}
         >
           <div
-            className={`text-sm font-bold mb-1 ${
-              isPast && !isToday
-                ? "text-gray-400"
-                : isToday
+            className={`text-sm font-bold mb-1 ${isPast && !isToday
+              ? "text-gray-400"
+              : isToday
                 ? "text-blue-700 text-base"
                 : "text-gray-800"
-            } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
+              } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
           >
             {day}
           </div>
@@ -245,9 +238,8 @@ export default function ClientCalendar() {
               return (
                 <div
                   key={event.id}
-                  className={`text-xs p-1.5 rounded-md ${
-                    isPast ? "bg-gray-200 text-gray-500" : typeBadge
-                  } truncate relative shadow-sm hover:shadow-md transition-shadow cursor-pointer`}
+                  className={`text-xs p-1.5 rounded-md ${isPast ? "bg-gray-200 text-gray-500" : typeBadge
+                    } truncate relative shadow-sm hover:shadow-md transition-shadow cursor-pointer`}
                   title={event.title}
                 >
                   {/* Priority strip on the left -- hidden for meetings */}
@@ -279,31 +271,6 @@ export default function ClientCalendar() {
     return days;
   };
 
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
-  const dayNames = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ];
-
   // Calculate stats
   const calendarStats = {
     totalEvents: events.length,
@@ -327,6 +294,28 @@ export default function ClientCalendar() {
 
     if (!requestForm.requestedDate || !requestForm.purpose) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+
+    // Validate date is not in the past
+    const selectedDate = new Date(requestForm.requestedDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today) {
+      toast.error("Cannot request meetings for past dates");
+      return;
+    }
+
+    // Validate purpose length
+    if (requestForm.purpose.trim().length > 500) {
+      toast.error("Purpose is too long (maximum 500 characters)");
+      return;
+    }
+
+    // Validate duration is reasonable (15 min to 8 hours)
+    const duration = Number(requestForm.duration);
+    if (duration < 15 || duration > 480) {
+      toast.error("Duration must be between 15 and 480 minutes");
       return;
     }
 
@@ -426,7 +415,7 @@ export default function ClientCalendar() {
                     <FaChevronLeft />
                   </button>
                   <h2 className="text-lg font-semibold min-w-[200px] text-center">
-                    {monthNames[currentDate.getMonth()]}{" "}
+                    {MONTH_NAMES[currentDate.getMonth()]}{" "}
                     {currentDate.getFullYear()}
                   </h2>
                   <button
@@ -501,13 +490,12 @@ export default function ClientCalendar() {
                               {request.requestedDate} at {request.requestedTime}
                             </span>
                             <span
-                              className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                request.status === "pending"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : request.status === "approved"
+                              className={`px-2 py-1 text-xs font-medium rounded-full ${request.status === "pending"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : request.status === "approved"
                                   ? "bg-green-100 text-green-800"
                                   : "bg-red-100 text-red-800"
-                              }`}
+                                }`}
                             >
                               {request.status.charAt(0).toUpperCase() +
                                 request.status.slice(1)}
@@ -602,7 +590,7 @@ export default function ClientCalendar() {
             {/* Calendar Grid */}
             <Card className="lg:col-span-3 p-4">
               <div className="grid grid-cols-7 gap-0 mb-4">
-                {dayNames.map((day) => (
+                {DAY_NAMES.map((day) => (
                   <div
                     key={day}
                     className="p-3 text-center font-semibold text-gray-700 border-b border-gray-200"
@@ -621,10 +609,10 @@ export default function ClientCalendar() {
               <h3 className="font-semibold text-lg mb-4 border-b pb-2">
                 {selectedDate
                   ? selectedDate.toLocaleDateString("en-US", {
-                      weekday: "long",
-                      month: "long",
-                      day: "numeric",
-                    })
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                  })
                   : "Select a date"}
               </h3>
 
@@ -657,10 +645,10 @@ export default function ClientCalendar() {
                       const displayLabel = isAdminCreated
                         ? "by admin"
                         : event.status
-                        ? event.status.replace(/\b\w/g, (ch) =>
+                          ? event.status.replace(/\b\w/g, (ch) =>
                             ch.toUpperCase()
                           )
-                        : "Pending";
+                          : "Pending";
                       const displayClass = isAdminCreated
                         ? "bg-blue-100 text-blue-700"
                         : statusClass;
@@ -943,9 +931,8 @@ export default function ClientCalendar() {
           {/* Main Floating Button */}
           <button
             onClick={() => setShowFloatingMenu(!showFloatingMenu)}
-            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${
-              showFloatingMenu ? "rotate-45" : ""
-            }`}
+            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${showFloatingMenu ? "rotate-45" : ""
+              }`}
             title="Request Meeting"
           >
             <FaPlus className="text-xl group-hover:scale-110 transition-transform" />
