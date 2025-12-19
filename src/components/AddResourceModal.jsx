@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTheme } from "../context/ThemeContext";
 import { HiXMark } from "react-icons/hi2";
 import {
   FaEye,
@@ -34,6 +35,56 @@ function AddResourceModal({
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [roleOptions, setRoleOptions] = useState([]);
+  const { accent } = useTheme();
+
+  const getIconColor = () => {
+    if (accent === 'black') return 'text-blue-500';
+    switch (accent) {
+      case 'purple': return 'text-purple-500';
+      case 'blue': return 'text-sky-500';
+      case 'pink': return 'text-pink-500';
+      case 'violet': return 'text-violet-500';
+      case 'orange': return 'text-amber-500';
+      case 'teal': return 'text-teal-500';
+      case 'bronze': return 'text-amber-600';
+      case 'mint': return 'text-emerald-500';
+      default: return 'text-indigo-500';
+    }
+  };
+
+  const getButtonClass = () => {
+    if (accent === 'black') return 'bg-blue-600 hover:bg-blue-700 text-white';
+    switch (accent) {
+      case 'purple': return 'bg-purple-600 hover:bg-purple-700 text-white';
+      case 'blue': return 'bg-sky-600 hover:bg-sky-700 text-white';
+      case 'pink': return 'bg-pink-600 hover:bg-pink-700 text-white';
+      case 'violet': return 'bg-violet-600 hover:bg-violet-700 text-white';
+      case 'orange': return 'bg-amber-600 hover:bg-amber-700 text-white';
+      case 'teal': return 'bg-teal-600 hover:bg-teal-700 text-white';
+      case 'bronze': return 'bg-amber-600 hover:bg-amber-700 text-white';
+      case 'mint': return 'bg-emerald-600 hover:bg-emerald-700 text-white';
+      default: return 'bg-indigo-600 hover:bg-indigo-700 text-white';
+    }
+  };
+
+  const getHeaderIconClass = () => {
+    if (accent === 'black') return 'bg-blue-100 text-blue-600 [.dark_&]:bg-blue-500/20 [.dark_&]:text-blue-300';
+    switch (accent) {
+      case 'purple': return 'bg-purple-100 text-purple-600 [.dark_&]:bg-purple-500/20 [.dark_&]:text-purple-300';
+      case 'blue': return 'bg-sky-100 text-sky-600 [.dark_&]:bg-sky-500/20 [.dark_&]:text-sky-300';
+      case 'pink': return 'bg-pink-100 text-pink-600 [.dark_&]:bg-pink-500/20 [.dark_&]:text-pink-300';
+      case 'violet': return 'bg-violet-100 text-violet-600 [.dark_&]:bg-violet-500/20 [.dark_&]:text-violet-300';
+      case 'orange': return 'bg-amber-100 text-amber-600 [.dark_&]:bg-amber-500/20 [.dark_&]:text-amber-300';
+      case 'teal': return 'bg-teal-100 text-teal-600 [.dark_&]:bg-teal-500/20 [.dark_&]:text-teal-300';
+      case 'bronze': return 'bg-amber-100 text-amber-600 [.dark_&]:bg-amber-500/20 [.dark_&]:text-amber-300';
+      case 'mint': return 'bg-emerald-100 text-emerald-600 [.dark_&]:bg-emerald-500/20 [.dark_&]:text-emerald-300';
+      default: return 'bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-500/20 [.dark_&]:text-indigo-300';
+    }
+  };
+
+  const iconColor = getIconColor();
+  const buttonClass = getButtonClass();
+  const headerIconClass = getHeaderIconClass();
 
   const emailInUse = (val) =>
     existingEmails.includes((val || "").toLowerCase());
@@ -49,7 +100,10 @@ function AddResourceModal({
       }
       case "email": {
         if (!v.trim()) return "Email is required";
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+        // Allow only typical email characters and enforce a basic structure
+        // Local part: letters, numbers, dot, underscore, hyphen, plus
+        // Domain: letters, numbers, hyphen and dots, with 2+ char TLD
+        const emailRegex = /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/;
         if (!emailRegex.test(v)) return "Enter a valid email address";
         if (emailInUse(v)) return "Email is already in use";
         return "";
@@ -134,33 +188,33 @@ function AddResourceModal({
       tabIndex={-1}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-[90vw] xl:max-w-7xl max-h-[90vh] overflow-y-auto relative z-[10000] flex flex-col"
+        className="bg-white [.dark_&]:bg-[#181B2A] rounded-xl shadow-2xl w-full max-w-[90vw] xl:max-w-7xl max-h-[90vh] overflow-y-auto relative z-[10000] flex flex-col text-gray-900 [.dark_&]:text-gray-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50 sticky top-0 z-10 backdrop-blur-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-[#181B2A] bg-gray-50/50 [.dark_&]:bg-[#181B2A] sticky top-0 z-10 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+            <div className="p-2 bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-500/20 [.dark_&]:text-indigo-300 rounded-lg">
               <FaUser className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900 leading-tight">
+              <h2 className="text-lg font-bold text-gray-900 [.dark_&]:text-white leading-tight">
                 Add New Resource
               </h2>
-              <p className="text-xs text-gray-500 font-medium">
+              <p className="text-xs text-gray-500 [.dark_&]:text-gray-400 font-medium">
                 Create a new team member profile
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
+            className="p-2 text-gray-400 hover:text-gray-600 [.dark_&]:hover:text-gray-200 hover:bg-gray-100 [.dark_&]:hover:bg-white/5 rounded-full transition-all duration-200"
           >
             <HiXMark className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 bg-white [.dark_&]:bg-[#181B2A]">
           <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {serverErrors?._general && (
               <div className="lg:col-span-3 rounded-md border border-red-200 bg-red-50 text-red-700 text-sm p-3">
@@ -170,9 +224,9 @@ function AddResourceModal({
 
             {/* Column 1: Basic Info */}
             <div className="space-y-6">
-              <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                <FaUser className="text-indigo-500" />
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+              <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
+                <FaUser className={`${iconColor} [.dark_&]:text-opacity-80`} />
+                <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
                   Basic Info
                 </h3>
               </div>
@@ -185,10 +239,10 @@ function AddResourceModal({
                       <img
                         src={imagePreview}
                         alt="Preview"
-                        className="h-24 w-24 object-cover rounded-full border-4 border-white shadow-lg"
+                        className="h-24 w-24 object-cover rounded-full border-4 border-white/90 [.dark_&]:border-surface-strong shadow-lg"
                       />
                     ) : (
-                      <div className="h-24 w-24 rounded-full bg-indigo-50 flex items-center justify-center border-4 border-white shadow-lg text-indigo-200">
+                      <div className="h-24 w-24 rounded-full bg-indigo-50 [.dark_&]:bg-indigo-500/10 flex items-center justify-center border-4 border-white/90 [.dark_&]:border-surface-strong shadow-lg text-indigo-200 [.dark_&]:text-indigo-300">
                         <FaCamera className="h-8 w-8" />
                       </div>
                     )}
@@ -215,8 +269,8 @@ function AddResourceModal({
 
                 {/* Full Name */}
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                    <FaUser className="text-gray-400" />
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-200">
+                    <FaUser className="text-gray-400 [.dark_&]:text-gray-300" />
                     Full Name <span className="text-red-500">*</span>
                   </label>
                   <VoiceInput
@@ -232,9 +286,9 @@ function AddResourceModal({
                       if (serverErrors?.fullName) clearServerError("fullName");
                     }}
                     className={`w-full rounded-lg border ${errors.fullName || serverErrors?.fullName
-                      ? "border-red-500 focus:ring-red-100"
-                      : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                      } bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
+                      ? "border-red-500 focus:ring-red-100 [.dark_&]:border-red-500 [.dark_&]:focus:ring-red-500/20"
+                      : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
+                      } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 [.dark_&]:placeholder:text-gray-500 focus:outline-none focus:ring-4 transition-all duration-200`}
                     required
                   />
                   {(errors.fullName || serverErrors?.fullName) && (
@@ -246,8 +300,8 @@ function AddResourceModal({
 
                 {/* Email */}
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                    <FaEnvelope className="text-gray-400" />
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-200">
+                    <FaEnvelope className="text-gray-400 [.dark_&]:text-gray-300" />
                     Email <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -255,7 +309,9 @@ function AddResourceModal({
                     value={formData.email}
                     placeholder="Work email"
                     onChange={(e) => {
-                      const v = e.target.value.toLowerCase();
+                      const raw = e.target.value.toLowerCase();
+                      // Allow only letters, numbers, dot, underscore, hyphen, plus, and @
+                      const v = raw.replace(/[^a-z0-9._+\-@]/g, "");
                       setFormData({ ...formData, email: v });
                       setErrors((prev) => ({
                         ...prev,
@@ -264,9 +320,9 @@ function AddResourceModal({
                       if (serverErrors?.email) clearServerError("email");
                     }}
                     className={`w-full rounded-lg border ${errors.email || serverErrors?.email
-                      ? "border-red-500 focus:ring-red-100"
-                      : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                      } bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
+                      ? "border-red-500 focus:ring-red-100 [.dark_&]:border-red-500 [.dark_&]:focus:ring-red-500/20"
+                      : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
+                      } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 [.dark_&]:placeholder:text-gray-500 focus:outline-none focus:ring-4 transition-all duration-200`}
                     required
                   />
                   {(errors.email || serverErrors?.email) && (
@@ -278,8 +334,8 @@ function AddResourceModal({
 
                 {/* Mobile */}
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                    <FaPhone className="text-gray-400" />
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-200">
+                    <FaPhone className="text-gray-400 [.dark_&]:text-gray-300" />
                     Mobile <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -299,9 +355,9 @@ function AddResourceModal({
                       if (serverErrors?.mobile) clearServerError("mobile");
                     }}
                     className={`w-full rounded-lg border ${errors.mobile || serverErrors?.mobile
-                      ? "border-red-500 focus:ring-red-100"
-                      : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                      } bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
+                      ? "border-red-500 focus:ring-red-100 [.dark_&]:border-red-500 [.dark_&]:focus:ring-red-500/20"
+                      : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
+                      } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 [.dark_&]:placeholder:text-gray-500 focus:outline-none focus:ring-4 transition-all duration-200`}
                     required
                   />
                   {(errors.mobile || serverErrors?.mobile) && (
@@ -315,9 +371,9 @@ function AddResourceModal({
 
             {/* Column 2: Role & Employment */}
             <div className="space-y-6">
-              <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                <FaBriefcase className="text-indigo-500" />
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+              <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/5">
+                <FaBriefcase className={`${iconColor} [.dark_&]:text-opacity-80`} />
+                <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
                   Role & Employment
                 </h3>
               </div>
@@ -336,7 +392,7 @@ function AddResourceModal({
                         employmentType: e.target.value,
                       })
                     }
-                    className="w-full rounded-lg border border-gray-200 bg-white py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all duration-200"
+                    className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
                   >
                     <option value="Full-time">Full-time</option>
                     <option value="Part-time">Part-time</option>
@@ -345,7 +401,7 @@ function AddResourceModal({
 
                 {/* Resource Type */}
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-200">
                     Resource Type
                   </label>
                   <select
@@ -356,7 +412,7 @@ function AddResourceModal({
                         resourceType: e.target.value,
                       })
                     }
-                    className="w-full rounded-lg border border-gray-200 bg-white py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all duration-200"
+                    className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
                   >
                     <option value="In-house">In-house</option>
                     <option value="Outsourced">Outsourced</option>
@@ -365,7 +421,7 @@ function AddResourceModal({
 
                 {/* Resource Role */}
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-200">
                     Resource Role
                   </label>
                   <select
@@ -380,7 +436,7 @@ function AddResourceModal({
                         resourceRoleType: type,
                       });
                     }}
-                    className="w-full rounded-lg border border-gray-200 bg-white py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all duration-200"
+                    className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
                   >
                     <option value="">Select role</option>
                     {roleOptions.map((opt) => (
@@ -393,7 +449,7 @@ function AddResourceModal({
 
                 {/* Status */}
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-200">
                     Status
                   </label>
                   <select
@@ -401,7 +457,7 @@ function AddResourceModal({
                     onChange={(e) =>
                       setFormData({ ...formData, status: e.target.value })
                     }
-                    className="w-full rounded-lg border border-gray-200 bg-white py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all duration-200"
+                    className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
@@ -412,9 +468,9 @@ function AddResourceModal({
 
             {/* Column 3: Account & Access */}
             <div className="space-y-6">
-              <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                <FaLock className="text-indigo-500" />
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+              <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/5">
+                <FaLock className={`${iconColor} [.dark_&]:text-opacity-80`} />
+                <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
                   Account & Access
                 </h3>
               </div>
@@ -440,14 +496,14 @@ function AddResourceModal({
                         if (serverErrors?.password) clearServerError("password");
                       }}
                       className={`w-full rounded-lg border ${errors.password || serverErrors?.password
-                        ? "border-red-500 focus:ring-red-100"
-                        : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                        } bg-white py-2.5 pl-4 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
+                        ? "border-red-500 focus:ring-red-100 [.dark_&]:border-red-500 [.dark_&]:focus:ring-red-500/20"
+                        : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
+                        } bg-white [.dark_&]:bg-[#181B2A] py-2.5 pl-4 pr-10 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 [.dark_&]:placeholder:text-gray-500 focus:outline-none focus:ring-4 transition-all duration-200`}
                       required
                     />
                     <button
                       type="button"
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 [.dark_&]:text-gray-500 [.dark_&]:hover:text-gray-200"
                       onClick={() => setShowPassword((prev) => !prev)}
                       tabIndex={-1}
                     >
@@ -458,7 +514,7 @@ function AddResourceModal({
                       )}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">
                     Minimum 6 characters. Shared with the resource for first login.
                   </p>
                   {(errors.password || serverErrors?.password) && (
@@ -473,12 +529,12 @@ function AddResourceModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3 rounded-b-xl sticky bottom-0 backdrop-blur-md">
+        <div className="px-6 py-4 border-t border-gray-100 [.dark_&]:border-[#181B2A] bg-gray-50/50 [.dark_&]:bg-[#181B2A] flex justify-end gap-3 rounded-b-xl sticky bottom-0 backdrop-blur-md">
           <Button
             type="button"
             variant="ghost"
             onClick={onClose}
-            className="text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+            className="text-gray-600 [.dark_&]:text-gray-300 hover:text-gray-800 [.dark_&]:hover:text-white hover:bg-gray-100 [.dark_&]:hover:bg-white/5"
           >
             Cancel
           </Button>
@@ -486,7 +542,7 @@ function AddResourceModal({
             type="submit"
             onClick={handleSubmit}
             disabled={disableSubmit}
-            className="shadow-lg shadow-indigo-200"
+            className={`shadow-lg ${buttonClass}`}
           >
             {isSubmitting && <FaSpinner className="h-4 w-4 animate-spin mr-2" />}
             {isSubmitting ? "Adding..." : "Add Resource"}

@@ -165,46 +165,46 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
       tabIndex={-1}
     >
       <div
-        className={`bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto relative z-[10000] transform transition-all duration-300 ease-out ${entered ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+        className={`bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto relative z-[10000] transform transition-all duration-300 ease-out ${entered ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-content-primary">{initialDoc ? "Edit Document" : "Add Document"}</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <h2 className="text-xl font-semibold text-content-primary [.dark_&]:text-white">{initialDoc ? "Edit Document" : "Add Document"}</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 [.dark_&]:hover:text-gray-300">
               <HiXMark className="h-6 w-6" />
             </button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className={`grid grid-cols-1 gap-6 ${canEditAccess ? "md:grid-cols-2" : ""}`}>
-              <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
+              <div className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#1F2234] p-4 shadow-sm">
                 <div className="mb-3 flex items-center gap-2">
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-indigo-50 [.dark_&]:bg-indigo-900/20 text-indigo-600 [.dark_&]:text-indigo-400">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
                       <path d="M19.5 14.25v3.375a2.625 2.625 0 0 1-2.625 2.625H7.125A2.625 2.625 0 0 1 4.5 17.625V6.375A2.625 2.625 0 0 1 7.125 3.75h5.25L19.5 10.5v3.75z" />
                     </svg>
                   </span>
-                  <h3 className="text-sm font-semibold text-content-secondary">Document Details</h3>
+                  <h3 className="text-sm font-semibold text-content-secondary [.dark_&]:text-gray-400">Document Details</h3>
                 </div>
                 <div className="space-y-4">
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary [.dark_&]:text-gray-400">
                     Name of document *
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="e.g. Project Requirements"
-                      className={`w-full rounded-lg border ${errors.name ? "border-red-500" : "border-subtle"} bg-surface py-2 px-3 text-sm focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                      className={`w-full rounded-lg border ${errors.name ? "border-red-500" : "border-subtle [.dark_&]:border-white/10"} bg-surface [.dark_&]:bg-[#181B2A] py-2 px-3 text-sm [.dark_&]:text-white focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
                       required
                     />
                     {errors.name && <span className="text-xs text-red-600">{errors.name}</span>}
                   </label>
 
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary [.dark_&]:text-gray-400">
                     <span className="flex items-center gap-2">
                       <span>Upload document *</span>
-                      <span className="text-indigo-600">
+                      <span className="text-indigo-600 [.dark_&]:text-indigo-400">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
                           <path d="M7.5 18.75h9a3.75 3.75 0 0 0 .42-7.485 5.25 5.25 0 0 0-10.293-.894A4.5 4.5 0 0 0 7.5 18.75z" />
                           <path d="M12 12.75v6m0-6l2.25 2.25M12 12.75l-2.25 2.25M12 3v9" />
@@ -214,7 +214,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
                     <input
                       type="file"
                       onChange={(e) => setFile(e.target.files?.[0] || null)}
-                      className={`w-full rounded-lg border ${errors.file ? "border-red-500" : "border-subtle"} bg-surface py-2 px-3 text-sm focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                      className={`w-full rounded-lg border ${errors.file ? "border-red-500" : "border-subtle [.dark_&]:border-white/10"} bg-surface [.dark_&]:bg-[#181B2A] py-2 px-3 text-sm [.dark_&]:text-white focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
                       required={!initialDoc}
                     />
                     {!!file && (
@@ -226,29 +226,29 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
               </div>
 
               {canEditAccess && (
-                <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
+                <div className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#1F2234] p-4 shadow-sm">
                   <div className="mb-3 flex items-center gap-2">
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-emerald-50 text-emerald-600">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-emerald-50 [.dark_&]:bg-emerald-900/20 text-emerald-600 [.dark_&]:text-emerald-400">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
                         <path d="M12 1.5a4.5 4.5 0 0 1 4.5 4.5v1.5h.75A2.25 2.25 0 0 1 19.5 9.75v9A2.25 2.25 0 0 1 17.25 21H6.75A2.25 2.25 0 0 1 4.5 18.75v-9A2.25 2.25 0 0 1 6.75 6H7.5A4.5 4.5 0 0 1 12 1.5zm0 3A1.5 1.5 0 0 0 10.5 6v1.5h3V6A1.5 1.5 0 0 0 12 4.5z" />
                       </svg>
                     </span>
-                    <h3 className="text-sm font-semibold text-content-secondary">Access</h3>
+                    <h3 className="text-sm font-semibold text-content-secondary [.dark_&]:text-gray-400">Access</h3>
                   </div>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                      <div className="mb-2 text-xs font-bold uppercase tracking-wide text-content-tertiary">Admin Users</div>
-                      <div className="max-h-40 overflow-y-auto rounded-md border border-subtle p-2">
+                      <div className="mb-2 text-xs font-bold uppercase tracking-wide text-content-tertiary [.dark_&]:text-gray-500">Admin Users</div>
+                      <div className="max-h-40 overflow-y-auto rounded-md border border-subtle [.dark_&]:border-white/10 p-2">
                         {admins.length === 0 ? (
                           <div className="text-xs text-content-tertiary">No admin users</div>
                         ) : (
                           admins.map((u) => {
                             const checked = selectedAdmin.includes(u.name);
                             return (
-                              <label key={`admin_${u.id}`} className="flex items-center gap-2 py-1 text-sm">
+                              <label key={`admin_${u.id}`} className="flex items-center gap-2 py-1 text-sm [.dark_&]:text-gray-300">
                                 <input
                                   type="checkbox"
-                                  className="h-4 w-4 rounded border-subtle"
+                                  className="h-4 w-4 rounded border-subtle [.dark_&]:border-white/10"
                                   checked={checked}
                                   onChange={(e) => {
                                     setSelectedAdmin((prev) =>
@@ -266,18 +266,18 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
                       </div>
                     </div>
                     <div>
-                      <div className="mb-2 text-xs font-bold uppercase tracking-wide text-content-tertiary">Member Users</div>
-                      <div className="max-h-40 overflow-y-auto rounded-md border border-subtle p-2">
+                      <div className="mb-2 text-xs font-bold uppercase tracking-wide text-content-tertiary [.dark_&]:text-gray-500">Member Users</div>
+                      <div className="max-h-40 overflow-y-auto rounded-md border border-subtle [.dark_&]:border-white/10 p-2">
                         {members.length === 0 ? (
-                          <div className="text-xs text-content-tertiary">No member users</div>
+                          <div className="text-xs text-content-tertiary [.dark_&]:text-gray-500">No member users</div>
                         ) : (
                           members.map((u) => {
                             const checked = selectedMember.includes(u.name);
                             return (
-                              <label key={`member_${u.id}`} className="flex items-center gap-2 py-1 text-sm">
+                              <label key={`member_${u.id}`} className="flex items-center gap-2 py-1 text-sm [.dark_&]:text-gray-300">
                                 <input
                                   type="checkbox"
-                                  className="h-4 w-4 rounded border-subtle"
+                                  className="h-4 w-4 rounded border-subtle [.dark_&]:border-white/10"
                                   checked={checked}
                                   onChange={(e) => {
                                     setSelectedMember((prev) =>

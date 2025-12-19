@@ -37,6 +37,7 @@ import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { useTheme } from "../../context/ThemeContext";
 
 // ---------- Utility: Rule-based notes generator (NO AI) ----------
 function toLines(text) {
@@ -135,6 +136,11 @@ ${nextSteps}
 }
 
 export default function MomGeneratorPro() {
+  const { mode } = useTheme();
+  const inputClassName = `w-full px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all border rounded-sm ${mode === "dark"
+    ? "bg-gray-900 border-gray-800 text-white"
+    : "bg-gray-50 border-gray-300 text-black"
+    }`;
   // Reference data
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
@@ -780,7 +786,7 @@ export default function MomGeneratorPro() {
                     />
 
                     {/* Dropdown Menu */}
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-2xl border border-gray-200 py-2 z-[101]">
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 py-2 z-[101]">
                       {showSave && (
                         <button
                           onClick={() => {
@@ -790,11 +796,11 @@ export default function MomGeneratorPro() {
                           disabled={disableSave}
                           className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${disableSave
                             ? "text-gray-400 cursor-not-allowed"
-                            : "text-gray-700 hover:bg-gray-100"
+                            : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                             }`}
                         >
                           <FaSave
-                            className={`flex-shrink-0 ${disableSave ? "text-gray-400" : "text-indigo-600"
+                            className={`flex-shrink-0 ${disableSave ? "text-gray-400" : "text-indigo-600 dark:text-indigo-400"
                               }`}
                           />
                           <span>
@@ -812,20 +818,20 @@ export default function MomGeneratorPro() {
                           handleExportPDF();
                           setShowActionsMenu(false);
                         }}
-                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
+                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors"
                       >
                         <FaFilePdf className="text-red-600 flex-shrink-0" />
                         <span>Export PDF</span>
                       </button>
 
-                      <div className="border-t border-gray-200 my-2"></div>
+                      <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
 
                       <button
                         onClick={() => {
                           shareMom();
                           setShowActionsMenu(false);
                         }}
-                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
+                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors"
                       >
                         <FaShareAlt className="text-blue-600 flex-shrink-0" />
                         <span>Share</span>
@@ -836,9 +842,9 @@ export default function MomGeneratorPro() {
                           handlePrint();
                           setShowActionsMenu(false);
                         }}
-                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
+                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors"
                       >
-                        <FaPrint className="text-gray-600 flex-shrink-0" />
+                        <FaPrint className="text-gray-600 dark:text-gray-400 flex-shrink-0" />
                         <span>Print</span>
                       </button>
                     </div>
@@ -851,43 +857,45 @@ export default function MomGeneratorPro() {
       </div>
 
       {/* Save confirmation modal */}
-      {showSaveConfirm && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h2 className="text-lg font-semibold mb-2">Save MOM?</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Do you want to save this Minutes of Meeting with the current details?
-            </p>
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="secondary"
-                onClick={() => setShowSaveConfirm(false)}
-                disabled={saveLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={async () => {
-                  if (saveLoading || disableSave) return;
-                  await saveMom();
-                  setShowSaveConfirm(false);
-                  setShowActionsMenu(false);
-                }}
-                disabled={saveLoading || disableSave}
-                className="flex items-center gap-2"
-              >
-                {saveLoading ? (
-                  <FaSpinner className="animate-spin" />
-                ) : (
-                  <FaSave />
-                )}
-                {saveLoading ? "Saving..." : "Yes, Save"}
-              </Button>
+      {
+        showSaveConfirm && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold mb-2 dark:text-white">Save MOM?</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                Do you want to save this Minutes of Meeting with the current details?
+              </p>
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowSaveConfirm(false)}
+                  disabled={saveLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={async () => {
+                    if (saveLoading || disableSave) return;
+                    await saveMom();
+                    setShowSaveConfirm(false);
+                    setShowActionsMenu(false);
+                  }}
+                  disabled={saveLoading || disableSave}
+                  className="flex items-center gap-2"
+                >
+                  {saveLoading ? (
+                    <FaSpinner className="animate-spin" />
+                  ) : (
+                    <FaSave />
+                  )}
+                  {saveLoading ? "Saving..." : "Yes, Save"}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       <div className="space-y-6">
         {/* Input Forms */}
@@ -896,13 +904,13 @@ export default function MomGeneratorPro() {
             <Card title="Meeting Details">
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className={`block text-sm font-medium mb-1 ${mode === 'dark' ? 'text-white' : 'text-black'}`}>
                     Project *
                   </label>
                   <select
                     value={projectId}
                     onChange={(e) => setProjectId(e.target.value)}
-                    className="w-full rounded border border-gray-300 px-3 py-2"
+                    className={inputClassName}
                   >
                     <option value="">Select Project</option>
                     {projects.map((p) => (
@@ -915,47 +923,47 @@ export default function MomGeneratorPro() {
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-1">
+                    <label className={`block text-sm font-medium mb-1 ${mode === 'dark' ? 'text-white' : 'text-black'}`}>
                       Date *
                     </label>
                     <input
                       type="date"
                       value={meetingDate}
                       onChange={(e) => setMeetingDate(e.target.value)}
-                      className="w-full rounded border border-gray-300 px-3 py-2"
+                      className={inputClassName}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">
+                    <label className={`block text-sm font-medium mb-1 ${mode === 'dark' ? 'text-white' : 'text-black'}`}>
                       Start Time
                     </label>
                     <input
                       type="time"
                       value={meetingStartTime}
                       onChange={(e) => setMeetingStartTime(e.target.value)}
-                      className="w-full rounded border border-gray-300 px-3 py-2"
+                      className={inputClassName}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">
+                    <label className={`block text-sm font-medium mb-1 ${mode === 'dark' ? 'text-white' : 'text-black'}`}>
                       End Time
                     </label>
                     <input
                       type="time"
                       value={meetingEndTime}
                       onChange={(e) => setMeetingEndTime(e.target.value)}
-                      className="w-full rounded border border-gray-300 px-3 py-2"
+                      className={inputClassName}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1">
+                    <label className={`block text-sm font-medium mb-1 ${mode === 'dark' ? 'text-white' : 'text-black'}`}>
                       Venue
                     </label>
                     <input
                       type="text"
                       value={meetingVenue}
                       onChange={(e) => setMeetingVenue(e.target.value)}
-                      className="w-full rounded border border-gray-300 px-3 py-2"
+                      className={inputClassName}
                       placeholder="e.g., Office of Digi Sahyadri, Sangli"
                       spellCheck="true"
                     />
@@ -963,53 +971,54 @@ export default function MomGeneratorPro() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className={`block text-sm font-medium mb-1 ${mode === 'dark' ? 'text-white' : 'text-black'}`}>
                     Internal Attendees * (Select multiple)
                   </label>
-                  <div className="border rounded p-3 max-h-44 overflow-y-auto space-y-1">
+                  <div className={`border p-3 max-h-44 overflow-y-auto space-y-1 ${mode === 'dark' ? 'rounded-xl bg-gray-900 border-gray-800' : 'rounded-xl bg-gray-50 border-gray-200'}`}>
                     {users.map((u) => (
                       <label
                         key={u.id}
-                        className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded"
+                        className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg transition-colors ${mode === 'dark' ? 'hover:bg-gray-800' : 'hover:bg-gray-200'}`}
                       >
                         <input
                           type="checkbox"
                           checked={attendees.includes(u.id)}
                           onChange={() => toggleAttendee(u.id)}
+                          className="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 bg-white dark:bg-gray-800"
                         />
-                        <span className="text-sm">{u.name}</span>
+                        <span className={`text-sm ${mode === 'dark' ? 'text-white' : 'text-black'}`}>{u.name}</span>
                       </label>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className={`block text-sm font-medium mb-1 ${mode === 'dark' ? 'text-white' : 'text-black'}`}>
                     External Attendees (comma separated)
                   </label>
                   <input
                     type="text"
                     value={externalAttendees}
                     onChange={(e) => setExternalAttendees(e.target.value)}
-                    className="w-full rounded border border-gray-300 px-3 py-2"
+                    className={inputClassName}
                     placeholder="e.g., John Doe (Client), Jane Smith (Vendor)"
                     spellCheck="true"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Enter names of external attendees (clients, vendors,
                     partners, etc.)
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-1">
+                  <label className={`block text-sm font-medium mb-1 ${mode === 'dark' ? 'text-white' : 'text-black'}`}>
                     MoM Prepared by*
                   </label>
                   <input
                     type="text"
                     value={momPreparedBy}
                     onChange={(e) => setMomPreparedBy(e.target.value)}
-                    className="w-full rounded border border-gray-300 px-3 py-2"
+                    className={inputClassName}
                     placeholder="Your name"
                     spellCheck="true"
                   />
@@ -1046,7 +1055,7 @@ export default function MomGeneratorPro() {
                             <div
                               ref={drag.innerRef}
                               {...drag.draggableProps}
-                              className="p-3 rounded border bg-gray-50"
+                              className={`p-3 rounded border ${mode === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-black'}`}
                             >
                               <div className="flex items-start justify-between gap-3 mb-2">
                                 <div className="flex items-center gap-2">
@@ -1057,7 +1066,7 @@ export default function MomGeneratorPro() {
                                   >
                                     ☰
                                   </div>
-                                  <div className="font-semibold">
+                                  <div className={`font-semibold ${mode === 'dark' ? 'text-white' : 'text-black'}`}>
                                     {disc.topic}
                                   </div>
                                 </div>
@@ -1069,12 +1078,12 @@ export default function MomGeneratorPro() {
                                   <FaTrash className="text-xs" />
                                 </button>
                               </div>
-                              <div className="text-xs text-gray-500 mb-2">
+                              <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                                 Notes entered ({toLines(disc.notes).length}{" "}
                                 point
                                 {toLines(disc.notes).length === 1 ? "" : "s"})
                               </div>
-                              <div className="text-sm text-gray-700 whitespace-pre-line">
+                              <div className={`text-sm whitespace-pre-line ${mode === 'dark' ? 'text-white' : 'text-black'}`}>
                                 {disc.notes}
                               </div>
                             </div>
@@ -1091,7 +1100,7 @@ export default function MomGeneratorPro() {
                 <VoiceInput
                   value={newDiscussionTopic}
                   onChange={(e) => setNewDiscussionTopic(e.target.value)}
-                  className="w-full rounded border border-gray-300 px-3 py-2"
+                  className={inputClassName}
                   placeholder="Discussion topic (required)..."
                   spellCheck="true"
                 />
@@ -1099,7 +1108,7 @@ export default function MomGeneratorPro() {
                   as="textarea"
                   value={newDiscussionNotes}
                   onChange={(e) => setNewDiscussionNotes(e.target.value)}
-                  className="w-full rounded border border-gray-300 px-3 py-2 resize-vertical"
+                  className={`${inputClassName} resize-vertical`}
                   rows="3"
                   placeholder="Notes (required). One point per line (e.g., 'pending API', 'UI fix needed')"
                   spellCheck="true"
@@ -1131,7 +1140,7 @@ export default function MomGeneratorPro() {
                             <div
                               ref={drag.innerRef}
                               {...drag.draggableProps}
-                              className="flex items-start gap-3 p-3 rounded border bg-gray-50"
+                              className={`flex items-start gap-3 p-3 rounded border ${mode === 'dark' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-black'}`}
                             >
                               <div
                                 {...drag.dragHandleProps}
@@ -1140,7 +1149,7 @@ export default function MomGeneratorPro() {
                               >
                                 ☰
                               </div>
-                              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                              <div className={`flex-1 grid grid-cols-1 md:grid-cols-3 gap-2 text-sm ${mode === 'dark' ? 'text-white' : 'text-black'}`}>
                                 <div>
                                   <span className="font-semibold">Task:</span>{" "}
                                   {a.task}
@@ -1177,14 +1186,14 @@ export default function MomGeneratorPro() {
                 <VoiceInput
                   value={newActionTask}
                   onChange={(e) => setNewActionTask(e.target.value)}
-                  className="rounded border border-gray-300 px-3 py-2"
+                  className={inputClassName}
                   placeholder="Task description..."
                   spellCheck="true"
                 />
                 <VoiceInput
                   value={newActionPerson}
                   onChange={(e) => setNewActionPerson(e.target.value)}
-                  className="rounded border border-gray-300 px-3 py-2"
+                  className={inputClassName}
                   placeholder="Responsible person name..."
                   spellCheck="true"
                 />
@@ -1193,7 +1202,7 @@ export default function MomGeneratorPro() {
                     type="date"
                     value={newActionDeadline}
                     onChange={(e) => setNewActionDeadline(e.target.value)}
-                    className="flex-1 rounded border border-gray-300 px-3 py-2"
+                    className={`flex-1 ${inputClassName}`}
                   />
                   <Button
                     onClick={addActionItem}
@@ -1215,16 +1224,16 @@ export default function MomGeneratorPro() {
               ref={momRef}
               className="mom-document rounded-lg p-10 print:border-0"
               style={{
-                backgroundColor: "#ffffff",
+                backgroundColor: mode === "dark" ? "#1f2937" : "#ffffff",
                 fontFamily: "Arial, sans-serif",
-                color: "#000000",
+                color: mode === "dark" ? "#ffffff" : "#000000",
                 lineHeight: "1.5",
               }}
             >
               {/* Header */}
               <div
                 className="text-center mb-8"
-                style={{ borderBottom: "2px solid #000000", paddingBottom: "10px" }}
+                style={{ borderBottom: `2px solid ${mode === "dark" ? "#4b5563" : "#000000"}`, paddingBottom: "10px" }}
               >
                 <h1 className="text-3xl font-bold uppercase tracking-wide">
                   Minutes of Meeting
@@ -1247,15 +1256,15 @@ export default function MomGeneratorPro() {
                     <td
                       className="px-4 py-2 font-bold w-1/3"
                       style={{
-                        border: "1px solid #000000",
-                        backgroundColor: "#f0f0f0",
+                        border: `1px solid ${mode === "dark" ? "#4b5563" : "#000000"}`,
+                        backgroundColor: mode === "dark" ? "#374151" : "#f0f0f0",
                       }}
                     >
                       Project Name:
                     </td>
                     <td
                       className="px-4 py-2 font-bold"
-                      style={{ border: "1px solid #000000" }}
+                      style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                     >
                       {selectedProject?.name || "N/A"}
                     </td>
@@ -1264,15 +1273,15 @@ export default function MomGeneratorPro() {
                     <td
                       className="px-4 py-2 font-semibold"
                       style={{
-                        border: "1px solid #000000",
-                        backgroundColor: "#f3f4f6",
+                        border: `1px solid ${mode === "dark" ? "#4b5563" : "#000000"}`,
+                        backgroundColor: mode === "dark" ? "#1f2937" : "#f3f4f6",
                       }}
                     >
                       Meeting Date & Time:
                     </td>
                     <td
                       className="px-4 py-2"
-                      style={{ border: "1px solid #000000" }}
+                      style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                     >
                       {new Date(meetingDate).toLocaleDateString("en-GB", {
                         weekday: "long",
@@ -1288,15 +1297,15 @@ export default function MomGeneratorPro() {
                     <td
                       className="px-4 py-2 font-semibold"
                       style={{
-                        border: "1px solid #000000",
-                        backgroundColor: "#f3f4f6",
+                        border: `1px solid ${mode === "dark" ? "#4b5563" : "#000000"}`,
+                        backgroundColor: mode === "dark" ? "#1f2937" : "#f3f4f6",
                       }}
                     >
                       Meeting Venue:
                     </td>
                     <td
                       className="px-4 py-2"
-                      style={{ border: "1px solid #000000" }}
+                      style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                     >
                       {meetingVenue || "N/A"}
                     </td>
@@ -1305,15 +1314,15 @@ export default function MomGeneratorPro() {
                     <td
                       className="px-4 py-2 font-bold align-top"
                       style={{
-                        border: "1px solid #000000",
-                        backgroundColor: "#f0f0f0",
+                        border: `1px solid ${mode === "dark" ? "#4b5563" : "#000000"}`,
+                        backgroundColor: mode === "dark" ? "#374151" : "#f0f0f0",
                       }}
                     >
                       Internal Attendees:
                     </td>
                     <td
                       className="px-4 py-2"
-                      style={{ border: "1px solid #000000" }}
+                      style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                     >
                       {attendees
                         .map((id) => users.find((u) => u.id === id)?.name)
@@ -1329,15 +1338,15 @@ export default function MomGeneratorPro() {
                       <td
                         className="px-4 py-2 font-bold align-top"
                         style={{
-                          border: "1px solid #000000",
-                          backgroundColor: "#f0f0f0",
+                          border: `1px solid ${mode === "dark" ? "#4b5563" : "#000000"}`,
+                          backgroundColor: mode === "dark" ? "#374151" : "#f0f0f0",
                         }}
                       >
                         External Attendees:
                       </td>
                       <td
                         className="px-4 py-2"
-                        style={{ border: "1px solid #000000" }}
+                        style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                       >
                         {externalAttendees.split(",").map((name, i) => (
                           <div key={i}>{name.trim()}</div>
@@ -1349,15 +1358,15 @@ export default function MomGeneratorPro() {
                     <td
                       className="px-4 py-2 font-semibold"
                       style={{
-                        border: "1px solid #000000",
-                        backgroundColor: "#f3f4f6",
+                        border: `1px solid ${mode === "dark" ? "#4b5563" : "#000000"}`,
+                        backgroundColor: mode === "dark" ? "#1f2937" : "#f3f4f6",
                       }}
                     >
                       MoM Prepared by:
                     </td>
                     <td
                       className="px-4 py-2"
-                      style={{ border: "1px solid #000000" }}
+                      style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                     >
                       {momPreparedBy || "N/A"}
                     </td>
@@ -1369,15 +1378,15 @@ export default function MomGeneratorPro() {
               <div className="mb-8">
                 <table
                   className="w-full border-collapse text-sm"
-                  style={{ border: "1px solid #000000" }}
+                  style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                 >
                   <thead>
                     <tr>
                       <th
                         className="px-4 py-2 text-left font-bold"
                         style={{
-                          border: "1px solid #000000",
-                          backgroundColor: "#f0f0f0",
+                          border: `1px solid ${mode === "dark" ? "#4b5563" : "#000000"}`,
+                          backgroundColor: mode === "dark" ? "#374151" : "#f0f0f0",
                         }}
                       >
                         Meeting Agenda:
@@ -1389,7 +1398,7 @@ export default function MomGeneratorPro() {
                       <tr key={idx}>
                         <td
                           className="px-4 py-2 font-bold"
-                          style={{ border: "1px solid #000000" }}
+                          style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                         >
                           {idx + 1}. {d.topic}
                         </td>
@@ -1403,25 +1412,25 @@ export default function MomGeneratorPro() {
               <div className="mb-8">
                 <h2
                   className="text-lg font-bold mb-3"
-                  style={{ color: "#000000" }}
+                  style={{ color: mode === 'dark' ? '#ffffff' : '#000000' }}
                 >
                   Discussion:
                 </h2>
                 <table
                   className="w-full border-collapse text-sm"
-                  style={{ border: "1px solid #000000" }}
+                  style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                 >
                   <thead>
-                    <tr style={{ backgroundColor: "#f0f0f0" }}>
+                    <tr style={{ backgroundColor: mode === "dark" ? "#374151" : "#f0f0f0" }}>
                       <th
                         className="px-4 py-2 text-left w-1/3 font-bold"
-                        style={{ border: "1px solid #000000" }}
+                        style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                       >
                         Discussion
                       </th>
                       <th
                         className="px-4 py-2 text-left font-bold"
-                        style={{ border: "1px solid #000000" }}
+                        style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                       >
                         Remark/Comments/Notes
                       </th>
@@ -1432,13 +1441,13 @@ export default function MomGeneratorPro() {
                       <tr key={i}>
                         <td
                           className="px-4 py-2 align-top font-bold"
-                          style={{ border: "1px solid #000000" }}
+                          style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                         >
                           {disc.topic}
                         </td>
                         <td
                           className="px-4 py-2 align-top"
-                          style={{ border: "1px solid #000000" }}
+                          style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                           dangerouslySetInnerHTML={{
                             __html: (disc.notes || "").replace(/\n/g, "<br/>"),
                           }}
@@ -1453,31 +1462,31 @@ export default function MomGeneratorPro() {
               <div className="mb-8">
                 <h2
                   className="text-lg font-bold mb-3"
-                  style={{ color: "#000000" }}
+                  style={{ color: mode === 'dark' ? '#ffffff' : '#000000' }}
                 >
                   Next Action Plan:
                 </h2>
                 <table
                   className="w-full border-collapse text-sm"
-                  style={{ border: "1px solid #000000" }}
+                  style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                 >
                   <thead>
-                    <tr style={{ backgroundColor: "#f0f0f0" }}>
+                    <tr style={{ backgroundColor: mode === "dark" ? "#374151" : "#f0f0f0" }}>
                       <th
                         className="px-4 py-2 text-left font-bold"
-                        style={{ border: "1px solid #000000" }}
+                        style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                       >
                         Task
                       </th>
                       <th
                         className="px-4 py-2 text-left font-bold w-1/4"
-                        style={{ border: "1px solid #000000" }}
+                        style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                       >
                         Responsible Person
                       </th>
                       <th
                         className="px-4 py-2 text-left font-bold w-28"
-                        style={{ border: "1px solid #000000" }}
+                        style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                       >
                         Deadline
                       </th>
@@ -1488,19 +1497,19 @@ export default function MomGeneratorPro() {
                       <tr key={i}>
                         <td
                           className="px-4 py-2 font-bold"
-                          style={{ border: "1px solid #000000" }}
+                          style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                         >
                           {a.task}
                         </td>
                         <td
                           className="px-4 py-2"
-                          style={{ border: "1px solid #000000" }}
+                          style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                         >
                           {a.responsiblePerson}
                         </td>
                         <td
                           className="px-4 py-2"
-                          style={{ border: "1px solid #000000" }}
+                          style={{ border: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}` }}
                         >
                           {new Date(a.deadline).toLocaleDateString("en-GB", {
                             day: "numeric",
@@ -1517,8 +1526,8 @@ export default function MomGeneratorPro() {
               <div
                 className="mt-8 pt-4 text-xs flex justify-between"
                 style={{
-                  borderTop: "1px solid #000000",
-                  color: "#000000",
+                  borderTop: `1px solid ${mode === 'dark' ? '#4b5563' : '#000000'}`,
+                  color: mode === 'dark' ? '#ffffff' : '#000000',
                 }}
               >
                 <span>Generated on {new Date().toLocaleDateString()}</span>
@@ -1537,6 +1546,6 @@ export default function MomGeneratorPro() {
           .mom-document { position: absolute; left: 0; top: 0; width: 100%; }
         }
       `}</style>
-    </div>
+    </div >
   );
 }

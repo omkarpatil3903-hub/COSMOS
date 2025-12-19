@@ -233,9 +233,10 @@ export default function ProjectSettings() {
       <Card
         title="Search & Actions"
         tone="white"
+        className="[.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10"
         actions={
           <div className="flex items-center gap-3">
-            <span className="text-sm text-content-secondary">
+            <span className="text-sm text-content-secondary [.dark_&]:text-gray-400">
               Showing {filtered.length} records
             </span>
             <Button variant="primary" onClick={openCreate} className="shrink-0">
@@ -244,10 +245,10 @@ export default function ProjectSettings() {
           </div>
         }
       >
-        <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+        <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary [.dark_&]:text-gray-400">
           Search by level name
           <div className="relative">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary [.dark_&]:text-gray-500">
               <FaSearch />
             </span>
             <input
@@ -255,22 +256,22 @@ export default function ProjectSettings() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by level name"
-              className="w-full rounded-lg border border-subtle bg-surface py-2 pl-9 pr-3 text-sm"
+              className="w-full rounded-lg border border-subtle bg-surface py-2 pl-9 pr-3 text-sm [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white [.dark_&]:placeholder-gray-500"
             />
           </div>
         </label>
       </Card>
 
-      <Card title="Project Level" tone="muted">
+      <Card title="Project Level" tone="muted" className="[.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-2">
-          <div className="text-sm text-content-secondary">
+          <div className="text-sm text-content-secondary [.dark_&]:text-gray-400">
             Page {Math.min(page, totalPages)} of {totalPages}
           </div>
           <div className="flex items-center gap-3">
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
-              className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+              className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100 [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white"
             >
               <option value={5}>5</option>
               <option value={10}>10</option>
@@ -298,25 +299,25 @@ export default function ProjectSettings() {
           </div>
         </div>
 
-        <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-          <table className="min-w-full divide-y divide-gray-200 bg-white">
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+        <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm [.dark_&]:border-white/10">
+          <table className="min-w-full divide-y divide-gray-200 bg-white [.dark_&]:bg-[#181B2A] [.dark_&]:divide-white/5">
+            <thead className="bg-gradient-to-r from-gray-50 to-gray-100 [.dark_&]:from-[#1F2234] [.dark_&]:to-[#1F2234]">
               <tr>
-                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 [.dark_&]:text-gray-400 [.dark_&]:border-white/10">
                   Sr. No.
                 </th>
-                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 [.dark_&]:text-gray-400 [.dark_&]:border-white/10">
                   Level
                 </th>
-                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 [.dark_&]:text-gray-400 [.dark_&]:border-white/10">
                   Name
                 </th>
-                <th className="px-6 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 sticky right-0 z-10 bg-gray-50">
+                <th className="px-6 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 sticky right-0 z-10 bg-gray-50 [.dark_&]:bg-[#1F2234] [.dark_&]:text-gray-400 [.dark_&]:border-white/10">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-gray-100 bg-white [.dark_&]:bg-[#181B2A] [.dark_&]:divide-white/5">
               {pageItems.length === 0 ? (
                 <tr>
                   <td
@@ -331,16 +332,16 @@ export default function ProjectSettings() {
                   <tr
                     key={item.id}
                     onClick={() => handleRowClick(item)}
-                    className="cursor-pointer group odd:bg-white even:bg-gray-50 hover:bg-indigo-50/50 transition-colors duration-150"
+                    className="cursor-pointer group odd:bg-white even:bg-gray-50 hover:bg-indigo-50/50 transition-colors duration-150 [.dark_&]:odd:bg-[#181B2A] [.dark_&]:even:bg-[#1F2234]"
                   >
-                    <td className="whitespace-nowrap px-6 py-2.5 text-sm font-medium text-gray-500">
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 transition-colors">
+                    <td className="whitespace-nowrap px-6 py-2.5 text-sm font-medium text-gray-500 [.dark_&]:text-gray-400">
+                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 transition-colors [.dark_&]:bg-white/10 [.dark_&]:text-white">
                         {(page - 1) * pageSize + idx + 1}
                       </div>
                     </td>
                     <td className="px-6 py-2.5">
                       <div
-                        className="max-w-[100px] text-sm font-semibold text-gray-900 group-hover:text-blue-600 truncate transition-colors"
+                        className="max-w-[100px] text-sm font-semibold text-gray-900 group-hover:text-blue-600 truncate transition-colors [.dark_&]:text-white"
                         title={item.level || "-"}
                       >
                         {item.level || "-"}
@@ -348,7 +349,7 @@ export default function ProjectSettings() {
                     </td>
                     <td className="px-6 py-2.5">
                       <div
-                        className="max-w-[200px] text-sm font-semibold text-gray-900 group-hover:text-blue-600 truncate transition-colors"
+                        className="max-w-[200px] text-sm font-semibold text-gray-900 group-hover:text-blue-600 truncate transition-colors [.dark_&]:text-white"
                         title={item.name}
                       >
                         {item.name}
@@ -358,14 +359,14 @@ export default function ProjectSettings() {
                       <div className="flex items-center justify-center space-x-3">
                         <button
                           onClick={(e) => handleEditClick(item, e)}
-                          className="flex items-center justify-center p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md transition-colors"
+                          className="flex items-center justify-center p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md transition-colors [.dark_&]:hover:bg-yellow-400/20"
                           title="Edit"
                         >
                           <FaEdit className="h-4 w-4" />
                         </button>
                         <button
                           onClick={(e) => handleDeleteClick(item, e)}
-                          className="flex items-center justify-center p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md transition-colors"
+                          className="flex items-center justify-center p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md transition-colors [.dark_&]:hover:bg-red-400/20"
                           title="Delete"
                         >
                           <FaTrash className="h-4 w-4" />
@@ -381,10 +382,10 @@ export default function ProjectSettings() {
       </Card>
 
       {open && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/30">
-          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl [.dark_&]:bg-[#181B2A] [.dark_&]:border [.dark_&]:border-white/10">
             <div className="flex items-center justify-between px-6 pt-6">
-              <h3 className="text-xl font-semibold">Create Project Level</h3>
+              <h3 className="text-xl font-semibold [.dark_&]:text-white">Create Project Level</h3>
               <button
                 onClick={close}
                 className="text-gray-400 hover:text-gray-600"
@@ -395,7 +396,7 @@ export default function ProjectSettings() {
 
             <div className="px-6 py-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="block text-sm font-medium">
+                <label className="block text-sm font-medium [.dark_&]:text-gray-300">
                   Project Level
                   <input
                     type="number"
@@ -405,7 +406,7 @@ export default function ProjectSettings() {
                       setLevel(e.target.value);
                       if (levelError) setLevelError("");
                     }}
-                    className={`mt-1 w-full rounded border px-3 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${levelError ? "border-red-500" : "border-gray-300"
+                    className={`mt-1 w-full rounded border px-3 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [.dark_&]:bg-[#1F2234] [.dark_&]:text-white ${levelError ? "border-red-500" : "border-gray-300 [.dark_&]:border-white/10"
                       }`}
                     placeholder="e.g., 1, 2, 3..."
                   />
@@ -415,12 +416,12 @@ export default function ProjectSettings() {
                     </div>
                   )}
                 </label>
-                <label className="block text-sm font-medium">
+                <label className="block text-sm font-medium [.dark_&]:text-gray-300">
                   Name
                   <VoiceInput
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2 [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white"
                     placeholder="e.g., Discovery"
                   />
                 </label>
@@ -428,7 +429,7 @@ export default function ProjectSettings() {
             </div>
 
             <div className="flex items-center justify-end gap-3 px-6 pb-6">
-              <Button variant="ghost" onClick={close}>
+              <Button variant="ghost" onClick={close} className="[.dark_&]:text-gray-300 [.dark_&]:hover:bg-white/10">
                 Cancel
               </Button>
               <Button onClick={save} disabled={saving} variant="primary">
@@ -464,10 +465,10 @@ export default function ProjectSettings() {
       )}
 
       {preview && (
-        <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/30">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl [.dark_&]:bg-[#181B2A] [.dark_&]:border [.dark_&]:border-white/10">
             <div className="flex items-center justify-between px-6 pt-6">
-              <h3 className="text-xl font-semibold">Preview</h3>
+              <h3 className="text-xl font-semibold [.dark_&]:text-white">Preview</h3>
               <button
                 onClick={() => setPreview(null)}
                 className="text-gray-400 hover:text-gray-600"
@@ -478,17 +479,17 @@ export default function ProjectSettings() {
             <div className="px-6 py-4 space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="text-xs text-gray-500 mb-1">Name</div>
-                  <div className="font-medium">{preview?.name}</div>
+                  <div className="text-xs text-gray-500 mb-1 [.dark_&]:text-gray-400">Name</div>
+                  <div className="font-medium [.dark_&]:text-white">{preview?.name}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 mb-1">Type</div>
-                  <div className="font-medium">Project Level</div>
+                  <div className="text-xs text-gray-500 mb-1 [.dark_&]:text-gray-400">Type</div>
+                  <div className="font-medium [.dark_&]:text-white">Project Level</div>
                 </div>
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 px-6 pb-6">
-              <Button variant="ghost" onClick={() => setPreview(null)}>
+              <Button variant="ghost" onClick={() => setPreview(null)} className="[.dark_&]:text-gray-300 [.dark_&]:hover:bg-white/10">
                 Close
               </Button>
             </div>

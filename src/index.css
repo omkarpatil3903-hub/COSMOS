@@ -1,335 +1,524 @@
 @import "tailwindcss";
 @import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
 
+@theme {
+    --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    --font-heading: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
+    /* Semantic Color Mapping for Tailwind v4 */
+    --color-canvas: var(--color-canvas);
+    --color-surface: var(--color-surface);
+    --color-surface-subtle: var(--color-surface-subtle);
+    --color-surface-strong: var(--color-surface-strong);
+    --color-overlay: var(--color-overlay);
+
+    --color-content-primary: var(--color-content-primary);
+    --color-content-secondary: var(--color-content-secondary);
+    --color-content-tertiary: var(--color-content-tertiary);
+
+    --color-border-subtle: var(--color-border-subtle);
+    --color-border-strong: var(--color-border-strong);
+    --color-subtle: var(--color-border-subtle);
+
+    --color-brand-50: var(--color-brand-50);
+    --color-brand-100: var(--color-brand-100);
+    --color-brand-500: var(--color-brand-500);
+    --color-brand-600: var(--color-brand-600);
+    --color-brand-700: var(--color-brand-700);
+
+    --shadow-soft: var(--shadow-soft);
+    --shadow-card: var(--shadow-card);
+}
 
 @layer base {
-  :root {
-    color-scheme: light;
-    --font-sans: "Inter", "Segoe UI", system-ui, -apple-system,
-      BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-    --font-heading: "Inter", "Segoe UI", system-ui, -apple-system,
-      BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-    --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas,
-      "Liberation Mono", "Courier New", monospace;
+    :root {
+        /* Original Light Mode Definitions */
+        color-scheme: light;
+        --font-sans: "Inter", "Segoe UI", system-ui, -apple-system,
+            BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+        --font-heading: "Inter", "Segoe UI", system-ui, -apple-system,
+            BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+        --font-mono: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas,
+            "Liberation Mono", "Courier New", monospace;
 
-    --color-canvas: #f1f5f9;
-    --color-surface: #ffffff;
-    --color-surface-subtle: #f8fafc;
-    --color-surface-strong: #edf2f7;
-    --color-overlay: rgba(15, 23, 42, 0.6);
+        --color-canvas: #f7f9fb;
+        --color-surface: #ffffff;
+        --color-surface-subtle: #f8fafc;
+        --color-surface-strong: #ffffff;
+        --color-overlay: rgba(15, 23, 42, 0.6);
 
-    --color-brand-50: #eef2ff;
-    --color-brand-100: #e0e7ff;
-    --color-brand-200: #c7d2fe;
-    --color-brand-300: #a5b4fc;
-    --color-brand-400: #818cf8;
-    --color-brand-500: #6366f1;
-    --color-brand-600: #4f46e5;
-    --color-brand-700: #4338ca;
-    --color-brand-800: #3730a3;
-    --color-brand-900: #312e81;
+        --color-brand-50: #eef2ff;
+        --color-brand-100: #e0e7ff;
+        --color-brand-200: #c7d2fe;
+        --color-brand-300: #a5b4fc;
+        --color-brand-400: #818cf8;
+        --color-brand-500: #6366f1;
+        --color-brand-600: #4f46e5;
+        --color-brand-700: #4338ca;
+        --color-brand-800: #3730a3;
+        --color-brand-900: #312e81;
 
-    --color-content-primary: #111827;
-    --color-content-secondary: #475467;
-    --color-content-tertiary: #6b7280;
-    --color-border-subtle: #e2e8f0;
-    --color-border-strong: #cbd5f5;
-    --color-muted: #f1f5f9;
+        --color-content-primary: #111827;
+        --color-content-secondary: #475467;
+        --color-content-tertiary: #6b7280;
+        --color-border-subtle: #e2e8f0;
+        --color-border-strong: #cbd5f5;
+        --color-muted: #f1f5f9;
 
-    --color-success-100: #dcfce7;
-    --color-success-500: #22c55e;
-    --color-success-600: #16a34a;
-    --color-warning-100: #fef3c7;
-    --color-warning-500: #f59e0b;
-    --color-danger-100: #fee2e2;
-    --color-danger-500: #ef4444;
-    --color-danger-600: #dc2626;
+        --color-success-100: #dcfce7;
+        --color-success-500: #22c55e;
+        --color-success-600: #16a34a;
+        --color-warning-100: #fef3c7;
+        --color-warning-500: #f59e0b;
+        --color-danger-100: #fee2e2;
+        --color-danger-500: #ef4444;
+        --color-danger-600: #dc2626;
 
-    --radius-xs: 0.25rem;
-    --radius-sm: 0.5rem;
-    --radius-md: 0.75rem;
-    --radius-lg: 1rem;
-    --radius-xl: 1.5rem;
+        --radius-xs: 0.25rem;
+        --radius-sm: 0.5rem;
+        --radius-md: 0.75rem;
+        --radius-lg: 1rem;
+        --radius-xl: 1.5rem;
 
-    --shadow-soft: 0 20px 45px -24px rgba(15, 23, 42, 0.45);
-    --shadow-card: 0 18px 36px -18px rgba(79, 70, 229, 0.18);
+        --shadow-soft: 0 20px 45px -24px rgba(15, 23, 42, 0.45);
+        --shadow-card: 0 18px 36px -18px rgba(79, 70, 229, 0.18);
 
-    --spacing-4-5: 1.125rem;
-    --spacing-18: 4.5rem;
-  }
+        --spacing-4-5: 1.125rem;
+        --spacing-18: 4.5rem;
 
-  *,
-  ::before,
-  ::after {
-    box-sizing: border-box;
-  }
+        /* Animations */
+        --tw-enter-opacity: 1;
+        --tw-enter-translate-y: 0;
+    }
 
-  body {
-    font-family: var(--font-sans);
-    background-color: var(--color-canvas);
-    color: var(--color-content-primary);
-    margin: 0;
-    min-height: 100vh;
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
-  }
+    .dark {
+        /* Dark Mode Overrides */
+        color-scheme: dark;
+        --color-canvas: #020617;
+        /* Slate 950 */
+        --color-surface: #0f172a;
+        /* Slate 900 */
+        --color-surface-subtle: #111827;
+        /* Gray 900 */
+        --color-surface-strong: #1e293b;
+        /* Slate 800 */
+        --color-overlay: rgba(0, 0, 0, 0.7);
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    font-family: var(--font-heading);
-    font-weight: 600;
-    color: var(--color-content-primary);
-    letter-spacing: -0.015em;
-  }
+        --color-content-primary: #f8fafc;
+        /* Slate 50 */
+        --color-content-secondary: #cbd5e1;
+        /* Slate 300 */
+        --color-content-tertiary: #94a3b8;
+        /* Slate 400 */
 
-  p,
-  span,
-  label,
-  input,
-  button {
-    font-family: inherit;
-  }
+        --color-border-subtle: #1e293b;
+        /* Slate 800 */
+        --color-border-strong: #334155;
+        /* Slate 700 */
 
-  a {
-    color: var(--color-brand-600);
-    text-decoration: none;
-    transition: color 150ms ease, box-shadow 150ms ease;
-  }
+        --shadow-soft: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+        --shadow-card: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.2);
+    }
 
-  a:hover,
-  a:focus-visible {
-    color: var(--color-brand-700);
-  }
+    html,
+    body {
+        height: 100%;
+    }
 
-  button:focus-visible,
-  input:focus-visible,
-  select:focus-visible,
-  textarea:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
-  }
+    body {
+        background-color: var(--color-canvas);
+        color: var(--color-content-primary);
+        font-family: var(--font-sans);
+        margin: 0;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+        font-feature-settings: "cv11", "ss01";
+    }
 
-  ::selection {
-    background-color: rgba(79, 70, 229, 0.18);
-    color: var(--color-content-primary);
-  }
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        font-family: var(--font-heading);
+        font-weight: 600;
+        color: var(--color-content-primary);
+        letter-spacing: -0.015em;
+    }
+
+    a {
+        color: var(--color-brand-600);
+        text-decoration: none;
+        transition: color 150ms ease, box-shadow 150ms ease;
+    }
+
+    a:hover,
+    a:focus-visible {
+        color: var(--color-brand-700);
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+    }
+
+    ::selection {
+        background-color: rgba(79, 70, 229, 0.18);
+        color: var(--color-content-primary);
+    }
 }
 
 @layer utilities {
-  .sr-only-focusable {
-    position: absolute;
-    left: -10000px;
-    top: auto;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-  }
+    .sr-only-focusable {
+        position: absolute;
+        left: -10000px;
+        top: auto;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+    }
 
-  .sr-only-focusable:focus {
-    left: 1rem;
-    top: 1rem;
-    width: auto;
-    height: auto;
-    padding: 0.75rem 1rem;
-    border-radius: var(--radius-sm);
-    background-color: var(--color-surface);
-    box-shadow: var(--shadow-soft);
-    z-index: 50;
-  }
+    .sr-only-focusable:focus {
+        left: 1rem;
+        top: 1rem;
+        width: auto;
+        height: auto;
+        padding: 0.75rem 1rem;
+        border-radius: var(--radius-sm);
+        background-color: var(--color-surface);
+        box-shadow: var(--shadow-soft);
+        z-index: 50;
+    }
 
-  .bg-canvas {
-    background-color: var(--color-canvas);
-  }
+    /* Glass Effect Utility */
+    .glass {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+    }
 
-  .bg-surface {
-    background-color: var(--color-surface);
-  }
+    .dark .glass {
+        background: rgba(15, 23, 42, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
 
-  .bg-surface-subtle {
-    background-color: var(--color-surface-subtle);
-  }
+    /* Glass Pill Button (from Settings UI) */
+    .glass-pill {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-radius: 9999px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+        transition: all 0.3s ease;
+    }
 
-  .bg-surface-strong {
-    background-color: var(--color-surface-strong);
-  }
+    .glass-pill:hover {
+        box-shadow: 0 0 25px rgba(99, 102, 241, 0.5);
+        background: rgba(255, 255, 255, 0.25);
+    }
 
-  .text-content-primary {
-    color: var(--color-content-primary);
-  }
+    .dark .glass-pill {
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
 
-  .text-content-secondary {
-    color: var(--color-content-secondary);
-  }
+    /* Neon Glow Effect */
+    .neon-glow {
+        box-shadow: 0 0 5px currentColor, 0 0 15px currentColor, 0 0 30px currentColor;
+    }
 
-  .text-content-tertiary {
-    color: var(--color-content-tertiary);
-  }
+    .neon-glow-indigo {
+        box-shadow: 0 0 5px #6366f1, 0 0 15px #6366f1, 0 0 30px rgba(99, 102, 241, 0.5);
+    }
 
-  .border-subtle {
-    border-color: var(--color-border-subtle);
-  }
+    /* Custom Scrollbar Utility */
+    .custom-scrollbar {
+        scrollbar-width: thin;
+    }
 
-  .border-strong {
-    border-color: var(--color-border-strong);
-  }
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
 
-  .shadow-soft {
-    box-shadow: var(--shadow-soft);
-  }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
 
-  .shadow-card {
-    box-shadow: var(--shadow-card);
-  }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background-color: #cbd5e1;
+        border-radius: 9999px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background-color: #94a3b8;
+    }
+
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+        background-color: #475569;
+    }
+
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background-color: #64748b;
+    }
 }
 
-/* Custom scrollbar styles for Kanban columns */
+/* --- Global Scrollbar Styles --- */
 .scrollbar-thin {
-  scrollbar-width: thin;
-}
-
-.scrollbar-thumb-gray-300::-webkit-scrollbar-thumb {
-  background-color: #d1d5db;
-  border-radius: 6px;
-}
-
-.scrollbar-track-gray-100::-webkit-scrollbar-track {
-  background-color: #f3f4f6;
-  border-radius: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db #f3f4f6;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
-  width: 8px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: #d1d5db;
-  border-radius: 6px;
-  border: 1px solid #f3f4f6;
+    width: 8px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
-  background-color: #f3f4f6;
-  border-radius: 6px;
+    background-color: #f3f4f6;
+    border-radius: 6px;
 }
 
-/* Hover effect for scrollbar */
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #d1d5db;
+    border-radius: 6px;
+    border: 1px solid #f3f4f6;
+}
+
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background-color: #9ca3af;
+    background-color: #9ca3af;
 }
 
-/* Better scrollbar for Firefox */
-.scrollbar-thin {
-  scrollbar-width: thin;
-  scrollbar-color: #d1d5db #f3f4f6;
+/* Dark Mode Scrollbar */
+.dark .scrollbar-thin {
+    scrollbar-color: #4b5563 #1e293b;
 }
 
-/* Ensure proper spacing in Kanban cards */
+.dark .scrollbar-thin::-webkit-scrollbar-track {
+    background-color: #1e293b;
+    border: none;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #4b5563;
+    border: 1px solid #1e293b;
+}
+
+/* --- Table Styles --- */
+.table-row-hover {
+    position: relative;
+    overflow: hidden;
+}
+
+.table-row-hover::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+    transition: left 0.5s;
+    pointer-events: none;
+}
+
+.table-row-hover:hover::before {
+    left: 100%;
+}
+
+/* Kanban Card Spacing */
 .kanban-card {
-  min-height: 150px;
+    min-height: 150px;
 }
 
-/* Custom styles for date and time inputs */
+/* --- Date/Time Inputs Styling --- */
 input[type="date"],
 input[type="time"] {
-  color-scheme: light;
-  accent-color: #4f46e5 !important;
-  /* Brand blue color */
+    color-scheme: light;
+    accent-color: #4f46e5 !important;
 }
 
-/* Style the calendar icon and time picker */
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {
-  color: #4f46e5 !important;
-  cursor: pointer;
-  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(230deg) brightness(104%) contrast(97%) !important;
-  background-color: transparent;
+    color: #4f46e5 !important;
+    cursor: pointer;
+    filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(230deg) brightness(104%) contrast(97%) !important;
+    background-color: transparent;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%234f46e5'%3e%3cpath fill-rule='evenodd' d='M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z' clip-rule='evenodd'/%3e%3c/svg%3e") !important;
+    background-size: 16px 16px;
+    background-repeat: no-repeat;
+    background-position: center;
+    width: 20px;
+    height: 20px;
 }
 
-/* Force blue theme for calendar popup */
-input[type="date"] {
-  color-scheme: light !important;
-}
-
-/* Additional styling for better blue theme */
-input[type="date"]::-webkit-calendar-picker-indicator {
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%234f46e5'%3e%3cpath fill-rule='evenodd' d='M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z' clip-rule='evenodd'/%3e%3c/svg%3e") !important;
-  background-size: 16px 16px;
-  background-repeat: no-repeat;
-  background-position: center;
-  width: 20px;
-  height: 20px;
-}
-
-/* Style the date input text */
 input[type="date"]::-webkit-datetime-edit,
 input[type="time"]::-webkit-datetime-edit {
-  color: #111827;
-  /* Primary text color */
+    color: var(--color-content-primary);
 }
 
-/* Style individual date/time segments */
 input[type="date"]::-webkit-datetime-edit-fields-wrapper,
 input[type="time"]::-webkit-datetime-edit-fields-wrapper {
-  color: #111827;
+    color: var(--color-content-primary);
 }
 
 input[type="date"]::-webkit-datetime-edit-text,
 input[type="time"]::-webkit-datetime-edit-text {
-  color: #6b7280;
-  /* Tertiary text color for separators */
+    color: var(--color-content-tertiary);
 }
 
-input[type="date"]::-webkit-datetime-edit-month-field,
-input[type="date"]::-webkit-datetime-edit-day-field,
-input[type="date"]::-webkit-datetime-edit-year-field,
-input[type="time"]::-webkit-datetime-edit-hour-field,
-input[type="time"]::-webkit-datetime-edit-minute-field,
-input[type="time"]::-webkit-datetime-edit-ampm-field {
-  color: #111827;
-  background: transparent;
-}
-
-/* Focus states for date/time inputs */
 input[type="date"]:focus,
 input[type="time"]:focus {
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
-/* Hover states */
-input[type="date"]:hover::-webkit-calendar-picker-indicator,
-input[type="time"]:hover::-webkit-calendar-picker-indicator {
-  opacity: 0.8;
-}
-
-/* Additional CSS for calendar popup styling */
-input[type="date"]::-webkit-calendar-picker-indicator:hover {
-  background-color: rgba(79, 70, 229, 0.1);
-  border-radius: 4px;
-}
-
-/* Try to influence the calendar popup colors */
-input[type="date"]:focus::-webkit-calendar-picker-indicator {
-  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(230deg) brightness(104%) contrast(97%) !important;
-}
-
-/* Additional browser-specific styling */
 input[type="date"]::-webkit-inner-spin-button,
 input[type="date"]::-webkit-clear-button {
-  display: none;
+    display: none;
 }
 
-/* Custom class for blue-themed date inputs */
-.date-input-blue {
-  accent-color: #4f46e5 !important;
-  color-scheme: light !important;
+/* Dark Mode Date Inputs */
+.dark input[type="date"],
+.dark input[type="time"] {
+    color-scheme: dark;
 }
 
-.date-input-blue::-webkit-calendar-picker-indicator {
-  filter: invert(27%) sepia(51%) saturate(2878%) hue-rotate(230deg) brightness(104%) contrast(97%) !important;
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(70%) sepia(51%) saturate(2878%) hue-rotate(230deg) brightness(104%) contrast(97%) !important;
+}
+
+/* --- MOM Generator Pro Input Styling (from previous conversation) --- */
+.mom-input-light {
+    background-color: #fafafa;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+}
+
+.mom-input-light:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* --- Calendar Page Dark Mode Styles (from previous conversation) --- */
+.calendar-grid-cell {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-subtle);
+}
+
+.dark .calendar-grid-cell {
+    background-color: #1e293b;
+    border-color: #334155;
+}
+
+.calendar-empty-cell {
+    background-color: var(--color-surface-subtle);
+}
+
+.dark .calendar-empty-cell {
+    background-color: #0f172a;
+}
+
+.calendar-event-card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-subtle);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dark .calendar-event-card {
+    background-color: #1e293b;
+    border-color: #334155;
+}
+
+/* --- Status Page Dark Mode (from previous conversation) --- */
+.status-table-row {
+    background-color: var(--color-surface);
+}
+
+.dark .status-table-row:nth-child(odd) {
+    background-color: #181b2a;
+}
+
+.dark .status-table-row:nth-child(even) {
+    background-color: #1f2234;
+}
+
+.status-action-btn {
+    transition: background-color 0.2s ease;
+}
+
+.dark .status-action-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* --- Animation Polyfills --- */
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-2px) rotate(-1deg);
+    }
+
+    75% {
+        transform: translateX(2px) rotate(1deg);
+    }
+}
+
+.shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes enter {
+    from {
+        opacity: var(--tw-enter-opacity, 1);
+        transform: translate3d(0, var(--tw-enter-translate-y, 0), 0);
+    }
+}
+
+.animate-in {
+    animation-name: enter;
+    animation-duration: 0.15s;
+    --tw-enter-opacity: 0;
+    --tw-enter-translate-y: 0;
+}
+
+.fade-in {
+    --tw-enter-opacity: 0;
+}
+
+.slide-in-from-top-2 {
+    --tw-enter-translate-y: -0.5rem;
+}
+
+.duration-200 {
+    animation-duration: 200ms;
+}
+
+/* Smooth pulse animation for loading states */
+@keyframes soft-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+}
+
+.animate-soft-pulse {
+    animation: soft-pulse 2s ease-in-out infinite;
 }

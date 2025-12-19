@@ -17,6 +17,7 @@ import {
   FaSpinner,
 } from "react-icons/fa";
 import { FaArrowsRotate } from "react-icons/fa6";
+import { useTheme } from "../../context/ThemeContext";
 import GanttChart from "../../components/GanttChart";
 import toast from "react-hot-toast";
 import PageHeader from "../../components/PageHeader";
@@ -88,6 +89,7 @@ const normalizeStatus = (s) => {
 };
 
 export default function ReportsPage() {
+  const { mode } = useTheme();
   // ---------------------------------------------------
   // FILTER STATES
   // ---------------------------------------------------
@@ -697,7 +699,7 @@ export default function ReportsPage() {
             ------------------------------- */}
             <div className="min-w-0">
               <label className="block">
-                <span className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                <span className={`mb-2 flex items-center gap-2 text-sm font-medium ${mode === 'dark' ? 'text-gray-300' : 'text-black'}`}>
                   <FaProjectDiagram style={iconStyles.secondary} />
                   Project Filter
                 </span>
@@ -714,8 +716,11 @@ export default function ReportsPage() {
                 onFocus={(e) =>
                   (e.target.style.borderColor = UI_COLORS.secondary)
                 }
-                onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                className="max-w-full w-full truncate rounded-lg border bg-white px-3 py-2.5 text-sm shadow-sm transition-all focus:ring-2"
+                onBlur={(e) => (e.target.style.borderColor = "")}
+                className={`max-w-full w-full truncate rounded-lg border px-3 py-2.5 text-sm shadow-sm transition-all focus:ring-2 ${mode === "dark"
+                  ? "bg-gray-800 text-gray-200 border-gray-600"
+                  : "bg-white text-gray-900 border-gray-200"
+                  }`}
               >
                 <option value="">All Projects</option>
 
@@ -732,7 +737,7 @@ export default function ReportsPage() {
             ------------------------------- */}
             <div className="min-w-0">
               <label className="block">
-                <span className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                <span className={`mb-2 flex items-center gap-2 text-sm font-medium ${mode === 'dark' ? 'text-gray-300' : 'text-black'}`}>
                   <FaUsers style={iconStyles.success} />
                   Employee Filter
                 </span>
@@ -749,8 +754,11 @@ export default function ReportsPage() {
                 onFocus={(e) =>
                   (e.target.style.borderColor = UI_COLORS.success)
                 }
-                onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                className="max-w-full w-full truncate rounded-lg border bg-white px-3 py-2.5 text-sm shadow-sm transition-all focus:ring-2"
+                onBlur={(e) => (e.target.style.borderColor = "")}
+                className={`max-w-full w-full truncate rounded-lg border px-3 py-2.5 text-sm shadow-sm transition-all focus:ring-2 ${mode === "dark"
+                  ? "bg-gray-800 text-gray-200 border-gray-600"
+                  : "bg-white text-gray-900 border-gray-200"
+                  }`}
               >
                 <option value="">All Employees</option>
 
@@ -773,11 +781,14 @@ export default function ReportsPage() {
           {/* Total Tasks */}
           <Card
             style={cardStyles.primaryBorder}
-            className="border-t-4 bg-gradient-to-br from-blue-50 to-white transition-all duration-300 hover:shadow-lg"
+            className={`border-t-4 transition-all duration-300 hover:shadow-lg ${mode === "dark"
+              ? "bg-gradient-to-br from-blue-900/20 to-gray-800"
+              : "bg-gradient-to-br from-blue-50 to-white"
+              }`}
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Tasks</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Tasks</p>
                 <p
                   className="mt-1 animate-[fadeIn_0.5s_ease-in] text-3xl font-bold"
                   style={{ color: UI_COLORS.primary }}
@@ -801,11 +812,14 @@ export default function ReportsPage() {
           {/* Completed */}
           <Card
             style={{ borderTopColor: UI_COLORS.success }}
-            className="border-t-4 bg-gradient-to-br from-green-50 to-white transition-all duration-300 hover:shadow-lg"
+            className={`border-t-4 transition-all duration-300 hover:shadow-lg ${mode === "dark"
+              ? "bg-gradient-to-br from-green-900/20 to-gray-800"
+              : "bg-gradient-to-br from-green-50 to-white"
+              }`}
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Completed</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Completed</p>
                 <p
                   className="mt-1 animate-[fadeIn_0.5s_ease-in] text-3xl font-bold"
                   style={{ color: UI_COLORS.success }}
@@ -829,11 +843,14 @@ export default function ReportsPage() {
           {/* In Progress */}
           <Card
             style={{ borderTopColor: UI_COLORS.warning }}
-            className="border-t-4 bg-gradient-to-br from-amber-50 to-white transition-all duration-300 hover:shadow-lg"
+            className={`border-t-4 transition-all duration-300 hover:shadow-lg ${mode === "dark"
+              ? "bg-gradient-to-br from-amber-900/20 to-gray-800"
+              : "bg-gradient-to-br from-amber-50 to-white"
+              }`}
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">In Progress</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">In Progress</p>
                 <p
                   className="mt-1 animate-[fadeIn_0.5s_ease-in] text-3xl font-bold"
                   style={{ color: UI_COLORS.warning }}
@@ -857,11 +874,15 @@ export default function ReportsPage() {
           {/* Completion Rate */}
           <Card
             style={{ borderTopColor: UI_COLORS.secondary }}
-            className="border-t-4 bg-gradient-to-br from-purple-50 to-white transition-all duration-300 hover:shadow-lg"
+            className={`border-t-4 transition-all duration-300 hover:shadow-lg ${mode === "dark"
+              ? "bg-gradient-to-br from-purple-900/20 to-gray-800"
+              : "bg-gradient-to-br from-purple-50 to-white"
+              }`}
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  Completion Rate
                   Completion Rate
                 </p>
                 <p
@@ -938,8 +959,21 @@ export default function ReportsPage() {
                       ))}
                     </Pie>
 
-                    <Tooltip formatter={(v, name) => [`${v} tasks`, name]} />
-                    <Legend verticalAlign="bottom" height={24} />
+                    <Tooltip
+                      formatter={(v, name) => [`${v} tasks`, name]}
+                      contentStyle={{
+                        backgroundColor: mode === "dark" ? "#1f2937" : "#fff",
+                        borderColor: mode === "dark" ? "#374151" : "#e5e7eb",
+                        color: mode === "dark" ? "#f3f4f6" : "#111827",
+                      }}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      height={24}
+                      wrapperStyle={{
+                        color: mode === "dark" ? "#9ca3af" : "#4b5563",
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -957,26 +991,48 @@ export default function ReportsPage() {
                     data={tasksOverTimeData}
                     margin={{ top: 10, right: 20, bottom: 0, left: 0 }}
                   >
-                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+                    <CartesianGrid
+                      stroke={mode === "dark" ? "#374151" : "#e5e7eb"}
+                      strokeDasharray="3 3"
+                    />
                     <XAxis
                       dataKey="date"
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      tick={{
+                        fill: mode === "dark" ? "#9ca3af" : "#6b7280",
+                        fontSize: 12,
+                      }}
                       tickFormatter={(v) => v.slice(5)}
                     />
                     <YAxis
                       allowDecimals={false}
-                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      tick={{
+                        fill: mode === "dark" ? "#9ca3af" : "#6b7280",
+                        fontSize: 12,
+                      }}
                     >
                       <Label
                         value="Tasks"
                         angle={-90}
                         position="insideLeft"
-                        style={{ fill: "#9ca3af" }}
+                        style={{ fill: mode === "dark" ? "#9ca3af" : "#6b7280" }}
                       />
                     </YAxis>
 
-                    <Tooltip formatter={(v, name) => [`${v} tasks`, name]} />
-                    <Legend verticalAlign="bottom" height={24} />
+                    <Tooltip
+                      formatter={(v, name) => [`${v} tasks`, name]}
+                      contentStyle={{
+                        backgroundColor: mode === "dark" ? "#1f2937" : "#fff",
+                        borderColor: mode === "dark" ? "#374151" : "#e5e7eb",
+                        color: mode === "dark" ? "#f3f4f6" : "#111827",
+                      }}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      height={24}
+                      wrapperStyle={{
+                        color: mode === "dark" ? "#9ca3af" : "#4b5563",
+                      }}
+                    />
 
                     <Line
                       type="monotone"
@@ -1010,7 +1066,7 @@ export default function ReportsPage() {
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <FaCheckCircle className="text-green-600" />
-                  <span className="text-sm font-semibold text-gray-800">
+                  <span className={`text-sm font-semibold ${mode === 'dark' ? 'text-white' : 'text-black'}`}>
                     Completed
                   </span>
                 </div>
@@ -1019,11 +1075,11 @@ export default function ReportsPage() {
                   <span className="text-sm font-bold text-green-600">
                     {stats.completedTasks}
                   </span>
-                  <span className="text-xs text-gray-500">tasks</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">tasks</span>
                 </div>
               </div>
 
-              <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100 shadow-inner">
+              <div className={`relative h-3 w-full overflow-hidden rounded-full shadow-inner ${mode === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`}>
                 <div
                   className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-green-500 to-green-600 shadow-sm transition-all duration-500"
                   style={{ width: `${completedWidth}%` }}
@@ -1042,7 +1098,7 @@ export default function ReportsPage() {
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <FaClock className="animate-pulse text-cyan-600" />
-                  <span className="text-sm font-semibold text-gray-800">
+                  <span className={`text-sm font-semibold ${mode === 'dark' ? 'text-white' : 'text-black'}`}>
                     In Progress
                   </span>
                 </div>
@@ -1051,11 +1107,11 @@ export default function ReportsPage() {
                   <span className="text-sm font-bold text-cyan-600">
                     {stats.inProgressTasks}
                   </span>
-                  <span className="text-xs text-gray-500">tasks</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">tasks</span>
                 </div>
               </div>
 
-              <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100 shadow-inner">
+              <div className={`relative h-3 w-full overflow-hidden rounded-full shadow-inner ${mode === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`}>
                 <div
                   className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-600 shadow-sm transition-all duration-500"
                   style={{ width: `${inProgressWidth}%` }}
@@ -1073,21 +1129,21 @@ export default function ReportsPage() {
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FaTasks className="text-gray-600" />
-                  <span className="text-sm font-semibold text-gray-800">
+                  <FaTasks className="text-gray-600 dark:text-gray-400" />
+                  <span className={`text-sm font-semibold ${mode === 'dark' ? 'text-white' : 'text-black'}`}>
                     To-Do
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-gray-600">
+                  <span className="text-sm font-bold text-gray-600 dark:text-gray-400">
                     {stats.todoTasks}
                   </span>
-                  <span className="text-xs text-gray-500">tasks</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">tasks</span>
                 </div>
               </div>
 
-              <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100 shadow-inner">
+              <div className={`relative h-3 w-full overflow-hidden rounded-full shadow-inner ${mode === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`}>
                 <div
                   className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gray-400 to-gray-500 shadow-sm transition-all duration-500"
                   style={{ width: `${todoWidth}%` }}
@@ -1142,7 +1198,7 @@ export default function ReportsPage() {
                       </span>
 
                       <div className="flex-1">
-                        <div className="h-2 w-full rounded-full bg-gray-200">
+                        <div className={`h-2 w-full rounded-full ${mode === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`}>
                           <div
                             className={`${c.bar} h-2 rounded-full transition-all`}
                             style={{ width: `${width}%` }}
@@ -1150,7 +1206,7 @@ export default function ReportsPage() {
                         </div>
                       </div>
 
-                      <span className="min-w-[40px] text-right text-sm text-gray-600">
+                      <span className="min-w-[40px] text-right text-sm text-gray-600 dark:text-gray-400">
                         {count}
                       </span>
                     </div>
@@ -1168,15 +1224,15 @@ export default function ReportsPage() {
               <div className="h-40 animate-pulse rounded-lg bg-gray-100" />
             ) : Object.keys(stats.projectBreakdown).length === 0 ? (
               <div className="flex flex-col items-center justify-center py-14">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30">
                   <FaProjectDiagram className="h-6 w-6 text-purple-500" />
                 </div>
 
-                <div className="mb-1 text-sm font-semibold text-gray-800">
+                <div className="mb-1 text-sm font-semibold text-gray-800 dark:text-gray-200">
                   No Project Data
                 </div>
 
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
                   Adjust filters to see distribution
                 </div>
               </div>
@@ -1210,7 +1266,7 @@ export default function ReportsPage() {
 
                         <span className="text-sm font-semibold">{count}</span>
 
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           (
                           {stats.totalTasks > 0
                             ? Math.round((count / stats.totalTasks) * 100)
@@ -1245,14 +1301,14 @@ export default function ReportsPage() {
             <div className="max-h-[65vh] overflow-x-auto overflow-y-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="py-3 px-4 text-left">Resource</th>
-                    <th className="py-3 px-4 text-left">Role</th>
-                    <th className="py-3 px-4 text-center">Total Tasks</th>
-                    <th className="py-3 px-4 text-center">Completed</th>
-                    <th className="py-3 px-4 text-center">In Progress</th>
-                    <th className="py-3 px-4 text-center">To-Do</th>
-                    <th className="py-3 px-4 text-center">Completion %</th>
+                  <tr className={`border-b border-gray-200 dark:border-gray-700 ${mode === "dark" ? "text-gray-300" : "text-black"}`}>
+                    <th className={`py-3 px-4 text-left ${mode === "dark" ? "text-gray-300" : "text-black"}`}>Resource</th>
+                    <th className={`py-3 px-4 text-left ${mode === "dark" ? "text-gray-300" : "text-black"}`}>Role</th>
+                    <th className={`py-3 px-4 text-center ${mode === "dark" ? "text-gray-300" : "text-black"}`}>Total Tasks</th>
+                    <th className={`py-3 px-4 text-center ${mode === "dark" ? "text-gray-300" : "text-black"}`}>Completed</th>
+                    <th className={`py-3 px-4 text-center ${mode === "dark" ? "text-gray-300" : "text-black"}`}>In Progress</th>
+                    <th className={`py-3 px-4 text-center ${mode === "dark" ? "text-gray-300" : "text-black"}`}>To-Do</th>
+                    <th className={`py-3 px-4 text-center ${mode === "dark" ? "text-gray-300" : "text-black"}`}>Completion %</th>
                   </tr>
                 </thead>
 
@@ -1264,13 +1320,16 @@ export default function ReportsPage() {
                         resource.completionRate >= 80
                           ? "text-green-600"
                           : resource.completionRate >= 50
-                          ? "text-yellow-600"
-                          : "text-red-600";
+                            ? "text-yellow-600"
+                            : "text-red-600";
 
                       return (
                         <tr
                           key={resource.id}
-                          className="border-b border-gray-200 hover:bg-gray-50"
+                          className={`border-b border-gray-200 dark:border-gray-700 ${mode === "dark"
+                            ? "hover:bg-gray-800/50 text-gray-300"
+                            : "hover:bg-gray-50 text-black"
+                            }`}
                         >
                           {/* Resource */}
                           <td className="py-3 px-4">
@@ -1306,7 +1365,7 @@ export default function ReportsPage() {
                                       "Unknown Resource"}
                                   </span>
                                 </div>
-                                <div className="text-xs text-gray-500 max-w-[260px]">
+                                <div className="text-xs text-gray-500 dark:text-gray-400 max-w-[260px]">
                                   <span
                                     className="block truncate"
                                     title={resource.email || ""}
@@ -1320,7 +1379,7 @@ export default function ReportsPage() {
 
                           {/* Role */}
                           <td className="py-3 px-4">
-                            <span className="inline-flex max-w-[200px] rounded bg-indigo-100 px-2 py-1 text-xs text-indigo-700">
+                            <span className={`inline-flex max-w-[200px] rounded px-2 py-1 text-xs ${mode === 'dark' ? 'bg-indigo-900/30 text-indigo-300' : 'bg-indigo-100 text-indigo-700'}`}>
                               <span
                                 className="block truncate"
                                 title={resource.resourceRole || "Not specified"}
@@ -1330,7 +1389,7 @@ export default function ReportsPage() {
                             </span>
                           </td>
 
-                          <td className="py-3 px-4 text-center font-semibold">
+                          <td className="py-3 px-4 text-center font-semibold dark:text-gray-300">
                             {resource.total}
                           </td>
 
@@ -1344,7 +1403,7 @@ export default function ReportsPage() {
                             {resource.inProgress}
                           </td>
 
-                          <td className="py-3 px-4 text-center text-gray-600">
+                          <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-400">
                             {resource.todo}
                           </td>
 

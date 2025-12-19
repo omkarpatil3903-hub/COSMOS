@@ -57,18 +57,18 @@ const EditProjectModal = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden"
+        className="bg-white [.dark_&]:bg-[#181B2A] rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-gray-200">
+        <div className="flex items-start justify-between p-6 border-b border-gray-200 [.dark_&]:border-white/10">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
               <FaEdit className="w-6 h-6 text-indigo-600" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Edit Project</h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <h2 className="text-2xl font-bold text-gray-900 [.dark_&]:text-white">Edit Project</h2>
+              <p className="text-sm text-gray-500 [.dark_&]:text-gray-400 mt-1">
                 Update project details and OKRs
               </p>
             </div>
@@ -90,7 +90,7 @@ const EditProjectModal = ({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Left Column - Project Details */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300 uppercase tracking-wider mb-4 flex items-center gap-2">
                   <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs">
                     📋
                   </span>
@@ -99,7 +99,7 @@ const EditProjectModal = ({
 
                 {/* Project Name */}
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-2">
                     Project Name <span className="text-red-500">*</span>
                   </label>
                   <VoiceInput
@@ -108,9 +108,9 @@ const EditProjectModal = ({
                     onChange={(e) =>
                       setFormData({ ...formData, projectName: e.target.value })
                     }
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${editErrors.projectName
-                        ? "border-red-500"
-                        : "border-gray-300"
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white ${editErrors.projectName
+                      ? "border-red-500"
+                      : "border-gray-300 [.dark_&]:border-white/10"
                       }`}
                   />
                   {editErrors.projectName && (
@@ -122,7 +122,7 @@ const EditProjectModal = ({
 
                 {/* Company Name */}
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-2">
                     Company Name <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -130,7 +130,7 @@ const EditProjectModal = ({
                     onChange={(e) =>
                       setFormData({ ...formData, clientId: e.target.value })
                     }
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${editErrors.clientId ? "border-red-500" : "border-gray-300"
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white ${editErrors.clientId ? "border-red-500" : "border-gray-300 [.dark_&]:border-white/10"
                       }`}
                   >
                     <option value="">Select a company</option>
@@ -149,7 +149,7 @@ const EditProjectModal = ({
 
                 {/* Project Manager */}
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-2">
                     Project Manager <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -160,9 +160,9 @@ const EditProjectModal = ({
                         projectManagerId: e.target.value,
                       })
                     }
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${editErrors.projectManagerId
-                        ? "border-red-500"
-                        : "border-gray-300"
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white ${editErrors.projectManagerId
+                      ? "border-red-500"
+                      : "border-gray-300 [.dark_&]:border-white/10"
                       }`}
                   >
                     <option value="">Select a project manager</option>
@@ -180,8 +180,8 @@ const EditProjectModal = ({
                 </div>
 
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Assignees</label>
-                  <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 space-y-1">
+                  <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-2">Assignees</label>
+                  <div className="max-h-48 overflow-y-auto border border-gray-200 [.dark_&]:border-white/10 rounded-lg p-3 space-y-1">
                     {assigneesOptions.map((u) => {
                       const current = Array.isArray(formData.assigneeIds)
                         ? formData.assigneeIds
@@ -200,7 +200,7 @@ const EditProjectModal = ({
                             }}
                             className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                           />
-                          <span className="text-sm text-gray-700">{u.name}</span>
+                          <span className="text-sm text-gray-700 [.dark_&]:text-gray-300">{u.name}</span>
                         </label>
                       );
                     })}
@@ -213,7 +213,7 @@ const EditProjectModal = ({
 
               {/* Right Column - OKRs */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4 mt-0 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300 uppercase tracking-wider mb-4 mt-0 flex items-center gap-2">
                   <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs">
                     📅
                   </span>
@@ -221,7 +221,7 @@ const EditProjectModal = ({
                 </h3>
 
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-2">
                     Start Date <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -230,9 +230,9 @@ const EditProjectModal = ({
                     onChange={(e) =>
                       setFormData({ ...formData, startDate: e.target.value })
                     }
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${editErrors.startDate
-                        ? "border-red-500"
-                        : "border-gray-300"
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white ${editErrors.startDate
+                      ? "border-red-500"
+                      : "border-gray-300 [.dark_&]:border-white/10"
                       }`}
                   />
                   {editErrors.startDate && (
@@ -243,7 +243,7 @@ const EditProjectModal = ({
                 </div>
 
                 <div className="mb-8">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-2">
                     End Date <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -252,7 +252,7 @@ const EditProjectModal = ({
                     onChange={(e) =>
                       setFormData({ ...formData, endDate: e.target.value })
                     }
-                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm ${editErrors.endDate ? "border-red-500" : "border-gray-300"
+                    className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white ${editErrors.endDate ? "border-red-500" : "border-gray-300 [.dark_&]:border-white/10"
                       }`}
                   />
                   {editErrors.endDate && (
@@ -263,7 +263,7 @@ const EditProjectModal = ({
                 </div>
 
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300 uppercase tracking-wider flex items-center gap-2">
                     <span className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs">
                       🎯
                     </span>
@@ -283,7 +283,7 @@ const EditProjectModal = ({
                   {formData.okrs.map((okr, okrIndex) => (
                     <div
                       key={okrIndex}
-                      className="bg-gray-50 p-4 rounded-lg border border-gray-200"
+                      className="bg-gray-50 [.dark_&]:bg-white/5 p-4 rounded-lg border border-gray-200 [.dark_&]:border-white/10"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 text-xs font-bold">
@@ -309,10 +309,10 @@ const EditProjectModal = ({
                         onChange={(e) =>
                           handleOKRChange(okrIndex, "objective", e.target.value)
                         }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-3"
+                        className="w-full px-3 py-2 border border-gray-300 [.dark_&]:border-white/10 rounded-lg text-sm bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-3"
                       />
 
-                      <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">
+                      <label className="block text-xs font-semibold text-gray-600 [.dark_&]:text-gray-400 uppercase tracking-wider mb-2">
                         Key Results
                       </label>
                       <div className="space-y-2">
@@ -331,7 +331,7 @@ const EditProjectModal = ({
                                   e.target.value
                                 )
                               }
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                              className="flex-1 px-3 py-2 border border-gray-300 [.dark_&]:border-white/10 rounded-lg text-sm bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             />
                             {okr.keyResults.length > 1 && (
                               <button
@@ -368,14 +368,14 @@ const EditProjectModal = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-white/5">
           <button
             type="button"
             onClick={() => {
               setShowEditForm(false);
               setSelectedProject(null);
             }}
-            className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-5 py-2.5 text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 bg-white [.dark_&]:bg-white/5 border border-gray-300 [.dark_&]:border-white/20 rounded-lg hover:bg-gray-50 [.dark_&]:hover:bg-white/10 transition-colors"
           >
             Cancel
           </button>

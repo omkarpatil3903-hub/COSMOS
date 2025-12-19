@@ -45,18 +45,18 @@ function DocumentPreviewModal({
   const badgeClasses = isImage
     ? "bg-blue-50 text-blue-700 border-blue-300"
     : isPdf
-    ? "bg-rose-50 text-rose-700 border-rose-300"
-    : "bg-indigo-50 text-indigo-700 border-indigo-300";
+      ? "bg-rose-50 text-rose-700 border-rose-300"
+      : "bg-indigo-50 text-indigo-700 border-indigo-300";
   const previewBorderColor = isImage
     ? "border-blue-200"
     : isPdf
-    ? "border-rose-200"
-    : "border-indigo-200";
+      ? "border-rose-200"
+      : "border-indigo-200";
   const iconColor = isImage
     ? "text-blue-600"
     : isPdf
-    ? "text-rose-600"
-    : "text-indigo-600";
+      ? "text-rose-600"
+      : "text-indigo-600";
 
   const canNavigate = Array.isArray(docs) && docs.length > 1;
   const currentIndex = canNavigate
@@ -72,23 +72,22 @@ function DocumentPreviewModal({
       onClick={onClose}
     >
       <div
-        className={`bg-white rounded-xl shadow-2xl w-full ${variant === "compact" ? "max-w-5xl max-h-[90vh]" : "max-w-7xl max-h-[94vh]"} flex flex-col overflow-hidden`}
+        className={`bg-white [.dark_&]:bg-[#181B2A] rounded-xl shadow-2xl w-full ${variant === "compact" ? "max-w-5xl max-h-[90vh]" : "max-w-7xl max-h-[94vh]"} flex flex-col overflow-hidden`}
         style={{ maxWidth: variant === "compact" ? "95vw" : "98vw" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 [.dark_&]:border-white/10 bg-gradient-to-r from-gray-50 to-white [.dark_&]:from-[#1F2234] [.dark_&]:to-[#1F2234] shrink-0">
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <div
-              className={`p-2 rounded-lg ${
-                badgeClasses.split(" ")[0]
-              } border ${badgeClasses.split(" ").slice(2).join(" ")}`}
+              className={`p-2 rounded-lg ${badgeClasses.split(" ")[0]
+                } border ${badgeClasses.split(" ").slice(2).join(" ")}`}
             >
               <FileIcon className={`w-5 h-5 ${iconColor}`} />
             </div>
             <div className="flex-1 min-w-0">
               <h2
-                className="text-lg font-semibold text-gray-900 truncate"
+                className="text-lg font-semibold text-gray-900 [.dark_&]:text-white truncate"
                 title={doc.name}
               >
                 {displayName}
@@ -100,7 +99,7 @@ function DocumentPreviewModal({
                   {fileKind}
                 </span>
                 <span
-                  className="text-xs text-gray-500 truncate"
+                  className="text-xs text-gray-500 [.dark_&]:text-gray-400 truncate"
                   title={`ID: ${String(doc.id || "").toUpperCase()}`}
                 >
                   ID:{" "}
@@ -113,7 +112,7 @@ function DocumentPreviewModal({
           </div>
 
           <button
-            className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-700 transition-colors"
+            className="p-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 rounded-lg text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-white transition-colors"
             onClick={onClose}
             title="Close"
           >
@@ -126,27 +125,26 @@ function DocumentPreviewModal({
           {/* Preview Section */}
           <div className="flex-1 p-6 lg:p-8 overflow-y-auto">
             <div
-              className={`border-2 ${previewBorderColor} rounded-xl bg-gradient-to-br from-gray-50 to-white overflow-hidden shadow-inner relative`}
+              className={`border-2 ${previewBorderColor} [.dark_&]:border-white/10 rounded-xl bg-gradient-to-br from-gray-50 to-white [.dark_&]:from-[#181B2A] [.dark_&]:to-[#181B2A] overflow-hidden shadow-inner relative`}
               style={{ minHeight: variant === "compact" ? "65vh" : "72vh", maxHeight: "90vh" }}
             >
               {/* Navigation Buttons - Top Right Corner */}
               {canNavigate && (
-                <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 p-1">
+                <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-white/95 [.dark_&]:bg-[#1F2234]/95 backdrop-blur-sm rounded-lg shadow-lg border border-gray-200 [.dark_&]:border-white/10 p-1">
                   <button
                     onClick={() =>
                       enablePrev && onNavigate && onNavigate("prev")
                     }
                     disabled={!enablePrev}
-                    className={`p-2 rounded-md transition-all ${
-                      enablePrev
-                        ? "bg-white hover:bg-indigo-50 text-gray-700 hover:text-indigo-600 shadow-sm"
-                        : "bg-gray-50 text-gray-300 cursor-not-allowed"
-                    }`}
+                    className={`p-2 rounded-md transition-all ${enablePrev
+                        ? "bg-white [.dark_&]:bg-[#181B2A] hover:bg-indigo-50 [.dark_&]:hover:bg-white/10 text-gray-700 [.dark_&]:text-white hover:text-indigo-600 [.dark_&]:hover:text-white shadow-sm"
+                        : "bg-gray-50 [.dark_&]:bg-white/5 text-gray-300 [.dark_&]:text-gray-600 cursor-not-allowed"
+                      }`}
                     title="Previous Document"
                   >
                     <FaChevronLeft className="w-4 h-4" />
                   </button>
-                  <span className="text-xs text-gray-600 font-semibold px-2 min-w-[50px] text-center">
+                  <span className="text-xs text-gray-600 [.dark_&]:text-gray-300 font-semibold px-2 min-w-[50px] text-center">
                     {currentIndex + 1} / {docs.length}
                   </span>
                   <button
@@ -154,11 +152,10 @@ function DocumentPreviewModal({
                       enableNext && onNavigate && onNavigate("next")
                     }
                     disabled={!enableNext}
-                    className={`p-2 rounded-md transition-all ${
-                      enableNext
-                        ? "bg-white hover:bg-indigo-50 text-gray-700 hover:text-indigo-600 shadow-sm"
-                        : "bg-gray-50 text-gray-300 cursor-not-allowed"
-                    }`}
+                    className={`p-2 rounded-md transition-all ${enableNext
+                        ? "bg-white [.dark_&]:bg-[#181B2A] hover:bg-indigo-50 [.dark_&]:hover:bg-white/10 text-gray-700 [.dark_&]:text-white hover:text-indigo-600 [.dark_&]:hover:text-white shadow-sm"
+                        : "bg-gray-50 [.dark_&]:bg-white/5 text-gray-300 [.dark_&]:text-gray-600 cursor-not-allowed"
+                      }`}
                     title="Next Document"
                   >
                     <FaChevronRight className="w-4 h-4" />
@@ -196,11 +193,11 @@ function DocumentPreviewModal({
               ) : (
                 <div className="flex items-center justify-center h-full p-8">
                   <div className="text-center">
-                    <FaFile className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 text-sm font-medium">
+                    <FaFile className="w-16 h-16 text-gray-300 [.dark_&]:text-gray-600 mx-auto mb-4" />
+                    <p className="text-gray-500 [.dark_&]:text-gray-400 text-sm font-medium">
                       No preview available
                     </p>
-                    <p className="text-gray-400 text-xs mt-1">
+                    <p className="text-gray-400 [.dark_&]:text-gray-500 text-xs mt-1">
                       This document doesn't have a preview
                     </p>
                   </div>
@@ -225,11 +222,11 @@ function DocumentPreviewModal({
           </div>
 
           {/* Sidebar */}
-          <div className="w-full lg:w-80 bg-gray-50 border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col shrink-0">
+          <div className="w-full lg:w-80 bg-gray-50 [.dark_&]:bg-[#1F2234] border-t lg:border-t-0 lg:border-l border-gray-200 [.dark_&]:border-white/10 flex flex-col shrink-0">
             <div className="p-6 space-y-6 overflow-y-auto">
               {/* Metadata */}
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+              <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg p-4 shadow-sm border border-gray-200 [.dark_&]:border-white/10">
+                <h3 className="text-xs font-bold text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wider mb-3">
                   Document Info
                 </h3>
 
@@ -237,8 +234,8 @@ function DocumentPreviewModal({
                   <div className="flex items-center gap-3 mb-3">
                     <FaUser className="w-4 h-4 text-gray-400" />
                     <div className="flex-1">
-                      <p className="text-xs text-gray-500">Uploaded By</p>
-                      <p className="text-sm font-medium text-gray-900">{doc.createdByName}</p>
+                      <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">Uploaded By</p>
+                      <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">{doc.createdByName}</p>
                     </div>
                   </div>
                 )}
@@ -247,8 +244,8 @@ function DocumentPreviewModal({
                   <div className="flex items-center gap-3 mb-3">
                     <FaCalendarAlt className="w-4 h-4 text-gray-400" />
                     <div className="flex-1">
-                      <p className="text-xs text-gray-500">Uploaded On</p>
-                      <p className="text-sm font-medium text-gray-900">{doc.created}</p>
+                      <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">Uploaded On</p>
+                      <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">{doc.created}</p>
                     </div>
                   </div>
                 )}
@@ -257,8 +254,8 @@ function DocumentPreviewModal({
                   <div className="flex items-center gap-3 mb-3">
                     <FaUserEdit className="w-4 h-4 text-gray-400" />
                     <div className="flex-1">
-                      <p className="text-xs text-gray-500">Last Edited By</p>
-                      <p className="text-sm font-medium text-gray-900">{doc.updatedByName}</p>
+                      <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">Last Edited By</p>
+                      <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">{doc.updatedByName}</p>
                     </div>
                   </div>
                 )}
@@ -267,8 +264,8 @@ function DocumentPreviewModal({
                   <div className="flex items-center gap-3 mb-3">
                     <FaCalendarAlt className="w-4 h-4 text-gray-400" />
                     <div className="flex-1">
-                      <p className="text-xs text-gray-500">Last Updated</p>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">Last Updated</p>
+                      <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
                         {doc.updated}
                       </p>
                     </div>
@@ -279,9 +276,9 @@ function DocumentPreviewModal({
                   <div className="flex items-start gap-3">
                     <FaFile className="w-4 h-4 text-gray-400 mt-0.5" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-500 mb-0.5">Filename</p>
+                      <p className="text-xs text-gray-500 [.dark_&]:text-gray-400 mb-0.5">Filename</p>
                       <p
-                        className="text-sm font-medium text-gray-900 break-all line-clamp-2"
+                        className="text-sm font-medium text-gray-900 [.dark_&]:text-white break-all line-clamp-2"
                         title={doc.filename}
                       >
                         {doc.filename}
@@ -292,15 +289,15 @@ function DocumentPreviewModal({
               </div>
 
               {/* Access Control */}
-              <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+              <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg p-4 shadow-sm border border-gray-200 [.dark_&]:border-white/10">
+                <h3 className="text-xs font-bold text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wider mb-3">
                   Access Control
                 </h3>
 
                 {admin.length === 0 && member.length === 0 ? (
                   <div className="text-center py-4">
-                    <FaUserShield className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                    <p className="text-xs text-gray-500">
+                    <FaUserShield className="w-8 h-8 text-gray-300 [.dark_&]:text-gray-600 mx-auto mb-2" />
+                    <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">
                       No access restrictions set
                     </p>
                   </div>
@@ -309,11 +306,11 @@ function DocumentPreviewModal({
                     {admin.length > 0 && (
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                          <FaUserShield className="w-3.5 h-3.5 text-indigo-600" />
-                          <span className="text-xs font-semibold text-gray-700">
+                          <FaUserShield className="w-3.5 h-3.5 text-indigo-600 [.dark_&]:text-indigo-400" />
+                          <span className="text-xs font-semibold text-gray-700 [.dark_&]:text-gray-300">
                             Administrators
                           </span>
-                          <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                          <span className="ml-auto text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 bg-gray-100 [.dark_&]:bg-white/10 px-2 py-0.5 rounded-full">
                             {admin.length}
                           </span>
                         </div>
@@ -321,7 +318,7 @@ function DocumentPreviewModal({
                           {admin.map((n) => (
                             <span
                               key={`a_${n}`}
-                              className="px-2.5 py-1 rounded-md bg-indigo-50 border border-indigo-200 text-xs text-indigo-700 font-medium truncate max-w-[150px]"
+                              className="px-2.5 py-1 rounded-md bg-indigo-50 [.dark_&]:bg-indigo-900/20 border border-indigo-200 [.dark_&]:border-indigo-500/20 text-xs text-indigo-700 [.dark_&]:text-indigo-300 font-medium truncate max-w-[150px]"
                               title={n}
                             >
                               {n}
@@ -334,11 +331,11 @@ function DocumentPreviewModal({
                     {member.length > 0 && (
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                          <FaUsers className="w-3.5 h-3.5 text-blue-600" />
-                          <span className="text-xs font-semibold text-gray-700">
+                          <FaUsers className="w-3.5 h-3.5 text-blue-600 [.dark_&]:text-blue-400" />
+                          <span className="text-xs font-semibold text-gray-700 [.dark_&]:text-gray-300">
                             Members
                           </span>
-                          <span className="ml-auto text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                          <span className="ml-auto text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 bg-gray-100 [.dark_&]:bg-white/10 px-2 py-0.5 rounded-full">
                             {member.length}
                           </span>
                         </div>
@@ -346,7 +343,7 @@ function DocumentPreviewModal({
                           {member.map((n) => (
                             <span
                               key={`m_${n}`}
-                              className="px-2.5 py-1 rounded-md bg-blue-50 border border-blue-200 text-xs text-blue-700 font-medium truncate max-w-[150px]"
+                              className="px-2.5 py-1 rounded-md bg-blue-50 [.dark_&]:bg-blue-900/20 border border-blue-200 [.dark_&]:border-blue-500/20 text-xs text-blue-700 [.dark_&]:text-blue-300 font-medium truncate max-w-[150px]"
                               title={n}
                             >
                               {n}
@@ -363,7 +360,7 @@ function DocumentPreviewModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 shrink-0">
+        <div className="px-6 py-4 border-t border-gray-200 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-[#1F2234] flex justify-end gap-3 shrink-0">
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>

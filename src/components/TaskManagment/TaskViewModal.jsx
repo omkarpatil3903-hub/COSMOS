@@ -613,17 +613,18 @@ const TaskViewModal = ({
       onClick={onClose}
     >
       <div
-        className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl shadow-indigo-500/20 w-full max-w-[1100px] h-[90vh] flex flex-col overflow-hidden border border-white/20"
+        className="bg-white/95 [.dark_&]:bg-[#181B2A]/95 backdrop-blur-sm rounded-2xl shadow-2xl shadow-indigo-500/20 w-full max-w-[1100px] h-[90vh] flex flex-col overflow-hidden border border-white/20 [.dark_&]:border-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* --- Header --- */}
-        <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-b border-gray-100/50 bg-white/80 backdrop-blur-md shrink-0 z-10">
+        {/* --- Header --- */}
+        <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-b border-gray-100/50 [.dark_&]:border-white/10 bg-white/80 [.dark_&]:bg-[#181B2A]/80 backdrop-blur-md shrink-0 z-10">
           <div className="flex items-center gap-2 text-sm text-gray-500 overflow-hidden">
-            <span className="truncate font-medium text-gray-700 max-w-[150px] lg:max-w-[200px]" title={project?.name}>
+            <span className="truncate font-medium text-gray-700 [.dark_&]:text-white max-w-[150px] lg:max-w-[200px]" title={project?.name}>
               {project?.name || "No Project"}
             </span>
-            <span className="text-gray-300">/</span>
-            <span className="px-2 py-0.5 rounded border border-gray-200 bg-gray-50 text-xs font-mono text-gray-600">
+            <span className="text-gray-300 [.dark_&]:text-gray-600">/</span>
+            <span className="px-2 py-0.5 rounded border border-gray-200 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-white/5 text-xs font-mono text-gray-600 [.dark_&]:text-gray-400">
               {task.id.slice(0, 6).toUpperCase()}
             </span>
             {task.isRecurring && (
@@ -663,7 +664,7 @@ const TaskViewModal = ({
             )}
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors ml-2"
+              className="p-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 rounded-full text-gray-400 transition-colors ml-2"
             >
               <FaTimes className="text-lg" />
             </button>
@@ -675,14 +676,14 @@ const TaskViewModal = ({
           {/* LEFT PANEL: Content */}
           <div className="flex-1 p-6 lg:p-8 lg:overflow-y-auto border-b lg:border-b-0 lg:border-r border-gray-100/50 order-2 lg:order-1">
             {/* Title */}
-            <h1 className="text-3xl font-bold text-gray-900 mb-6 leading-tight">
+            <h1 className="text-3xl font-bold text-gray-900 [.dark_&]:text-white mb-6 leading-tight">
               {task.title}
             </h1>
 
             {/* Description Section */}
             <div className="mb-8 group">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">
+                <h3 className="text-sm font-bold text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wider">
                   Description
                 </h3>
                 {canEdit && (
@@ -699,7 +700,7 @@ const TaskViewModal = ({
                   <textarea
                     value={descValue}
                     onChange={(e) => setDescValue(e.target.value)}
-                    className="w-full h-32 p-3 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full h-32 p-3 border border-gray-200 [.dark_&]:border-white/10 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent [.dark_&]:bg-[#181B2A] [.dark_&]:text-white"
                     placeholder="Add a description..."
                   />
                   <div className="flex justify-end gap-2">
@@ -726,7 +727,7 @@ const TaskViewModal = ({
                 </div>
               ) : (
                 <div
-                  className={`prose prose-sm max-w-none text-gray-600 bg-gray-50/50 p-4 rounded-xl border border-gray-100/50 min-h-[60px] transition-colors ${canEdit ? "cursor-pointer hover:bg-gray-50" : ""}`}
+                  className={`prose prose-sm max-w-none text-gray-600 [.dark_&]:text-gray-300 bg-gray-50/50 [.dark_&]:bg-white/5 p-4 rounded-xl border border-gray-100/50 [.dark_&]:border-white/10 min-h-[60px] transition-colors ${canEdit ? "cursor-pointer hover:bg-gray-50 [.dark_&]:hover:bg-white/10" : ""}`}
                   onClick={() => canEdit && setIsEditingDesc(true)}
                 >
                   {task.description ? (
@@ -743,7 +744,7 @@ const TaskViewModal = ({
             {/* Subtasks Section */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">
+                <h3 className="text-sm font-bold text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wider">
                   Subtasks
                 </h3>
                 <span className="text-xs text-gray-400">
@@ -752,19 +753,19 @@ const TaskViewModal = ({
                 </span>
               </div>
               {/* Progress Bar */}
-              <div className="h-1.5 w-full bg-gray-100 rounded-full mb-4 overflow-hidden">
+              <div className="h-1.5 w-full bg-gray-100 [.dark_&]:bg-white/10 rounded-full mb-4 overflow-hidden">
                 <div
                   className="h-full bg-green-500 transition-all duration-500 ease-out"
                   style={{ width: `${(task.subtasks || []).length > 0 ? ((task.subtasks || []).filter((s) => s.completed).length / (task.subtasks || []).length) * 100 : 0}%` }}
                 />
               </div>
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 rounded-xl overflow-hidden">
                 {(task.subtasks || []).length > 0 ? (
                   <div className="divide-y divide-gray-100">
                     {task.subtasks.map((sub) => (
                       <div
                         key={sub.id}
-                        className="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors group"
+                        className="flex items-center gap-3 p-3 hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors group"
                       >
                         <button
                           onClick={async () => {
@@ -777,7 +778,7 @@ const TaskViewModal = ({
                           }}
                           className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${sub.completed
                             ? "bg-indigo-600 border-indigo-600 text-white"
-                            : "border-gray-300 hover:border-indigo-500 text-transparent"
+                            : "border-gray-300 [.dark_&]:border-gray-600 hover:border-indigo-500 text-transparent"
                             }`}
                         >
                           <FaRegCheckCircle className="text-xs" />
@@ -785,7 +786,7 @@ const TaskViewModal = ({
                         <span
                           className={`text-sm flex-1 ${sub.completed
                             ? "text-gray-400 line-through"
-                            : "text-gray-700"
+                            : "text-gray-700 [.dark_&]:text-white"
                             }`}
                         >
                           {sub.title}
@@ -818,7 +819,7 @@ const TaskViewModal = ({
                   </div>
                 )}
                 {canEdit && (
-                  <div className="p-3 bg-gray-50 border-t border-gray-100">
+                  <div className="p-3 bg-gray-50 [.dark_&]:bg-white/5 border-t border-gray-100 [.dark_&]:border-white/10">
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -840,7 +841,7 @@ const TaskViewModal = ({
                             setNewSubtaskTitle("");
                           }
                         }}
-                        className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100 hover:text-indigo-600 transition-colors"
+                        className="px-3 py-1.5 bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 text-gray-600 [.dark_&]:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100 [.dark_&]:hover:bg-white/10 hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 transition-colors"
                       >
                         Add
                       </button>
@@ -858,7 +859,7 @@ const TaskViewModal = ({
                   Objectives & Key Results
                 </h3>
               </div>
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
+              <div className="bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 rounded-xl p-4">
                 {(() => {
                   if (!project || !project.okrs || project.okrs.length === 0) {
                     return (
@@ -897,9 +898,9 @@ const TaskViewModal = ({
                     .filter(Boolean);
 
                   return (
-                    <div className="bg-gradient-to-br from-indigo-50 to-white border-l-4 border-indigo-500 rounded-r-xl p-4 shadow-sm">
+                    <div className="bg-gradient-to-br from-indigo-50 to-white [.dark_&]:from-indigo-900/20 [.dark_&]:to-[#181B2A] border-l-4 border-indigo-500 rounded-r-xl p-4 shadow-sm">
                       <div className="flex items-start gap-3">
-                        <div className="p-2 bg-white rounded-lg shadow-sm text-indigo-600 shrink-0">
+                        <div className="p-2 bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-sm text-indigo-600 [.dark_&]:text-indigo-400 shrink-0">
                           <FaBullseye className="text-lg" />
                         </div>
                         <div className="space-y-3 flex-1">
@@ -907,7 +908,7 @@ const TaskViewModal = ({
                             <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1 block">
                               Objective
                             </span>
-                            <p className="text-sm text-gray-900 font-semibold leading-snug">
+                            <p className="text-sm text-gray-900 [.dark_&]:text-white font-semibold leading-snug">
                               {okr.objective}
                             </p>
                           </div>
@@ -918,7 +919,7 @@ const TaskViewModal = ({
                               </span>
                               <ul className="space-y-1.5">
                                 {selectedKRs.map((kr, i) => (
-                                  <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                                  <li key={i} className="text-sm text-gray-600 [.dark_&]:text-gray-300 flex items-start gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-indigo-300 mt-1.5 shrink-0"></span>
                                     <span className="leading-relaxed">{kr || `Key Result ${i + 1}`}</span>
                                   </li>
@@ -936,9 +937,9 @@ const TaskViewModal = ({
           </div>
 
           {/* RIGHT PANEL: Metadata & Activity */}
-          <div className="w-full lg:w-[350px] bg-gray-50/50 flex flex-col shrink-0 lg:overflow-y-auto order-1 lg:order-2">
+          <div className="w-full lg:w-[350px] bg-gray-50/50 [.dark_&]:bg-[#1F2234] flex flex-col shrink-0 lg:overflow-y-auto order-1 lg:order-2">
             {/* Metadata Grid */}
-            <div className="p-6 border-b border-gray-200 space-y-5 bg-white">
+            <div className="p-6 border-b border-gray-200 [.dark_&]:border-white/10 space-y-5 bg-white [.dark_&]:bg-[#181B2A]">
               {/* Status & Priority Row */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="group relative">
@@ -949,7 +950,7 @@ const TaskViewModal = ({
                     {/* Status dropdown trigger (without Done in menu) */}
                     <button
                       onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                      className={`flex-1 px-3 py-2 rounded-lg text-xs border border-gray-200 bg-white flex items-center justify-between hover:border-indigo-300 transition-colors ${getStatusBadge(displayStatus)}`}
+                      className={`flex-1 px-3 py-2 rounded-lg text-xs border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] flex items-center justify-between hover:border-indigo-300 transition-colors ${getStatusBadge(displayStatus)}`}
                     >
                       <span className="font-medium">{displayStatus}</span>
                       <FaChevronDown className="text-[10px] opacity-50" />
@@ -969,11 +970,10 @@ const TaskViewModal = ({
                             handleQuickUpdate("status", "Done");
                           }
                         }}
-                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors whitespace-nowrap ${
-                          String(displayStatus || "").toLowerCase().replace(/[^a-z0-9]/g, "") === "done"
-                            ? "bg-emerald-500 text-white border-emerald-500"
-                            : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                        }`}
+                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors whitespace-nowrap ${String(displayStatus || "").toLowerCase().replace(/[^a-z0-9]/g, "") === "done"
+                          ? "bg-emerald-500 text-white border-emerald-500"
+                          : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                          }`}
                       >
                         Done
                       </button>
@@ -986,7 +986,7 @@ const TaskViewModal = ({
                         className="fixed inset-0 z-10"
                         onClick={() => setShowStatusDropdown(false)}
                       ></div>
-                      <div className="absolute top-full left-0 w-full mt-1 bg-white rounded-lg shadow-xl border border-gray-100 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                      <div className="absolute top-full left-0 w-full mt-1 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-100 [.dark_&]:border-white/10 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                         {statusOptions
                           .filter((st) => st !== "Done")
                           .map((status) => (
@@ -997,16 +997,15 @@ const TaskViewModal = ({
                                 handleQuickUpdate("status", status);
                                 setShowStatusDropdown(false);
                               }}
-                              className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between ${
-                                String(displayStatus || "")
-                                  .toLowerCase()
-                                  .replace(/[^a-z0-9]/g, "") ===
+                              className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between ${String(displayStatus || "")
+                                .toLowerCase()
+                                .replace(/[^a-z0-9]/g, "") ===
                                 String(status || "")
                                   .toLowerCase()
                                   .replace(/[^a-z0-9]/g, "")
-                                  ? "bg-indigo-50 text-indigo-700 font-medium"
-                                  : "text-gray-700"
-                              }`}
+                                ? "bg-indigo-50 text-indigo-700 font-medium"
+                                : "text-gray-700"
+                                }`}
                             >
                               {status}
                               {String(displayStatus || "")
@@ -1028,7 +1027,7 @@ const TaskViewModal = ({
                   </label>
                   <button
                     onClick={() => setShowPriorityDropdown(!showPriorityDropdown)}
-                    className={`w-full px-3 py-2 rounded-lg text-xs border border-gray-200 bg-white flex items-center justify-between hover:border-indigo-300 transition-colors ${getPriorityBadge(task.priority)}`}
+                    className={`w-full px-3 py-2 rounded-lg text-xs border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] flex items-center justify-between hover:border-indigo-300 transition-colors ${getPriorityBadge(task.priority)}`}
                   >
                     <span className="font-medium">{task.priority || "Medium"}</span>
                     <FaChevronDown className="text-[10px] opacity-50" />
@@ -1037,7 +1036,7 @@ const TaskViewModal = ({
                   {showPriorityDropdown && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setShowPriorityDropdown(false)}></div>
-                      <div className="absolute top-full left-0 w-full mt-1 bg-white rounded-lg shadow-xl border border-gray-100 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                      <div className="absolute top-full left-0 w-full mt-1 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-100 [.dark_&]:border-white/10 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                         {["Low", "Medium", "High"].map(priority => (
                           <button
                             key={priority}
@@ -1045,7 +1044,7 @@ const TaskViewModal = ({
                               handleQuickUpdate("priority", priority);
                               setShowPriorityDropdown(false);
                             }}
-                            className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between ${task.priority === priority ? "bg-indigo-50 text-indigo-700 font-medium" : "text-gray-700"}`}
+                            className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 [.dark_&]:hover:bg-white/5 flex items-center justify-between ${task.priority === priority ? "bg-indigo-50 text-indigo-700 font-medium" : "text-gray-700 [.dark_&]:text-gray-200"}`}
                           >
                             {priority}
                             {task.priority === priority && <FaCheck />}
@@ -1067,13 +1066,13 @@ const TaskViewModal = ({
                     localAssigneesResolved.map((u, i) => (
                       <div
                         key={i}
-                        className="flex items-center gap-2 px-2 py-1 bg-white border border-gray-200 rounded-full shadow-sm"
+                        className="flex items-center gap-2 px-2 py-1 bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 rounded-full shadow-sm"
                       >
                         <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold">
                           {u.name?.[0]}
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-xs text-gray-700 max-w-[80px] truncate leading-none">
+                          <span className="text-xs text-gray-700 [.dark_&]:text-white max-w-[80px] truncate leading-none">
                             {u.name}
                           </span>
                           <span className={`text-[9px] font-medium ${u.status === 'Done' ? 'text-green-600' : 'text-gray-400'}`}>
@@ -1099,12 +1098,12 @@ const TaskViewModal = ({
                 {showAssigneePopover && (
                   <>
                     <div className="fixed inset-0 z-10" onClick={() => setShowAssigneePopover(false)}></div>
-                    <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100 flex flex-col max-h-[300px]">
-                      <div className="p-2 border-b border-gray-50 bg-gray-50/50">
+                    <div className="absolute top-full left-0 mt-2 w-64 bg-white [.dark_&]:bg-[#1F2234] rounded-xl shadow-2xl border border-gray-100 [.dark_&]:border-white/10 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100 flex flex-col max-h-[300px]">
+                      <div className="p-2 border-b border-gray-50 [.dark_&]:border-white/10 bg-gray-50/50 [.dark_&]:bg-white/5">
                         <input
                           type="text"
                           placeholder="Search users..."
-                          className="w-full px-2 py-1 text-xs bg-white border border-gray-200 rounded-md focus:outline-none focus:border-indigo-500"
+                          className="w-full px-2 py-1 text-xs bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 rounded-md focus:outline-none focus:border-indigo-500 [.dark_&]:text-white"
                           autoFocus
                         />
                       </div>
@@ -1116,7 +1115,7 @@ const TaskViewModal = ({
                             <button
                               key={u.id}
                               onClick={() => handleToggleAssignee(u, 'user')}
-                              className={`w-full text-left px-2 py-1.5 text-xs rounded-md flex items-center justify-between group ${isSelected ? "bg-indigo-50 text-indigo-700" : "hover:bg-gray-50 text-gray-700"}`}
+                              className={`w-full text-left px-2 py-1.5 text-xs rounded-md flex items-center justify-between group ${isSelected ? "bg-indigo-50 text-indigo-700" : "hover:bg-gray-50 [.dark_&]:hover:bg-white/5 text-gray-700 [.dark_&]:text-gray-200"}`}
                             >
                               <div className="flex items-center gap-2">
                                 <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isSelected ? "bg-indigo-200 text-indigo-700" : "bg-gray-100 text-gray-500"}`}>
@@ -1165,7 +1164,7 @@ const TaskViewModal = ({
                     Start Date
                   </label>
                   <div className="relative">
-                    <div className={`flex items-center gap-2 text-xs ${canEdit ? "text-gray-600 hover:text-gray-900 cursor-pointer" : "text-gray-500"}`}>
+                    <div className={`flex items-center gap-2 text-xs ${canEdit ? "text-gray-600 [.dark_&]:text-gray-400 hover:text-gray-900 [.dark_&]:hover:text-white cursor-pointer" : "text-gray-500"}`}>
                       <FaRegCalendarAlt className="text-gray-400" />
                       {formatDate(task.assignedDate)}
                     </div>
@@ -1191,7 +1190,7 @@ const TaskViewModal = ({
                         new Date(task.dueDate) < new Date() &&
                         task.status !== "Done"
                         ? "text-red-600 font-bold"
-                        : canEdit ? "text-gray-600 hover:text-gray-900 cursor-pointer" : "text-gray-500"
+                        : canEdit ? "text-gray-600 [.dark_&]:text-gray-400 hover:text-gray-900 [.dark_&]:hover:text-white cursor-pointer" : "text-gray-500"
                         }`}
                     >
                       <FaRegCalendarAlt
@@ -1220,7 +1219,7 @@ const TaskViewModal = ({
               </div>
 
               {/* Tags/Attributes */}
-              <div className="pt-2 border-t border-gray-100 space-y-3">
+              <div className="pt-2 border-t border-gray-100 [.dark_&]:border-white/10 space-y-3">
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">
                     Tags
@@ -1246,8 +1245,8 @@ const TaskViewModal = ({
             </div>
 
             {/* Activity Stream Area */}
-            <div className="flex-1 flex flex-col bg-gray-50">
-              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50/80 backdrop-blur sticky top-0">
+            <div className="flex-1 flex flex-col bg-gray-50 [.dark_&]:bg-[#1F2234]">
+              <div className="px-4 py-3 border-b border-gray-200 [.dark_&]:border-white/10 bg-gray-50/80 [.dark_&]:bg-[#1F2234]/80 backdrop-blur sticky top-0">
                 <h3 className="text-xs font-bold text-gray-500 uppercase">
                   Activity
                 </h3>
@@ -1284,9 +1283,9 @@ const TaskViewModal = ({
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${iconBg} shadow-sm`}>
                         <Icon className="text-xs" />
                       </div>
-                      <div className={`flex-1 ${isComment ? "bg-white p-3 rounded-lg shadow-sm border border-gray-100" : "py-1"}`}>
+                      <div className={`flex-1 ${isComment ? "bg-white [.dark_&]:bg-[#181B2A] p-3 rounded-lg shadow-sm border border-gray-100 [.dark_&]:border-white/10" : "py-1"}`}>
                         <div className="flex justify-between items-start mb-1">
-                          <p className={`text-xs ${isComment ? "font-bold text-gray-900" : "font-medium text-gray-600"}`}>
+                          <p className={`text-xs ${isComment ? "font-bold text-gray-900 [.dark_&]:text-white" : "font-medium text-gray-600 [.dark_&]:text-gray-400"}`}>
                             {getUserDisplayName(item)}
                             <span className="font-normal text-gray-400 ml-1">
                               {isCreated ? "created this task" : isCompleted ? "completed this task" : isComment ? "commented" : ""}
@@ -1298,7 +1297,7 @@ const TaskViewModal = ({
                         </div>
 
                         {isComment ? (
-                          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{item.text}</p>
+                          <p className="text-sm text-gray-700 [.dark_&]:text-gray-300 leading-relaxed whitespace-pre-wrap">{item.text}</p>
                         ) : (
                           <p className="text-xs text-gray-500">
                             {item.details}
@@ -1321,11 +1320,11 @@ const TaskViewModal = ({
               </div>
 
               {/* Comment Input Footer */}
-              <div className="p-4 border-t border-gray-200 bg-white sticky bottom-0 z-10">
+              <div className="p-4 border-t border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] sticky bottom-0 z-10">
                 <div className="flex gap-2 items-end">
                   <textarea
                     placeholder="Write a comment..."
-                    className="flex-1 min-h-[40px] max-h-[120px] p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:bg-white transition-all resize-none"
+                    className="flex-1 min-h-[40px] max-h-[120px] p-3 bg-gray-50 [.dark_&]:bg-white/5 border border-gray-200 [.dark_&]:border-white/10 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:bg-white [.dark_&]:focus:bg-[#181B2A] [.dark_&]:text-white transition-all resize-none"
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
                     onKeyDown={async (e) => {

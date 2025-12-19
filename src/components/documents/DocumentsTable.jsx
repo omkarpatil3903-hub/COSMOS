@@ -60,7 +60,7 @@ function DocumentsTable({
         label: "SR. NO.",
         sortable: false,
         render: (_r, absoluteIndex) => (
-          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-600 text-sm">
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 [.dark_&]:bg-[#1F2234] text-gray-600 [.dark_&]:text-gray-300 text-sm">
             {absoluteIndex + 1}
           </div>
         ),
@@ -76,11 +76,11 @@ function DocumentsTable({
           const short = full.length > 40 ? `${full.slice(0, 40)}…` : full;
           return (
             <div className="flex items-center gap-2 max-w-[480px]" title={full}>
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-blue-50 text-blue-600">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-blue-50 [.dark_&]:bg-blue-900/20 text-blue-600 [.dark_&]:text-blue-400">
                 <FaFileAlt />
               </span>
               <span
-                className="truncate text-gray-900 group-hover:text-blue-600 transition-colors"
+                className="truncate text-gray-900 [.dark_&]:text-white group-hover:text-blue-600 [.dark_&]:group-hover:text-blue-400 transition-colors"
                 aria-label={full}
               >
                 {short}
@@ -94,7 +94,7 @@ function DocumentsTable({
         label: "Uploaded By",
         sortable: true,
         render: (r) => (
-          <span className="text-gray-800 text-sm" title={r.createdByName || "-"}>
+          <span className="text-gray-800 [.dark_&]:text-gray-300 text-sm" title={r.createdByName || "-"}>
             {r.createdByName || "-"}
           </span>
         ),
@@ -105,7 +105,7 @@ function DocumentsTable({
         label: "Uploaded On",
         sortable: true,
         render: (r) => (
-          <span className="text-gray-700 text-sm" title={r.created || "-"}>
+          <span className="text-gray-700 [.dark_&]:text-gray-400 text-sm" title={r.created || "-"}>
             {r.created || "-"}
           </span>
         ),
@@ -128,7 +128,7 @@ function DocumentsTable({
                   type="button"
                   title="Edit"
                   aria-label="Edit"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-yellow-400   shadow-sm hover:bg-yellow-50 hover:shadow focus:outline-none "
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white [.dark_&]:bg-[#1F2234] text-yellow-400 shadow-sm hover:bg-yellow-50 [.dark_&]:hover:bg-yellow-900/20 hover:shadow focus:outline-none"
                   onClick={(e) => { e.stopPropagation(); onEdit && onEdit(r); }}
                 >
                   <FaEdit className="h-4 w-4" />
@@ -139,7 +139,7 @@ function DocumentsTable({
                   type="button"
                   title="Delete"
                   aria-label="Delete"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-red-600  shadow-sm hover:bg-red-50 hover:shadow focus:outline-none  "
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white [.dark_&]:bg-[#1F2234] text-red-600 [.dark_&]:text-red-400 shadow-sm hover:bg-red-50 [.dark_&]:hover:bg-red-900/20 hover:shadow focus:outline-none"
                   onClick={(e) => { e.stopPropagation(); onDelete && onDelete(r); }}
                 >
                   <FaTrash className="h-4 w-4" />
@@ -235,7 +235,7 @@ function DocumentsTable({
               const last = parts[parts.length - 1];
               if (last) return last;
             }
-          } catch {}
+          } catch { }
         }
         const map = {
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",

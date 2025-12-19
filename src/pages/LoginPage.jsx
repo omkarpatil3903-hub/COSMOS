@@ -178,7 +178,7 @@ function LoginPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="w-full max-w-md">
-        <Card>
+        <div className="bg-white rounded-xl shadow-md border border-gray-200 p-8">
           <div className="text-center mb-8">
             <div className="inline-block bg-indigo-600 p-4 rounded-full mb-4">
               <FaShieldAlt size={32} className="text-white" />
@@ -206,7 +206,7 @@ function LoginPage() {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-500 text-gray-900 bg-white"
                   placeholder="you@example.com"
                 />
               </div>
@@ -231,7 +231,7 @@ function LoginPage() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full pl-10 pr-10 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-500 text-gray-900 bg-white"
                   placeholder="••••••••"
                 />
                 <button
@@ -260,7 +260,11 @@ function LoginPage() {
             )}
 
             <div>
-              <Button type="submit" disabled={loading} className="w-full">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 {loading ? (
                   <span className="inline-flex items-center gap-2">
                     <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
@@ -269,10 +273,10 @@ function LoginPage() {
                 ) : (
                   "Sign In"
                 )}
-              </Button>
+              </button>
             </div>
           </form>
-        </Card>
+        </div>
       </div>
     </div>
   );

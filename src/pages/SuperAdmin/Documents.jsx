@@ -32,10 +32,10 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
   const basePath = location.pathname.startsWith("/manager")
     ? "/manager/knowledge-management"
     : location.pathname.startsWith("/employee")
-    ? "/employee/knowledge-management"
-    : location.pathname.startsWith("/admin")
-    ? "/admin/knowledge-management"
-    : "/knowledge-management";
+      ? "/employee/knowledge-management"
+      : location.pathname.startsWith("/admin")
+        ? "/admin/knowledge-management"
+        : "/knowledge-management";
   useEffect(() => {
     if (location.pathname === "/knowledge-management") {
       document.title = "COSMOS | Knowldge Managment";
@@ -127,12 +127,12 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
         return p.projectManagerId === currentUser.uid;
       })
       .map((p) => {
-      const projTasks = tasks.filter((t) => t.projectId === p.id);
-      const total = projTasks.length;
-      const done = projTasks.filter((t) => normalizeStatus(t.status) === "Done").length;
-      const derived = total > 0 ? Math.round((done / total) * 100) : 0;
-      return { ...p, progress: derived };
-    });
+        const projTasks = tasks.filter((t) => t.projectId === p.id);
+        const total = projTasks.length;
+        const done = projTasks.filter((t) => normalizeStatus(t.status) === "Done").length;
+        const derived = total > 0 ? Math.round((done / total) * 100) : 0;
+        return { ...p, progress: derived };
+      });
   }, [projects, tasks]);
 
   const assignedProjectIds = useMemo(() => {
@@ -163,8 +163,8 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
           project.progress === 0
             ? "Not Started"
             : project.progress === 100
-            ? "Completed"
-            : "In Progress";
+              ? "Completed"
+              : "In Progress";
         return (
           (project.projectName || "").toLowerCase().includes(term) ||
           (project.clientName || "").toLowerCase().includes(term) ||
@@ -302,7 +302,7 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
                 placeholder="e.g. Website Redesign or TechCorp or In Progress"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-lg border border-subtle bg-surface py-2 pl-9 pr-3 text-sm text-content-primary placeholder:text-content-tertiary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                className="w-full rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#1F2234] py-2 pl-9 pr-3 text-sm text-content-primary [.dark_&]:text-white placeholder:text-content-tertiary [.dark_&]:placeholder:text-gray-500 focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
                 spellCheck="true"
               />
             </div>
@@ -330,7 +330,7 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
                 setRowsPerPage(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+              className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#1F2234] px-3 py-2 text-sm text-content-primary [.dark_&]:text-white focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
             >
               <option value={10}>10</option>
               <option value={25}>25</option>
@@ -357,35 +357,35 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
           </div>
         }
       >
-        <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-          <table className="min-w-[1100px] divide-y divide-gray-200 bg-white">
+        <div className="w-full overflow-x-auto rounded-lg border border-gray-200 [.dark_&]:border-white/10 shadow-sm">
+          <table className="min-w-[1100px] w-full divide-y divide-gray-200 [.dark_&]:divide-white/10 bg-white [.dark_&]:bg-[#181B2A]">
             <caption className="sr-only">
               Filtered project records with search and pagination controls
             </caption>
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+            <thead className="bg-gradient-to-r from-gray-50 to-gray-100 [.dark_&]:from-[#1F2234] [.dark_&]:to-[#1F2234]">
               <tr>
                 {tableHeaders.map((header) => {
                   const isActive = sortConfig.key === header.key;
                   const ariaSort = !header.sortable
                     ? "none"
                     : isActive
-                    ? sortConfig.direction === "asc"
-                      ? "ascending"
-                      : "descending"
-                    : "none";
+                      ? sortConfig.direction === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none";
 
                   return (
                     <th
                       key={header.key}
                       scope="col"
                       aria-sort={ariaSort}
-                      className="group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200"
+                      className="group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 [.dark_&]:text-gray-300 border-b border-gray-200 [.dark_&]:border-white/10"
                     >
                       {header.sortable ? (
                         <button
                           type="button"
                           onClick={() => handleSort(header.key)}
-                          className="flex items-center gap-2 text-left hover:text-indigo-600 transition-colors duration-200 transform hover:scale-105"
+                          className="flex items-center gap-2 text-left hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 transition-colors duration-200 transform hover:scale-105"
                         >
                           <span>{header.label}</span>
                           <span className="transition-transform duration-200">
@@ -400,11 +400,11 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
                 })}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-gray-100 [.dark_&]:divide-white/10 bg-white [.dark_&]:bg-[#181B2A]">
               {currentRows.map((project, index) => (
                 <tr
                   key={project.id}
-                  className="bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+                  className="bg-white [.dark_&]:bg-[#181B2A] hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors cursor-pointer"
                   onClick={() =>
                     navigate(
                       `${basePath}/${encodeURIComponent(project.projectName || "")}`,
@@ -412,18 +412,18 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
                     )
                   }
                 >
-                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-500">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-500 [.dark_&]:text-gray-400">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 [.dark_&]:bg-white/10">
                       {indexOfFirstRow + index + 1}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                  <td className="px-6 py-4 text-sm font-semibold text-gray-900 [.dark_&]:text-white">
                     <span>{project.projectName}</span>
                   </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                  <td className="px-6 py-4 text-sm font-semibold text-gray-900 [.dark_&]:text-white">
                     <span>{project.clientName}</span>
                   </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                  <td className="px-6 py-4 text-sm font-semibold text-gray-900 [.dark_&]:text-white">
                     <span
                       title={project.projectManagerName || "-"}
                       className="block max-w-[160px] truncate"
@@ -433,35 +433,34 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm">
                     <div className="flex items-center">
-                      <div className="flex-1 bg-gray-200 rounded-full h-3 mr-3 min-w-[120px]">
+                      <div className="flex-1 bg-gray-200 [.dark_&]:bg-white/10 rounded-full h-3 mr-3 min-w-[120px]">
                         <div
-                          className={`h-3 rounded-full transition-all duration-300 ${
-                            project.progress === 0
-                              ? "bg-gray-400"
-                              : project.progress < 30
+                          className={`h-3 rounded-full transition-all duration-300 ${project.progress === 0
+                            ? "bg-gray-400"
+                            : project.progress < 30
                               ? "bg-red-500"
                               : project.progress < 70
-                              ? "bg-yellow-500"
-                              : project.progress < 100
-                              ? "bg-blue-500"
-                              : "bg-green-500"
-                          }`}
+                                ? "bg-yellow-500"
+                                : project.progress < 100
+                                  ? "bg-blue-500"
+                                  : "bg-green-500"
+                            }`}
                           style={{ width: `${project.progress}%` }}
                         ></div>
                       </div>
-                      <span className="text-sm font-medium text-gray-700 min-w-[40px]">
+                      <span className="text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 min-w-[40px]">
                         {project.progress}%
                       </span>
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 [.dark_&]:text-gray-400">
                     <div className="flex items-center">
                       <div className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-2"></div>
                       {formatDate(project.startDate)}
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
-                    <div className="flex items-center bg-gray-50 rounded-lg px-3 py-1">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 [.dark_&]:text-gray-400">
+                    <div className="flex items-center bg-gray-50 [.dark_&]:bg-white/5 rounded-lg px-3 py-1">
                       <div className="w-1.5 h-1.5 rounded-full bg-red-400 mr-2"></div>
                       {formatDate(project.endDate)}
                     </div>
@@ -475,13 +474,13 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
                     className="px-6 py-16 text-center"
                   >
                     <div className="flex flex-col items-center justify-center">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gray-100 to-gray-200 flex items-center justify-center mb-4 animate-pulse">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gray-100 to-gray-200 [.dark_&]:from-white/5 [.dark_&]:to-white/10 flex items-center justify-center mb-4 animate-pulse">
                         <FaSearch className="h-6 w-6 text-gray-400" />
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                      <h3 className="text-lg font-semibold text-gray-600 [.dark_&]:text-gray-300 mb-2">
                         No Projects Found
                       </h3>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-gray-500 [.dark_&]:text-gray-400">
                         No projects match the selected filters. Adjust your search or try resetting filters.
                       </p>
                     </div>

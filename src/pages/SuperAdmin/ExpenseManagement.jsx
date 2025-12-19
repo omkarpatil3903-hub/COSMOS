@@ -32,11 +32,11 @@ import {
 import toast from "react-hot-toast";
 
 const statusColors = {
-  Draft: "bg-gray-100 text-gray-700",
-  Submitted: "bg-blue-100 text-blue-700",
-  Approved: "bg-emerald-100 text-emerald-700",
-  Rejected: "bg-red-100 text-red-700",
-  Paid: "bg-purple-100 text-purple-700",
+  Draft: "bg-gray-100 text-gray-700 [.dark_&]:bg-gray-500/20 [.dark_&]:text-gray-300",
+  Submitted: "bg-blue-100 text-blue-700 [.dark_&]:bg-blue-500/20 [.dark_&]:text-blue-300",
+  Approved: "bg-emerald-100 text-emerald-700 [.dark_&]:bg-emerald-500/20 [.dark_&]:text-emerald-300",
+  Rejected: "bg-red-100 text-red-700 [.dark_&]:bg-red-500/20 [.dark_&]:text-red-300",
+  Paid: "bg-purple-100 text-purple-700 [.dark_&]:bg-purple-500/20 [.dark_&]:text-purple-300",
 };
 
 const ExpenseManagement = () => {
@@ -290,16 +290,16 @@ const ExpenseManagement = () => {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-indigo-500 p-4 hover:shadow-md transition-shadow">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-indigo-500 p-4 hover:shadow-md transition-shadow [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-indigo-600">Total</p>
-                <p className="text-3xl font-bold text-indigo-900 mt-1">
+                <p className="text-sm font-medium text-indigo-600 [.dark_&]:text-indigo-400">Total</p>
+                <p className="text-3xl font-bold text-indigo-900 mt-1 [.dark_&]:text-white">
                   {stats.total}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-indigo-200/50 flex items-center justify-center">
-                <FaMoneyCheckAlt className="text-indigo-600 text-xl" />
+              <div className="w-12 h-12 rounded-full bg-indigo-200/50 flex items-center justify-center [.dark_&]:bg-indigo-900/50">
+                <FaMoneyCheckAlt className="text-indigo-600 text-xl [.dark_&]:text-indigo-400" />
               </div>
             </div>
           </div>
@@ -317,16 +317,16 @@ const ExpenseManagement = () => {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-600">Submitted</p>
-                <p className="text-3xl font-bold text-blue-900 mt-1">
+                <p className="text-sm font-medium text-blue-600 [.dark_&]:text-blue-400">Submitted</p>
+                <p className="text-3xl font-bold text-blue-900 mt-1 [.dark_&]:text-white">
                   {stats.submitted}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-blue-200/50 flex items-center justify-center">
-                <FaHourglassHalf className="text-blue-600 text-xl" />
+              <div className="w-12 h-12 rounded-full bg-blue-200/50 flex items-center justify-center [.dark_&]:bg-blue-900/50">
+                <FaHourglassHalf className="text-blue-600 text-xl [.dark_&]:text-blue-400" />
               </div>
             </div>
           </div>
@@ -344,16 +344,16 @@ const ExpenseManagement = () => {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-600">Approved</p>
-                <p className="text-3xl font-bold text-green-900 mt-1">
+                <p className="text-sm font-medium text-green-600 [.dark_&]:text-green-400">Approved</p>
+                <p className="text-3xl font-bold text-green-900 mt-1 [.dark_&]:text-white">
                   {stats.approved}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-green-200/50 flex items-center justify-center">
-                <FaCheckCircle className="text-green-600 text-xl" />
+              <div className="w-12 h-12 rounded-full bg-green-200/50 flex items-center justify-center [.dark_&]:bg-green-900/50">
+                <FaCheckCircle className="text-green-600 text-xl [.dark_&]:text-green-400" />
               </div>
             </div>
           </div>
@@ -371,18 +371,18 @@ const ExpenseManagement = () => {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-purple-500 p-4 hover:shadow-md transition-shadow">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-purple-500 p-4 hover:shadow-md transition-shadow [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-600">
+                <p className="text-sm font-medium text-purple-600 [.dark_&]:text-purple-400">
                   Paid (₹{stats.totalAmount.toFixed(2)})
                 </p>
-                <p className="text-3xl font-bold text-purple-900 mt-1">
+                <p className="text-3xl font-bold text-purple-900 mt-1 [.dark_&]:text-white">
                   {stats.paid}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-purple-200/50 flex items-center justify-center">
-                <FaRupeeSign className="text-purple-600 text-xl" />
+              <div className="w-12 h-12 rounded-full bg-purple-200/50 flex items-center justify-center [.dark_&]:bg-purple-900/50">
+                <FaRupeeSign className="text-purple-600 text-xl [.dark_&]:text-purple-400" />
               </div>
             </div>
           </div>
@@ -393,19 +393,19 @@ const ExpenseManagement = () => {
         {/* Search & Actions Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white">
               Search & Actions
             </h2>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-gray-500 [.dark_&]:text-gray-400">
               Showing {filtered.length} records
             </span>
           </div>
-          <hr className="border-gray-200" />
+          <hr className="border-gray-200 [.dark_&]:border-white/10" />
         </div>
 
         {/* Search Input with Label */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2 [.dark_&]:text-gray-300">
             Search by title, employee, or description
           </label>
           <div className="relative">
@@ -417,15 +417,15 @@ const ExpenseManagement = () => {
               placeholder="e.g. Travel Expense or John Doe"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white"
             />
           </div>
         </div>
 
         {/* Bulk Actions */}
         {selectedIds.length > 0 && (
-          <div className="flex items-center gap-3 mb-4 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-            <span className="text-sm font-medium text-indigo-700">
+          <div className="flex items-center gap-3 mb-4 p-3 bg-indigo-50 rounded-lg border border-indigo-200 [.dark_&]:bg-indigo-900/20 [.dark_&]:border-indigo-500/30">
+            <span className="text-sm font-medium text-indigo-700 [.dark_&]:text-indigo-300">
               {selectedIds.length} selected
             </span>
             <Button size="sm" onClick={handleBulkApprove}>
@@ -438,9 +438,9 @@ const ExpenseManagement = () => {
         )}
 
         {/* Filters Section with Labels */}
-        <div className="pt-4 border-t border-gray-200">
+        <div className="pt-4 border-t border-gray-200 [.dark_&]:border-white/10">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide [.dark_&]:text-gray-400">
               Filters:
             </span>
           </div>
@@ -448,13 +448,13 @@ const ExpenseManagement = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Status Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2 [.dark_&]:text-gray-300">
                 Status
               </label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm"
+                className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white"
               >
                 <option value="all">All Statuses</option>
                 <option value="Draft">Draft</option>
@@ -467,13 +467,13 @@ const ExpenseManagement = () => {
 
             {/* Category Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2 [.dark_&]:text-gray-300">
                 Category
               </label>
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm"
+                className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white"
               >
                 <option value="all">All Categories</option>
                 <option value="Travel">Travel</option>
@@ -486,27 +486,27 @@ const ExpenseManagement = () => {
 
             {/* From Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2 [.dark_&]:text-gray-300">
                 From Date
               </label>
               <input
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm"
+                className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white"
               />
             </div>
 
             {/* To Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2 [.dark_&]:text-gray-300">
                 To Date
               </label>
               <input
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
-                className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm"
+                className="w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white"
               />
             </div>
           </div>
@@ -517,48 +517,48 @@ const ExpenseManagement = () => {
             statusFilter !== "all" ||
             fromDate ||
             toDate) && (
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={() => {
-                  setSearchQuery("");
-                  setCategoryFilter("all");
-                  setStatusFilter("all");
-                  setFromDate("");
-                  setToDate("");
-                }}
-                className="text-xs text-red-600 hover:text-red-800 font-medium flex items-center gap-1"
-              >
-                <FaTimes className="h-3 w-3" /> Clear Filters
-              </button>
-            </div>
-          )}
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setCategoryFilter("all");
+                    setStatusFilter("all");
+                    setFromDate("");
+                    setToDate("");
+                  }}
+                  className="text-xs text-red-600 hover:text-red-800 font-medium flex items-center gap-1"
+                >
+                  <FaTimes className="h-3 w-3" /> Clear Filters
+                </button>
+              </div>
+            )}
         </div>
       </Card>
 
       {/* Table Section */}
       {loading ? (
         <div className="py-12 text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 mb-4 animate-pulse">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 mb-4 animate-pulse [.dark_&]:bg-indigo-900/20 [.dark_&]:text-indigo-400">
             <FaMoneyBillWave className="text-xl" />
           </div>
-          <p className="text-gray-500 font-medium">Loading expenses...</p>
+          <p className="text-gray-500 font-medium [.dark_&]:text-gray-400">Loading expenses...</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="py-16 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 text-gray-400 mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 text-gray-400 mb-4 [.dark_&]:bg-white/5 [.dark_&]:text-gray-500">
             <FaFileInvoice className="text-3xl" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white">
             No expenses found
           </h3>
-          <p className="text-gray-500 mt-1 max-w-sm mx-auto">
+          <p className="text-gray-500 mt-1 max-w-sm mx-auto [.dark_&]:text-gray-400">
             No expenses match your current filters.
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm [.dark_&]:border-white/10">
+          <table className="min-w-full divide-y divide-gray-200 [.dark_&]:divide-white/5">
+            <thead className="bg-gray-50 [.dark_&]:bg-[#1F2234]">
               <tr>
                 <th scope="col" className="px-6 py-3 text-left w-10">
                   <input
@@ -573,61 +573,60 @@ const ExpenseManagement = () => {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider [.dark_&]:text-gray-400"
                 >
                   Sr. No.
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider [.dark_&]:text-gray-400"
                 >
                   Employee
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider [.dark_&]:text-gray-400"
                 >
                   Expense Details
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider [.dark_&]:text-gray-400"
                 >
                   Project
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider [.dark_&]:text-gray-400"
                 >
                   Category
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider [.dark_&]:text-gray-400"
                 >
                   Amount
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider [.dark_&]:text-gray-400"
                 >
                   Status
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider [.dark_&]:text-gray-400"
                 >
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-200 [.dark_&]:bg-[#181B2A] [.dark_&]:divide-white/5">
               {filtered.map((e, index) => (
                 <tr
                   key={e.id}
-                  className={`hover:bg-gray-50 transition-colors group ${
-                    selectedIds.includes(e.id) ? "bg-indigo-50/50" : ""
-                  }`}
+                  className={`hover:bg-gray-50 transition-colors group ${selectedIds.includes(e.id) ? "bg-indigo-50/50 [.dark_&]:bg-indigo-900/20" : "[.dark_&]:hover:bg-white/5"
+                    }`}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <input
@@ -644,13 +643,13 @@ const ExpenseManagement = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs mr-3">
+                      <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs mr-3 [.dark_&]:bg-indigo-900/50 [.dark_&]:text-indigo-300">
                         {e.employeeName
                           ? e.employeeName.charAt(0).toUpperCase()
                           : "?"}
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
                           {e.employeeName || "Unknown"}
                         </div>
                       </div>
@@ -662,7 +661,7 @@ const ExpenseManagement = () => {
                         <FaCalendarAlt className="text-gray-400" />
                         {e.date || "-"}
                       </div>
-                      <span className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                      <span className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors [.dark_&]:text-white">
                         {e.title}
                       </span>
                       {e.receiptUrl && (
@@ -696,18 +695,17 @@ const ExpenseManagement = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <div className="text-sm font-bold text-gray-900">
+                    <div className="text-sm font-bold text-gray-900 [.dark_&]:text-white">
                       {e.amount?.toFixed ? e.amount.toFixed(2) : e.amount}
-                      <span className="text-xs font-medium text-gray-500 ml-1">
+                      <span className="text-xs font-medium text-gray-500 ml-1 [.dark_&]:text-gray-400">
                         {e.currency || "INR"}
                       </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     <span
-                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        statusColors[e.status] || "bg-gray-100 text-gray-800"
-                      }`}
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[e.status] || "bg-gray-100 text-gray-800"
+                        }`}
                     >
                       {e.status || "Unknown"}
                     </span>
@@ -761,19 +759,19 @@ const ExpenseManagement = () => {
 
       {rejectingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-white/20 overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-white/80 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl border border-white/20 overflow-hidden flex flex-col [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-white/80 backdrop-blur-md [.dark_&]:bg-[#181B2A]/80 [.dark_&]:border-white/10">
               <div>
-                <h2 className="text-lg font-bold text-gray-800">
+                <h2 className="text-lg font-bold text-gray-800 [.dark_&]:text-white">
                   Reject Expense
                 </h2>
-                <p className="text-xs text-gray-500 font-medium mt-0.5">
+                <p className="text-xs text-gray-500 font-medium mt-0.5 [.dark_&]:text-gray-400">
                   Provide a reason for rejection
                 </p>
               </div>
               <button
                 onClick={() => setRejectingId(null)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600 [.dark_&]:hover:bg-white/10 [.dark_&]:hover:text-gray-300"
               >
                 <FaTimes className="text-lg" />
               </button>
@@ -796,13 +794,13 @@ const ExpenseManagement = () => {
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   placeholder="e.g. Receipt is blurry, Amount mismatch..."
-                  className="w-full rounded-xl border-0 bg-gray-50 py-3 px-4 text-sm font-medium text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-red-500 transition-all resize-none"
+                  className="w-full rounded-xl border-0 bg-gray-50 py-3 px-4 text-sm font-medium text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-red-500 transition-all resize-none [.dark_&]:bg-[#1F2234] [.dark_&]:text-white [.dark_&]:ring-white/10"
                   autoFocus
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-gray-100 px-6 py-4 bg-gray-50/50">
+            <div className="flex items-center justify-end gap-3 border-t border-gray-100 px-6 py-4 bg-gray-50/50 [.dark_&]:bg-[#1F2234]/50 [.dark_&]:border-white/10">
               <Button
                 variant="ghost"
                 onClick={() => setRejectingId(null)}
@@ -823,19 +821,19 @@ const ExpenseManagement = () => {
 
       {viewingExpense && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-white/20 overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-white/80 backdrop-blur-md">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-white/20 overflow-hidden flex flex-col max-h-[90vh] [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-white/80 backdrop-blur-md [.dark_&]:bg-[#181B2A]/80 [.dark_&]:border-white/10">
               <div>
-                <h2 className="text-lg font-bold text-gray-800">
+                <h2 className="text-lg font-bold text-gray-800 [.dark_&]:text-white">
                   Expense Details
                 </h2>
-                <p className="text-xs text-gray-500 font-medium mt-0.5">
+                <p className="text-xs text-gray-500 font-medium mt-0.5 [.dark_&]:text-gray-400">
                   Full information about this claim
                 </p>
               </div>
               <button
                 onClick={() => setViewingExpense(null)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600 [.dark_&]:hover:bg-white/10 [.dark_&]:hover:text-gray-300"
               >
                 <FaTimes className="text-lg" />
               </button>
@@ -843,13 +841,13 @@ const ExpenseManagement = () => {
 
             <div className="px-6 py-6 space-y-6 overflow-y-auto custom-scrollbar">
               {/* Header Info */}
-              <div className="flex items-start justify-between bg-gray-50 rounded-xl p-4 border border-gray-100">
+              <div className="flex items-start justify-between bg-gray-50 rounded-xl p-4 border border-gray-100 [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900 leading-tight">
+                  <h3 className="text-lg font-bold text-gray-900 leading-tight [.dark_&]:text-white">
                     {viewingExpense.title}
                   </h3>
-                  <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
-                    <span className="font-medium text-gray-700">
+                  <div className="flex items-center gap-2 mt-1 text-sm text-gray-500 [.dark_&]:text-gray-400">
+                    <span className="font-medium text-gray-700 [.dark_&]:text-gray-300">
                       {viewingExpense.category}
                     </span>
                     <span>•</span>
@@ -873,9 +871,8 @@ const ExpenseManagement = () => {
                   </div>
                   <div className="mt-1 flex justify-end">
                     <span
-                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${
-                        statusColors[viewingExpense.status]
-                      }`}
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${statusColors[viewingExpense.status]
+                        }`}
                     >
                       {viewingExpense.status}
                     </span>
@@ -885,37 +882,37 @@ const ExpenseManagement = () => {
 
               {/* Employee & Date Grid */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white rounded-xl border border-gray-200 p-3">
+                <div className="bg-white rounded-xl border border-gray-200 p-3 [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
                   <div className="flex items-center gap-2 mb-1">
                     <FaUser className="text-gray-400 text-xs" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide [.dark_&]:text-gray-400">
                       Employee
                     </span>
                   </div>
-                  <div className="font-semibold text-gray-900">
+                  <div className="font-semibold text-gray-900 [.dark_&]:text-white">
                     {viewingExpense.employeeName}
                   </div>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-3">
+                <div className="bg-white rounded-xl border border-gray-200 p-3 [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
                   <div className="flex items-center gap-2 mb-1">
                     <FaCalendarAlt className="text-gray-400 text-xs" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide [.dark_&]:text-gray-400">
                       Submitted On
                     </span>
                   </div>
-                  <div className="font-semibold text-gray-900">
+                  <div className="font-semibold text-gray-900 [.dark_&]:text-white">
                     {viewingExpense.createdAt?.toDate
                       ? viewingExpense.createdAt.toDate().toLocaleDateString()
                       : "-"}
                   </div>
-                  <div className="text-xs text-gray-500 mt-0.5">
+                  <div className="text-xs text-gray-500 mt-0.5 [.dark_&]:text-gray-400">
                     {viewingExpense.createdAt?.toDate
                       ? viewingExpense.createdAt
-                          .toDate()
-                          .toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
+                        .toDate()
+                        .toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
                       : ""}
                   </div>
                 </div>
@@ -927,7 +924,7 @@ const ExpenseManagement = () => {
                   <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide flex items-center gap-2">
                     <FaAlignLeft /> Description
                   </label>
-                  <div className="text-sm text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-200 leading-relaxed">
+                  <div className="text-sm text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-200 leading-relaxed [.dark_&]:bg-[#1F2234] [.dark_&]:text-gray-300 [.dark_&]:border-white/10">
                     {viewingExpense.description}
                   </div>
                 </div>
@@ -939,7 +936,7 @@ const ExpenseManagement = () => {
                   <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide flex items-center gap-2">
                     <FaStickyNote /> Notes / Reference
                   </label>
-                  <div className="text-sm text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-200 leading-relaxed">
+                  <div className="text-sm text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-200 leading-relaxed [.dark_&]:bg-[#1F2234] [.dark_&]:text-gray-300 [.dark_&]:border-white/10">
                     {viewingExpense.notes}
                   </div>
                 </div>
@@ -981,11 +978,11 @@ const ExpenseManagement = () => {
               )}
             </div>
 
-            <div className="flex items-center justify-end border-t border-gray-100 px-6 py-4 bg-gray-50/50">
+            <div className="flex items-center justify-end border-t border-gray-100 px-6 py-4 bg-gray-50/50 [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10">
               <Button
                 variant="secondary"
                 onClick={() => setViewingExpense(null)}
-                className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 shadow-sm"
+                className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 shadow-sm [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-gray-300 [.dark_&]:hover:bg-white/5"
               >
                 Close
               </Button>

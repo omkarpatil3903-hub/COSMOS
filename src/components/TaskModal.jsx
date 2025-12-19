@@ -31,13 +31,13 @@ function SearchMultiSelect({ items, selected, onChange, placeholder }) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={placeholder || "Search..."}
-        className="block w-full rounded-md border border-subtle bg-surface px-3 py-2 text-sm text-content-primary"
+        className="block w-full rounded-md border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#181B2A] px-3 py-2 text-sm text-content-primary [.dark_&]:text-white"
       />
-      <div className="mt-2 max-h-40 overflow-y-auto rounded-md border border-subtle bg-surface">
+      <div className="mt-2 max-h-40 overflow-y-auto rounded-md border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#181B2A]">
         {filtered.map((i) => (
           <label
             key={i.id}
-            className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50"
+            className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 [.dark_&]:hover:bg-white/5 text-gray-700 [.dark_&]:text-white"
           >
             <input
               type="checkbox"
@@ -418,11 +418,11 @@ function TaskModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-[90vw] xl:max-w-7xl max-h-[90vh] flex flex-col bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl shadow-indigo-500/20 overflow-hidden border border-white/20"
+        className="relative w-full max-w-[90vw] xl:max-w-7xl max-h-[90vh] flex flex-col bg-white/95 [.dark_&]:bg-[#181B2A]/95 backdrop-blur-sm rounded-2xl shadow-2xl shadow-indigo-500/20 overflow-hidden border border-white/20 [.dark_&]:border-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header - Clean Style */}
-        <div className="shrink-0 px-6 py-4 border-b border-gray-100/50 bg-white/80 backdrop-blur-md flex items-center justify-between z-10">
+        <div className="shrink-0 px-6 py-4 border-b border-gray-100/50 [.dark_&]:border-white/10 bg-white/80 [.dark_&]:bg-[#181B2A]/80 backdrop-blur-md flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div
               className={`p-2 rounded-lg ${isEdit
@@ -433,7 +433,7 @@ function TaskModal({
               <MdReplayCircleFilled className="text-xl" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-800 tracking-tight">
+              <h2 className="text-lg font-bold text-gray-800 [.dark_&]:text-white tracking-tight">
                 {isEdit ? "Edit Task" : "Create New Task"}
               </h2>
               <p className="text-xs text-gray-500 font-medium">
@@ -445,7 +445,7 @@ function TaskModal({
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-all duration-200 text-gray-400 hover:text-gray-600"
+            className="p-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 rounded-full transition-all duration-200 text-gray-400 hover:text-gray-600 [.dark_&]:hover:text-gray-300"
           >
             <FaTimes className="text-lg" />
           </button>
@@ -462,7 +462,7 @@ function TaskModal({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Column 1: Details & Classification */}
               <div className="space-y-6">
-                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2 uppercase tracking-wider">
+                <h3 className="text-sm font-bold text-gray-700 [.dark_&]:text-gray-300 flex items-center gap-2 uppercase tracking-wider">
                   Details & Classification
                 </h3>
 
@@ -478,7 +478,7 @@ function TaskModal({
                         setErrors((prev) => ({ ...prev, title: "" }));
                     }}
                     placeholder="Enter task title..."
-                    className={`block w-full rounded-xl border-0 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all ${errors.title
+                    className={`block w-full rounded-xl border-0 bg-gray-50 [.dark_&]:bg-white/5 px-4 py-3 text-sm font-semibold text-gray-900 [.dark_&]:text-white shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all ${errors.title
                       ? "ring-red-300 focus:ring-red-500 bg-red-50"
                       : ""
                       }`}
@@ -500,7 +500,7 @@ function TaskModal({
                     onChange={(e) => setDescription(e.target.value)}
                     rows={6}
                     placeholder="Add a detailed description..."
-                    className="block w-full rounded-xl border-0 bg-gray-50 px-4 py-3 text-sm text-gray-700 shadow-sm ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all resize-none"
+                    className="block w-full rounded-xl border-0 bg-gray-50 [.dark_&]:bg-white/5 px-4 py-3 text-sm text-gray-700 [.dark_&]:text-gray-300 shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all resize-none"
                   />
                 </div>
 
@@ -518,7 +518,7 @@ function TaskModal({
                         setOkrObjectiveIndex(null);
                         setOkrKeyResultIndices([]);
                       }}
-                      className={`block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${errors.projectId ? "ring-red-300 bg-red-50" : ""
+                      className={`block w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2.5 text-sm text-gray-900 [.dark_&]:text-white shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${errors.projectId ? "ring-red-300 bg-red-50" : ""
                         }`}
                       required
                     >
@@ -543,7 +543,7 @@ function TaskModal({
                     <select
                       value={priority}
                       onChange={(e) => setPriority(e.target.value)}
-                      className="block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                      className="block w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2.5 text-sm text-gray-900 [.dark_&]:text-white shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
                     >
                       <option value="Low">Low</option>
                       <option value="Medium">Medium</option>
@@ -559,7 +559,7 @@ function TaskModal({
                       <select
                         value={status}
                         onChange={(e) => setStatus(e.target.value)}
-                        className="block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                        className="block w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2.5 text-sm text-gray-900 [.dark_&]:text-white shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
                       >
                         {statuses
                           .filter((s) => s !== "Done")
@@ -575,11 +575,10 @@ function TaskModal({
                         <button
                           type="button"
                           onClick={() => setStatus("Done")}
-                          className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors whitespace-nowrap ${
-                            status === "Done"
-                              ? "bg-emerald-500 text-white border-emerald-500"
-                              : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                          }`}
+                          className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors whitespace-nowrap ${status === "Done"
+                            ? "bg-emerald-500 text-white border-emerald-500"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                            }`}
                         >
                           Done
                         </button>
@@ -591,13 +590,13 @@ function TaskModal({
 
               {/* Column 2: Assignment & Schedule */}
               <div className="space-y-6">
-                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2 uppercase tracking-wider">
+                <h3 className="text-sm font-bold text-gray-700 [.dark_&]:text-gray-300 flex items-center gap-2 uppercase tracking-wider">
                   Assignment & Schedule
                 </h3>
 
                 <div className="space-y-4">
                   {/* Assignee Type Toggle */}
-                  <div className="flex bg-gray-100 p-1 rounded-lg">
+                  <div className="flex bg-gray-100 [.dark_&]:bg-white/5 p-1 rounded-lg">
                     <button
                       type="button"
                       onClick={() => {
@@ -606,8 +605,8 @@ function TaskModal({
                         setAssigneeId("");
                       }}
                       className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "user"
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
+                        ? "bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white shadow-sm"
+                        : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-200"
                         }`}
                     >
                       Resource
@@ -620,8 +619,8 @@ function TaskModal({
                         setAssigneeId("");
                       }}
                       className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "client"
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
+                        ? "bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white shadow-sm"
+                        : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-200"
                         }`}
                     >
                       Client
@@ -695,7 +694,7 @@ function TaskModal({
                           type="date"
                           value={assignedDate}
                           onChange={(e) => setAssignedDate(e.target.value)}
-                          className="block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                          className="block w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2.5 text-sm text-gray-900 [.dark_&]:text-white shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
                         />
                       </div>
                     </div>
@@ -712,7 +711,7 @@ function TaskModal({
                             if (errors.dueDate)
                               setErrors((prev) => ({ ...prev, dueDate: "" }));
                           }}
-                          className={`block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${errors.dueDate ? "ring-red-300 bg-red-50" : ""
+                          className={`block w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2.5 text-sm text-gray-900 [.dark_&]:text-white shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${errors.dueDate ? "ring-red-300 bg-red-50" : ""
                             }`}
                         />
                       </div>
@@ -728,7 +727,7 @@ function TaskModal({
 
               {/* Column 3: Advanced & Subtasks */}
               <div className="space-y-6">
-                <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2 uppercase tracking-wider">
+                <h3 className="text-sm font-bold text-gray-700 [.dark_&]:text-gray-300 flex items-center gap-2 uppercase tracking-wider">
                   Advanced & Subtasks
                 </h3>
 
@@ -742,12 +741,12 @@ function TaskModal({
                     value={weightage}
                     onChange={(e) => setWeightage(e.target.value)}
                     placeholder="e.g. 5"
-                    className="block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                    className="block w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2.5 text-sm text-gray-900 [.dark_&]:text-white shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
                   />
                 </div>
 
                 {/* Recurring Toggle */}
-                <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <div className="flex items-center justify-between bg-gray-50 [.dark_&]:bg-white/5 p-3 rounded-xl border border-gray-100 [.dark_&]:border-white/10">
                   <div className="flex items-center gap-2">
                     <div
                       className={`p-1.5 rounded-lg ${isRecurring
@@ -758,7 +757,7 @@ function TaskModal({
                       <MdReplayCircleFilled className="text-lg" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-gray-900">
+                      <h4 className="text-xs font-bold text-gray-900 [.dark_&]:text-white">
                         Recurring
                       </h4>
                     </div>
@@ -778,7 +777,7 @@ function TaskModal({
 
                 {/* Recurring Options Panel */}
                 {isRecurring && (
-                  <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
+                  <div className="p-4 bg-white [.dark_&]:bg-[#1F2234] rounded-xl border border-gray-200 [.dark_&]:border-white/10 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="col-span-2">
                         <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -794,14 +793,14 @@ function TaskModal({
                                 parseInt(e.target.value) || 1
                               )
                             }
-                            className="w-16 rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
+                            className="w-16 rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
                           />
                           <select
                             value={recurringPattern}
                             onChange={(e) =>
                               setRecurringPattern(e.target.value)
                             }
-                            className="flex-1 rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
+                            className="flex-1 rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
                           >
                             <option value="daily">Day(s)</option>
                             <option value="weekly">Week(s)</option>
@@ -812,7 +811,7 @@ function TaskModal({
 
                       <div className="col-span-2 flex flex-col gap-2">
                         <div className="flex items-center justify-between">
-                          <label className="block text-xs font-medium text-gray-500">
+                          <label className="block text-xs font-medium text-gray-500 [.dark_&]:text-gray-400">
                             Allowed Days
                           </label>
                           <label className="flex items-center gap-2 cursor-pointer">
@@ -825,9 +824,9 @@ function TaskModal({
                                   setSelectedWeekDays([0, 1, 2, 3, 4, 5, 6]);
                                 }
                               }}
-                              className="rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 h-3 w-3"
+                              className="rounded border-indigo-300 [.dark_&]:border-white/10 text-indigo-600 focus:ring-indigo-500 h-3 w-3"
                             />
-                            <span className="text-[10px] text-indigo-600 font-medium">
+                            <span className="text-[10px] text-indigo-600 [.dark_&]:text-indigo-400 font-medium">
                               Customize
                             </span>
                           </label>
@@ -849,7 +848,7 @@ function TaskModal({
                                   }}
                                   className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-all ${selectedWeekDays.includes(idx)
                                     ? "bg-indigo-600 text-white shadow-sm"
-                                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                                    : "bg-gray-100 [.dark_&]:bg-white/5 text-gray-500 [.dark_&]:text-gray-400 hover:bg-gray-200 [.dark_&]:hover:bg-white/10"
                                     }`}
                                 >
                                   {day}
@@ -867,7 +866,7 @@ function TaskModal({
                         <select
                           value={recurringEndType}
                           onChange={(e) => setRecurringEndType(e.target.value)}
-                          className="w-full rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
+                          className="w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
                         >
                           <option value="never">Never</option>
                           <option value="date">On Date</option>
@@ -887,7 +886,7 @@ function TaskModal({
                               setRecurringEndDate(e.target.value)
                             }
                             min={dueDate || undefined}
-                            className="w-full rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
+                            className="w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
                           />
                         </div>
                       )}
@@ -905,7 +904,7 @@ function TaskModal({
                               setRecurringEndAfter(e.target.value)
                             }
                             placeholder="e.g. 10"
-                            className="w-full rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
+                            className="w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
                           />
                         </div>
                       )}
@@ -921,7 +920,7 @@ function TaskModal({
                           {previewDates.map((date, idx) => (
                             <div
                               key={idx}
-                              className="px-2 py-1 bg-indigo-50 text-indigo-700 text-xs rounded-md border border-indigo-100 flex items-center gap-1"
+                              className="px-2 py-1 bg-indigo-50 [.dark_&]:bg-indigo-900/20 text-indigo-700 [.dark_&]:text-indigo-400 text-xs rounded-md border border-indigo-100 [.dark_&]:border-indigo-500/20 flex items-center gap-1"
                             >
                               <span>{date}</span>
                               {idx < previewDates.length - 1 && <FaArrowRight className="text-[8px] text-indigo-300" />}
@@ -935,8 +934,8 @@ function TaskModal({
 
                 {/* OKRs */}
                 {projectId && (
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                    <h4 className="text-xs font-bold text-gray-900 mb-3">
+                  <div className="bg-gray-50 [.dark_&]:bg-white/5 p-4 rounded-xl border border-gray-200 [.dark_&]:border-white/10">
+                    <h4 className="text-xs font-bold text-gray-900 [.dark_&]:text-white mb-3">
                       OKR
                     </h4>
                     <div className="space-y-3">
@@ -958,7 +957,7 @@ function TaskModal({
                             setOkrObjectiveIndex(idx);
                             setOkrKeyResultIndices([]);
                           }}
-                          className="block w-full rounded-lg border-0 bg-white px-2 py-1.5 text-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600"
+                          className="block w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
                         >
                           <option value="">Select Objective</option>
                           {(
@@ -975,7 +974,7 @@ function TaskModal({
                         <label className="block text-xs font-medium text-gray-500 mb-1">
                           Key Results
                         </label>
-                        <div className="bg-white rounded-lg border border-gray-200 p-2 max-h-24 overflow-y-auto">
+                        <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg border border-gray-200 [.dark_&]:border-white/10 p-2 max-h-24 overflow-y-auto">
                           {(() => {
                             const proj = projects.find(
                               (p) => p.id === projectId
@@ -1002,7 +1001,7 @@ function TaskModal({
                                   >
                                     <input
                                       type="checkbox"
-                                      className="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                      className="mt-0.5 rounded border-gray-300 [.dark_&]:border-gray-600 text-indigo-600 focus:ring-indigo-500"
                                       checked={okrKeyResultIndices.includes(
                                         idx
                                       )}
@@ -1040,11 +1039,11 @@ function TaskModal({
                     </span>
                   </div>
 
-                  <div className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                  <div className="space-y-2 bg-gray-50 [.dark_&]:bg-white/5 p-3 rounded-xl border border-gray-200 [.dark_&]:border-white/10">
                     {subtasks.map((st, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center gap-2 group bg-white p-2 rounded-lg border border-gray-100 shadow-sm"
+                        className="flex items-center gap-2 group bg-white [.dark_&]:bg-[#181B2A] p-2 rounded-lg border border-gray-100 [.dark_&]:border-white/10 shadow-sm"
                       >
                         <input
                           type="checkbox"
@@ -1063,7 +1062,7 @@ function TaskModal({
                             next[idx].title = e.target.value;
                             setSubtasks(next);
                           }}
-                          className="flex-1 bg-transparent border-none text-xs p-0 focus:ring-0 text-gray-700 placeholder:text-gray-400"
+                          className="flex-1 bg-transparent border-none text-xs p-0 focus:ring-0 text-gray-700 [.dark_&]:text-white placeholder:text-gray-400"
                           placeholder="Subtask title..."
                         />
                         <button
@@ -1100,7 +1099,7 @@ function TaskModal({
                           }
                         }}
                         placeholder="New subtask..."
-                        className="flex-1 rounded-lg border-0 bg-white px-2 py-1.5 text-xs ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-indigo-600 shadow-sm"
+                        className="flex-1 rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-xs text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600 shadow-sm"
                       />
                       <Button
                         type="button"
@@ -1131,7 +1130,7 @@ function TaskModal({
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 px-8 py-5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+        <div className="shrink-0 px-8 py-5 bg-gray-50 [.dark_&]:bg-[#181B2A] border-t border-gray-100 [.dark_&]:border-white/10 flex items-center justify-between">
           <div className="text-xs text-gray-500 font-medium">
             {hasChanges ? "Unsaved changes" : "No changes made"}
           </div>
@@ -1158,35 +1157,34 @@ function TaskModal({
       {/* Series Update Prompt Modal */}
       {showSeriesPrompt && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-gray-100">
-            <div className="flex items-center gap-3 text-indigo-600">
+          <div className="bg-white [.dark_&]:bg-[#1F2234] rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-gray-100 [.dark_&]:border-white/10">
+            <div className="flex items-center gap-3 text-indigo-600 [.dark_&]:text-indigo-400">
               <MdReplayCircleFilled className="text-2xl" />
-              <h3 className="text-lg font-bold text-gray-900">Update Recurring Task</h3>
+              <h3 className="text-lg font-bold text-gray-900 [.dark_&]:text-white">Update Recurring Task</h3>
             </div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 [.dark_&]:text-gray-300">
               This task is part of a recurring series. How would you like to apply your changes?
             </p>
             <div className="flex flex-col gap-3 pt-2">
               <button
                 onClick={() => handleSeriesChoice(false)}
-                className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all group text-left"
+                className="flex items-center justify-between p-4 rounded-lg border border-gray-200 [.dark_&]:border-white/10 hover:border-indigo-300 [.dark_&]:hover:border-indigo-400 hover:bg-indigo-50 [.dark_&]:hover:bg-indigo-900/20 transition-all group text-left"
               >
                 <div>
-                  <span className="block text-sm font-bold text-gray-900 group-hover:text-indigo-700">This Occurrence Only</span>
-                  <span className="block text-xs text-gray-500">Update only this specific task instance</span>
+                  <span className="block text-sm font-bold text-gray-900 [.dark_&]:text-white group-hover:text-indigo-700 [.dark_&]:group-hover:text-indigo-400">This Occurrence Only</span>
+                  <span className="block text-xs text-gray-500 [.dark_&]:text-gray-400">Update only this specific task instance</span>
                 </div>
-                <div className="w-4 h-4 rounded-full border border-gray-300 group-hover:border-indigo-500"></div>
+                <div className="w-4 h-4 rounded-full border border-gray-300 [.dark_&]:border-gray-500 group-hover:border-indigo-500"></div>
               </button>
-
               <button
                 onClick={() => handleSeriesChoice(true)}
-                className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all group text-left"
+                className="flex items-center justify-between p-4 rounded-lg border border-gray-200 [.dark_&]:border-white/10 hover:border-indigo-300 [.dark_&]:hover:border-indigo-400 hover:bg-indigo-50 [.dark_&]:hover:bg-indigo-900/20 transition-all group text-left"
               >
                 <div>
-                  <span className="block text-sm font-bold text-gray-900 group-hover:text-indigo-700">Entire Series</span>
-                  <span className="block text-xs text-gray-500">Update this and all future occurrences</span>
+                  <span className="block text-sm font-bold text-gray-900 [.dark_&]:text-white group-hover:text-indigo-700 [.dark_&]:group-hover:text-indigo-400">Entire Series</span>
+                  <span className="block text-xs text-gray-500 [.dark_&]:text-gray-400">Update this and all future occurrences</span>
                 </div>
-                <div className="w-4 h-4 rounded-full border border-gray-300 group-hover:border-indigo-500"></div>
+                <div className="w-4 h-4 rounded-full border border-gray-300 [.dark_&]:border-gray-500 group-hover:border-indigo-500"></div>
               </button>
             </div>
             <div className="pt-2 flex justify-end">

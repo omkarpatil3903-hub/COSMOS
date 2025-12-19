@@ -3,14 +3,14 @@ import React, { useState } from "react";
 import { FaTimes, FaPlus } from "react-icons/fa";
 
 const TAG_COLORS = [
-    "bg-blue-100 text-blue-700 border-blue-200",
-    "bg-green-100 text-green-700 border-green-200",
-    "bg-purple-100 text-purple-700 border-purple-200",
-    "bg-orange-100 text-orange-700 border-orange-200",
-    "bg-pink-100 text-pink-700 border-pink-200",
-    "bg-indigo-100 text-indigo-700 border-indigo-200",
-    "bg-teal-100 text-teal-700 border-teal-200",
-    "bg-red-100 text-red-700 border-red-200",
+    "bg-blue-100 text-blue-700 border-blue-200 [.dark_&]:bg-blue-900/30 [.dark_&]:text-blue-300 [.dark_&]:border-blue-700/30",
+    "bg-green-100 text-green-700 border-green-200 [.dark_&]:bg-green-900/30 [.dark_&]:text-green-300 [.dark_&]:border-green-700/30",
+    "bg-purple-100 text-purple-700 border-purple-200 [.dark_&]:bg-purple-900/30 [.dark_&]:text-purple-300 [.dark_&]:border-purple-700/30",
+    "bg-orange-100 text-orange-700 border-orange-200 [.dark_&]:bg-orange-900/30 [.dark_&]:text-orange-300 [.dark_&]:border-orange-700/30",
+    "bg-pink-100 text-pink-700 border-pink-200 [.dark_&]:bg-pink-900/30 [.dark_&]:text-pink-300 [.dark_&]:border-pink-700/30",
+    "bg-indigo-100 text-indigo-700 border-indigo-200 [.dark_&]:bg-indigo-900/30 [.dark_&]:text-indigo-300 [.dark_&]:border-indigo-700/30",
+    "bg-teal-100 text-teal-700 border-teal-200 [.dark_&]:bg-teal-900/30 [.dark_&]:text-teal-300 [.dark_&]:border-teal-700/30",
+    "bg-red-100 text-red-700 border-red-200 [.dark_&]:bg-red-900/30 [.dark_&]:text-red-300 [.dark_&]:border-red-700/30",
 ];
 
 const TagInput = ({ tags = [], onAdd, onRemove, placeholder = "Add tag...", readOnly = false }) => {
@@ -54,7 +54,7 @@ const TagInput = ({ tags = [], onAdd, onRemove, placeholder = "Add tag...", read
                     {!readOnly && (
                         <button
                             onClick={() => onRemove(tag)}
-                            className="hover:bg-black/10 rounded-full p-0.5 transition-colors"
+                            className="hover:bg-black/10 [.dark_&]:hover:bg-white/20 rounded-full p-0.5 transition-colors"
                         >
                             <FaTimes className="text-[10px]" />
                         </button>
@@ -76,12 +76,12 @@ const TagInput = ({ tags = [], onAdd, onRemove, placeholder = "Add tag...", read
                                 }
                             }}
                             placeholder={placeholder}
-                            className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500 w-32"
+                            className="px-2 py-1 text-xs border border-gray-300 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] rounded-md focus:outline-none focus:border-indigo-500 w-32 text-gray-900 [.dark_&]:text-white"
                             autoFocus
                         />
                         <button
                             onClick={handleAdd}
-                            className="p-1 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                            className="p-1 text-indigo-600 [.dark_&]:text-indigo-400 hover:bg-indigo-50 [.dark_&]:hover:bg-indigo-900/20 rounded transition-colors"
                         >
                             <FaPlus className="text-xs" />
                         </button>
@@ -89,7 +89,7 @@ const TagInput = ({ tags = [], onAdd, onRemove, placeholder = "Add tag...", read
                 ) : (
                     <button
                         onClick={() => setIsAdding(true)}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 border border-dashed border-gray-300 hover:border-indigo-400 rounded-full transition-all"
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-500 [.dark_&]:text-gray-400 hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 hover:bg-indigo-50 [.dark_&]:hover:bg-indigo-900/20 border border-dashed border-gray-300 [.dark_&]:border-white/10 hover:border-indigo-400 rounded-full transition-all"
                     >
                         <FaPlus className="text-[10px]" />
                         Add tag

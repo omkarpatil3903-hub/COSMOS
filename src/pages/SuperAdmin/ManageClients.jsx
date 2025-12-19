@@ -388,22 +388,22 @@ function ManageClients() {
           </div>
 
           {/* Client Table */}
-          <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-            <table className="min-w-full divide-y divide-gray-200 bg-white">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+          <div className="w-full overflow-x-auto rounded-lg border border-gray-200 [.dark_&]:border-white/10 shadow-sm">
+            <table className="min-w-full divide-y divide-gray-200 [.dark_&]:divide-white/10 bg-white [.dark_&]:bg-[#181B2A]">
+              <thead className="bg-gradient-to-r from-gray-50 to-gray-100 [.dark_&]:from-[#1F2234] [.dark_&]:to-[#1F2234]">
                 <tr>
                   {tableHeaders.map((header) => (
                     <th
                       key={header.key}
-                      className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 ${header.key === "actions"
-                        ? "sticky right-0 z-10 bg-gray-50"
+                      className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 [.dark_&]:text-gray-300 border-b border-gray-200 [.dark_&]:border-white/10 ${header.key === "actions"
+                        ? "sticky right-0 z-10 bg-gray-50 [.dark_&]:bg-[#181B2A]"
                         : ""
                         }`}
                     >
                       {header.sortable ? (
                         <button
                           onClick={() => handleSort(header.key)}
-                          className="flex items-center gap-2 hover:text-indigo-600"
+                          className="flex items-center gap-2 hover:text-indigo-600 [.dark_&]:hover:text-indigo-400"
                         >
                           {header.label} {sortIndicator(header.key)}
                         </button>
@@ -414,7 +414,7 @@ function ManageClients() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
+              <tbody className="divide-y divide-gray-100 [.dark_&]:divide-white/10 bg-white [.dark_&]:bg-[#181B2A]">
                 {currentRows.map((client, index) => (
                   <ClientTableRow
                     key={client.id}
@@ -429,7 +429,7 @@ function ManageClients() {
                   <tr>
                     <td
                       colSpan={tableHeaders.length}
-                      className="px-6 py-16 text-center text-gray-500"
+                      className="px-6 py-16 text-center text-gray-500 [.dark_&]:text-gray-400"
                     >
                       No clients found.
                     </td>

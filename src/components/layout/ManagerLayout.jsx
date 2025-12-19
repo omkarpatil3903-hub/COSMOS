@@ -15,14 +15,39 @@ import {
     FaBars,
     FaTimes,
     FaUserTie,
+    FaCog,
 } from "react-icons/fa";
+import { useTheme } from "../../context/ThemeContext";
 
 // Reusable Sidebar Link Component
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
+    const { accent } = useTheme();
+
+    const accentTextClass =
+        accent === "purple"
+            ? "text-purple-400"
+            : accent === "blue"
+                ? "text-sky-400"
+                : accent === "pink"
+                    ? "text-pink-400"
+                    : accent === "violet"
+                        ? "text-violet-400"
+                        : accent === "orange"
+                            ? "text-amber-400"
+                            : accent === "teal"
+                                ? "text-teal-400"
+                                : accent === "bronze"
+                                    ? "text-amber-500"
+                                    : accent === "mint"
+                                        ? "text-emerald-400"
+                                        : accent === "black"
+                                            ? "text-slate-100"
+                                            : "text-indigo-400";
+
     const baseClasses = `group flex items-center ${isCollapsed ? "justify-center px-2" : "gap-3 px-3"
         } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
     const activeClasses =
-        "border-indigo-200 bg-indigo-50 text-indigo-700 shadow-soft";
+        "border-subtle bg-surface-strong text-content-primary shadow-soft";
     const inactiveClasses =
         "text-content-secondary hover:bg-surface-subtle hover:text-content-primary";
 
@@ -36,10 +61,18 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
             }
             onClick={onNavigate}
         >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600 transition-colors duration-200 group-hover:bg-indigo-200">
-                {icon}
-            </span>
-            {!isCollapsed && <span className="truncate">{text}</span>}
+            {({ isActive }) => (
+                <>
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                        isActive
+                            ? `bg-surface ${accentTextClass}`
+                            : `${accentTextClass} bg-transparent`
+                        }`}>
+                        {icon}
+                    </span>
+                    {!isCollapsed && <span className="truncate">{text}</span>}
+                </>
+            )}
         </NavLink>
     );
 };
@@ -59,6 +92,7 @@ function ManagerLayout() {
             "/manager/reports": "COSMOS | Project Reports",
             "/manager/calendar": "COSMOS | Project Calendar",
             "/manager/knowledge-management": "COSMOS | Knowledge Management",
+            "/manager/settings": "COSMOS | Settings",
         };
 
         const title = pathToTitle[location.pathname] || "Project Manager Panel";
@@ -95,6 +129,11 @@ function ManagerLayout() {
             to: "/manager/knowledge-management",
             text: "Knowledge Management",
             icon: <FaFileAlt className="h-4 w-4" aria-hidden="true" />,
+        },
+        {
+            to: "/manager/settings",
+            text: "Settings",
+            icon: <FaCog className="h-4 w-4" aria-hidden="true" />,
         },
     ];
 

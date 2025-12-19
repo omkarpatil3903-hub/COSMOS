@@ -6,8 +6,10 @@ import {
   FaClock,
   FaHourglassHalf,
 } from "react-icons/fa";
+import { useTheme } from "../../context/ThemeContext";
 
 const StatsCards = ({ stats }) => {
+  const { mode } = useTheme();
   const cards = [
     {
       label: "Total Scheduled",
@@ -50,7 +52,7 @@ const StatsCards = ({ stats }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-content-tertiary">{card.label}</p>
-              <p className="text-3xl font-bold mt-1">{card.value}</p>
+              <p className={`text-3xl font-bold mt-1 ${mode === 'dark' ? 'text-white' : 'text-gray-900'}`}>{card.value}</p>
             </div>
             <card.icon className={`h-8 w-8 ${card.iconColor} opacity-50`} />
           </div>

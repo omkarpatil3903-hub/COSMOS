@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../../context/useAuthContext"; // To get the user's name
+import { useTheme } from "../../context/ThemeContext";
 import {
   FaUsers,
   FaUserTie,
@@ -36,6 +37,7 @@ import DashboardSkeleton from "../../components/DashboardSkeleton";
 function DashboardPage() {
   const navigate = useNavigate();
   const { user, userData } = useAuthContext(); // Get user data for personalization
+  const { mode, accent } = useTheme(); // Get current theme mode
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -58,6 +60,39 @@ function DashboardPage() {
   const [savingReminder, setSavingReminder] = useState(false);
   const [editingReminderId, setEditingReminderId] = useState(null);
   const quickMenusRef = useRef(null);
+  const reminderMenuRef = useRef(null);
+  const notesMenuRef = useRef(null);
+
+  // Click outside to close menus
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Close reminder menu if clicking outside
+      if (reminderMenuRef.current && !reminderMenuRef.current.contains(event.target)) {
+        setShowReminderMenu(false);
+        setShowInlineReminderForm(false);
+      }
+      // Close notes menu if clicking outside
+      if (notesMenuRef.current && !notesMenuRef.current.contains(event.target)) {
+        setShowNotesMenu(false);
+        setEditingNoteId(null);
+        setNoteInput("");
+      }
+      // Close quick menu if clicking outside
+      if (quickMenusRef.current && !quickMenusRef.current.contains(event.target)) {
+        setShowQuickMenu(false);
+      }
+    };
+
+    // Add event listener
+    if (showReminderMenu || showNotesMenu || showQuickMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showReminderMenu, showNotesMenu, showQuickMenu]);
 
   const isTaskExpired = (task) => {
     const created = task.createdAt;
@@ -154,10 +189,20 @@ function DashboardPage() {
               `}
             >
               <div className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 rounded-xl p-[2px] shadow-lg">
-                <div className="bg-white rounded-xl px-4 py-3 flex items-center gap-3">
+                <div
+                  className="bg-white dark:bg-gray-800 rounded-xl px-4 py-3 flex items-center gap-3"
+                  style={{
+                    backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff'
+                  }}
+                >
                   <div className="flex-1 min-w-0 max-h-16 overflow-y-auto">
                     <div className="flex items-center justify-between mb-0.5">
-                      <div className="text-[11px] font-semibold text-indigo-600 tracking-wide uppercase">
+                      <div
+                        className="text-[11px] font-semibold text-indigo-600 tracking-wide uppercase"
+                        style={{
+                          color: mode === 'dark' ? '#818cf8' : '#4f46e5'
+                        }}
+                      >
                         Reminder
                       </div>
                       {timeLabel && (
@@ -166,11 +211,16 @@ function DashboardPage() {
                         </div>
                       )}
                     </div>
-                    <div className="text-xs font-medium text-gray-900 break-words leading-snug">
+                    <div
+                      className="text-xs font-medium text-gray-900 dark:text-white break-words leading-snug"
+                      style={{
+                        color: mode === 'dark' ? '#ffffff' : '#111827'
+                      }}
+                    >
                       {r.title || "Untitled reminder"}
                     </div>
                     {r.description && (
-                      <div className="text-[11px] text-gray-600 mt-0.5 break-words leading-snug">
+                      <div className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5 break-words leading-snug">
                         {r.description}
                       </div>
                     )}
@@ -620,8 +670,8 @@ function DashboardPage() {
   const LineChart = ({ data, title, dataKey, color = "#10B981" }) => {
     const values = Array.isArray(data)
       ? data
-          .map((d) => (d && typeof d[dataKey] === "number" ? d[dataKey] : null))
-          .filter((v) => typeof v === "number" && isFinite(v))
+        .map((d) => (d && typeof d[dataKey] === "number" ? d[dataKey] : null))
+        .filter((v) => typeof v === "number" && isFinite(v))
       : [];
 
     if (values.length === 0) {
@@ -742,9 +792,9 @@ function DashboardPage() {
                   {p.done}/{p.total} · {p.progress}%
                 </div>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full !bg-gray-300 dark:bg-gray-700 rounded-full h-2">
                 <div
-                  className="h-2 rounded-full transition-all duration-500 bg-indigo-600"
+                  className="h-2 rounded-full transition-all duration-500 bg-gray-400 dark:bg-indigo-600"
                   style={{ width: `${p.progress}%` }}
                 ></div>
               </div>
@@ -860,19 +910,35 @@ function DashboardPage() {
                 <div
                   key={index}
                   className={`
-                    h-8 p-1 border border-gray-100 relative
-                    ${day ? "hover:bg-gray-50" : ""}
-                    ${isToday(day) ? "bg-blue-100 border-blue-300" : "bg-white"}
+                    h-8 p-1 relative
+                    ${day ? "" : ""}
+                    ${isToday(day)
+                      ? "bg-blue-100 border-2 border-blue-400 dark:bg-blue-900 dark:border-blue-700"
+                      : "bg-white border border-gray-200 dark:bg-gray-800 dark:border-gray-700"
+                    }
+                    ${day ? "hover:bg-blue-50 dark:hover:bg-gray-700 cursor-pointer" : ""}
                   `}
+                  style={{
+                    backgroundColor: mode === 'dark'
+                      ? (isToday(day) ? '#1e3a8a' : '#1f2937')
+                      : (isToday(day) ? '#dbeafe' : '#ffffff'),
+                    borderColor: mode === 'dark'
+                      ? (isToday(day) ? '#3b82f6' : '#374151')
+                      : (isToday(day) ? '#93c5fd' : '#e5e7eb')
+                  }}
                 >
                   {day && (
                     <>
                       <div
-                        className={`text-center ${
-                          isToday(day)
-                            ? "font-bold text-blue-600"
-                            : "text-content-primary"
-                        }`}
+                        className={`text-center text-sm ${isToday(day)
+                          ? "font-bold text-blue-600 dark:text-blue-300"
+                          : "text-gray-900 dark:text-gray-100"
+                          }`}
+                        style={{
+                          color: mode === 'dark'
+                            ? (isToday(day) ? '#93c5fd' : '#f3f4f6')
+                            : (isToday(day) ? '#2563eb' : '#111827')
+                        }}
                       >
                         {day}
                       </div>
@@ -968,13 +1034,59 @@ function DashboardPage() {
   // Use realistic user name
   const welcomeTitle = `Welcome${userData?.name ? ", " + userData.name : ""}!`;
 
+  // Get dynamic icon color based on theme
+  const getIconColor = () => {
+    if (accent === 'black') {
+      return 'text-blue-400';
+    }
+
+    return accent === "purple"
+      ? "text-purple-400"
+      : accent === "blue"
+        ? "text-sky-400"
+        : accent === "pink"
+          ? "text-pink-400"
+          : accent === "violet"
+            ? "text-violet-400"
+            : accent === "orange"
+              ? "text-amber-400"
+              : accent === "teal"
+                ? "text-teal-400"
+                : accent === "bronze"
+                  ? "text-amber-500"
+                  : accent === "mint"
+                    ? "text-emerald-400"
+                    : "text-indigo-400";
+  };
+
+  const iconColor = getIconColor();
+
+  // Get dynamic button background color based on theme
+  const getButtonClass = () => {
+    if (accent === 'black') return 'bg-blue-600 hover:bg-blue-700 shadow-sm';
+
+    switch (accent) {
+      case 'purple': return 'bg-purple-600 hover:bg-purple-700 shadow-sm';
+      case 'blue': return 'bg-sky-600 hover:bg-sky-700 shadow-sm';
+      case 'pink': return 'bg-pink-600 hover:bg-pink-700 shadow-sm';
+      case 'violet': return 'bg-violet-600 hover:bg-violet-700 shadow-sm';
+      case 'orange': return 'bg-amber-600 hover:bg-amber-700 shadow-sm';
+      case 'teal': return 'bg-teal-600 hover:bg-teal-700 shadow-sm';
+      case 'bronze': return 'bg-amber-600 hover:bg-amber-700 shadow-sm';
+      case 'mint': return 'bg-emerald-600 hover:bg-emerald-700 shadow-sm';
+      default: return 'bg-indigo-600 hover:bg-indigo-700 shadow-sm';
+    }
+  };
+
+  const buttonClass = getButtonClass();
+
   return (
     <div>
       <PageHeader
         title={welcomeTitle}
         actions={
           <div className="flex items-center gap-3">
-            <div className="relative">
+            <div className="relative" ref={quickMenusRef}>
               <button
                 type="button"
                 onClick={() => {
@@ -982,13 +1094,19 @@ function DashboardPage() {
                   setShowReminderMenu(false);
                   setShowNotesMenu(false);
                 }}
-                className="p-2 rounded-full hover:bg-gray-100 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-gray-200 shadow-sm"
+                className="p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-gray-200 shadow-sm"
                 title="Quick actions"
               >
-                <LuNotebookPen className="h-5 w-5" />
+                <LuNotebookPen className={`h-5 w-5 ${iconColor}`} />
               </button>
               {showQuickMenu && (
-                <div className="absolute right-0 top-9 z-30 w-44 rounded-lg bg-white shadow-lg border border-gray-200 text-sm">
+                <div
+                  className="absolute right-0 top-9 z-30 w-44 rounded-lg bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 text-sm"
+                  style={{
+                    backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+                    borderColor: mode === 'dark' ? '#374151' : '#e5e7eb'
+                  }}
+                >
                   <button
                     type="button"
                     onClick={() => {
@@ -996,7 +1114,20 @@ function DashboardPage() {
                       setShowNotesMenu(false);
                       setShowQuickMenu(false);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50 text-gray-700 flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 rounded-md text-gray-900 dark:text-gray-200 flex items-center gap-2 transition-colors"
+                    style={{
+                      color: mode === 'dark' ? '#e5e7eb' : '#111827'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (mode !== 'dark') {
+                        e.currentTarget.style.backgroundColor = '#dfe3e5ff'
+                      } else {
+                        e.currentTarget.style.backgroundColor = '#374151'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent'
+                    }}
                   >
                     <LuAlarmClock className="h-3.5 w-3.5 text-indigo-500" />
                     <span>Reminders</span>
@@ -1008,7 +1139,20 @@ function DashboardPage() {
                       setShowReminderMenu(false);
                       setShowQuickMenu(false);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50 text-gray-700 border-t border-gray-100 flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 rounded-md text-gray-900 dark:text-gray-200 flex items-center gap-2 transition-colors"
+                    style={{
+                      color: mode === 'dark' ? '#e5e7eb' : '#111827'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (mode !== 'dark') {
+                        e.currentTarget.style.backgroundColor = '#dfe3e5ff'
+                      } else {
+                        e.currentTarget.style.backgroundColor = '#374151'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent'
+                    }}
                   >
                     <FaStickyNote className="h-3.5 w-3.5 text-amber-500" />
                     <span>Notes</span>
@@ -1017,9 +1161,21 @@ function DashboardPage() {
               )}
 
               {showReminderMenu && (
-                <div className="absolute right-0 top-11 z-20 w-80 rounded-lg bg-white shadow-lg border border-gray-200 p-3 text-sm">
+                <div
+                  ref={reminderMenuRef}
+                  className="absolute right-0 top-11 z-20 w-80 rounded-lg bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 p-3 text-sm"
+                  style={{
+                    backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+                    borderColor: mode === 'dark' ? '#374151' : '#e5e7eb'
+                  }}
+                >
                   <div className="flex items-center justify-between mb-2">
-                    <div className="font-semibold text-gray-800">Quick Reminders</div>
+                    <div
+                      className="font-semibold text-gray-800 dark:text-gray-200"
+                      style={{
+                        color: mode === 'dark' ? '#e5e7eb' : '#1f2937'
+                      }}
+                    >Quick Reminders</div>
                     <button
                       type="button"
                       onClick={() => {
@@ -1040,8 +1196,16 @@ function DashboardPage() {
                         setRemDesc("");
                         setShowInlineReminderForm((v) => !v);
                       }}
-                      className="p-1.5 rounded-md hover:bg-gray-100 text-indigo-600"
+                      className={`p-1.5 rounded-md ${iconColor} transition-colors`}
                       title="Add reminder"
+                      onMouseEnter={(e) => {
+                        if (mode !== 'dark') {
+                          e.currentTarget.style.backgroundColor = '#f3f4f6'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                      }}
                     >
                       <FaPlus className="h-3.5 w-3.5" />
                     </button>
@@ -1093,40 +1257,64 @@ function DashboardPage() {
                           setSavingReminder(false);
                         }
                       }}
-                      className="mb-3 space-y-2 border border-gray-100 rounded-md p-2 bg-gray-50"
+                      className="mb-3 space-y-2 border border-gray-200 dark:border-gray-700 rounded-md p-2 bg-white dark:bg-gray-700"
+                      style={{
+                        backgroundColor: mode === 'dark' ? '#374151' : '#ffffff',
+                        borderColor: mode === 'dark' ? '#374151' : '#e5e7eb'
+                      }}
                     >
                       <input
                         type="text"
-                        className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full rounded border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                         placeholder="Reminder title"
                         value={remTitle}
                         onChange={(e) => setRemTitle(e.target.value)}
+                        style={{
+                          backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+                          color: mode === 'dark' ? '#ffffff' : '#111827',
+                          borderColor: mode === 'dark' ? '#4b5563' : '#e5e7eb'
+                        }}
                       />
                       <div className="grid grid-cols-2 gap-2">
                         <input
                           type="date"
-                          className="rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="rounded border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                           value={remDate}
                           onChange={(e) => setRemDate(e.target.value)}
+                          style={{
+                            backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+                            color: mode === 'dark' ? '#ffffff' : '#111827',
+                            borderColor: mode === 'dark' ? '#4b5563' : '#e5e7eb'
+                          }}
                         />
                         <input
                           type="time"
-                          className="rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="rounded border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                           value={remTime}
                           onChange={(e) => setRemTime(e.target.value)}
+                          style={{
+                            backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+                            color: mode === 'dark' ? '#ffffff' : '#111827',
+                            borderColor: mode === 'dark' ? '#4b5563' : '#e5e7eb'
+                          }}
                         />
                       </div>
                       <textarea
                         rows={2}
-                        className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full rounded border border-gray-200 dark:border-gray-600 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                         placeholder="Description (optional)"
                         value={remDesc}
                         onChange={(e) => setRemDesc(e.target.value)}
+                        style={{
+                          backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+                          color: mode === 'dark' ? '#ffffff' : '#111827',
+                          borderColor: mode === 'dark' ? '#4b5563' : '#e5e7eb'
+                        }}
                       />
                       <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
-                          className="px-2 py-1 text-xs rounded-md hover:bg-gray-100"
+                          className="px-2 py-1 text-xs rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 dark:text-gray-200"
                           onClick={() => {
                             setShowInlineReminderForm(false);
                             setEditingReminderId(null);
@@ -1137,7 +1325,7 @@ function DashboardPage() {
                         </button>
                         <button
                           type="submit"
-                          className="px-2 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                          className={`px-2 py-1 text-xs rounded-md ${buttonClass} text-white disabled:opacity-50`}
                           disabled={savingReminder}
                         >
                           {savingReminder ? "Saving..." : editingReminderId ? "Update" : "Save"}
@@ -1148,20 +1336,36 @@ function DashboardPage() {
                   {quickReminders.length === 0 ? (
                     <div className="text-xs text-gray-400">No reminders yet.</div>
                   ) : (
-                    <ul className="space-y-2 text-gray-700 max-h-60 overflow-y-auto">
+                    <ul className="space-y-2 text-gray-700 dark:text-gray-300 max-h-60 overflow-y-auto">
                       {quickReminders.slice(0, 5).map((r) => (
-                        <li key={r.id} className="group flex items-start justify-between gap-2">
+                        <li
+                          key={r.id}
+                          className="group flex items-start justify-between gap-2 p-2 rounded-md transition-colors"
+                          onMouseEnter={(e) => {
+                            if (mode === 'dark') {
+                              e.currentTarget.style.backgroundColor = '#374151'
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent'
+                          }}
+                        >
                           <div className="flex items-start gap-2 flex-1 min-w-0">
                             <span className="mt-1">•</span>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm truncate">{r.title}</div>
+                              <div
+                                className="text-sm truncate"
+                                style={{
+                                  color: mode === 'dark' ? '#d1d5db' : '#111827'
+                                }}
+                              >{r.title}</div>
                               <div className="text-[11px] text-gray-500">{formatDueTime(r.dueAt)}</div>
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-800"
+                              className="p-1 rounded text-gray-500 hover:text-green-600 dark:hover:text-green-400 transition-colors"
                               title="Edit reminder"
                               onClick={() => {
                                 setShowInlineReminderForm(true);
@@ -1171,11 +1375,19 @@ function DashboardPage() {
                                 const d = r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt);
                                 const yyyy = d.getFullYear();
                                 const mm = String(d.getMonth() + 1).padStart(2, "0");
-                                const dd = String(d.getDate()).padStart(2, "0");
+                                const dd = d.getDate().toString().padStart(2, "0");
                                 const hh = String(d.getHours()).padStart(2, "0");
                                 const min = String(d.getMinutes()).padStart(2, "0");
                                 setRemDate(`${yyyy}-${mm}-${dd}`);
                                 setRemTime(`${hh}:${min}`);
+                              }}
+                              onMouseEnter={(e) => {
+                                if (mode !== 'dark') {
+                                  e.currentTarget.style.backgroundColor = '#f3f4f6'
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent'
                               }}
                             >
                               <span className="sr-only">Edit</span>
@@ -1186,7 +1398,7 @@ function DashboardPage() {
                             </button>
                             <button
                               type="button"
-                              className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-red-600"
+                              className="p-1 rounded text-gray-500 hover:text-red-600 transition-colors"
                               title="Delete reminder"
                               onClick={async () => {
                                 try {
@@ -1194,6 +1406,14 @@ function DashboardPage() {
                                 } catch (e) {
                                   console.error("Failed to delete reminder", e);
                                 }
+                              }}
+                              onMouseEnter={(e) => {
+                                if (mode !== 'dark') {
+                                  e.currentTarget.style.backgroundColor = '#f3f4f6'
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent'
                               }}
                             >
                               <span className="sr-only">Delete</span>
@@ -1215,13 +1435,25 @@ function DashboardPage() {
               )}
 
               {showNotesMenu && (
-                <div className="absolute right-0 top-11 z-20 w-80 rounded-lg bg-white shadow-lg border border-gray-200 p-3 text-sm">
+                <div
+                  ref={notesMenuRef}
+                  className="absolute right-0 top-11 z-20 w-80 rounded-lg bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 p-3 text-sm"
+                  style={{
+                    backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+                    borderColor: mode === 'dark' ? '#374151' : '#e5e7eb'
+                  }}
+                >
                   <div className="flex items-center justify-between mb-2">
-                    <div className="font-semibold text-gray-800">Quick Notes</div>
+                    <div
+                      className="font-semibold text-gray-800 dark:text-gray-200"
+                      style={{
+                        color: mode === 'dark' ? '#e5e7eb' : '#1f2937'
+                      }}
+                    >Quick Notes</div>
                     <div className="flex items-center gap-2">
                       {notes.length > 0 && (
                         <span className="text-xs text-gray-400">
-{notes.length} {notes.length === 1 ? "Note" : "Notes"}
+                          {notes.length} {notes.length === 1 ? "Note" : "Notes"}
                         </span>
                       )}
                       <button
@@ -1285,7 +1517,7 @@ function DashboardPage() {
                             console.error("Failed to save note", e);
                           }
                         }}
-                        className="px-2 py-1 rounded-md bg-indigo-600 text-white text-[10px] font-medium hover:bg-indigo-700 disabled:opacity-50"
+                        className={`px-2 py-1 rounded-md ${buttonClass} text-white text-[10px] font-medium disabled:opacity-50`}
                         disabled={!noteInput.trim()}
                       >
                         {editingNoteId ? "Update" : "Save"}
@@ -1296,15 +1528,34 @@ function DashboardPage() {
                     rows={3}
                     value={noteInput}
                     onChange={(e) => setNoteInput(e.target.value)}
-                    className="w-full border border-gray-200 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full border border-gray-200 dark:border-gray-600 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     placeholder="Write a quick note..."
+                    style={{
+                      backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+                      color: mode === 'dark' ? '#ffffff' : '#111827',
+                      borderColor: mode === 'dark' ? '#4b5563' : '#e5e7eb'
+                    }}
                   />
                   {notes.length > 0 && (
-                    <div className="mt-3 border-t border-gray-100 pt-2 max-h-40 overflow-y-auto space-y-2">
+                    <div className="mt-3 border-t border-gray-100 dark:border-gray-700 pt-2 max-h-40 overflow-y-auto space-y-2">
                       {notes.map((note) => (
                         <div
                           key={note.id}
-                          className="group flex items-start justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-2 py-1.5"
+                          className="group flex items-start justify-between gap-2 rounded-md border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 px-2 py-1.5 transition-colors"
+                          style={{
+                            backgroundColor: mode === 'dark' ? '#374151' : '#f9fafb',
+                            borderColor: mode === 'dark' ? '#374151' : '#f3f4f6'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (mode === 'dark') {
+                              e.currentTarget.style.backgroundColor = '#4b5563'
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (mode === 'dark') {
+                              e.currentTarget.style.backgroundColor = '#374151'
+                            }
+                          }}
                         >
                           <div className="flex items-start gap-2 flex-1">
                             <button
@@ -1333,12 +1584,17 @@ function DashboardPage() {
                                   console.error("Failed to toggle pin", err);
                                 }
                               }}
-                              className={`p-1 rounded hover:bg-gray-200 ${note.isPinned ? "text-amber-600" : "text-gray-400 hover:text-gray-600"}`}
+                              className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 ${note.isPinned ? "text-amber-600" : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"}`}
                               title={note.isPinned ? "Unpin note" : "Pin note"}
                             >
                               <FaThumbtack className="h-3 w-3" />
                             </button>
-                            <p className="text-xs text-gray-700 leading-snug whitespace-pre-wrap break-all flex-1">
+                            <p
+                              className="text-xs text-gray-700 dark:text-gray-200 leading-snug whitespace-pre-wrap break-all flex-1"
+                              style={{
+                                color: mode === 'dark' ? '#e5e7eb' : '#111827'
+                              }}
+                            >
                               {note.text}
                             </p>
                           </div>
@@ -1349,8 +1605,16 @@ function DashboardPage() {
                                 setNoteInput(note.text);
                                 setEditingNoteId(note.id);
                               }}
-                              className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-800"
+                              className="p-1 rounded text-gray-500 hover:text-green-600 dark:hover:text-green-400 transition-colors"
                               title="Edit note"
+                              onMouseEnter={(e) => {
+                                if (mode !== 'dark') {
+                                  e.currentTarget.style.backgroundColor = '#f3f4f6'
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent'
+                              }}
                             >
                               <span className="sr-only">Edit</span>
                               <svg
@@ -1378,8 +1642,16 @@ function DashboardPage() {
                                   console.error("Failed to delete note", e);
                                 }
                               }}
-                              className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-red-600"
+                              className="p-1 rounded text-gray-500 hover:text-red-600 transition-colors"
                               title="Delete note"
+                              onMouseEnter={(e) => {
+                                if (mode !== 'dark') {
+                                  e.currentTarget.style.backgroundColor = '#f3f4f6'
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent'
+                              }}
                             >
                               <span className="sr-only">Delete</span>
                               <svg
@@ -1411,11 +1683,31 @@ function DashboardPage() {
               <select
                 value={selectedProject}
                 onChange={(e) => setSelectedProject(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="border border-gray-200 dark:border-gray-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                style={{
+                  backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+                  color: mode === 'dark' ? '#ffffff' : '#111827',
+                  borderColor: mode === 'dark' ? '#4b5563' : '#e5e7eb'
+                }}
               >
-                <option value="">All Projects</option>
+                <option
+                  value=""
+                  className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  style={{
+                    backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+                    color: mode === 'dark' ? '#ffffff' : '#111827'
+                  }}
+                >All Projects</option>
                 {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
+                  <option
+                    key={project.id}
+                    value={project.id}
+                    className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    style={{
+                      backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+                      color: mode === 'dark' ? '#ffffff' : '#111827'
+                    }}
+                  >
                     {project.projectName || project.name || "Untitled"}
                   </option>
                 ))}
@@ -1426,10 +1718,10 @@ function DashboardPage() {
       >
         Monitor project performance, client engagement, and manage resources
         from a single control center.
-      </PageHeader>
+      </PageHeader >
 
       {/* --- Stat Cards Section --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      < div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" >
         <div
           onClick={() => navigate("/manage-projects")}
           className="cursor-pointer transform transition-transform hover:scale-105"
@@ -1478,10 +1770,10 @@ function DashboardPage() {
             color="green"
           />
         </div>
-      </div>
+      </div >
 
       {/* --- Analytical Graphs Section --- */}
-      <div className="mt-10">
+      < div className="mt-10" >
         <h2 className="text-xl font-semibold text-content-primary sm:text-2xl mb-6">
           Project Analytics Dashboard
         </h2>
@@ -1528,7 +1820,7 @@ function DashboardPage() {
 
               {/* Status distribution stacked bar */}
               <div className="space-y-2">
-                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden flex">
+                <div className="w-full !bg-gray-300 dark:bg-gray-700 rounded-full h-3 overflow-hidden flex">
                   {statusSummary.counts.done > 0 && (
                     <div
                       className="h-3 bg-green-500"
@@ -1584,21 +1876,21 @@ function DashboardPage() {
 
               {/* Portfolio health counts */}
               <div className="mt-6 grid grid-cols-3 gap-3">
-                <div className="p-3 rounded-lg bg-green-50 border border-green-100">
-                  <div className="text-xs text-green-700">On Track</div>
-                  <div className="text-lg font-semibold text-green-800">
+                <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/20">
+                  <div className="text-xs font-medium text-green-900 dark:text-green-500">On Track</div>
+                  <div className="text-lg font-semibold text-green-900 dark:text-green-500">
                     {projectHealth.counts.onTrack}
                   </div>
                 </div>
-                <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
-                  <div className="text-xs text-amber-700">Needs Attention</div>
-                  <div className="text-lg font-semibold text-amber-800">
+                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20">
+                  <div className="text-xs font-medium text-amber-800 dark:text-amber-500">Needs Attention</div>
+                  <div className="text-lg font-semibold text-amber-900 dark:text-amber-500">
                     {projectHealth.counts.needsAttention}
                   </div>
                 </div>
-                <div className="p-3 rounded-lg bg-red-50 border border-red-100">
-                  <div className="text-xs text-red-700">At Risk</div>
-                  <div className="text-lg font-semibold text-red-800">
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
+                  <div className="text-xs font-medium text-red-800 dark:text-red-500">At Risk</div>
+                  <div className="text-lg font-semibold text-red-900 dark:text-red-500">
                     {projectHealth.counts.atRisk}
                   </div>
                 </div>
@@ -1657,19 +1949,19 @@ function DashboardPage() {
                     <span className="font-semibold text-green-600">
                       {projects.length
                         ? Math.round(
-                            projects
-                              .map((p) => {
-                                const projTasks = tasks.filter(
-                                  (t) => t.projectId === p.id
-                                );
-                                const total = projTasks.length;
-                                const done = projTasks.filter(
-                                  (t) => normalizeStatus(t.status) === "Done"
-                                ).length;
-                                return total > 0 ? (done / total) * 100 : 0;
-                              })
-                              .reduce((a, b) => a + b, 0) / projects.length
-                          )
+                          projects
+                            .map((p) => {
+                              const projTasks = tasks.filter(
+                                (t) => t.projectId === p.id
+                              );
+                              const total = projTasks.length;
+                              const done = projTasks.filter(
+                                (t) => normalizeStatus(t.status) === "Done"
+                              ).length;
+                              return total > 0 ? (done / total) * 100 : 0;
+                            })
+                            .reduce((a, b) => a + b, 0) / projects.length
+                        )
                         : 0}
                       %
                     </span>
@@ -1679,8 +1971,8 @@ function DashboardPage() {
             </div>
           </Card>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }
 

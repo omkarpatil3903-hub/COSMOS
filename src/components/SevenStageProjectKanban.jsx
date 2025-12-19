@@ -289,10 +289,10 @@ export default function SevenStageProjectKanban({ projects, onUpdate }) {
     const updated = (subs[stageKey] || []).map((s) =>
       s.id === sub.id
         ? {
-            ...s,
-            status: s.status === "open" ? "done" : "open",
-            completedAt: s.status === "open" ? Date.now() : null,
-          }
+          ...s,
+          status: s.status === "open" ? "done" : "open",
+          completedAt: s.status === "open" ? Date.now() : null,
+        }
         : s
     );
     try {
@@ -350,13 +350,13 @@ export default function SevenStageProjectKanban({ projects, onUpdate }) {
   return (
     <div className="space-y-6">
       {/* Stage Progress Bar with Pagination */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg border border-gray-200 [.dark_&]:border-white/10 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-gray-700">
+          <h3 className="text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">
             Pipeline Progress
           </h3>
           {STAGES.length > STAGES_PER_PAGE && (
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-gray-500 [.dark_&]:text-gray-400">
               Showing {currentProgressPage * STAGES_PER_PAGE + 1}-
               {Math.min(
                 (currentProgressPage + 1) * STAGES_PER_PAGE,
@@ -373,11 +373,10 @@ export default function SevenStageProjectKanban({ projects, onUpdate }) {
             <button
               onClick={handlePrevProgressPage}
               disabled={currentProgressPage === 0}
-              className={`flex-shrink-0 p-2 rounded-lg transition-all ${
-                currentProgressPage === 0
-                  ? "text-gray-300 cursor-not-allowed"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-              }`}
+              className={`flex-shrink-0 p-2 rounded-lg transition-all ${currentProgressPage === 0
+                ? "text-gray-300 [.dark_&]:text-gray-600 cursor-not-allowed"
+                : "text-gray-600 [.dark_&]:text-gray-400 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 hover:text-gray-900 [.dark_&]:hover:text-white"
+                }`}
               title="Previous stages"
             >
               <svg
@@ -412,9 +411,8 @@ export default function SevenStageProjectKanban({ projects, onUpdate }) {
                 <div key={stage.id} className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
                     <div
-                      className={`w-full h-2 rounded-full transition-colors ${
-                        isActive ? stage.color : "bg-gray-200"
-                      }`}
+                      className={`w-full h-2 rounded-full transition-colors ${isActive ? stage.color : "bg-gray-200 [.dark_&]:bg-white/10"
+                        }`}
                     />
                     {idx < visibleProgressStages.length - 1 && (
                       <FaChevronRight className="text-gray-300 flex-shrink-0" />
@@ -422,15 +420,15 @@ export default function SevenStageProjectKanban({ projects, onUpdate }) {
                   </div>
                   <div className="text-center">
                     <p
-                      className="text-xs font-medium text-gray-900 px-1 truncate"
+                      className="text-xs font-medium text-gray-900 [.dark_&]:text-white px-1 truncate"
                       title={stage.label}
                     >
                       {displayLabel}
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-gray-500 [.dark_&]:text-gray-400 mt-0.5">
                       Level {stage.level}
                     </p>
-                    <p className="text-lg font-bold text-gray-900 mt-1">
+                    <p className="text-lg font-bold text-gray-900 [.dark_&]:text-white mt-1">
                       {count}
                     </p>
                   </div>
@@ -444,11 +442,10 @@ export default function SevenStageProjectKanban({ projects, onUpdate }) {
             <button
               onClick={handleNextProgressPage}
               disabled={currentProgressPage === totalProgressPages - 1}
-              className={`flex-shrink-0 p-2 rounded-lg transition-all ${
-                currentProgressPage === totalProgressPages - 1
-                  ? "text-gray-300 cursor-not-allowed"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-              }`}
+              className={`flex-shrink-0 p-2 rounded-lg transition-all ${currentProgressPage === totalProgressPages - 1
+                ? "text-gray-300 [.dark_&]:text-gray-600 cursor-not-allowed"
+                : "text-gray-600 [.dark_&]:text-gray-400 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 hover:text-gray-900 [.dark_&]:hover:text-white"
+                }`}
               title="Next stages"
             >
               <svg
@@ -475,11 +472,10 @@ export default function SevenStageProjectKanban({ projects, onUpdate }) {
               <button
                 key={idx}
                 onClick={() => setCurrentProgressPage(idx)}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  idx === currentProgressPage
-                    ? "bg-indigo-600 w-6"
-                    : "bg-gray-300 hover:bg-gray-400"
-                }`}
+                className={`w-2 h-2 rounded-full transition-all ${idx === currentProgressPage
+                  ? "bg-indigo-600 w-6"
+                  : "bg-gray-300 hover:bg-gray-400"
+                  }`}
                 title={`Page ${idx + 1}`}
               />
             ))}
@@ -496,55 +492,55 @@ export default function SevenStageProjectKanban({ projects, onUpdate }) {
             // Get smooth solid background color based on stage color
             const getBgColor = (color) => {
               const colorMap = {
-                "bg-purple-500": "bg-purple-50",
-                "bg-blue-500": "bg-blue-50",
-                "bg-cyan-500": "bg-cyan-50",
-                "bg-indigo-500": "bg-indigo-50",
-                "bg-orange-500": "bg-orange-50",
-                "bg-green-500": "bg-green-50",
-                "bg-emerald-500": "bg-emerald-50",
-                "bg-pink-500": "bg-pink-50",
-                "bg-teal-500": "bg-teal-50",
-                "bg-red-500": "bg-red-50",
-                "bg-amber-500": "bg-amber-50",
-                "bg-lime-500": "bg-lime-50",
-                "bg-sky-500": "bg-sky-50",
-                "bg-violet-500": "bg-violet-50",
-                "bg-fuchsia-500": "bg-fuchsia-50",
-                "bg-rose-500": "bg-rose-50",
-                "bg-slate-500": "bg-slate-50",
-                "bg-zinc-500": "bg-zinc-50",
-                "bg-stone-500": "bg-stone-50",
-                "bg-neutral-500": "bg-neutral-50",
+                "bg-purple-500": "bg-purple-50 [.dark_&]:bg-purple-500/10",
+                "bg-blue-500": "bg-blue-50 [.dark_&]:bg-blue-500/10",
+                "bg-cyan-500": "bg-cyan-50 [.dark_&]:bg-cyan-500/10",
+                "bg-indigo-500": "bg-indigo-50 [.dark_&]:bg-indigo-500/10",
+                "bg-orange-500": "bg-orange-50 [.dark_&]:bg-orange-500/10",
+                "bg-green-500": "bg-green-50 [.dark_&]:bg-green-500/10",
+                "bg-emerald-500": "bg-emerald-50 [.dark_&]:bg-emerald-500/10",
+                "bg-pink-500": "bg-pink-50 [.dark_&]:bg-pink-500/10",
+                "bg-teal-500": "bg-teal-50 [.dark_&]:bg-teal-500/10",
+                "bg-red-500": "bg-red-50 [.dark_&]:bg-red-500/10",
+                "bg-amber-500": "bg-amber-50 [.dark_&]:bg-amber-500/10",
+                "bg-lime-500": "bg-lime-50 [.dark_&]:bg-lime-500/10",
+                "bg-sky-500": "bg-sky-50 [.dark_&]:bg-sky-500/10",
+                "bg-violet-500": "bg-violet-50 [.dark_&]:bg-violet-500/10",
+                "bg-fuchsia-500": "bg-fuchsia-50 [.dark_&]:bg-fuchsia-500/10",
+                "bg-rose-500": "bg-rose-50 [.dark_&]:bg-rose-500/10",
+                "bg-slate-500": "bg-slate-50 [.dark_&]:bg-slate-500/10",
+                "bg-zinc-500": "bg-zinc-50 [.dark_&]:bg-zinc-500/10",
+                "bg-stone-500": "bg-stone-50 [.dark_&]:bg-stone-500/10",
+                "bg-neutral-500": "bg-neutral-50 [.dark_&]:bg-neutral-500/10",
               };
-              return colorMap[color] || "bg-gray-50";
+              return colorMap[color] || "bg-gray-50 [.dark_&]:bg-white/5";
             };
 
             // Get faint/light border color based on stage color
             const getBorderColor = (color) => {
               const borderMap = {
-                "bg-purple-500": "border-purple-200",
-                "bg-blue-500": "border-blue-200",
-                "bg-cyan-500": "border-cyan-200",
-                "bg-indigo-500": "border-indigo-200",
-                "bg-orange-500": "border-orange-200",
-                "bg-green-500": "border-green-200",
-                "bg-emerald-500": "border-emerald-200",
-                "bg-pink-500": "border-pink-200",
-                "bg-teal-500": "border-teal-200",
-                "bg-red-500": "border-red-200",
-                "bg-amber-500": "border-amber-200",
-                "bg-lime-500": "border-lime-200",
-                "bg-sky-500": "border-sky-200",
-                "bg-violet-500": "border-violet-200",
-                "bg-fuchsia-500": "border-fuchsia-200",
-                "bg-rose-500": "border-rose-200",
-                "bg-slate-500": "border-slate-200",
-                "bg-zinc-500": "border-zinc-200",
-                "bg-stone-500": "border-stone-200",
-                "bg-neutral-500": "border-neutral-200",
+                "bg-purple-500": "border-purple-200 [.dark_&]:border-purple-500/20",
+                "bg-blue-500": "border-blue-200 [.dark_&]:border-blue-500/20",
+                "bg-cyan-500": "border-cyan-200 [.dark_&]:border-cyan-500/20",
+                "bg-indigo-500": "border-indigo-200 [.dark_&]:border-indigo-500/20",
+                "bg-orange-500": "border-orange-200 [.dark_&]:border-orange-500/20",
+                "bg-green-500": "border-green-200 [.dark_&]:border-green-500/20",
+                "bg-emerald-500": "border-emerald-200 [.dark_&]:border-emerald-500/20",
+                "bg-pink-500": "border-pink-200 [.dark_&]:border-pink-500/20",
+                "bg-teal-500": "border-teal-200 [.dark_&]:border-teal-500/20",
+                "bg-red-500": "border-red-200 [.dark_&]:border-red-500/20",
+                "bg-amber-500": "border-amber-200 [.dark_&]:border-amber-500/20",
+                "bg-lime-500": "border-lime-200 [.dark_&]:border-lime-500/20",
+                "bg-sky-500": "border-sky-200 [.dark_&]:border-sky-500/20",
+                "bg-violet-500": "border-violet-200 [.dark_&]:border-violet-500/20",
+                "bg-fuchsia-500": "border-fuchsia-200 [.dark_&]:border-fuchsia-500/20",
+                "bg-rose-500": "border-rose-200 [.dark_&]:border-rose-500/20",
+                "bg-slate-500": "border-slate-200 [.dark_&]:border-slate-500/20",
+                "bg-zinc-500": "border-zinc-200 [.dark_&]:border-zinc-500/20",
+                "bg-stone-500": "border-stone-200 [.dark_&]:border-stone-500/20",
+                "bg-neutral-500": "border-neutral-200 [.dark_&]:border-neutral-500/20",
               };
-              return borderMap[color] || "border-gray-200";
+              return borderMap[color] || "border-gray-200 [.dark_&]:border-white/10";
             };
 
             return (
@@ -569,16 +565,17 @@ export default function SevenStageProjectKanban({ projects, onUpdate }) {
                       >
                         {stage.icon}
                       </div>
+
                       <div className="min-w-0 flex-1">
                         <h3
-                          className="font-semibold text-gray-900 text-base leading-tight truncate overflow-hidden text-ellipsis whitespace-nowrap"
+                          className="font-semibold text-gray-900 [.dark_&]:text-white text-base leading-tight truncate overflow-hidden text-ellipsis whitespace-nowrap"
                           title={stage.label}
                         >
                           {stage.label}
                         </h3>
                       </div>
                     </div>
-                    <span className="bg-white/60 backdrop-blur-sm text-gray-900 px-2 py-1 rounded-full text-xs font-bold flex-shrink-0 ml-2 border border-gray-300/50">
+                    <span className="bg-white/60 [.dark_&]:bg-white/10 backdrop-blur-sm text-gray-900 [.dark_&]:text-white px-2 py-1 rounded-full text-xs font-bold flex-shrink-0 ml-2 border border-gray-300/50 [.dark_&]:border-white/10">
                       {stageProjects.length}
                     </span>
                   </div>
@@ -611,7 +608,7 @@ export default function SevenStageProjectKanban({ projects, onUpdate }) {
           })}
         </div>
       </div>
-    </div>
+    </div >
   );
 }
 
@@ -688,10 +685,10 @@ function ProjectCard({
   };
 
   return (
-    <div className="bg-white rounded-lg p-3 shadow-sm hover:shadow-lg transition-all duration-300">
+    <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg p-3 shadow-sm hover:shadow-lg transition-all duration-300 border border-transparent [.dark_&]:border-white/10">
       {/* Project Name */}
       <h4
-        className="font-medium text-gray-900 mb-2 truncate overflow-hidden text-ellipsis whitespace-nowrap"
+        className="font-medium text-gray-900 [.dark_&]:text-white mb-2 truncate overflow-hidden text-ellipsis whitespace-nowrap"
         title={project.projectName}
         style={{ maxWidth: "100%" }}
       >
@@ -700,7 +697,7 @@ function ProjectCard({
 
       {/* Client Name */}
       <p
-        className="text-xs text-gray-600 mb-2 truncate overflow-hidden text-ellipsis whitespace-nowrap"
+        className="text-xs text-gray-600 [.dark_&]:text-gray-400 mb-2 truncate overflow-hidden text-ellipsis whitespace-nowrap"
         title={project.clientName || "N/A"}
       >
         Client: {project.clientName || "N/A"}
@@ -708,11 +705,11 @@ function ProjectCard({
 
       {/* Progress Bar */}
       <div className="mb-3">
-        <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+        <div className="flex items-center justify-between text-xs text-gray-600 [.dark_&]:text-gray-400 mb-1">
           <span>Progress</span>
           <span className="font-medium">{project.progress || 0}%</span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-gray-200 [.dark_&]:bg-white/10 rounded-full h-2">
           <div
             className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(
               project.progress || 0
@@ -726,10 +723,10 @@ function ProjectCard({
       {Array.isArray(currentSubstages) && currentSubstages.length > 0 && (
         <div className="mb-3">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-medium text-gray-700">Substages</span>
+            <span className="text-xs font-medium text-gray-700 [.dark_&]:text-gray-300">Substages</span>
             <button
               onClick={() => setShowSubstageModal(true)}
-              className="text-xs text-indigo-600 hover:text-indigo-700"
+              className="text-xs text-indigo-600 [.dark_&]:text-indigo-400 hover:text-indigo-700 [.dark_&]:hover:text-indigo-300"
             >
               Manage
             </button>
@@ -738,17 +735,16 @@ function ProjectCard({
             {currentSubstages.slice(0, 2).map((substage, idx) => (
               <span
                 key={idx}
-                className={`text-xs px-2 py-0.5 rounded ${
-                  completedSubstages.includes(substage)
-                    ? "bg-green-100 text-green-700"
-                    : "bg-gray-100 text-gray-600"
-                }`}
+                className={`text-xs px-2 py-0.5 rounded ${completedSubstages.includes(substage)
+                  ? "bg-green-100 text-green-700 [.dark_&]:bg-green-500/20 [.dark_&]:text-green-300"
+                  : "bg-gray-100 text-gray-600 [.dark_&]:bg-white/10 [.dark_&]:text-gray-400"
+                  }`}
               >
                 {substage}
               </span>
             ))}
             {currentSubstages.length > 2 && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-500 [.dark_&]:text-gray-400">
                 +{currentSubstages.length - 2} more
               </span>
             )}
@@ -760,7 +756,7 @@ function ProjectCard({
       <select
         value={project.pipelineStage || stage.id}
         onChange={(e) => handleStageChange(e.target.value)}
-        className="w-full text-xs border border-gray-300 rounded px-2 py-1 mt-2"
+        className="w-full text-xs border border-gray-300 [.dark_&]:border-white/10 rounded px-2 py-1 mt-2 bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:ring-indigo-500 focus:border-indigo-500"
       >
         {allStages.map((s) => (
           <option key={s.id} value={s.id}>
@@ -771,15 +767,15 @@ function ProjectCard({
 
       {/* Substage Modal */}
       {showSubstageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg p-6 max-w-md w-full border border-gray-200 [.dark_&]:border-white/10 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white">
                 {stage.label} - Substages
               </h3>
               <button
                 onClick={() => setShowSubstageModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 [.dark_&]:hover:text-gray-300 transition-colors"
               >
                 <FaTimes />
               </button>
@@ -789,22 +785,22 @@ function ProjectCard({
                 currentSubstages.map((substage, idx) => (
                   <label
                     key={idx}
-                    className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer"
+                    className="flex items-center gap-2 p-2 rounded hover:bg-gray-50 [.dark_&]:hover:bg-white/5 cursor-pointer transition-colors"
                   >
                     <input
                       type="checkbox"
                       checked={completedSubstages.includes(substage)}
                       onChange={() => toggleSubstage(substage)}
-                      className="rounded text-indigo-600"
+                      className="rounded text-indigo-600 focus:ring-indigo-500 bg-white [.dark_&]:bg-[#1F2234] border-gray-300 [.dark_&]:border-white/10"
                     />
-                    <span className="text-sm text-gray-700">{substage}</span>
+                    <span className="text-sm text-gray-700 [.dark_&]:text-gray-300">{substage}</span>
                   </label>
                 ))}
             </div>
             <div className="mt-4 flex justify-end">
               <button
                 onClick={() => setShowSubstageModal(false)}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                className="px-4 py-2 bg-indigo-600 [.dark_&]:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 [.dark_&]:hover:bg-indigo-400 transition-colors"
               >
                 Done
               </button>
