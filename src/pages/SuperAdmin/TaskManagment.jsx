@@ -209,7 +209,7 @@ function TasksManagement() {
         }
       }
 
-      
+
       return resolved;
     },
     [userMap, clientMap]
@@ -1660,7 +1660,7 @@ function TasksManagement() {
   useEffect(() => {
     try {
       localStorage.setItem("tm_group_order", JSON.stringify(groupOrder));
-    } catch {}
+    } catch { }
   }, [groupOrder]);
 
   // Initialize and reconcile group order whenever status options change
@@ -1733,7 +1733,7 @@ function TasksManagement() {
     return map;
   }, [filtered, effectiveStatuses, todayStr, statusColorMap]);
 
-  
+
 
   const saveStatusColorToDB = useCallback(async (name, hex) => {
     try {
@@ -1836,67 +1836,67 @@ function TasksManagement() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card
             onClick={() => applyStatusQuickFilter("To-Do")}
-            className="cursor-pointer hover:bg-surface-subtle"
+            className="cursor-pointer hover:bg-surface-subtle [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10"
           >
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-content-secondary">To-Do</div>
-                <div className="mt-1 text-2xl font-semibold">
+                <div className="text-sm text-content-secondary [.dark_&]:text-gray-400">To-Do</div>
+                <div className="mt-1 text-2xl font-semibold [.dark_&]:text-white">
                   {counts["To-Do"]}
                 </div>
               </div>
-              <FaListAlt className="h-8 w-8 text-gray-400" />
+              <FaListAlt className="h-8 w-8 text-gray-400 [.dark_&]:text-gray-500" />
             </div>
           </Card>
           <Card
             onClick={() => applyStatusQuickFilter("In Progress")}
-            className="cursor-pointer hover:bg-surface-subtle"
+            className="cursor-pointer hover:bg-surface-subtle [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10"
           >
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-content-secondary">
+                <div className="text-sm text-content-secondary [.dark_&]:text-gray-400">
                   In Progress
                 </div>
-                <div className="mt-1 text-2xl font-semibold">
+                <div className="mt-1 text-2xl font-semibold [.dark_&]:text-white">
                   {counts["In Progress"]}
                 </div>
               </div>
-              <FaClock className="h-8 w-8 text-blue-500" />
+              <FaClock className="h-8 w-8 text-blue-500 [.dark_&]:text-blue-400" />
             </div>
           </Card>
           <Card
             onClick={() => applyStatusQuickFilter("Done")}
-            className="cursor-pointer hover:bg-surface-subtle"
+            className="cursor-pointer hover:bg-surface-subtle [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10"
           >
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-content-secondary">Completed</div>
-                <div className="mt-1 text-2xl font-semibold">{counts.Done}</div>
+                <div className="text-sm text-content-secondary [.dark_&]:text-gray-400">Completed</div>
+                <div className="mt-1 text-2xl font-semibold [.dark_&]:text-white">{counts.Done}</div>
               </div>
-              <FaCheckCircle className="h-8 w-8 text-green-500" />
+              <FaCheckCircle className="h-8 w-8 text-green-500 [.dark_&]:text-green-400" />
             </div>
           </Card>
           <Card
             onClick={applyOverdueQuickFilter}
             className={`cursor-pointer transition-all duration-300 ${globalOverdueTasks.length > 0
-              ? "bg-red-50 border-red-300 ring-2 ring-red-100 ring-offset-2"
-              : "hover:bg-surface-subtle"
+              ? "bg-red-50 border-red-300 ring-2 ring-red-100 ring-offset-2 [.dark_&]:bg-red-900/10 [.dark_&]:border-red-500/30 [.dark_&]:ring-red-900/20"
+              : "hover:bg-surface-subtle [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10"
               }`}
           >
             <div className="flex items-center justify-between">
               <div>
                 <div
                   className={`text-sm ${globalOverdueTasks.length > 0
-                    ? "text-red-700 font-medium"
-                    : "text-content-secondary"
+                    ? "text-red-700 font-medium [.dark_&]:text-red-400"
+                    : "text-content-secondary [.dark_&]:text-gray-400"
                     }`}
                 >
                   Overdue
                 </div>
                 <div
                   className={`mt-1 text-2xl font-bold ${globalOverdueTasks.length > 0
-                    ? "text-red-800"
-                    : "text-red-600"
+                    ? "text-red-800 [.dark_&]:text-red-300"
+                    : "text-red-600 [.dark_&]:text-red-400"
                     }`}
                 >
                   {globalOverdueTasks.length}
@@ -1904,44 +1904,44 @@ function TasksManagement() {
               </div>
               <FaExclamationTriangle
                 className={`h-8 w-8 ${globalOverdueTasks.length > 0
-                  ? "text-red-600 animate-bounce"
-                  : "text-red-500"
+                  ? "text-red-600 animate-bounce [.dark_&]:text-red-400"
+                  : "text-red-500 [.dark_&]:text-red-400"
                   }`}
               />
             </div>
           </Card>
         </div>
 
-        <Card>
+        <Card className="[.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
               <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="font-medium text-content-secondary">
+                <span className="font-medium text-content-secondary [.dark_&]:text-gray-400">
                   Overall Progress
                 </span>
-                <span className="font-semibold text-content-primary">
+                <span className="font-semibold text-content-primary [.dark_&]:text-white">
                   {progressPct}%
                 </span>
               </div>
-              <div className="h-3 w-full overflow-hidden rounded-full border border-subtle bg-surface">
+              <div className="h-3 w-full overflow-hidden rounded-full border border-subtle bg-surface [.dark_&]:bg-white/5 [.dark_&]:border-white/10">
                 <div
                   className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-500"
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
-              <div className="mt-2 text-xs text-content-tertiary">
+              <div className="mt-2 text-xs text-content-tertiary [.dark_&]:text-gray-500">
                 {counts.Done} of {filtered.length} tasks completed
               </div>
             </div>
           </div>
         </Card>
 
-        <Card>
+        <Card className="[.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
           {/* Filters Section */}
-          <div className="border-b border-gray-100 pb-4 mb-4">
+          <div className="border-b border-gray-100 [.dark_&]:border-white/10 pb-4 mb-4">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1 h-5 bg-indigo-600 rounded-full"></div>
-              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+              <h3 className="text-sm font-bold text-gray-700 [.dark_&]:text-white uppercase tracking-wide">
                 Filters
               </h3>
             </div>
@@ -1950,14 +1950,14 @@ function TasksManagement() {
                 placeholder="Search tasks..."
                 value={filters.search}
                 onChange={(e) => updateFilter("search", e.target.value)}
-                className="lg:col-span-2 rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary placeholder:text-content-tertiary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                className="lg:col-span-2 rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#181B2A] py-2 px-3 text-sm text-content-primary [.dark_&]:text-white placeholder:text-content-tertiary [.dark_&]:placeholder:text-gray-500 focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
                 spellCheck="true"
               />
 
               <select
                 value={filters.project}
                 onChange={(e) => updateFilter("project", e.target.value)}
-                className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
+                className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#181B2A] py-2 px-3 text-sm text-content-primary [.dark_&]:text-white"
               >
                 <option value="">All Projects</option>
                 {projects.map((p) => (
@@ -1970,7 +1970,7 @@ function TasksManagement() {
               <select
                 value={filters.assignee}
                 onChange={(e) => updateFilter("assignee", e.target.value)}
-                className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
+                className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#181B2A] py-2 px-3 text-sm text-content-primary [.dark_&]:text-white"
               >
                 <option value="">All Assignees</option>
                 {(!filters.assigneeType || filters.assigneeType === "user") && (
@@ -1998,7 +1998,7 @@ function TasksManagement() {
               <select
                 value={filters.priority}
                 onChange={(e) => updateFilter("priority", e.target.value)}
-                className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
+                className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#181B2A] py-2 px-3 text-sm text-content-primary [.dark_&]:text-white"
               >
                 <option value="">All Priorities</option>
                 <option>Low</option>
@@ -2011,7 +2011,7 @@ function TasksManagement() {
               <select
                 value={filters.status}
                 onChange={(e) => updateFilter("status", e.target.value)}
-                className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
+                className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#181B2A] py-2 px-3 text-sm text-content-primary [.dark_&]:text-white"
               >
                 <option value="">All Statuses</option>
                 {statusOptions.map((s) => (
@@ -2021,7 +2021,7 @@ function TasksManagement() {
                 ))}
               </select>
 
-              <label className="flex items-center gap-2 px-3 py-2 text-sm text-content-primary bg-gray-50 rounded-lg border border-subtle cursor-pointer hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 px-3 py-2 text-sm text-content-primary [.dark_&]:text-white bg-gray-50 [.dark_&]:bg-white/5 rounded-lg border border-subtle [.dark_&]:border-white/10 cursor-pointer hover:bg-gray-100 [.dark_&]:hover:bg-white/10 transition-colors">
                 <input
                   type="checkbox"
                   checked={filters.showArchived}
@@ -2047,7 +2047,7 @@ function TasksManagement() {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1 h-5 bg-emerald-600 rounded-full"></div>
-              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+              <h3 className="text-sm font-bold text-gray-700 [.dark_&]:text-white uppercase tracking-wide">
                 Actions
               </h3>
             </div>
@@ -2075,13 +2075,13 @@ function TasksManagement() {
                   <FaDownload className="rotate-180" /> Export
                 </Button>
 
-                <div className="h-6 w-px bg-gray-300 mx-1"></div>
+                <div className="h-6 w-px bg-gray-300 [.dark_&]:bg-gray-600 mx-1"></div>
 
-                <div className="flex items-center rounded-lg border border-subtle bg-white p-0.5">
+                <div className="flex items-center rounded-lg border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] p-0.5">
                   <button
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === ""
                       ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-content-primary hover:bg-gray-100"
+                      : "text-content-primary [.dark_&]:text-gray-400 hover:bg-gray-100 [.dark_&]:hover:bg-white/10"
                       }`}
                     onClick={() => updateFilter("assigneeType", "")}
                     type="button"
@@ -2091,7 +2091,7 @@ function TasksManagement() {
                   <button
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "user"
                       ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-content-primary hover:bg-gray-100"
+                      : "text-content-primary [.dark_&]:text-gray-400 hover:bg-gray-100 [.dark_&]:hover:bg-white/10"
                       }`}
                     onClick={() => updateFilter("assigneeType", "user")}
                     type="button"
@@ -2101,7 +2101,7 @@ function TasksManagement() {
                   <button
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "client"
                       ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-content-primary hover:bg-gray-100"
+                      : "text-content-primary [.dark_&]:text-gray-400 hover:bg-gray-100 [.dark_&]:hover:bg-white/10"
                       }`}
                     onClick={() => updateFilter("assigneeType", "client")}
                     type="button"
@@ -2110,14 +2110,14 @@ function TasksManagement() {
                   </button>
                 </div>
 
-                <div className="h-6 w-px bg-gray-300 mx-1"></div>
+                <div className="h-6 w-px bg-gray-300 [.dark_&]:bg-gray-600 mx-1"></div>
 
-                <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                <div className="flex items-center gap-1 bg-gray-100 [.dark_&]:bg-white/5 rounded-lg p-1">
                   <button
                     onClick={() => setView("list")}
                     className={`p-2 rounded transition-all ${view === "list"
-                      ? "bg-white text-indigo-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                      ? "bg-white text-indigo-600 shadow-sm [.dark_&]:bg-gray-700 [.dark_&]:text-white"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200 [.dark_&]:text-gray-400 [.dark_&]:hover:text-white [.dark_&]:hover:bg-white/10"
                       }`}
                     title="List View"
                   >
@@ -2126,8 +2126,8 @@ function TasksManagement() {
                   <button
                     onClick={() => setView("board")}
                     className={`p-2 rounded transition-all ${view === "board"
-                      ? "bg-white text-indigo-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                      ? "bg-white text-indigo-600 shadow-sm [.dark_&]:bg-gray-700 [.dark_&]:text-white"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200 [.dark_&]:text-gray-400 [.dark_&]:hover:text-white [.dark_&]:hover:bg-white/10"
                       }`}
                     title="Kanban View"
                   >

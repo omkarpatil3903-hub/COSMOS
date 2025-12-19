@@ -226,9 +226,10 @@ export default function AddHierarchy() {
       <Card
         title="Search & Actions"
         tone="white"
+        className="[.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10"
         actions={
           <div className="flex items-center gap-3">
-            <span className="text-sm text-content-secondary">
+            <span className="text-sm text-content-secondary [.dark_&]:text-gray-400">
               Showing {filtered.length} records
             </span>
             <Button variant="primary" onClick={openCreate} className="shrink-0">
@@ -237,10 +238,10 @@ export default function AddHierarchy() {
           </div>
         }
       >
-        <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+        <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary [.dark_&]:text-gray-400">
           Search by hierarchy type or name
           <div className="relative">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary [.dark_&]:text-gray-500">
               <FaSearch />
             </span>
             <input
@@ -248,22 +249,22 @@ export default function AddHierarchy() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by type or name"
-              className="w-full rounded-lg border border-subtle bg-surface py-2 pl-9 pr-3 text-sm"
+              className="w-full rounded-lg border border-subtle bg-surface py-2 pl-9 pr-3 text-sm [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white [.dark_&]:placeholder-gray-500"
             />
           </div>
         </label>
       </Card>
 
-      <Card title="Hierarchy List" tone="muted">
+      <Card title="Hierarchy List" tone="muted" className="[.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-2">
-          <div className="text-sm text-content-secondary">
+          <div className="text-sm text-content-secondary [.dark_&]:text-gray-400">
             Page {Math.min(page, totalPages)} of {totalPages}
           </div>
           <div className="flex items-center gap-3">
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
-              className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+              className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100 [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white"
             >
               <option value={5}>5</option>
               <option value={10}>10</option>
@@ -291,25 +292,25 @@ export default function AddHierarchy() {
           </div>
         </div>
 
-        <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-          <table className="min-w-full divide-y divide-gray-200 bg-white">
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+        <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm [.dark_&]:border-white/10">
+          <table className="min-w-full divide-y divide-gray-200 bg-white [.dark_&]:bg-[#181B2A] [.dark_&]:divide-white/5">
+            <thead className="bg-gradient-to-r from-gray-50 to-gray-100 [.dark_&]:from-[#1F2234] [.dark_&]:to-[#1F2234]">
               <tr>
-                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 [.dark_&]:text-gray-400 [.dark_&]:border-white/10">
                   Sr. No.
                 </th>
-                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 [.dark_&]:text-gray-400 [.dark_&]:border-white/10">
                   Name
                 </th>
-                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 [.dark_&]:text-gray-400 [.dark_&]:border-white/10">
                   Type
                 </th>
-                <th className="px-6 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 sticky right-0 z-10 bg-gray-50">
+                <th className="px-6 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 sticky right-0 z-10 bg-gray-50 [.dark_&]:bg-[#1F2234] [.dark_&]:text-gray-400 [.dark_&]:border-white/10">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-gray-100 bg-white [.dark_&]:bg-[#181B2A] [.dark_&]:divide-white/5">
               {pageItems.length === 0 ? (
                 <tr>
                   <td
@@ -324,25 +325,25 @@ export default function AddHierarchy() {
                   <tr
                     key={item.id}
                     onClick={() => handleRowClick(item)}
-                    className="cursor-pointer group odd:bg-white even:bg-gray-50 hover:bg-indigo-50/50 transition-colors duration-150"
+                    className="cursor-pointer group odd:bg-white even:bg-gray-50 hover:bg-indigo-50/50 transition-colors duration-150 [.dark_&]:odd:bg-[#181B2A] [.dark_&]:even:bg-[#1F2234]"
                   >
-                    <td className="whitespace-nowrap px-6 py-2.5 text-sm font-medium text-gray-500">
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 transition-colors">
+                    <td className="whitespace-nowrap px-6 py-2.5 text-sm font-medium text-gray-500 [.dark_&]:text-gray-400">
+                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 transition-colors [.dark_&]:bg-white/10 [.dark_&]:text-white">
                         {(page - 1) * pageSize + idx + 1}
                       </div>
                     </td>
-                    <td className="px-6 py-2.5 text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                    <td className="px-6 py-2.5 text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors [.dark_&]:text-white">
                       <div className="max-w-[240px] truncate">{item.name}</div>
                     </td>
                     <td className="whitespace-nowrap px-6 py-2.5 text-sm">
                       <span
                         className={`inline-flex items-center justify-center rounded-xs px-3 py-1 text-xs font-semibold tracking-wide uppercase transition-colors ${item.type === "admin"
-                            ? "bg-blue-500 text-white"
-                            : item.type === "superadmin"
-                              ? "bg-purple-500 text-white"
-                              : item.type === "manager"
-                                ? "bg-green-500 text-white"
-                                : "bg-gray-600 text-white"
+                          ? "bg-blue-500 text-white"
+                          : item.type === "superadmin"
+                            ? "bg-purple-500 text-white"
+                            : item.type === "manager"
+                              ? "bg-green-500 text-white"
+                              : "bg-gray-600 text-white"
                           }`}
                       >
                         {item.type === "admin"
@@ -358,14 +359,14 @@ export default function AddHierarchy() {
                       <div className="flex items-center justify-center space-x-3">
                         <button
                           onClick={(e) => handleEditClick(item, e)}
-                          className="flex items-center justify-center p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md transition-colors"
+                          className="flex items-center justify-center p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md transition-colors [.dark_&]:hover:bg-yellow-400/20"
                           title="Edit"
                         >
                           <FaEdit className="h-4 w-4" />
                         </button>
                         <button
                           onClick={(e) => handleDeleteClick(item, e)}
-                          className="flex items-center justify-center p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md transition-colors"
+                          className="flex items-center justify-center p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md transition-colors [.dark_&]:hover:bg-red-400/20"
                           title="Delete"
                         >
                           <FaTrash className="h-4 w-4" />
@@ -394,33 +395,39 @@ export default function AddHierarchy() {
             </div>
 
             <div className="px-6 pt-4">
-              <div className="grid grid-cols-4 rounded-full bg-gray-100 p-1 text-sm font-medium">
+              <div className="grid grid-cols-4 rounded-full bg-gray-100 p-1 text-sm font-medium [.dark_&]:bg-[#1F2234]">
                 <button
                   onClick={() => setType("superadmin")}
                   className={`rounded-full px-4 py-2 transition ${type === "superadmin"
-                      ? "bg-white shadow-sm"
-                      : "text-gray-500"
+                    ? "bg-white shadow-sm text-gray-900 [.dark_&]:bg-[#181B2A] [.dark_&]:text-white"
+                    : "text-gray-500 [.dark_&]:text-gray-400"
                     }`}
                 >
                   Super Admin Role
                 </button>
                 <button
                   onClick={() => setType("admin")}
-                  className={`rounded-full px-4 py-2 transition ${type === "admin" ? "bg-white shadow-sm" : "text-gray-500"
+                  className={`rounded-full px-4 py-2 transition ${type === "admin"
+                    ? "bg-white shadow-sm text-gray-900 [.dark_&]:bg-[#181B2A] [.dark_&]:text-white"
+                    : "text-gray-500 [.dark_&]:text-gray-400"
                     }`}
                 >
                   Admin Role
                 </button>
                 <button
                   onClick={() => setType("manager")}
-                  className={`rounded-full px-4 py-2 transition ${type === "manager" ? "bg-white shadow-sm" : "text-gray-500"
+                  className={`rounded-full px-4 py-2 transition ${type === "manager"
+                    ? "bg-white shadow-sm text-gray-900 [.dark_&]:bg-[#181B2A] [.dark_&]:text-white"
+                    : "text-gray-500 [.dark_&]:text-gray-400"
                     }`}
                 >
                   Manager Role
                 </button>
                 <button
                   onClick={() => setType("member")}
-                  className={`rounded-full px-4 py-2 transition ${type === "member" ? "bg-white shadow-sm" : "text-gray-500"
+                  className={`rounded-full px-4 py-2 transition ${type === "member"
+                    ? "bg-white shadow-sm text-gray-900 [.dark_&]:bg-[#181B2A] [.dark_&]:text-white"
+                    : "text-gray-500 [.dark_&]:text-gray-400"
                     }`}
                 >
                   Member Role
@@ -429,7 +436,7 @@ export default function AddHierarchy() {
             </div>
 
             <div className="px-6 py-4">
-              <label className="block text-sm font-medium mb-1">
+              <label className="block text-sm font-medium mb-1 [.dark_&]:text-gray-300">
                 {type === "admin"
                   ? "Add Admin Role"
                   : type === "superadmin"
@@ -441,7 +448,7 @@ export default function AddHierarchy() {
               <VoiceInput
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                className="w-full rounded border border-gray-300 px-3 py-2"
+                className="w-full rounded border border-gray-300 px-3 py-2 [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white"
                 placeholder={
                   type === "admin"
                     ? "e.g., Admin"
@@ -455,7 +462,7 @@ export default function AddHierarchy() {
             </div>
 
             <div className="flex items-center justify-end gap-3 px-6 pb-6">
-              <Button variant="ghost" onClick={close}>
+              <Button variant="ghost" onClick={close} className="[.dark_&]:text-gray-300 [.dark_&]:hover:bg-white/10">
                 Cancel
               </Button>
               <Button onClick={save} disabled={saving} variant="primary">
@@ -498,10 +505,10 @@ export default function AddHierarchy() {
       )}
 
       {preview && (
-        <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/30">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl [.dark_&]:bg-[#181B2A] [.dark_&]:border [.dark_&]:border-white/10">
             <div className="flex items-center justify-between px-6 pt-6">
-              <h3 className="text-xl font-semibold">Preview</h3>
+              <h3 className="text-xl font-semibold [.dark_&]:text-white">Preview</h3>
               <button
                 onClick={() => setPreview(null)}
                 className="text-gray-400 hover:text-gray-600"
@@ -511,12 +518,12 @@ export default function AddHierarchy() {
             </div>
             <div className="px-6 py-4 space-y-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-content-secondary">Name</span>
-                <span className="font-medium">{preview.name}</span>
+                <span className="text-content-secondary [.dark_&]:text-gray-400">Name</span>
+                <span className="font-medium [.dark_&]:text-white">{preview.name}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-content-secondary">Type</span>
-                <span className="font-medium">
+                <span className="text-content-secondary [.dark_&]:text-gray-400">Type</span>
+                <span className="font-medium [.dark_&]:text-white">
                   {preview.type === "admin"
                     ? "Admin Role"
                     : preview.type === "superadmin"
@@ -526,7 +533,7 @@ export default function AddHierarchy() {
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 px-6 pb-6">
-              <Button variant="ghost" onClick={() => setPreview(null)}>
+              <Button variant="ghost" onClick={() => setPreview(null)} className="[.dark_&]:text-gray-300 [.dark_&]:hover:bg-white/10">
                 Close
               </Button>
             </div>

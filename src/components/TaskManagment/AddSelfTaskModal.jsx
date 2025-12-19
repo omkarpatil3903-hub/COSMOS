@@ -98,27 +98,27 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
             onClick={onClose}
         >
             <div
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+                className="bg-white [.dark_&]:bg-[#181B2A] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+                <div className="bg-white [.dark_&]:bg-[#181B2A] px-6 py-4 border-b border-gray-200 [.dark_&]:border-white/10 flex items-center justify-between flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
                             <FaTasks className="w-5 h-5 text-indigo-600" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-900">
+                            <h3 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white">
                                 Create New Self Task
                             </h3>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">
                                 Add a new Self task to project
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded-lg hover:bg-gray-100"
+                        className="text-gray-400 hover:text-gray-600 [.dark_&]:hover:text-gray-300 transition-colors p-1.5 rounded-lg hover:bg-gray-100 [.dark_&]:hover:bg-white/10"
                     >
                         <FaTimes className="w-5 h-5" />
                     </button>
@@ -130,47 +130,47 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
                         {/* Column 1 - Details & Classification */}
                         <div className="space-y-5">
                             <div>
-                                <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-4">
+                                <h4 className="text-xs font-semibold text-gray-600 [.dark_&]:text-gray-400 uppercase tracking-wider mb-4">
                                     Details & Classification
                                 </h4>
 
                                 <div className="space-y-4">
                                     {/* Task Title */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-1.5">
                                             Task Title
                                         </label>
                                         <VoiceInput
                                             value={title}
                                             onChange={(e) => setTitle(e.target.value)}
-                                            className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                            className="w-full rounded-lg border border-gray-300 [.dark_&]:border-white/20 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white"
                                             placeholder="Enter task title..."
                                         />
                                     </div>
 
                                     {/* Description */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-1.5">
                                             Description
                                         </label>
                                         <VoiceInput
                                             as="textarea"
                                             value={description}
                                             onChange={(e) => setDescription(e.target.value)}
-                                            className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm h-24 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none transition-colors"
+                                            className="w-full rounded-lg border border-gray-300 [.dark_&]:border-white/20 px-3.5 py-2 text-sm h-24 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none transition-colors bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white"
                                             placeholder="Add a detailed description..."
                                         />
                                     </div>
 
                                     {/* Project */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-1.5">
                                             Project
                                         </label>
                                         <select
                                             value={projectId}
                                             onChange={(e) => setProjectId(e.target.value)}
-                                            className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                            className="w-full rounded-lg border border-gray-300 [.dark_&]:border-white/20 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white"
                                         >
                                             <option value="">Select Project</option>
                                             {projects.map((p) => (
@@ -183,13 +183,13 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
 
                                     {/* Priority */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-1.5">
                                             Priority
                                         </label>
                                         <select
                                             value={priority}
                                             onChange={(e) => setPriority(e.target.value)}
-                                            className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                            className="w-full rounded-lg border border-gray-300 [.dark_&]:border-white/20 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white"
                                         >
                                             <option value="Medium">Medium</option>
                                             <option value="High">High</option>
@@ -199,18 +199,18 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
 
                                     {/* Status */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-1.5">
                                             Status
                                         </label>
                                         <div className="flex items-center gap-2">
                                             <select
                                                 value={status}
                                                 onChange={(e) => setStatus(e.target.value)}
-                                                className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                                className="w-full rounded-lg border border-gray-300 [.dark_&]:border-white/20 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white"
                                             >
                                                 {(statusOptions.length
                                                     ? statusOptions
-                                                    : ["To-Do", "In Progress", "Done"]) 
+                                                    : ["To-Do", "In Progress", "Done"])
                                                     .filter((s) => s !== "Done")
                                                     .map((s) => (
                                                         <option key={s} value={s}>
@@ -223,11 +223,10 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
                                                 <button
                                                     type="button"
                                                     onClick={() => setStatus("Done")}
-                                                    className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap transition-colors ${
-                                                        status === "Done"
+                                                    className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap transition-colors ${status === "Done"
                                                             ? "bg-emerald-500 text-white border-emerald-500"
                                                             : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                                                    }`}
+                                                        }`}
                                                 >
                                                     Done
                                                 </button>
@@ -241,15 +240,15 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
                         {/* Column 2 - Assignment & Schedule */}
                         <div className="space-y-5">
                             <div>
-                                <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-4">
+                                <h4 className="text-xs font-semibold text-gray-600 [.dark_&]:text-gray-400 uppercase tracking-wider mb-4">
                                     Assignment & Schedule
                                 </h4>
 
                                 <div className="space-y-4">
                                     {/* Resource Tab (Read Only) */}
                                     <div>
-                                        <div className="flex items-center gap-2 border-b border-gray-200 mb-3">
-                                            <button className="px-4 py-2 text-sm font-medium text-indigo-600 border-b-2 border-indigo-600">
+                                        <div className="flex items-center gap-2 border-b border-gray-200 [.dark_&]:border-white/10 mb-3">
+                                            <button className="px-4 py-2 text-sm font-medium text-indigo-600 [.dark_&]:text-indigo-400 border-b-2 border-indigo-600 [.dark_&]:border-indigo-400">
                                                 Resource
                                             </button>
                                             <button
@@ -259,34 +258,34 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
                                                 Client
                                             </button>
                                         </div>
-                                        <div className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3.5 py-2 border border-gray-200">
+                                        <div className="text-sm text-gray-600 [.dark_&]:text-gray-300 bg-gray-50 [.dark_&]:bg-white/5 rounded-lg px-3.5 py-2 border border-gray-200 [.dark_&]:border-white/10">
                                             Assigned to: {user?.name || "You"}
                                         </div>
                                     </div>
 
                                     {/* Assigned Date */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-1.5">
                                             Assigned Date
                                         </label>
                                         <input
                                             type="date"
                                             value={assignedDate}
                                             onChange={(e) => setAssignedDate(e.target.value)}
-                                            className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                            className="w-full rounded-lg border border-gray-300 [.dark_&]:border-white/20 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white"
                                         />
                                     </div>
 
                                     {/* Due Date */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-1.5">
                                             Due Date
                                         </label>
                                         <input
                                             type="date"
                                             value={dueDate}
                                             onChange={(e) => setDueDate(e.target.value)}
-                                            className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                                            className="w-full rounded-lg border border-gray-300 [.dark_&]:border-white/20 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white"
                                         />
                                     </div>
                                 </div>
@@ -296,12 +295,12 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
                 </div>
 
                 {/* Footer */}
-                <div className="bg-white px-6 py-3.5 border-t border-gray-200 flex items-center justify-between flex-shrink-0">
-                    <div className="text-xs text-gray-500">Unsaved changes</div>
+                <div className="bg-white [.dark_&]:bg-[#181B2A] px-6 py-3.5 border-t border-gray-200 [.dark_&]:border-white/10 flex items-center justify-between flex-shrink-0">
+                    <div className="text-xs text-gray-500 [.dark_&]:text-gray-400">Unsaved changes</div>
                     <div className="flex items-center gap-3">
                         <button
                             onClick={onClose}
-                            className="px-5 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+                            className="px-5 py-2 rounded-lg text-sm font-medium text-gray-700 [.dark_&]:text-white hover:bg-gray-100 [.dark_&]:hover:bg-white/10 transition-colors"
                         >
                             Cancel
                         </button>

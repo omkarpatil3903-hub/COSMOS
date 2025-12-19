@@ -31,14 +31,14 @@ function DataTable({
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-3 text-sm text-content-secondary">
+      <div className="flex items-center justify-between mb-3 text-sm text-content-secondary [.dark_&]:text-gray-400">
         <div>
           Page {clampedPage} of {totalPages}
         </div>
         <div className="flex items-center gap-2">
           <span>Rows per page</span>
           <select
-            className="rounded-md border border-subtle bg-white px-2 py-1 text-sm"
+            className="rounded-md border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1 text-sm [.dark_&]:text-white"
             value={rowsPerPage}
             onChange={(e) => onRowsPerPageChange && onRowsPerPageChange(parseInt(e.target.value, 10))}
           >
@@ -51,23 +51,23 @@ function DataTable({
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto rounded-lg border border-gray-200">
-        <table className="w-full bg-white divide-y divide-gray-200">
-          <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+      <div className="w-full overflow-x-auto rounded-lg border border-gray-200 [.dark_&]:border-white/10">
+        <table className="w-full bg-white [.dark_&]:bg-[#181B2A] divide-y divide-gray-200 [.dark_&]:divide-white/5">
+          <thead className="bg-gradient-to-r from-gray-50 to-gray-100 [.dark_&]:from-[#1F2234] [.dark_&]:to-[#1F2234]">
             <tr>
               {columns.map((col) => {
                 const isSorted = sortConfig?.key === col.key;
                 const isAsc = isSorted && sortConfig?.direction === "asc";
-                const stickyClasses = col.stickyRight ? "sticky right-0 bg-gray-50" : "";
+                const stickyClasses = col.stickyRight ? "sticky right-0 bg-gray-50 [.dark_&]:bg-[#1F2234]" : "";
                 const headerAlign = col.headerAlign === "center" ? "text-center" : col.headerAlign === "right" ? "text-right" : "text-left";
                 return (
                   <th
                     key={col.key}
-                    className={`px-4 py-3 ${headerAlign} text-xs font-semibold uppercase tracking-wide text-gray-500 ${stickyClasses} ${col.headerClassName || ""}`}
+                    className={`px-4 py-3 ${headerAlign} text-xs font-semibold uppercase tracking-wide text-gray-500 [.dark_&]:text-gray-400 ${stickyClasses} ${col.headerClassName || ""}`}
                   >
                     {col.sortable ? (
                       <button
-                        className="inline-flex items-center gap-2 hover:text-content-primary"
+                        className="inline-flex items-center gap-2 hover:text-content-primary [.dark_&]:hover:text-white"
                         onClick={() => onSort && onSort(col.key)}
                       >
                         <span>{col.label}</span>
@@ -81,19 +81,19 @@ function DataTable({
               })}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-100 [.dark_&]:divide-white/5">
             {pageRows.map((row, idx) => (
               <tr
                 key={getRowKey(row, idx)}
-                className={`hover:bg-gray-50 ${onRowClick ? "cursor-pointer group" : ""}`}
+                className={`hover:bg-gray-50 [.dark_&]:hover:bg-white/5 ${onRowClick ? "cursor-pointer group" : ""}`}
                 onClick={onRowClick ? () => onRowClick(row, start + idx, idx) : undefined}
               >
                 {columns.map((col) => {
-                  const stickyClasses = col.stickyRight ? "sticky right-0 bg-white" : "";
+                  const stickyClasses = col.stickyRight ? "sticky right-0 bg-white [.dark_&]:bg-[#181B2A]" : "";
                   const content = col.render ? col.render(row, start + idx, idx) : (row[col.key] ?? "—");
                   const align = col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left";
                   return (
-                    <td key={col.key} className={`px-4 py-3 text-sm text-gray-700 ${align} ${stickyClasses} ${col.cellClassName || ""}`}>
+                    <td key={col.key} className={`px-4 py-3 text-sm text-gray-700 [.dark_&]:text-gray-300 ${align} ${stickyClasses} ${col.cellClassName || ""}`}>
                       {content}
                     </td>
                   );
@@ -102,7 +102,7 @@ function DataTable({
             ))}
             {!pageRows.length && (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-10 text-center text-sm text-gray-500">
+                <td colSpan={columns.length} className="px-4 py-10 text-center text-sm text-gray-500 [.dark_&]:text-gray-400">
                   {emptyText}
                 </td>
               </tr>

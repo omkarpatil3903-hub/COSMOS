@@ -38,6 +38,7 @@ import { calculateCalendarStats } from "../../utils/calendarUtils";
 import StatsCards from "../../components/calendar/StatsCards";
 import CalendarHeader from "../../components/calendar/CalendarHeader";
 import { expandRecurringOccurrences } from "../../utils/recurringTasks";
+import { useTheme } from "../../context/ThemeContext";
 
 // Refactored: Utility functions moved to utils/dateUtils.js and utils/calendarUtils.js
 const buildDefaultEventForm = (baseDate = new Date()) => ({
@@ -55,6 +56,7 @@ const buildDefaultEventForm = (baseDate = new Date()) => ({
 });
 
 function Calendar() {
+  const { mode } = useTheme();
   const [events, setEvents] = useState([]);
   const [meetingRequests, setMeetingRequests] = useState([]);
   const [clients, setClients] = useState([]);
@@ -290,8 +292,8 @@ function Calendar() {
             task.status === "Done"
               ? "completed"
               : task.status === "In Progress"
-              ? "pending"
-              : "pending",
+                ? "pending"
+                : "pending",
           date: dateStr,
           time: "23:59",
           duration: 0,
@@ -308,8 +310,8 @@ function Calendar() {
             task.status === "Done"
               ? 100
               : task.status === "In Progress"
-              ? 50
-              : 0,
+                ? 50
+                : 0,
           isTask: true,
           taskId: task.id,
         });
@@ -498,7 +500,7 @@ function Calendar() {
         filterProject === "all" ||
         (event.isTask &&
           tasks.find((t) => t.id === event.taskId)?.projectId ===
-            filterProject);
+          filterProject);
 
       // Employee filter: check if employee is assigned to task or is attendee of event
       let employeeMatch = filterEmployee === "all";
@@ -741,7 +743,7 @@ function Calendar() {
       days.push(
         <div
           key={`empty-${i}`}
-          className="h-28 border border-gray-100 bg-gray-50"
+          className={`h-28 border ${mode === 'dark' ? 'border-gray-800 bg-gray-900' : 'border-gray-100 bg-white'}`}
         ></div>
       );
     }
@@ -762,29 +764,33 @@ function Calendar() {
       days.push(
         <div
           key={day}
-          className={`min-h-28 max-h-48 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 overflow-hidden ${
-            isPast
-              ? "bg-gray-50 hover:bg-gray-100"
-              : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
-          } ${
-            isToday
-              ? "bg-gradient-to-br from-blue-100 to-blue-50 border-blue-400 border-2 opacity-100 ring-2 ring-blue-200"
+          className={`min-h-28 max-h-48 border p-2 cursor-pointer relative transition-all duration-200 overflow-hidden 
+            ${mode === 'dark' ? 'border-gray-700' : 'border-gray-200'}
+            ${isPast
+              ? (mode === 'dark' ? "bg-gray-900 hover:bg-gray-800" : "bg-white hover:bg-gray-100")
+              : (mode === 'dark' ? "hover:bg-blue-900/20 hover:border-blue-700" : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300")
+            }
+            ${isToday
+              ? (mode === 'dark'
+                ? "bg-gradient-to-br from-blue-900/40 to-blue-800/40 border-blue-500 border-2 opacity-100 ring-2 ring-blue-900"
+                : "bg-gradient-to-br from-blue-100 to-blue-50 border-blue-400 border-2 opacity-100 ring-2 ring-blue-200")
               : ""
-          } ${
-            isSelected
-              ? "bg-gradient-to-br from-indigo-100 to-indigo-50 border-indigo-400 border-2 opacity-100 ring-2 ring-indigo-200"
+            }
+            ${isSelected
+              ? (mode === 'dark'
+                ? "bg-gradient-to-br from-indigo-900/40 to-indigo-800/40 border-indigo-500 border-2 opacity-100 ring-2 ring-indigo-900"
+                : "bg-gradient-to-br from-indigo-100 to-indigo-50 border-indigo-400 border-2 opacity-100 ring-2 ring-indigo-200")
               : ""
-          }`}
+            }`}
           onClick={() => setSelectedDate(date)}
         >
           <div
-            className={`text-sm font-bold mb-1 ${
-              isPast && !isToday
-                ? "text-gray-500"
-                : isToday
-                ? "text-blue-700 text-base"
-                : "text-gray-800"
-            } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
+            className={`text-sm font-bold mb-1 ${isPast && !isToday
+              ? (mode === 'dark' ? "text-gray-500" : "text-gray-400")
+              : isToday
+                ? (mode === 'dark' ? "text-blue-400 text-base" : "text-blue-700 text-base")
+                : (mode === 'dark' ? "text-white" : "text-gray-800")
+              } ${isSelected && !isToday ? (mode === 'dark' ? "text-indigo-400 text-base" : "text-indigo-700 text-base") : ""}`}
           >
             {day}
           </div>
@@ -926,10 +932,10 @@ function Calendar() {
             employeeScheduleInfo={
               filterEmployee !== "all"
                 ? {
-                    name:
-                      resources.find((r) => r.id === filterEmployee)?.name ||
-                      "Unknown Employee",
-                  }
+                  name:
+                    resources.find((r) => r.id === filterEmployee)?.name ||
+                    "Unknown Employee",
+                }
                 : null
             }
             onClearEmployeeFilter={() => setFilterEmployee("all")}
@@ -945,13 +951,13 @@ function Calendar() {
                 {DAY_NAMES.map((day) => (
                   <div
                     key={day}
-                    className="p-3 text-center font-semibold text-gray-700 border-b border-gray-200"
+                    className={`p-3 text-center font-semibold border-b ${mode === 'dark' ? 'text-white border-gray-700' : 'text-gray-700 border-gray-200'}`}
                   >
                     {day.slice(0, 3)}
                   </div>
                 ))}
               </div>
-              <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded overflow-hidden">
+              <div className="grid grid-cols-7 gap-0 border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
                 {renderCalendarDays()}
               </div>
             </Card>
@@ -961,10 +967,10 @@ function Calendar() {
               <h3 className="font-semibold text-lg mb-4 border-b pb-2">
                 {selectedDate
                   ? selectedDate.toLocaleDateString("en-US", {
-                      weekday: "long",
-                      month: "long",
-                      day: "numeric",
-                    })
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                  })
                   : "Select a date"}
               </h3>
 
@@ -1019,10 +1025,10 @@ function Calendar() {
                         const displayLabel = isAdminCreated
                           ? "by admin"
                           : event.status
-                          ? event.status.replace(/\b\w/g, (ch) =>
+                            ? event.status.replace(/\b\w/g, (ch) =>
                               ch.toUpperCase()
                             )
-                          : "Pending";
+                            : "Pending";
                         const displayClass = isAdminCreated
                           ? "bg-blue-100 text-blue-700"
                           : statusClass;
@@ -1030,11 +1036,11 @@ function Calendar() {
                         return (
                           <div
                             key={event.id}
-                            className="border-2 rounded-lg p-3 space-y-2 hover:shadow-lg transition-all duration-200 bg-white hover:border-blue-300"
+                            className="border-2 rounded-lg p-3 space-y-2 hover:shadow-lg transition-all duration-200 bg-white dark:bg-gray-800 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600"
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div>
-                                <h4 className="font-medium text-sm">
+                                <h4 className="font-medium text-sm dark:text-gray-200">
                                   {event.title}
                                 </h4>
                                 <span
@@ -1063,7 +1069,7 @@ function Calendar() {
                               )}
                             </div>
 
-                            <div className="text-xs text-gray-600 space-y-1">
+                            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
                               <div>Time: {event.time || "—"}</div>
                               <div>Client: {contactName}</div>
                               <div>
@@ -1154,9 +1160,9 @@ function Calendar() {
                 <div className="text-center text-gray-500 mt-8">
                   <FaCalendarAlt
                     size={48}
-                    className="mx-auto mb-4 opacity-50"
+                    className="mx-auto mb-4 opacity-50 dark:text-gray-600"
                   />
-                  <p className="text-sm">Click on a date to view events</p>
+                  <p className="text-sm dark:text-gray-400">Click on a date to view events</p>
                 </div>
               )}
             </Card>
@@ -1189,10 +1195,10 @@ function Calendar() {
                       className="flex items-center justify-between gap-4 border-b border-subtle pb-2 last:border-0 last:pb-0"
                     >
                       <div>
-                        <p className="font-medium text-sm text-content-primary">
+                        <p className="font-medium text-sm text-content-primary dark:text-gray-200">
                           {event.title}
                         </p>
-                        <p className="text-xs text-content-secondary">
+                        <p className="text-xs text-content-secondary dark:text-gray-400">
                           {contactName}
                         </p>
                       </div>
@@ -1211,10 +1217,10 @@ function Calendar() {
           {showEventModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <div
-                className="absolute inset-0 bg-black/50"
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                 onClick={closeEventModal}
               />
-              <Card className="z-10 w-full max-w-xl md:max-w-2xl max-h-[90vh] overflow-auto">
+              <Card className="z-10 w-full max-w-xl md:max-w-2xl max-h-[90vh] overflow-auto dark:bg-gray-800 dark:border-gray-700">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-xl font-semibold">
                     {editingEvent ? "Edit Event" : "Create Event"}
@@ -1230,11 +1236,11 @@ function Calendar() {
                 <form className="space-y-4" onSubmit={handleSaveEvent}>
                   <div className="grid gap-4 md:grid-cols-2">
                     <label className="space-y-1 text-sm md:col-span-2">
-                      <span className="font-medium text-content-secondary">
+                      <span className="font-medium text-content-secondary dark:text-gray-300">
                         Title
                       </span>
                       <input
-                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                         value={eventForm.title}
                         onChange={(e) =>
                           handleEventFormChange("title", e.target.value)
@@ -1246,11 +1252,11 @@ function Calendar() {
                     </label>
 
                     <label className="space-y-1 text-sm">
-                      <span className="font-medium text-content-secondary">
+                      <span className="font-medium text-content-secondary dark:text-gray-300">
                         Client
                       </span>
                       <select
-                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                         value={eventForm.clientId}
                         onChange={(e) =>
                           handleEventFormChange("clientId", e.target.value)
@@ -1268,13 +1274,13 @@ function Calendar() {
                     </label>
 
                     <label className="space-y-1 text-sm">
-                      <span className="font-medium text-content-secondary">
+                      <span className="font-medium text-content-secondary dark:text-gray-300">
                         Duration (minutes)
                       </span>
                       <input
                         type="number"
                         min="0"
-                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                         value={eventForm.duration}
                         onChange={(e) =>
                           handleEventFormChange("duration", e.target.value)
@@ -1283,12 +1289,12 @@ function Calendar() {
                     </label>
 
                     <label className="space-y-1 text-sm">
-                      <span className="font-medium text-content-secondary">
+                      <span className="font-medium text-content-secondary dark:text-gray-300">
                         Date
                       </span>
                       <input
                         type="date"
-                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                         value={eventForm.date}
                         onChange={(e) =>
                           handleEventFormChange("date", e.target.value)
@@ -1298,12 +1304,12 @@ function Calendar() {
                     </label>
 
                     <label className="space-y-1 text-sm">
-                      <span className="font-medium text-content-secondary">
+                      <span className="font-medium text-content-secondary dark:text-gray-300">
                         Time
                       </span>
                       <input
                         type="time"
-                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                         value={eventForm.time}
                         onChange={(e) =>
                           handleEventFormChange("time", e.target.value)
@@ -1312,12 +1318,12 @@ function Calendar() {
                     </label>
 
                     <label className="space-y-1 text-sm md:col-span-2">
-                      <span className="font-medium text-content-secondary">
+                      <span className="font-medium text-content-secondary dark:text-gray-300">
                         Description
                       </span>
                       <textarea
                         rows={3}
-                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                        className="w-full rounded-md border border-subtle bg-surface px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                         value={eventForm.description}
                         onChange={(e) =>
                           handleEventFormChange("description", e.target.value)
@@ -1328,10 +1334,10 @@ function Calendar() {
                     </label>
 
                     <label className="space-y-1 text-sm md:col-span-2">
-                      <span className="font-medium text-content-secondary">
+                      <span className="font-medium text-content-secondary dark:text-gray-300">
                         Attendees (Select Resources)
                       </span>
-                      <div className="border border-subtle rounded-md bg-surface p-3 max-h-48 overflow-y-auto">
+                      <div className="border border-subtle rounded-md bg-surface p-3 max-h-48 overflow-y-auto dark:bg-gray-700 dark:border-gray-600">
                         {resources.length === 0 ? (
                           <p className="text-sm text-content-tertiary">
                             No resources available
@@ -1341,7 +1347,7 @@ function Calendar() {
                             {resources.map((resource) => (
                               <label
                                 key={resource.id}
-                                className="flex items-center gap-2 cursor-pointer hover:bg-surface-subtle p-2 rounded"
+                                className="flex items-center gap-2 cursor-pointer hover:bg-surface-subtle dark:hover:bg-gray-600 p-2 rounded"
                               >
                                 <input
                                   type="checkbox"
@@ -1362,9 +1368,9 @@ function Calendar() {
                                       );
                                     }
                                   }}
-                                  className="rounded border-gray-300"
+                                  className="rounded border-gray-300 dark:border-gray-500"
                                 />
-                                <span className="text-sm">{resource.name}</span>
+                                <span className="text-sm dark:text-gray-200">{resource.name}</span>
                                 <span className="text-xs text-content-tertiary">
                                   ({resource.email})
                                 </span>
@@ -1414,20 +1420,20 @@ function Calendar() {
           {showRequestModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <div
-                className="absolute inset-0 bg-black/50"
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                 onClick={() => {
                   setShowRequestModal(false);
                   setActiveRequestDate(null);
                 }}
               />
-              <Card className="z-10 max-w-4xl max-h-[90vh] overflow-auto">
+              <Card className="z-10 max-w-4xl max-h-[90vh] overflow-auto dark:bg-gray-800 dark:border-gray-700">
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="text-xl font-semibold">
                     Meeting Requests -{" "}
                     {activeRequestDate
                       ? new Date(
-                          activeRequestDate + "T00:00"
-                        ).toLocaleDateString()
+                        activeRequestDate + "T00:00"
+                      ).toLocaleDateString()
                       : ""}
                   </h2>
                   <button
@@ -1445,14 +1451,14 @@ function Calendar() {
                   {requestsForModal.map((request) => (
                     <div
                       key={request.id}
-                      className="border rounded-lg p-4 space-y-3"
+                      className="border rounded-lg p-4 space-y-3 dark:border-gray-700"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-lg text-content-primary">
+                          <h3 className="font-semibold text-lg text-content-primary dark:text-gray-200">
                             {request.companyName}
                           </h3>
-                          <p className="text-sm text-content-secondary">
+                          <p className="text-sm text-content-secondary dark:text-gray-400">
                             Contact: {request.clientName}
                           </p>
                         </div>
@@ -1479,18 +1485,18 @@ function Calendar() {
                           <div>{request.email}</div>
                         </div>
                         <div>
-                          <span className="font-medium text-content-secondary">
+                          <span className="font-medium text-content-secondary dark:text-gray-300">
                             Phone:
                           </span>
-                          <div>{request.phone}</div>
+                          <div className="dark:text-gray-200">{request.phone}</div>
                         </div>
                       </div>
 
                       <div>
-                        <span className="font-medium text-content-secondary">
+                        <span className="font-medium text-content-secondary dark:text-gray-300">
                           Purpose:
                         </span>
-                        <p className="mt-1 text-sm text-content-primary">
+                        <p className="mt-1 text-sm text-content-primary dark:text-gray-200">
                           {request.purpose}
                         </p>
                       </div>
@@ -1562,7 +1568,7 @@ function Calendar() {
           {showRejectModal && rejectingRequest && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
               <div
-                className="absolute inset-0 bg-black/50"
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                 onClick={() => {
                   setShowRejectModal(false);
                   setRejectingRequest(null);
@@ -1587,31 +1593,31 @@ function Calendar() {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                    <p className="text-sm text-gray-700">
+                  <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-3">
+                    <p className="text-sm text-gray-700 dark:text-gray-200">
                       <strong>Client:</strong> {rejectingRequest.clientName}
                     </p>
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-gray-700 dark:text-gray-200">
                       <strong>Company:</strong> {rejectingRequest.companyName}
                     </p>
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-gray-700 dark:text-gray-200">
                       <strong>Requested Date:</strong>{" "}
                       {new Date(
                         rejectingRequest.requestedDate + "T00:00"
                       ).toLocaleDateString()}
                     </p>
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-gray-700 dark:text-gray-200">
                       <strong>Time:</strong> {rejectingRequest.requestedTime}
                     </p>
                   </div>
 
                   <label className="space-y-2 text-sm">
-                    <span className="font-medium text-content-secondary">
+                    <span className="font-medium text-content-secondary dark:text-gray-300">
                       Reason for Rejection *
                     </span>
                     <textarea
                       rows={4}
-                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2"
+                      className="w-full rounded-md border border-subtle bg-surface px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                       value={rejectReason}
                       onChange={(e) => setRejectReason(e.target.value)}
                       placeholder="Please provide a reason for rejecting this meeting request..."
@@ -1647,13 +1653,13 @@ function Calendar() {
         <div className="relative">
           {/* Dropdown Menu */}
           {showFloatingMenu && (
-            <div className="absolute bottom-16 right-0 bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-[160px] animate-in slide-in-from-bottom-2">
+            <div className="absolute bottom-16 right-0 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 min-w-[160px] animate-in slide-in-from-bottom-2">
               <button
                 onClick={() => {
                   openEventModal(null);
                   setShowFloatingMenu(false);
                 }}
-                className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-gray-700 transition-colors"
+                className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors"
               >
                 <FaCalendarAlt className="text-indigo-600" />
                 <span className="font-medium">Add Event</span>
@@ -1663,7 +1669,7 @@ function Calendar() {
                   openTaskModal();
                   setShowFloatingMenu(false);
                 }}
-                className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-gray-700 transition-colors"
+                className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors"
               >
                 <FaTasks className="text-emerald-600" />
                 <span className="font-medium">Add Task</span>
@@ -1674,9 +1680,8 @@ function Calendar() {
           {/* Main Floating Button */}
           <button
             onClick={() => setShowFloatingMenu(!showFloatingMenu)}
-            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${
-              showFloatingMenu ? "rotate-45" : ""
-            }`}
+            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${showFloatingMenu ? "rotate-45" : ""
+              }`}
             title="Add Event or Task"
           >
             <FaPlus className="text-xl group-hover:scale-110 transition-transform" />

@@ -49,7 +49,10 @@ function EditResourceModal({
       }
       case "email": {
         if (!v.trim()) return "Email is required";
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+        // Allow only typical email characters and enforce a basic structure
+        // Local part: letters, numbers, dot, underscore, hyphen, plus
+        // Domain: letters, numbers, hyphen and dots, with 2+ char TLD
+        const emailRegex = /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,}$/;
         if (!emailRegex.test(v)) return "Enter a valid email address";
         if (emailInUse(v)) return "Email is already in use";
         return "";
@@ -134,40 +137,40 @@ function EditResourceModal({
       tabIndex={-1}
     >
       <div
-        className="bg-white rounded-xl shadow-2xl w-full max-w-[90vw] xl:max-w-7xl max-h-[90vh] overflow-y-auto relative z-[10000] flex flex-col"
+        className="bg-white [.dark_&]:bg-[#181B2A] rounded-xl shadow-2xl w-full max-w-[90vw] xl:max-w-7xl max-h-[90vh] overflow-y-auto relative z-[10000] flex flex-col text-gray-900 [.dark_&]:text-gray-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50 sticky top-0 z-10 backdrop-blur-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-[#181B2A] bg-gray-50/50 [.dark_&]:bg-[#181B2A] sticky top-0 z-10 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+            <div className="p-2 bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-500/20 [.dark_&]:text-indigo-300 rounded-lg">
               <FaEdit className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900 leading-tight">
+              <h2 className="text-lg font-bold text-gray-900 [.dark_&]:text-white leading-tight">
                 Edit Resource
               </h2>
-              <p className="text-xs text-gray-500 font-medium">
+              <p className="text-xs text-gray-500 [.dark_&]:text-gray-400 font-medium">
                 Update team member profile details
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
+            className="p-2 text-gray-400 hover:text-gray-600 [.dark_&]:hover:text-gray-200 hover:bg-gray-100 [.dark_&]:hover:bg-white/5 rounded-full transition-all duration-200"
           >
             <HiXMark className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 bg-white [.dark_&]:bg-[#181B2A]">
           <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
             {/* Column 1: Basic Info */}
             <div className="space-y-6">
-              <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                <FaUser className="text-indigo-500" />
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+              <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
+                <FaUser className="text-indigo-500 [.dark_&]:text-indigo-300" />
+                <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
                   Basic Info
                 </h3>
               </div>
@@ -180,10 +183,10 @@ function EditResourceModal({
                       <img
                         src={imagePreview}
                         alt="Preview"
-                        className="h-24 w-24 object-cover rounded-full border-4 border-white shadow-lg"
+                        className="h-24 w-24 object-cover rounded-full border-4 border-white/90 [.dark_&]:border-surface-strong shadow-lg"
                       />
                     ) : (
-                      <div className="h-24 w-24 rounded-full bg-indigo-50 flex items-center justify-center border-4 border-white shadow-lg text-indigo-200">
+                      <div className="h-24 w-24 rounded-full bg-indigo-50 [.dark_&]:bg-indigo-500/10 flex items-center justify-center border-4 border-white/90 [.dark_&]:border-surface-strong shadow-lg text-indigo-200 [.dark_&]:text-indigo-300">
                         <FaCamera className="h-8 w-8" />
                       </div>
                     )}
@@ -210,8 +213,8 @@ function EditResourceModal({
 
                 {/* Full Name */}
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                    <FaUser className="text-gray-400" />
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-200">
+                    <FaUser className="text-gray-400 [.dark_&]:text-gray-300" />
                     Full Name <span className="text-red-500">*</span>
                   </label>
                   <VoiceInput
@@ -226,9 +229,9 @@ function EditResourceModal({
                       }));
                     }}
                     className={`w-full rounded-lg border ${errors.fullName
-                      ? "border-red-500 focus:ring-red-100"
-                      : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                      } bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
+                      ? "border-red-500 focus:ring-red-100 [.dark_&]:border-red-500 [.dark_&]:focus:ring-red-500/20"
+                      : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
+                      } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 [.dark_&]:placeholder:text-gray-500 focus:outline-none focus:ring-4 transition-all duration-200`}
                     required
                   />
                   {errors.fullName && (
@@ -240,8 +243,8 @@ function EditResourceModal({
 
                 {/* Email */}
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                    <FaEnvelope className="text-gray-400" />
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-200">
+                    <FaEnvelope className="text-gray-400 [.dark_&]:text-gray-300" />
                     Email <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -249,7 +252,9 @@ function EditResourceModal({
                     value={formData.email}
                     placeholder="Work email"
                     onChange={(e) => {
-                      const v = e.target.value;
+                      const raw = e.target.value.toLowerCase();
+                      // Allow only letters, numbers, dot, underscore, hyphen, plus, and @
+                      const v = raw.replace(/[^a-z0-9._+\-@]/g, "");
                       setFormData({ ...formData, email: v });
                       setErrors((prev) => ({
                         ...prev,
@@ -257,9 +262,9 @@ function EditResourceModal({
                       }));
                     }}
                     className={`w-full rounded-lg border ${errors.email
-                      ? "border-red-500 focus:ring-red-100"
-                      : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                      } bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
+                      ? "border-red-500 focus:ring-red-100 [.dark_&]:border-red-500 [.dark_&]:focus:ring-red-500/20"
+                      : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
+                      } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 [.dark_&]:placeholder:text-gray-500 focus:outline-none focus:ring-4 transition-all duration-200`}
                     required
                   />
                   {errors.email && (
@@ -271,8 +276,8 @@ function EditResourceModal({
 
                 {/* Mobile */}
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                    <FaPhone className="text-gray-400" />
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-200">
+                    <FaPhone className="text-gray-400 [.dark_&]:text-gray-300" />
                     Mobile <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -291,9 +296,9 @@ function EditResourceModal({
                       }));
                     }}
                     className={`w-full rounded-lg border ${errors.mobile
-                      ? "border-red-500 focus:ring-red-100"
-                      : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                      } bg-white py-2.5 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
+                      ? "border-red-500 focus:ring-red-100 [.dark_&]:border-red-500 [.dark_&]:focus:ring-red-500/20"
+                      : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
+                      } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 [.dark_&]:placeholder:text-gray-500 focus:outline-none focus:ring-4 transition-all duration-200`}
                     required
                   />
                   {errors.mobile && (
@@ -307,9 +312,9 @@ function EditResourceModal({
 
             {/* Column 2: Role & Employment */}
             <div className="space-y-6">
-              <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                <FaBriefcase className="text-indigo-500" />
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+              <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
+                <FaBriefcase className="text-indigo-500 [.dark_&]:text-indigo-300" />
+                <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
                   Role & Employment
                 </h3>
               </div>
@@ -317,7 +322,7 @@ function EditResourceModal({
               <div className="space-y-4">
                 {/* Employment Type */}
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-200">
                     Employment Type
                   </label>
                   <select
@@ -328,7 +333,7 @@ function EditResourceModal({
                         employmentType: e.target.value,
                       })
                     }
-                    className="w-full rounded-lg border border-gray-200 bg-white py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all duration-200"
+                    className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
                   >
                     <option value="Full-time">Full-time</option>
                     <option value="Part-time">Part-time</option>
@@ -348,7 +353,7 @@ function EditResourceModal({
                         resourceType: e.target.value,
                       })
                     }
-                    className="w-full rounded-lg border border-gray-200 bg-white py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all duration-200"
+                    className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
                   >
                     <option value="In-house">In-house</option>
                     <option value="Outsourced">Outsourced</option>
@@ -357,7 +362,7 @@ function EditResourceModal({
 
                 {/* Resource Role */}
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-200">
                     Resource Role
                   </label>
                   <select
@@ -372,7 +377,7 @@ function EditResourceModal({
                         resourceRoleType: type,
                       });
                     }}
-                    className="w-full rounded-lg border border-gray-200 bg-white py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all duration-200"
+                    className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
                   >
                     <option value="">Select role</option>
                     {roleOptions.map((opt) => (
@@ -385,7 +390,7 @@ function EditResourceModal({
 
                 {/* Status */}
                 <div className="space-y-1.5">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-200">
                     Status
                   </label>
                   <select
@@ -393,7 +398,7 @@ function EditResourceModal({
                     onChange={(e) =>
                       setFormData({ ...formData, status: e.target.value })
                     }
-                    className="w-full rounded-lg border border-gray-200 bg-white py-2.5 px-4 text-sm text-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all duration-200"
+                    className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
@@ -404,9 +409,9 @@ function EditResourceModal({
 
             {/* Column 3: Account & Access */}
             <div className="space-y-6">
-              <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
-                <FaLock className="text-indigo-500" />
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+              <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
+                <FaLock className="text-indigo-500 [.dark_&]:text-indigo-300" />
+                <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
                   Account & Access
                 </h3>
               </div>
@@ -431,13 +436,13 @@ function EditResourceModal({
                         }));
                       }}
                       className={`w-full rounded-lg border ${errors.password
-                        ? "border-red-500 focus:ring-red-100"
-                        : "border-gray-200 focus:border-indigo-500 focus:ring-indigo-100"
-                        } bg-white py-2.5 pl-4 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200`}
+                        ? "border-red-500 focus:ring-red-100 [.dark_&]:border-red-500 [.dark_&]:focus:ring-red-500/20"
+                        : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
+                        } bg-white [.dark_&]:bg-[#181B2A] py-2.5 pl-4 pr-10 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 [.dark_&]:placeholder:text-gray-500 focus:outline-none focus:ring-4 transition-all duration-200`}
                     />
                     <button
                       type="button"
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 [.dark_&]:text-gray-500 [.dark_&]:hover:text-gray-200"
                       onClick={() => setShowPassword((prev) => !prev)}
                       tabIndex={-1}
                     >
@@ -448,7 +453,7 @@ function EditResourceModal({
                       )}
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">
                     Leave blank to keep their existing password.
                   </p>
                   {errors.password && (
@@ -463,12 +468,12 @@ function EditResourceModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end gap-3 rounded-b-xl sticky bottom-0 backdrop-blur-md">
+        <div className="px-6 py-4 border-t border-gray-100 [.dark_&]:border-[#181B2A] bg-gray-50/50 [.dark_&]:bg-[#181B2A] flex justify-end gap-3 rounded-b-xl sticky bottom-0 backdrop-blur-md">
           <Button
             type="button"
             variant="ghost"
             onClick={onClose}
-            className="text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+            className="text-gray-600 [.dark_&]:text-gray-300 hover:text-gray-800 [.dark_&]:hover:text-white hover:bg-gray-100 [.dark_&]:hover:bg-white/5"
           >
             Cancel
           </Button>

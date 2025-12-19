@@ -133,34 +133,34 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
       tabIndex={-1}
     >
       <div
-        className={`bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative z-[10000] transform transition-all duration-300 ease-out ${entered ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+        className={`bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative z-[10000] transform transition-all duration-300 ease-out ${entered ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-content-primary">{initialItem ? "Edit Knowledge" : "Add Knowledge"}</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <h2 className="text-xl font-semibold text-content-primary [.dark_&]:text-white">{initialItem ? "Edit Knowledge" : "Add Knowledge"}</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 [.dark_&]:hover:text-gray-300">
               <HiXMark className="h-6 w-6" />
             </button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className={`grid grid-cols-1 gap-6 ${canEditAccess ? "md:grid-cols-2" : ""}`}>
-              <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
+              <div className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#1F2234] p-4 shadow-sm">
                 <div className="space-y-4">
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary [.dark_&]:text-gray-400">
                     Title *
                     <VoiceInput
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       placeholder="e.g. What I learned"
-                      className={`w-full rounded-lg border ${errors.title ? "border-red-500" : "border-subtle"} bg-surface py-2 px-3 text-sm focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                      className={`w-full rounded-lg border ${errors.title ? "border-red-500" : "border-subtle [.dark_&]:border-white/10"} bg-surface [.dark_&]:bg-[#181B2A] py-2 px-3 text-sm [.dark_&]:text-white focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
                       required
                     />
                     {errors.title && <span className="text-xs text-red-600">{errors.title}</span>}
                   </label>
 
-                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary [.dark_&]:text-gray-400">
                     Description *
                     <VoiceInput
                       as="textarea"
@@ -168,7 +168,7 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Write what you learned from this project..."
-                      className={`w-full rounded-lg border ${errors.description ? "border-red-500" : "border-subtle"} bg-surface py-2 px-3 text-sm focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                      className={`w-full rounded-lg border ${errors.description ? "border-red-500" : "border-subtle [.dark_&]:border-white/10"} bg-surface [.dark_&]:bg-[#181B2A] py-2 px-3 text-sm [.dark_&]:text-white focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
                       required
                     />
                     {errors.description && <span className="text-xs text-red-600">{errors.description}</span>}
@@ -177,22 +177,22 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
               </div>
 
               {canEditAccess && (
-                <div className="rounded-lg border border-subtle bg-surface p-4 shadow-sm">
-                  <div className="mb-3 text-sm font-semibold text-content-secondary">Access</div>
+                <div className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#1F2234] p-4 shadow-sm">
+                  <div className="mb-3 text-sm font-semibold text-content-secondary [.dark_&]:text-gray-400">Access</div>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                      <div className="mb-2 text-xs font-bold uppercase tracking-wide text-content-tertiary">Admin Users</div>
-                      <div className="max-h-40 overflow-y-auto rounded-md border border-subtle p-2">
+                      <div className="mb-2 text-xs font-bold uppercase tracking-wide text-content-tertiary [.dark_&]:text-gray-500">Admin Users</div>
+                      <div className="max-h-40 overflow-y-auto rounded-md border border-subtle [.dark_&]:border-white/10 p-2">
                         {admins.length === 0 ? (
                           <div className="text-xs text-content-tertiary">No admin users</div>
                         ) : (
                           admins.map((u) => {
                             const checked = selectedAdmin.includes(u.name);
                             return (
-                              <label key={`admin_${u.id}`} className="flex items-center gap-2 py-1 text-sm">
+                              <label key={`admin_${u.id}`} className="flex items-center gap-2 py-1 text-sm [.dark_&]:text-gray-300">
                                 <input
                                   type="checkbox"
-                                  className="h-4 w-4 rounded border-subtle"
+                                  className="h-4 w-4 rounded border-subtle [.dark_&]:border-white/10"
                                   checked={checked}
                                   onChange={(e) => {
                                     setSelectedAdmin((prev) =>
@@ -210,18 +210,18 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
                       </div>
                     </div>
                     <div>
-                      <div className="mb-2 text-xs font-bold uppercase tracking-wide text-content-tertiary">Member Users</div>
-                      <div className="max-h-40 overflow-y-auto rounded-md border border-subtle p-2">
+                      <div className="mb-2 text-xs font-bold uppercase tracking-wide text-content-tertiary [.dark_&]:text-gray-500">Member Users</div>
+                      <div className="max-h-40 overflow-y-auto rounded-md border border-subtle [.dark_&]:border-white/10 p-2">
                         {members.length === 0 ? (
-                          <div className="text-xs text-content-tertiary">No member users</div>
+                          <div className="text-xs text-content-tertiary [.dark_&]:text-gray-500">No member users</div>
                         ) : (
                           members.map((u) => {
                             const checked = selectedMember.includes(u.name);
                             return (
-                              <label key={`member_${u.id}`} className="flex items-center gap-2 py-1 text-sm">
+                              <label key={`member_${u.id}`} className="flex items-center gap-2 py-1 text-sm [.dark_&]:text-gray-300">
                                 <input
                                   type="checkbox"
-                                  className="h-4 w-4 rounded border-subtle"
+                                  className="h-4 w-4 rounded border-subtle [.dark_&]:border-white/10"
                                   checked={checked}
                                   onChange={(e) => {
                                     setSelectedMember((prev) =>

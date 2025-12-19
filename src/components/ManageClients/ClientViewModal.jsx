@@ -20,27 +20,27 @@ const ClientViewModal = ({ isOpen, onClose, client }) => {
             onClick={onClose}
         >
             <div
-                className="bg-white rounded-xl shadow-2xl w-full max-w-4xl relative z-[10000] flex flex-col max-h-[90vh] overflow-hidden"
+                className="bg-white [.dark_&]:bg-[#181B2A] rounded-xl shadow-2xl w-full max-w-4xl relative z-[10000] flex flex-col max-h-[90vh] overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50 sticky top-0 z-10 backdrop-blur-md">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-white/10 bg-gray-50/50 [.dark_&]:bg-[#181B2A] sticky top-0 z-10 backdrop-blur-md">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                        <div className="p-2 bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-500/20 [.dark_&]:text-indigo-400 rounded-lg">
                             <FaBuilding className="h-5 w-5" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-gray-900 leading-tight">
+                            <h2 className="text-lg font-bold text-gray-900 [.dark_&]:text-white leading-tight">
                                 Client Details
                             </h2>
-                            <p className="text-xs text-gray-500 font-medium">
+                            <p className="text-xs text-gray-500 [.dark_&]:text-gray-400 font-medium">
                                 View complete client information
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
+                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 rounded-full transition-all duration-200"
                     >
                         <HiXMark className="h-6 w-6" />
                     </button>
@@ -49,24 +49,24 @@ const ClientViewModal = ({ isOpen, onClose, client }) => {
                 <div className="p-6 overflow-y-auto">
                     <div className="space-y-8">
                         {/* Logo & Header Info */}
-                        <div className="flex flex-col items-center justify-center pb-6 border-b border-gray-100">
+                        <div className="flex flex-col items-center justify-center pb-6 border-b border-gray-100 [.dark_&]:border-white/10">
                             <div className="relative mb-4 group">
                                 {client.imageUrl ? (
                                     <img
                                         src={client.imageUrl}
                                         alt="Logo"
-                                        className="h-28 w-28 object-cover rounded-full border-4 border-white shadow-xl ring-1 ring-gray-100"
+                                        className="h-28 w-28 object-cover rounded-full border-4 border-white [.dark_&]:border-[#181B2A] shadow-xl ring-1 ring-gray-100 [.dark_&]:ring-white/10"
                                     />
                                 ) : (
-                                    <div className="h-28 w-28 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-4xl shadow-xl ring-4 ring-white">
+                                    <div className="h-28 w-28 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-4xl shadow-xl ring-4 ring-white [.dark_&]:ring-[#181B2A]">
                                         {client.companyName?.charAt(0)?.toUpperCase() || "C"}
                                     </div>
                                 )}
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 text-center">
+                            <h3 className="text-xl font-bold text-gray-900 [.dark_&]:text-white text-center">
                                 {client.companyName}
                             </h3>
-                            <p className="text-sm text-gray-500 font-medium text-center mt-1">
+                            <p className="text-sm text-gray-500 [.dark_&]:text-gray-400 font-medium text-center mt-1">
                                 {client.clientName}
                             </p>
                         </div>
@@ -109,7 +109,7 @@ const ClientViewModal = ({ isOpen, onClose, client }) => {
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 flex justify-end rounded-b-xl sticky bottom-0 backdrop-blur-md">
+                <div className="px-6 py-4 border-t border-gray-100 [.dark_&]:border-white/10 bg-gray-50/50 [.dark_&]:bg-[#181B2A] flex justify-end rounded-b-xl sticky bottom-0 backdrop-blur-md">
                     <Button
                         type="button"
                         variant="secondary"
@@ -125,15 +125,15 @@ const ClientViewModal = ({ isOpen, onClose, client }) => {
 };
 
 const InfoBox = ({ icon, label, value, isEmail }) => (
-    <div className="bg-white border border-gray-100 p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 flex items-start gap-3">
-        <div className="p-2 bg-gray-50 rounded-lg shrink-0">
+    <div className="bg-white [.dark_&]:bg-white/5 border border-gray-100 [.dark_&]:border-white/10 p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 flex items-start gap-3">
+        <div className="p-2 bg-gray-50 [.dark_&]:bg-white/5 rounded-lg shrink-0">
             {icon}
         </div>
         <div className="overflow-hidden">
-            <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-0.5">
+            <label className="block text-xs font-bold text-gray-400 [.dark_&]:text-gray-500 uppercase tracking-wide mb-0.5">
                 {label}
             </label>
-            <p className={`text-gray-900 font-semibold text-sm truncate ${isEmail ? 'text-indigo-600 hover:underline cursor-pointer' : ''}`}>
+            <p className={`text-gray-900 [.dark_&]:text-white font-semibold text-sm truncate ${isEmail ? 'text-indigo-600 [.dark_&]:text-indigo-400 hover:underline cursor-pointer' : ''}`}>
                 {value || "Not provided"}
             </p>
         </div>

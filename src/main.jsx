@@ -7,6 +7,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import "./index.css";
 
 // Import all your components
@@ -47,8 +48,8 @@ import ClientProjects from "./pages/Client/ClientProjects.jsx";
 import ClientTasks from "./pages/Client/ClientTasks.jsx";
 import ClientCalendar from "./pages/Client/ClientCalendar.jsx";
 import ClientReports from "./pages/Client/ClientReports.jsx";
-import ClientDocuments from "./pages/Client/ClientDocuments.jsx";
-import ClientManageDocument from "./pages/Client/ClientManageDocument.jsx";
+import ClientDocuments from "./pages/Client/ClientDocuments";
+import ClientManageDocument from "./pages/Client/ClientManageDocument";
 
 import EmployeeDashboard from "./pages/Employee/EmployeeDashboard.jsx";
 import EmployeeTasks from "./pages/Employee/EmployeeTasks.jsx";
@@ -77,6 +78,9 @@ import AdminManageClients from "./pages/Admin/AdminManageClients.jsx";
 import AdminManageResources from "./pages/Admin/AdminManageResources.jsx";
 import AdminSettings from "./pages/Admin/AdminSettings.jsx";
 import AdminKnowledgeProjectDetail from "./pages/Admin/AdminKnowledgeProjectDetail.jsx";
+import PortalSettings from "./pages/Shared/PortalSettings";
+import PortalThemeSettings from "./pages/Shared/PortalThemeSettings";
+import PortalProfileSettings from "./pages/Shared/PortalProfileSettings";
 
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
@@ -98,6 +102,15 @@ const router = createBrowserRouter([
       { path: "/client/reports", element: <ClientReports /> },
       { path: "/client/documents", element: <ClientDocuments /> },
       { path: "/client/manage-documents", element: <ClientManageDocument /> },
+      {
+        path: "/client/settings",
+        element: <PortalSettings />,
+        children: [
+          { index: true, element: <Navigate to="theme" replace /> },
+          { path: "theme", element: <PortalThemeSettings /> },
+          { path: "profile", element: <PortalProfileSettings /> },
+        ],
+      },
     ],
   },
 
@@ -123,6 +136,15 @@ const router = createBrowserRouter([
         element: <EmployeeManageDocument />,
       },
       { path: "/employee/expenses", element: <EmployeeExpenses /> },
+      {
+        path: "/employee/settings",
+        element: <PortalSettings />,
+        children: [
+          { index: true, element: <Navigate to="theme" replace /> },
+          { path: "theme", element: <PortalThemeSettings /> },
+          { path: "profile", element: <PortalProfileSettings /> },
+        ],
+      },
     ],
   },
 
@@ -155,6 +177,8 @@ const router = createBrowserRouter([
         { path: "add-hierarchy", element: <AdminAddHierarchy /> },
         { path: "project-settings", element: <AdminProjectSettings /> },
         { path: "status-settings", element: <AdminStatusSettings /> },
+        { path: "theme", element: <PortalThemeSettings /> },
+        { path: "profile", element: <PortalProfileSettings /> },
       ],
     },
   ],
@@ -175,6 +199,15 @@ const router = createBrowserRouter([
       { path: "/manager/calendar", element: <Calendar /> },
       { path: "/manager/knowledge-management", element: <ManagerKnowledgeManagement /> },
       { path: "/manager/knowledge-management/:projectName", element: <KnowledgeProjectDetail /> },
+      {
+        path: "/manager/settings",
+        element: <PortalSettings />,
+        children: [
+          { index: true, element: <Navigate to="theme" replace /> },
+          { path: "theme", element: <PortalThemeSettings /> },
+          { path: "profile", element: <PortalProfileSettings /> },
+        ],
+      },
     ],
   },
 
@@ -208,6 +241,8 @@ const router = createBrowserRouter([
           { path: "add-hierarchy", element: <AddHierarchy /> },
           { path: "project-settings", element: <ProjectSettings /> },
           { path: "status-settings", element: <StatusSettings /> },
+          { path: "theme", element: <PortalThemeSettings /> },
+          { path: "profile", element: <PortalProfileSettings /> },
         ],
       },
     ],
@@ -217,7 +252,9 @@ const router = createBrowserRouter([
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <AuthProvider>
-      <RouterProvider router={router} />
+      <ThemeProvider>
+        <RouterProvider router={router} />
+      </ThemeProvider>
     </AuthProvider>
   </React.StrictMode>
 );

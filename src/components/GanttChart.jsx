@@ -19,6 +19,7 @@ import {
   FaCheckCircle,
   FaFlag,
 } from "react-icons/fa";
+import { useTheme } from "../context/ThemeContext";
 
 const statusIconMap = {
   "to-do": renderToStaticMarkup(
@@ -37,6 +38,7 @@ const priorityIconHtml = renderToStaticMarkup(
 );
 
 export default function GanttChart({ data }) {
+  const { mode } = useTheme();
   const ganttRef = useRef(null);
   const containerRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -103,11 +105,17 @@ export default function GanttChart({ data }) {
       const statusIcon =
         statusIconMap[task.status?.toLowerCase()] || statusIconMap["to-do"];
 
+      const bgClass = mode === 'dark' ? 'bg-[#1f2937] border-gray-700' : 'bg-white border-gray-200';
+      const textMain = mode === 'dark' ? 'text-gray-100' : 'text-gray-900';
+      const textSub = mode === 'dark' ? 'text-gray-400' : 'text-gray-600';
+      const textLabel = mode === 'dark' ? 'text-gray-500' : 'text-gray-500';
+      const separator = mode === 'dark' ? 'border-gray-700' : 'border-gray-100';
+
       return `
-    <div class="rounded-lg shadow-lg bg-white border border-gray-200 p-3 min-w-[220px]">
+    <div class="rounded-lg shadow-lg ${bgClass} border p-3 min-w-[220px]">
       
       <!-- Title -->
-      <div class="font-semibold text-gray-900 text-sm mb-2 leading-tight">
+      <div class="font-semibold ${textMain} text-sm mb-2 leading-tight">
         ${task.text}
       </div>
 
@@ -115,56 +123,53 @@ export default function GanttChart({ data }) {
       <!-- Chips -->
       <div class="flex items-center gap-2 flex-wrap mb-3">
       
-        ${
-          task.status
-            ? `<span class="px-2 py-0.5 text-xs rounded-md font-medium inline-flex items-center gap-1.5"
+        ${task.status
+          ? `<span class="px-2 py-0.5 text-xs rounded-md font-medium inline-flex items-center gap-1.5"
                 style="background:${task.statusColor}20; color:${task.statusColor}; border:1px solid ${task.statusColor}40;">
                 ${statusIcon}
                 ${task.status}
               </span>`
-            : ""
+          : ""
         }
-        ${
-          task.priority
-            ? `<span class="px-2 py-0.5 text-xs rounded-md font-medium inline-flex items-center gap-1.5"
+        ${task.priority
+          ? `<span class="px-2 py-0.5 text-xs rounded-md font-medium inline-flex items-center gap-1.5"
                 style="background:${task.priorityColor}20; color:${task.priorityColor}; border:1px solid ${task.priorityColor}40;">
                 ${priorityIconHtml}
                 ${task.priority}
               </span>`
-            : ""
+          : ""
         }
       </div>
 
       <!-- Info List -->
-      <div class="space-y-1.5 text-xs text-gray-600 border-t border-gray-100 pt-2">
+      <div class="space-y-1.5 text-xs ${textSub} border-t ${separator} pt-2">
       <div class="flex justify-between">
-          <span class="text-gray-500">Assigned To:</span>
+          <span class="${textLabel}">Assigned To:</span>
           <span class="font-medium">${task.assignedTo}</span>
         </div>
         <div class="flex justify-between">
-          <span class="text-gray-500">Start Date:</span>
+          <span class="${textLabel}">Start Date:</span>
           <span class="font-medium">${format(start)}</span>
         </div>
         <div class="flex justify-between">
-          <span class="text-gray-500">End Date:</span>
+          <span class="${textLabel}">End Date:</span>
           <span class="font-medium">${format(end)}</span>
         </div>
         <div class="flex justify-between">
-          <span class="text-gray-500">Duration:</span>
+          <span class="${textLabel}">Duration:</span>
           <span class="font-medium">${task.duration} days</span>
         </div>
       </div>
 
       <!-- Progress Bar -->
-      ${
-        task.progress
+      ${task.progress
           ? `
         <div class="mt-3">
           <div class="flex justify-between items-center text-xs mb-1">
-            <span class="text-gray-500">Progress</span>
+            <span class="${textLabel}">Progress</span>
             <span class="font-semibold text-indigo-600">${Math.round(
-              task.progress * 100
-            )}%</span>
+            task.progress * 100
+          )}%</span>
           </div>
           <div class="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
             <div 
@@ -174,7 +179,7 @@ export default function GanttChart({ data }) {
           </div>
         </div>`
           : ""
-      }
+        }
     </div>
   `;
     };
@@ -284,11 +289,10 @@ export default function GanttChart({ data }) {
           <div className="flex items-center gap-1 bg-surface rounded-lg shadow-soft border border-subtle p-1">
             <button
               onClick={() => setZoom("day")}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                zoomLevel === "day"
-                  ? "bg-indigo-600 text-white shadow-soft"
-                  : "text-content-primary hover:bg-indigo-50 hover:text-indigo-700"
-              }`}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${zoomLevel === "day"
+                ? "bg-indigo-600 text-white shadow-soft"
+                : "text-content-primary hover:bg-indigo-50 hover:text-indigo-700"
+                }`}
               title="Day View"
             >
               <FaCalendarDay className="w-3.5 h-3.5" />
@@ -296,11 +300,10 @@ export default function GanttChart({ data }) {
             </button>
             <button
               onClick={() => setZoom("week")}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                zoomLevel === "week"
-                  ? "bg-indigo-600 text-white shadow-soft"
-                  : "text-content-primary hover:bg-indigo-50 hover:text-indigo-700"
-              }`}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${zoomLevel === "week"
+                ? "bg-indigo-600 text-white shadow-soft"
+                : "text-content-primary hover:bg-indigo-50 hover:text-indigo-700"
+                }`}
               title="Week View"
             >
               <FaCalendarWeek className="w-3.5 h-3.5" />
@@ -308,11 +311,10 @@ export default function GanttChart({ data }) {
             </button>
             <button
               onClick={() => setZoom("month")}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                zoomLevel === "month"
-                  ? "bg-indigo-600 text-white shadow-soft"
-                  : "text-content-primary hover:bg-indigo-50 hover:text-indigo-700"
-              }`}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${zoomLevel === "month"
+                ? "bg-indigo-600 text-white shadow-soft"
+                : "text-content-primary hover:bg-indigo-50 hover:text-indigo-700"
+                }`}
               title="Month View"
             >
               <FaCalendar className="w-3.5 h-3.5" />
@@ -353,11 +355,10 @@ export default function GanttChart({ data }) {
           {/* Fullscreen Button */}
           <button
             onClick={toggleFullscreen}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 shadow-soft border ${
-              isFullscreen
-                ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-                : "bg-surface border-subtle text-content-primary hover:bg-surface-subtle"
-            }`}
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 shadow-soft border ${isFullscreen
+              ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+              : "bg-surface border-subtle text-content-primary hover:bg-surface-subtle"
+              }`}
             title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
           >
             {isFullscreen ? (
@@ -372,11 +373,10 @@ export default function GanttChart({ data }) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowLegend(!showLegend)}
-            className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
-              showLegend
-                ? "bg-surface-subtle text-content-primary"
-                : "text-content-secondary hover:bg-surface-subtle"
-            }`}
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${showLegend
+              ? "bg-surface-subtle text-content-primary"
+              : "text-content-secondary hover:bg-surface-subtle"
+              }`}
             title={showLegend ? "Hide Legend" : "Show Legend"}
           >
             {showLegend ? (
@@ -432,9 +432,8 @@ export default function GanttChart({ data }) {
 
       {/* Gantt Container */}
       <div
-        className={`w-full rounded-xl border border-subtle shadow-soft bg-surface overflow-x-auto overflow-y-auto ${
-          isFullscreen ? "h-[calc(100vh-180px)]" : "h-[550px]"
-        }`}
+        className={`w-full rounded-xl border border-subtle shadow-soft bg-surface overflow-x-auto overflow-y-auto ${isFullscreen ? "h-[calc(100vh-180px)]" : "h-[550px]"
+          }`}
       >
         <div ref={ganttRef} className="w-full h-full" />
       </div>
@@ -518,35 +517,85 @@ export default function GanttChart({ data }) {
           /* Gantt grid and timeline styling to match project */
           .gantt_grid_scale,
           .gantt_task_scale {
-            background-color: var(--color-surface-subtle, #f8fafc) !important;
-            border-color: var(--color-border-subtle, #e2e8f0) !important;
+            background-color: ${mode === 'dark' ? '#1f2937' : '#f8fafc'} !important;
+            border-color: ${mode === 'dark' ? '#374151' : '#e2e8f0'} !important;
+            color: ${mode === 'dark' ? '#e5e7eb' : '#64748b'} !important;
             transition: background-color 0.25s ease, border-color 0.25s ease;
           }
 
           .gantt_grid_head_cell,
           .gantt_scale_cell {
-            color: var(--color-content-secondary, #64748b) !important;
+            color: ${mode === 'dark' ? '#e5e7eb' : '#64748b'} !important;
             font-weight: 600 !important;
             transition: color 0.25s ease;
           }
 
           .gantt_cell,
           .gantt_grid_data .gantt_cell {
-            border-color: var(--color-border-subtle, #e2e8f0) !important;
+            border-color: ${mode === 'dark' ? '#374151' : '#e2e8f0'} !important;
+            color: ${mode === 'dark' ? '#f3f4f6' : '#1e293b'} !important;
+            background-color: ${mode === 'dark' ? '#111827' : '#ffffff'} !important;
+          }
+
+          .gantt_task_row, 
+          .gantt_row {
+             background-color: ${mode === 'dark' ? '#111827' : '#ffffff'} !important;
+             border-color: ${mode === 'dark' ? '#374151' : '#e2e8f0'} !important;
+             color: ${mode === 'dark' ? '#f3f4f6' : '#1e293b'} !important;
           }
 
           .gantt_task_row.gantt_selected,
-          .gantt_task_row:hover {
-            background-color: var(--color-surface-subtle, #f8fafc) !important;
+          .gantt_task_row:hover,
+          .gantt_row.gantt_selected,
+          .gantt_row:hover {
+            background-color: ${mode === 'dark' ? '#1f2937' : '#f8fafc'} !important;
+          }
+          
+          .gantt_grid_data,
+          .gantt_task_bg,
+          .gantt_data_area,
+          .gantt_task_content {
+             background-color: ${mode === 'dark' ? '#111827' : '#ffffff'} !important;
+          }
+          
+          /* In dark mode, hide the default background image grid and use cell borders instead if needed, 
+             OR let dhtmlx default grid lines work if we just change the bg color. 
+             Usually dhtmlx uses bg image for lines. We can try recoloring specifically if supported, 
+             or broadly applying borders. For now, let's trust the background-color override 
+             and ensure the cells have transparent backgrounds so lines show, or similar.
+             Actually, .gantt_task_bg usually holds the grid image. */
+          
+          ${mode === 'dark' ? `
+            .gantt_task_bg {
+              background-image: linear-gradient(#374151 1px, transparent 1px), linear-gradient(90deg, #374151 1px, transparent 1px) !important;
+              background-size: 100% 100%, 100% 100% !important; 
+              /* This is a rough approx, typically we just want to suppress the light grid or simple bg color */
+              background-image: none !important; 
+            }
+            .gantt_task_cell {
+              border-right: 1px solid #374151 !important;
+            }
+          ` : ''}
+
+          .gantt_hor_scroll {
+             background-color: ${mode === 'dark' ? '#111827' : '#ffffff'} !important;
+          }
+
+          .gantt_task {
+             background-color: ${mode === 'dark' ? '#111827' : '#ffffff'} !important;
+          }
+
+          .gantt_task_row {
+             border-bottom: 1px solid ${mode === 'dark' ? '#374151' : '#e2e8f0'} !important;
           }
 
           .gantt_tooltip {
-          padding: 0 !important;
-          border-radius: 10px !important;
-          background: transparent !important;
-          border: none !important;
-          box-shadow: none !important;
-}
+            padding: 0 !important;
+            border-radius: 10px !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
 
           /* Tooltip icon styles using Font Awesome classes */
           .status-icon-todo::before {
@@ -558,7 +607,7 @@ export default function GanttChart({ data }) {
           
           .status-icon-progress::before {
             content: "\\f110"; /* FaSpinner */
-            font-family: "Font Awesome 5 Free";
+             font-family: "Font Awesome 5 Free";
             font-weight: 900;
             font-size: 12px;
             animation: spin 1s linear infinite;

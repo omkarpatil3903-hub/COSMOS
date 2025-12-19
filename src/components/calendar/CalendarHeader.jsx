@@ -10,6 +10,7 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { MONTH_NAMES } from "../../utils/dateUtils";
+import { useTheme } from "../../context/ThemeContext";
 
 const CalendarHeader = ({
   currentDate,
@@ -30,6 +31,12 @@ const CalendarHeader = ({
   employeeScheduleInfo,
   onClearEmployeeFilter,
 }) => {
+  const { mode } = useTheme();
+  const selectClassName = `border rounded px-3 py-2 text-sm outline-none transition-colors ${mode === "dark"
+      ? "bg-gray-700 border-gray-600 text-white"
+      : "bg-white border-gray-300 text-gray-900"
+    }`;
+
   return (
     <>
       <Card className="p-4">
@@ -38,7 +45,7 @@ const CalendarHeader = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onNavigateMonth(-1)}
-                className="p-2 hover:bg-gray-100 rounded transition-colors"
+                className={`p-2 rounded transition-colors ${mode === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
                 title="Previous month"
               >
                 <FaChevronLeft />
@@ -48,7 +55,7 @@ const CalendarHeader = ({
               </h2>
               <button
                 onClick={() => onNavigateMonth(1)}
-                className="p-2 hover:bg-gray-100 rounded transition-colors"
+                className={`p-2 rounded transition-colors ${mode === 'dark' ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
                 title="Next month"
               >
                 <FaChevronRight />
@@ -64,7 +71,7 @@ const CalendarHeader = ({
             <select
               value={filterType}
               onChange={(e) => onFilterTypeChange(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-2 text-sm"
+              className={selectClassName}
             >
               <option value="all">All Types</option>
               <option value="meeting">Meetings</option>
@@ -74,7 +81,7 @@ const CalendarHeader = ({
             <select
               value={filterStatus}
               onChange={(e) => onFilterStatusChange(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-2 text-sm"
+              className={selectClassName}
             >
               <option value="all">All Status</option>
               <option value="approved">Approved</option>
@@ -86,7 +93,7 @@ const CalendarHeader = ({
             <select
               value={filterProject}
               onChange={(e) => onFilterProjectChange(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-2 text-sm"
+              className={selectClassName}
             >
               <option value="all">All Projects</option>
               {projects.map((project) => (
@@ -99,7 +106,7 @@ const CalendarHeader = ({
             <select
               value={filterEmployee}
               onChange={(e) => onFilterEmployeeChange(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-2 text-sm"
+              className={selectClassName}
               title="View employee schedule"
             >
               <option value="all">All Employees</option>
@@ -113,24 +120,24 @@ const CalendarHeader = ({
             </select>
 
             {/* Clear All Filters Button */}
-            {(filterType !== "all" || 
-              filterStatus !== "all" || 
-              filterProject !== "all" || 
+            {(filterType !== "all" ||
+              filterStatus !== "all" ||
+              filterProject !== "all" ||
               filterEmployee !== "all") && (
-              <button
-                onClick={() => {
-                  onFilterTypeChange("all");
-                  onFilterStatusChange("all");
-                  onFilterProjectChange("all");
-                  onFilterEmployeeChange("all");
-                }}
-                className="px-3 py-2 bg-blue-100 text-blue-700 rounded-md text-sm font-medium hover:bg-blue-200 transition-colors flex items-center gap-2"
-                title="Clear all filters"
-              >
-                <FaTimes size={12} />
-                Clear Filters
-              </button>
-            )}
+                <button
+                  onClick={() => {
+                    onFilterTypeChange("all");
+                    onFilterStatusChange("all");
+                    onFilterProjectChange("all");
+                    onFilterEmployeeChange("all");
+                  }}
+                  className="px-3 py-2 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded-md text-sm font-medium hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors flex items-center gap-2"
+                  title="Clear all filters"
+                >
+                  <FaTimes size={12} />
+                  Clear Filters
+                </button>
+              )}
 
           </div>
         </div>
@@ -142,7 +149,7 @@ const CalendarHeader = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="font-semibold text-sm">Employee Schedule View</p>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                 Showing: {employeeScheduleInfo.name}
               </p>
             </div>

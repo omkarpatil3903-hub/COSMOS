@@ -39,7 +39,7 @@ const TaskRow = ({
             className={`group grid ${showActions
                 ? "grid-cols-[30px_1fr_180px_100px_100px_80px_110px_80px]"
                 : "grid-cols-[30px_1fr_180px_100px_100px_80px_110px]"
-                } items-center gap-4 border-b border-gray-100 py-3 px-4 hover:bg-gray-50 transition-colors cursor-pointer text-sm ${isSelected ? "bg-indigo-50" : ""
+                } items-center gap-4 border-b border-gray-100 [.dark_&]:border-white/10 py-3 px-4 hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors cursor-pointer text-sm ${isSelected ? "bg-indigo-50 [.dark_&]:bg-indigo-900/20" : ""
                 }`}
         >
             {/* Col 1: Selection Checkbox */}
@@ -54,7 +54,7 @@ const TaskRow = ({
 
             {/* Col 2: Title */}
             <div className="min-w-0">
-                <span className="font-medium text-gray-800 truncate block group-hover:text-indigo-600">
+                <span className="font-medium text-gray-800 [.dark_&]:text-white truncate block group-hover:text-indigo-600 [.dark_&]:group-hover:text-indigo-400">
                     {task.title || "Untitled Task"}
                 </span>
             </div>
@@ -67,7 +67,7 @@ const TaskRow = ({
                             {assigneesResolved.slice(0, 3).map((u, i) => (
                                 <div
                                     key={i}
-                                    className="w-6 h-6 rounded-full bg-indigo-100 border border-white flex items-center justify-center text-[10px] text-indigo-700 font-bold uppercase"
+                                    className="w-6 h-6 rounded-full bg-indigo-100 [.dark_&]:bg-indigo-900/30 border border-white [.dark_&]:border-transparent flex items-center justify-center text-[10px] text-indigo-700 [.dark_&]:text-indigo-300 font-bold uppercase"
                                     title={u?.name || "Unknown"}
                                 >
                                     {u?.name ? u.name[0] : "?"}
@@ -78,7 +78,7 @@ const TaskRow = ({
                             {assigneesResolved.slice(0, 2).map((u, i) => (
                                 <span
                                     key={i}
-                                    className="text-xs text-gray-600 truncate"
+                                    className="text-xs text-gray-600 [.dark_&]:text-gray-400 truncate"
                                     title={u?.name || "Unknown"}
                                 >
                                     {u?.name || "Unknown"}
@@ -97,11 +97,11 @@ const TaskRow = ({
             </div>
 
             {/* Col 4: Assigned Date */}
-            <div className="flex items-center gap-2 text-gray-500">
+            <div className="flex items-center gap-2 text-gray-500 [.dark_&]:text-gray-500">
                 {task.assignedDate ? (
                     <>
-                        <FaRegCalendarAlt className="text-gray-400" />
-                        <span className="text-xs">
+                        <FaRegCalendarAlt className="text-gray-400 [.dark_&]:text-gray-500" />
+                        <span className="text-xs [.dark_&]:text-gray-400">
                             {formatDate(
                                 task.assignedDate?.toDate
                                     ? task.assignedDate.toDate().toISOString().slice(0, 10)
@@ -125,14 +125,14 @@ const TaskRow = ({
                                 title={`Recurring: ${task.recurringPattern || "Daily"}`}
                             />
                         ) : (
-                            <FaRegCalendarAlt className="text-gray-400 shrink-0 text-xs" />
+                            <FaRegCalendarAlt className="text-gray-400 [.dark_&]:text-gray-500 shrink-0 text-xs" />
                         )}
                         {/* Date Text */}
                         <span
                             className={
                                 (task.dueDate?.toDate ? task.dueDate.toDate() : new Date(task.dueDate)) < new Date() && task.status !== "Done"
-                                    ? "text-red-500 font-medium text-xs"
-                                    : "text-xs"
+                                    ? "text-red-500 [.dark_&]:text-red-400 font-medium text-xs"
+                                    : "text-xs [.dark_&]:text-gray-400"
                             }
                         >
                             {formatDate(
@@ -143,7 +143,7 @@ const TaskRow = ({
                         </span>
                     </>
                 ) : (
-                    <span className="text-gray-300 text-xs"></span>
+                    <span className="text-gray-300 [.dark_&]:text-gray-600 text-xs"></span>
                 )}
             </div>
 
@@ -190,7 +190,7 @@ const TaskRow = ({
                                 e.stopPropagation();
                                 onStatusChange(task.id, "Done");
                             }}
-                            className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                            className="p-1.5 text-gray-400 [.dark_&]:text-gray-500 hover:text-green-600 [.dark_&]:hover:text-green-400 hover:bg-green-50 [.dark_&]:hover:bg-green-900/20 rounded-md transition-colors"
                             title="Mark as Done"
                         >
                             <FaCheck />
@@ -209,12 +209,12 @@ const TaskRow = ({
                                     const tooltip = e.currentTarget.nextElementSibling;
                                     tooltip.classList.remove('invisible', 'opacity-0');
                                     tooltip.classList.add('opacity-100');
-                                    
+
                                     // Clear any existing timeout
                                     if (tooltip.timeoutId) {
                                         clearTimeout(tooltip.timeoutId);
                                     }
-                                    
+
                                     // Hide after 3 seconds
                                     tooltip.timeoutId = setTimeout(() => {
                                         tooltip.classList.add('opacity-0');
@@ -225,7 +225,7 @@ const TaskRow = ({
                                     const tooltip = e.currentTarget.nextElementSibling;
                                     tooltip.classList.add('opacity-0');
                                     tooltip.classList.remove('opacity-100');
-                                    
+
                                     // Clear any existing timeout
                                     if (tooltip.timeoutId) {
                                         clearTimeout(tooltip.timeoutId);
@@ -246,7 +246,7 @@ const TaskRow = ({
                                 e.stopPropagation();
                                 onEdit(task);
                             }}
-                            className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                            className="p-1.5 text-gray-400 [.dark_&]:text-gray-500 hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 hover:bg-indigo-50 [.dark_&]:hover:bg-indigo-900/20 rounded-md transition-colors"
                             title="Edit Task"
                         >
                             <FaEdit />
@@ -258,7 +258,7 @@ const TaskRow = ({
                                 e.stopPropagation();
                                 onSetReminder(task);
                             }}
-                            className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors"
+                            className="p-1.5 text-gray-400 [.dark_&]:text-gray-500 hover:text-amber-600 [.dark_&]:hover:text-amber-400 hover:bg-amber-50 [.dark_&]:hover:bg-amber-900/20 rounded-md transition-colors"
                             title="Set Reminder"
                         >
                             <FaBell />
@@ -270,7 +270,7 @@ const TaskRow = ({
                                 e.stopPropagation();
                                 onDelete(task);
                             }}
-                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                            className="p-1.5 text-gray-400 [.dark_&]:text-gray-500 hover:text-red-600 [.dark_&]:hover:text-red-400 hover:bg-red-50 [.dark_&]:hover:bg-red-900/20 rounded-md transition-colors"
                             title="Delete Task"
                         >
                             <FaTrash />

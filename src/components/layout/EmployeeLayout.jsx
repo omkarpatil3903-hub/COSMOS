@@ -14,17 +14,57 @@ import {
   FaUserTie,
   FaBars,
   FaTimes,
+  FaCog,
 } from "react-icons/fa";
 import { FaFileAlt } from "react-icons/fa";
 import { useAuthContext } from "../../context/useAuthContext";
+import { useTheme } from "../../context/ThemeContext";
 
 // Reusable sidebar link component matching admin panel exactly
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
+  const { accent } = useTheme();
+
+  // Get icon color based on route for black theme, otherwise use accent color
+  const getIconColor = (to) => {
+    if (accent === 'black') {
+      // Define specific colors for each route in black theme
+      if (to === '/employee' || to === '/employee/dashboard' || to === '') return 'text-blue-400';
+      if (to.includes('tasks')) return 'text-green-400';
+      if (to.includes('projects')) return 'text-purple-400';
+      if (to.includes('calendar')) return 'text-red-400';
+      if (to.includes('reports')) return 'text-yellow-400';
+      if (to.includes('knowledge-management')) return 'text-cyan-400';
+      if (to.includes('settings')) return 'text-pink-400';
+      return 'text-indigo-400'; // Default color
+    }
+    
+    // For non-black themes, use the accent color
+    return accent === "purple"
+      ? "text-purple-400"
+      : accent === "blue"
+      ? "text-sky-400"
+      : accent === "pink"
+      ? "text-pink-400"
+      : accent === "violet"
+      ? "text-violet-400"
+      : accent === "orange"
+      ? "text-amber-400"
+      : accent === "teal"
+      ? "text-teal-400"
+      : accent === "bronze"
+      ? "text-amber-500"
+      : accent === "mint"
+      ? "text-emerald-400"
+      : "text-indigo-400";
+  };
+  
+  const iconColor = getIconColor(to);
+
   const baseClasses = `group flex items-center ${
     isCollapsed ? "justify-center px-2" : "gap-3 px-3"
   } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
   const activeClasses =
-    "border-indigo-200 bg-indigo-50 text-indigo-700 shadow-soft";
+    "border-subtle bg-surface-strong text-content-primary shadow-soft";
   const inactiveClasses =
     "text-content-secondary hover:bg-surface-subtle hover:text-content-primary";
 
@@ -38,10 +78,20 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
       }
       onClick={onNavigate}
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600 transition-colors duration-200 group-hover:bg-indigo-200">
-        {icon}
-      </span>
-      {!isCollapsed && <span className="truncate">{text}</span>}
+      {({ isActive }) => (
+        <>
+          <span
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
+              isActive
+                ? `${accent === 'black' ? 'bg-black/20 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-surface'} ${iconColor}`
+                : `${iconColor} bg-transparent ${accent === 'black' ? 'opacity-80 hover:opacity-100 hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : ''}`
+            }`}
+          >
+            {icon}
+          </span>
+          {!isCollapsed && <span className="truncate">{text}</span>}
+        </>
+      )}
     </NavLink>
   );
 };
@@ -63,6 +113,7 @@ function EmployeeLayout() {
       "/employee/calendar": "COSMOS | Calendar",
       "/employee/reports": "COSMOS | Reports",
       "/employee/knowledge-management": "COSMOS | Knowledge Management",
+      "/employee/settings": "COSMOS | Settings",
     };
 
     const title = pathToTitle[location.pathname] || "Employee Portal";
@@ -106,6 +157,11 @@ function EmployeeLayout() {
       to: "/employee/expenses",
       text: "My Expenses",
       icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/employee/settings",
+      text: "Settings",
+      icon: <FaCog className="h-4 w-4" aria-hidden="true" />,
     },
   ];
 

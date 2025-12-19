@@ -1,16 +1,35 @@
 // src/components/Card.jsx
 import React from "react";
+import { useTheme } from "../context/ThemeContext";
 
 function Card({ title, icon, children, actions, className = "", tone = "surface", ...props }) {
   const iconEl =
     icon && React.isValidElement(icon)
       ? React.cloneElement(icon, {
-          className: `h-4 w-4 text-content-secondary ${
-            icon.props.className || ""
+        className: `h-4 w-4 text-content-secondary ${icon.props.className || ""
           }`.trim(),
-        })
+      })
       : icon;
-  const toneClass = tone === "white" ? "bg-white" : tone === "muted" ? "bg-gray-50" : "bg-surface";
+  // Use theme-surface classes so dark mode automatically applies the shared card background.
+  // "surface" -> generic surface, "strong" -> card emphasis (default), "muted" / "white" for special cases.
+  const { accent } = useTheme();
+
+  const getToneClass = () => {
+    // If accent is 'black', force black background for dark appearance
+    if (accent === 'black') {
+      return "bg-white [.dark_&]:bg-[#000000] [.dark_&]:border-gray-800";
+    }
+
+    return tone === "white"
+      ? "bg-white dark:bg-surface-strong"
+      : tone === "muted"
+        ? "bg-surface-subtle"
+        : tone === "surface"
+          ? "bg-surface-strong"
+          : "bg-surface-strong";
+  };
+
+  const toneClass = getToneClass();
 
   return (
     <div

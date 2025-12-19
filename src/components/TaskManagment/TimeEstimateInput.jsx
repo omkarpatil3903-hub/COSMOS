@@ -56,15 +56,15 @@ const TimeEstimateInput = ({ value, onChange, readOnly = false }) => {
         return (
             <div className="flex items-center justify-between group">
                 <div className="flex items-center gap-2">
-                    <FaClock className="text-gray-400 text-sm" />
-                    <span className={`text-sm ${value ? "text-gray-700 font-medium" : "text-gray-400"}`}>
+                    <FaClock className="text-gray-400 [.dark_&]:text-gray-500 text-sm" />
+                    <span className={`text-sm ${value ? "text-gray-700 [.dark_&]:text-white font-medium" : "text-gray-400 [.dark_&]:text-gray-500"}`}>
                         {formatHours(value)}
                     </span>
                 </div>
                 {!readOnly && (
                     <button
                         onClick={() => setIsEditing(true)}
-                        className="text-xs text-indigo-600 hover:text-indigo-700 font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="text-xs text-indigo-600 [.dark_&]:text-indigo-400 hover:text-indigo-700 [.dark_&]:hover:text-indigo-300 font-medium opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                         {value ? "Edit" : "Set"}
                     </button>
@@ -76,10 +76,10 @@ const TimeEstimateInput = ({ value, onChange, readOnly = false }) => {
     return (
         <div className="space-y-3">
             <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-500 uppercase">Time Estimate</span>
+                <span className="text-xs font-bold text-gray-500 [.dark_&]:text-gray-400 uppercase">Time Estimate</span>
                 <button
                     onClick={() => setIsEditing(false)}
-                    className="text-xs text-gray-500 hover:text-gray-700"
+                    className="text-xs text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-white"
                 >
                     Cancel
                 </button>
@@ -93,7 +93,7 @@ const TimeEstimateInput = ({ value, onChange, readOnly = false }) => {
                         onClick={() => handlePresetClick(preset.hours)}
                         className={`px-3 py-1.5 text-xs rounded-md border transition-all ${value === preset.hours
                             ? "bg-indigo-600 text-white border-indigo-600"
-                            : "bg-white text-gray-700 border-gray-300 hover:border-indigo-500 hover:text-indigo-600"
+                            : "bg-white [.dark_&]:bg-[#181B2A] text-gray-700 [.dark_&]:text-white border-gray-300 [.dark_&]:border-white/20 hover:border-indigo-500 hover:text-indigo-600 [.dark_&]:hover:text-indigo-400"
                             }`}
                     >
                         {preset.label}
@@ -103,7 +103,7 @@ const TimeEstimateInput = ({ value, onChange, readOnly = false }) => {
 
             {/* Custom Input */}
             <div className="space-y-2">
-                <label className="text-xs text-gray-600">Custom (hours):</label>
+                <label className="text-xs text-gray-600 [.dark_&]:text-gray-400">Custom (hours):</label>
                 <div className="flex gap-2">
                     <input
                         type="number"
@@ -113,7 +113,7 @@ const TimeEstimateInput = ({ value, onChange, readOnly = false }) => {
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="e.g., 12"
-                        className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:border-indigo-500"
+                        className="flex-1 px-3 py-1.5 text-sm border border-gray-300 [.dark_&]:border-white/20 rounded-md focus:outline-none focus:border-indigo-500 bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white"
                     />
                     <button
                         onClick={handleCustomSubmit}
@@ -128,7 +128,7 @@ const TimeEstimateInput = ({ value, onChange, readOnly = false }) => {
             {value > 0 && (
                 <button
                     onClick={handleClear}
-                    className="w-full px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 border border-red-200 rounded-md transition-colors"
+                    className="w-full px-3 py-1.5 text-xs text-red-600 [.dark_&]:text-red-400 hover:bg-red-50 [.dark_&]:hover:bg-red-900/20 border border-red-200 [.dark_&]:border-red-500/20 rounded-md transition-colors"
                 >
                     Clear Estimate
                 </button>

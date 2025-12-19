@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
-import { FaSitemap, FaLayerGroup, FaFlag } from "react-icons/fa";
+import { FaSitemap, FaLayerGroup, FaFlag, FaPalette, FaUserCircle } from "react-icons/fa";
 
 export default function Settings() {
   const tabs = [
@@ -30,6 +30,24 @@ export default function Settings() {
       icon: (
         <span className="inline-flex items-center justify-center rounded-md border border-amber-200 bg-amber-50 px-1.5 py-1 text-xs text-amber-600">
           <FaFlag className="h-3.5 w-3.5" />
+        </span>
+      ),
+    },
+    {
+      to: "theme",
+      label: "Theme",
+      icon: (
+        <span className="inline-flex items-center justify-center rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-1 text-xs text-indigo-600">
+          <FaPalette className="h-3.5 w-3.5" />
+        </span>
+      ),
+    },
+    {
+      to: "profile",
+      label: "Profile",
+      icon: (
+        <span className="inline-flex items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-1 text-xs text-emerald-600">
+          <FaUserCircle className="h-3.5 w-3.5" />
         </span>
       ),
     },

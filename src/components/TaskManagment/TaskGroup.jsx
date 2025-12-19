@@ -60,12 +60,12 @@ const TaskGroup = ({
         };
     }, [showMenu]);
 
-    
+
 
     return (
         <div className="mb-6">
-            <div 
-                className="group flex items-center justify-between mb-2 rounded hover:bg-gray-50 transition-colors"
+            <div
+                className="group flex items-center justify-between mb-2 rounded hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors"
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => {
                     setHovered(false);
@@ -73,7 +73,7 @@ const TaskGroup = ({
                 }}
             >
                 <div className="flex items-center w-full">
-                    <div 
+                    <div
                         className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 w-full"
                         onClick={() => setIsOpen(!isOpen)}
                     >
@@ -94,7 +94,7 @@ const TaskGroup = ({
                                 <button
                                     type="button"
                                     title="More"
-                                    className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 font-normal"
+                                    className="p-1 rounded text-gray-400 [.dark_&]:text-gray-500 hover:text-gray-600 [.dark_&]:hover:text-gray-300 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 font-normal"
                                 >
                                     <FaEllipsisH className="h-3 w-3" onClick={(e) => {
                                         e.stopPropagation();
@@ -116,19 +116,19 @@ const TaskGroup = ({
                                 )}
                                 {showMenu && (
                                     <div
-                                        className={`absolute ${title === 'Done' ? 'bottom-full right-0 mb-2' : 'top-0 left-full'} w-30 bg-white rounded-md shadow-lg z-50 border border-gray-200`}
+                                        className={`absolute ${title === 'Done' ? 'bottom-full right-0 mb-2' : 'top-0 left-full'} w-30 bg-white [.dark_&]:bg-[#1F2234] rounded-md shadow-lg z-50 border border-gray-200 [.dark_&]:border-white/10`}
                                         style={{ minWidth: '12rem' }}
                                         onClick={(e) => e.stopPropagation()}
                                     >
-                                        <div className="px-3 py-2 text-xs font-medium text-gray-500">
+                                        <div className="px-3 py-2 text-xs font-medium text-gray-500 [.dark_&]:text-gray-400">
                                             Group options
-                                            <div className="border-t border-gray-100 mt-2"></div>
+                                            <div className="border-t border-gray-100 [.dark_&]:border-white/10 mt-2"></div>
                                         </div>
 
                                         {/* Edit statuses */}
                                         <button
                                             type="button"
-                                            className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+                                            className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 [.dark_&]:text-gray-200 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
                                             onClick={() => {
                                                 setShowMenu(false);
                                                 onHeaderMenu?.({ action: "edit-statuses", title, tasks });
@@ -141,7 +141,7 @@ const TaskGroup = ({
                                         {/* Change color */}
                                         <button
                                             type="button"
-                                            className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+                                            className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 [.dark_&]:text-gray-200 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
                                             onClick={() => {
                                                 setShowMenu(false);
                                                 onHeaderMenu?.({ action: "change-color", title, tasks });
@@ -154,7 +154,7 @@ const TaskGroup = ({
                                         {/* Pin status */}
                                         <button
                                             type="button"
-                                            className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+                                            className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 [.dark_&]:text-gray-200 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
                                             onClick={() => {
                                                 setShowMenu(false);
                                                 onHeaderMenu?.({ action: "pin-status", title, tasks });
@@ -164,12 +164,12 @@ const TaskGroup = ({
                                             <span>Pin status</span>
                                         </button>
 
-                                        <div className="my-1 border-t border-gray-200/70" />
+                                        <div className="my-1 border-t border-gray-200/70 [.dark_&]:border-white/10" />
 
                                         {/* Select all */}
                                         <button
                                             type="button"
-                                            className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+                                            className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 [.dark_&]:text-gray-200 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
                                             onClick={() => {
                                                 setShowMenu(false);
                                                 tasks.forEach((t) => {
@@ -193,13 +193,13 @@ const TaskGroup = ({
 
             {/* List Body */}
             {isOpen && (
-                <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 rounded-lg shadow-sm overflow-hidden">
                     {/* --- UPDATED COLUMN HEADERS WITH ICONS --- */}
                     <div
                         className={`grid ${showActions
                             ? "grid-cols-[30px_1fr_180px_100px_100px_80px_110px_80px]"
                             : "grid-cols-[30px_1fr_180px_100px_100px_80px_110px]"
-                            } gap-4 px-4 py-3 bg-gray-50 border-b border-gray-100 text-[11px] font-bold text-gray-400 uppercase tracking-wider`}
+                            } gap-4 px-4 py-3 bg-gray-50 [.dark_&]:bg-white/5 border-b border-gray-100 [.dark_&]:border-white/10 text-[11px] font-bold text-gray-400 [.dark_&]:text-gray-500 uppercase tracking-wider`}
                     >
                         {/* 1. Checkbox Spacer */}
                         <div></div>
@@ -270,7 +270,7 @@ const TaskGroup = ({
                     {onOpenCreate && (
                         <div
                             onClick={onOpenCreate}
-                            className="flex items-center gap-2 px-10 py-2 text-sm text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 cursor-pointer transition-colors border-t border-gray-50"
+                            className="flex items-center gap-2 px-10 py-2 text-sm text-gray-400 [.dark_&]:text-gray-500 hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 hover:bg-indigo-50 [.dark_&]:hover:bg-indigo-900/20 cursor-pointer transition-colors border-t border-gray-50 [.dark_&]:border-white/5"
                         >
                             <FaPlus className="text-xs" />
                             <span>New Task</span>
