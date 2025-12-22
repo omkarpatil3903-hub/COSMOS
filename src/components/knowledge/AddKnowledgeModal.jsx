@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";
 import Button from "../Button";
 import { db } from "../../firebase";
@@ -6,6 +7,7 @@ import { collection, onSnapshot, orderBy, query, where, doc, getDoc } from "fire
 import VoiceInput from "../Common/VoiceInput";
 
 function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, projectId, canEditAccess = true }) {
+  const { buttonClass } = useThemeStyles();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [errors, setErrors] = useState({});
@@ -245,7 +247,7 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
 
             <div className="flex justify-end gap-3 pt-2">
               <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button type="submit">{initialItem ? "Save Changes" : "+ Add Knowledge"}</Button>
+              <Button type="submit" variant="custom" className={buttonClass}>{initialItem ? "Save Changes" : "+ Add Knowledge"}</Button>
             </div>
           </form>
         </div>

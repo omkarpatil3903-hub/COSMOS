@@ -15,8 +15,10 @@ import {
 } from "firebase/firestore";
 import { FaTimes, FaEdit, FaTrash, FaPlus, FaSearch } from "react-icons/fa";
 import VoiceInput from "../../components/Common/VoiceInput";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 export default function ProjectSettings() {
+  const { buttonClass } = useThemeStyles();
   const location = useLocation();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
@@ -239,7 +241,7 @@ export default function ProjectSettings() {
             <span className="text-sm text-content-secondary [.dark_&]:text-gray-400">
               Showing {filtered.length} records
             </span>
-            <Button variant="primary" onClick={openCreate} className="shrink-0">
+            <Button variant="custom" className={`shrink-0 ${buttonClass}`} onClick={openCreate}>
               <FaPlus /> Add Project Level
             </Button>
           </div>
@@ -355,7 +357,7 @@ export default function ProjectSettings() {
                         {item.name}
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-2.5 text-sm sticky right-0 z-10 bg-transparent transition-colors">
+                    <td className="whitespace-nowrap px-6 py-2.5 text-sm sticky right-0 z-10 group-odd:bg-white group-even:bg-gray-50 [.dark_&]:group-odd:bg-[#181B2A] [.dark_&]:group-even:bg-[#1F2234] transition-colors">
                       <div className="flex items-center justify-center space-x-3">
                         <button
                           onClick={(e) => handleEditClick(item, e)}
@@ -385,7 +387,9 @@ export default function ProjectSettings() {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
           <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl [.dark_&]:bg-[#181B2A] [.dark_&]:border [.dark_&]:border-white/10">
             <div className="flex items-center justify-between px-6 pt-6">
-              <h3 className="text-xl font-semibold [.dark_&]:text-white">Create Project Level</h3>
+              <h3 className="text-xl font-semibold [.dark_&]:text-white">
+                {editing ? "Edit Project Level" : "Create Project Level"}
+              </h3>
               <button
                 onClick={close}
                 className="text-gray-400 hover:text-gray-600"
@@ -432,8 +436,8 @@ export default function ProjectSettings() {
               <Button variant="ghost" onClick={close} className="[.dark_&]:text-gray-300 [.dark_&]:hover:bg-white/10">
                 Cancel
               </Button>
-              <Button onClick={save} disabled={saving} variant="primary">
-                {saving ? "Saving..." : "Save"}
+              <Button onClick={save} disabled={saving} variant="custom" className={buttonClass}>
+                {saving ? (editing ? "Updating..." : "Saving...") : (editing ? "Update" : "Save")}
               </Button>
             </div>
           </div>

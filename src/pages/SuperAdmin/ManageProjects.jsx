@@ -1,5 +1,6 @@
 // src/pages/ManageProjects.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import {
   FaSearch,
   FaSortAmountDownAlt,
@@ -60,6 +61,8 @@ const tableHeaders = [
 // --- End Placeholder Data ---
 
 function ManageProjects({ onlyMyManaged = false }) {
+  const { buttonClass } = useThemeStyles();
+
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [clients, setClients] = useState([]);
@@ -910,7 +913,7 @@ function ManageProjects({ onlyMyManaged = false }) {
                     <FaTh className="w-4 h-4" />
                   </button>
                 </div>
-                <Button onClick={() => setShowAddForm(true)}>
+                <Button variant="custom" onClick={() => setShowAddForm(true)} className={`flex items-center gap-2 ${buttonClass}`}>
                   <FaPlus className="h-4 w-4" aria-hidden="true" />
                   Add Project
                 </Button>
@@ -936,7 +939,7 @@ function ManageProjects({ onlyMyManaged = false }) {
               </label>
             </div>
             <div className="mt-4 flex gap-3 sm:hidden">
-              <Button onClick={() => setShowAddForm(true)} className="flex-1">
+              <Button variant="custom" onClick={() => setShowAddForm(true)} className={`flex-1 ${buttonClass}`}>
                 <FaPlus className="h-4 w-4" aria-hidden="true" />
                 Add
               </Button>

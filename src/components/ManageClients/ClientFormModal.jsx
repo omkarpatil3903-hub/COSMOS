@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";
 import {
     FaSpinner,
@@ -26,6 +27,8 @@ const ClientFormModal = ({
     isSubmitting,
     mode = "add", // 'add' or 'edit'
 }) => {
+    const { buttonClass, iconColor, headerIconClass, linkColor } = useThemeStyles();
+
     const [formData, setFormData] = useState({
         companyName: "",
         clientName: "",
@@ -126,7 +129,7 @@ const ClientFormModal = ({
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-white/10 bg-gray-50/50 [.dark_&]:bg-[#181B2A] sticky top-0 z-10 backdrop-blur-md">
                     <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${mode === 'add' ? 'bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-500/20 [.dark_&]:text-indigo-400' : 'bg-amber-100 text-amber-600 [.dark_&]:bg-amber-500/20 [.dark_&]:text-amber-400'}`}>
+                        <div className={`p-2 rounded-lg ${headerIconClass}`}>
                             {mode === 'add' ? <FaUserPlus className="h-5 w-5" /> : <FaUserEdit className="h-5 w-5" />}
                         </div>
                         <div>
@@ -151,7 +154,7 @@ const ClientFormModal = ({
                         {/* Column 1: Basic Info */}
                         <div className="space-y-6">
                             <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
-                                <FaBuilding className="text-indigo-500 [.dark_&]:text-indigo-400" />
+                                <FaBuilding className={`${iconColor} [.dark_&]:text-opacity-80`} />
                                 <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
                                     Basic Information
                                 </h3>
@@ -219,7 +222,7 @@ const ClientFormModal = ({
                         {/* Column 2: Business Info */}
                         <div className="space-y-6">
                             <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
-                                <FaBriefcase className="text-indigo-500 [.dark_&]:text-indigo-400" />
+                                <FaBriefcase className={`${iconColor} [.dark_&]:text-opacity-80`} />
                                 <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
                                     Business Details
                                 </h3>
@@ -274,7 +277,7 @@ const ClientFormModal = ({
                         {/* Column 3: Media & Security */}
                         <div className="space-y-6">
                             <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
-                                <FaCamera className="text-indigo-500 [.dark_&]:text-indigo-400" />
+                                <FaCamera className={`${iconColor} [.dark_&]:text-opacity-80`} />
                                 <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
                                     Media & Security
                                 </h3>
@@ -298,12 +301,12 @@ const ClientFormModal = ({
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="h-24 w-24 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-500 mb-4">
+                                            <div className={`h-24 w-24 rounded-full flex items-center justify-center mb-4 ${headerIconClass.replace('p-2', '')}`}>
                                                 <FaCamera className="h-8 w-8" />
                                             </div>
                                         )}
                                         <label className="cursor-pointer">
-                                            <span className="text-indigo-600 font-semibold hover:text-indigo-700">Upload a file</span>
+                                            <span className={`${linkColor} font-semibold hover:opacity-80`}>Upload a file</span>
                                             <input
                                                 type="file"
                                                 accept="image/*"
@@ -353,7 +356,7 @@ const ClientFormModal = ({
                     <Button type="button" variant="ghost" onClick={onClose} className="text-gray-600 hover:text-gray-800 hover:bg-gray-100">
                         Cancel
                     </Button>
-                    <Button type="submit" disabled={isSubmitting} onClick={handleSubmit} className="shadow-lg shadow-indigo-200">
+                    <Button type="submit" variant="custom" disabled={isSubmitting} onClick={handleSubmit} className={`shadow-lg ${buttonClass}`}>
                         {isSubmitting && <FaSpinner className="animate-spin mr-2" />}
                         {mode === "add" ? "Create Account" : "Save Changes"}
                     </Button>

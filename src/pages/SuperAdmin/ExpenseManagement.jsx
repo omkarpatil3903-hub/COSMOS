@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
@@ -21,7 +22,7 @@ import {
   FaSearch,
   FaClock,
   FaHourglassHalf,
-  FaDownload,
+  FaUpload,
 } from "react-icons/fa";
 import {
   subscribeToAllExpenses,
@@ -40,6 +41,7 @@ const statusColors = {
 };
 
 const ExpenseManagement = () => {
+  const { buttonClass } = useThemeStyles();
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -259,22 +261,22 @@ const ExpenseManagement = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <PageHeader
-          title="Expense Management"
-          description="Review and process employee reimbursement claims"
-          icon={<FaMoneyCheckAlt />}
-        />
-        <Button
-          onClick={handleExportCSV}
-          variant="secondary"
-          className="flex items-center gap-2"
-          disabled={filtered.length === 0}
-        >
-          <FaDownload className="h-4 w-4" />
-          Export Excel
-        </Button>
-      </div>
+      <PageHeader
+        title="Expense Management"
+        description="Review and process employee reimbursement claims"
+        icon={<FaMoneyCheckAlt />}
+        actions={
+          <Button
+            onClick={handleExportCSV}
+            variant="custom"
+            className={`flex items-center gap-2 ${buttonClass}`}
+            disabled={filtered.length === 0}
+          >
+            <FaUpload className="h-4 w-4" />
+            Export Excel
+          </Button>
+        }
+      />
 
       {/* Stats Cards - Now Clickable Filters */}
       <div className="grid gap-4 md:grid-cols-4">

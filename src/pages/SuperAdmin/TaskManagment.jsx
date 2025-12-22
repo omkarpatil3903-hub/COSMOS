@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import toast from "react-hot-toast";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
@@ -83,6 +84,7 @@ const tsToISO = (v) => {
 
 function TasksManagement() {
   const { user } = useAuthContext();
+  const { buttonClass, iconColor, barColor } = useThemeStyles();
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
@@ -143,6 +145,67 @@ function TasksManagement() {
       return next;
     });
   };
+
+  // Fetch statuses from settings
+  // Fetch statuses from settings (Real-time)
+  useEffect(() => {
+    const ref = doc(db, "settings", "task-statuses");
+    const unsub = onSnapshot(ref, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const list = Array.isArray(data.statuses) ? data.statuses : [];
+
+        const names = [];
+        const colors = {};
+
+        // Helper: Generate consistent pastel color from string
+        const stringToColor = (str) => {
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+          }
+          const c = (hash & 0x00ffffff).toString(16).toUpperCase();
+          return '#' + '00000'.substring(0, 6 - c.length) + c;
+        };
+
+        list.forEach(item => {
+          let name, color;
+          // Handle pure strings and various object shapes
+          if (typeof item === 'string') {
+            name = item;
+          } else if (item && typeof item === 'object') {
+            name = item.name || item.label || item.value;
+            color = item.color || item.bg || item.background;
+          }
+
+          if (name) {
+            names.push(name);
+            if (color) {
+              colors[name] = color;
+            } else {
+              // Fallback defaults
+              const lower = name.toLowerCase();
+              if (lower.includes('done') || lower.includes('complete')) colors[name] = '#10B981';
+              else if (lower.includes('progress') || lower.includes('working')) colors[name] = '#F59E0B';
+              else if (lower.includes('todo') || lower.includes('to-do') || lower.includes('backlog')) colors[name] = '#3B82F6';
+              else if (lower.includes('hold') || lower.includes('block')) colors[name] = '#EF4444';
+              else if (lower.includes('review') || lower.includes('qa')) colors[name] = '#8B5CF6';
+              else colors[name] = stringToColor(name);
+            }
+          }
+        });
+
+        if (names.length > 0) {
+          setStatusOptions(names);
+          setStatusColorMap(colors);
+        }
+      }
+    }, (err) => {
+      console.error("Failed to fetch task statuses", err);
+    });
+
+    return () => unsub();
+  }, []);
 
   // 2. Optimized Data Lookups (Maps) - creates instant access to data
   const projectMap = useMemo(() => {
@@ -1940,7 +2003,7 @@ function TasksManagement() {
           {/* Filters Section */}
           <div className="border-b border-gray-100 [.dark_&]:border-white/10 pb-4 mb-4">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1 h-5 bg-indigo-600 rounded-full"></div>
+              <div className={`w-1 h-5 ${barColor} rounded-full`}></div>
               <h3 className="text-sm font-bold text-gray-700 [.dark_&]:text-white uppercase tracking-wide">
                 Filters
               </h3>
@@ -2046,7 +2109,7 @@ function TasksManagement() {
           {/* Actions Section */}
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1 h-5 bg-emerald-600 rounded-full"></div>
+              <div className={`w-1 h-5 ${barColor} rounded-full`}></div>
               <h3 className="text-sm font-bold text-gray-700 [.dark_&]:text-white uppercase tracking-wide">
                 Actions
               </h3>
@@ -2080,7 +2143,7 @@ function TasksManagement() {
                 <div className="flex items-center rounded-lg border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] p-0.5">
                   <button
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === ""
-                      ? "bg-indigo-600 text-white shadow-sm"
+                      ? `${buttonClass} shadow-sm`
                       : "text-content-primary [.dark_&]:text-gray-400 hover:bg-gray-100 [.dark_&]:hover:bg-white/10"
                       }`}
                     onClick={() => updateFilter("assigneeType", "")}
@@ -2090,7 +2153,7 @@ function TasksManagement() {
                   </button>
                   <button
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "user"
-                      ? "bg-indigo-600 text-white shadow-sm"
+                      ? `${buttonClass} shadow-sm`
                       : "text-content-primary [.dark_&]:text-gray-400 hover:bg-gray-100 [.dark_&]:hover:bg-white/10"
                       }`}
                     onClick={() => updateFilter("assigneeType", "user")}
@@ -2100,7 +2163,7 @@ function TasksManagement() {
                   </button>
                   <button
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "client"
-                      ? "bg-indigo-600 text-white shadow-sm"
+                      ? `${buttonClass} shadow-sm`
                       : "text-content-primary [.dark_&]:text-gray-400 hover:bg-gray-100 [.dark_&]:hover:bg-white/10"
                       }`}
                     onClick={() => updateFilter("assigneeType", "client")}
@@ -2116,7 +2179,7 @@ function TasksManagement() {
                   <button
                     onClick={() => setView("list")}
                     className={`p-2 rounded transition-all ${view === "list"
-                      ? "bg-white text-indigo-600 shadow-sm [.dark_&]:bg-gray-700 [.dark_&]:text-white"
+                      ? `bg-white shadow-sm [.dark_&]:bg-gray-700 [.dark_&]:text-white ${iconColor}`
                       : "text-gray-600 hover:text-gray-900 hover:bg-gray-200 [.dark_&]:text-gray-400 [.dark_&]:hover:text-white [.dark_&]:hover:bg-white/10"
                       }`}
                     title="List View"
@@ -2126,7 +2189,7 @@ function TasksManagement() {
                   <button
                     onClick={() => setView("board")}
                     className={`p-2 rounded transition-all ${view === "board"
-                      ? "bg-white text-indigo-600 shadow-sm [.dark_&]:bg-gray-700 [.dark_&]:text-white"
+                      ? `bg-white shadow-sm [.dark_&]:bg-gray-700 [.dark_&]:text-white ${iconColor}`
                       : "text-gray-600 hover:text-gray-900 hover:bg-gray-200 [.dark_&]:text-gray-400 [.dark_&]:hover:text-white [.dark_&]:hover:bg-white/10"
                       }`}
                     title="Kanban View"
@@ -2137,19 +2200,23 @@ function TasksManagement() {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                <Button variant="secondary" onClick={handleArchive} size="sm">
-                  Archive Selected
-                </Button>
-                <Button variant="secondary" onClick={handleUnarchive} size="sm">
-                  Unarchive Selected
-                </Button>
-                <Button variant="danger" onClick={() => setShowBulkDeleteModal(true)} size="sm">
-                  Delete Selected
-                </Button>
+                {selectedIds.size > 0 && (
+                  <>
+                    <Button variant="secondary" onClick={handleArchive} size="sm">
+                      Archive Selected
+                    </Button>
+                    <Button variant="secondary" onClick={handleUnarchive} size="sm">
+                      Unarchive Selected
+                    </Button>
+                    <Button variant="danger" onClick={() => setShowBulkDeleteModal(true)} size="sm">
+                      Delete Selected
+                    </Button>
+                  </>
+                )}
                 <Button
                   onClick={openCreate}
-                  variant="primary"
-                  className="font-semibold"
+                  variant="custom"
+                  className={`font-semibold ${buttonClass}`}
                 >
                   + Create Task
                 </Button>
@@ -2169,6 +2236,7 @@ function TasksManagement() {
               ) : (
                 <KanbanBoard
                   tasks={filtered}
+                  columns={statusOptions.length > 0 ? statusOptions.map(s => ({ key: s, title: s, color: statusColorMap[s] })) : undefined}
                   onMove={moveTask}
                   onEdit={handleEdit}
                   getProject={getProject}

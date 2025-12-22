@@ -45,11 +45,7 @@ const StatCard = ({ icon, label, value, subValue, color = "indigo" }) => {
 
   return (
     <div
-      className="rounded-xl border px-5 py-4 shadow-sm hover:shadow-md transition-shadow duration-200"
-      style={{
-        backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
-        borderColor: mode === 'dark' ? '#374151' : '#f3f4f6'
-      }}
+      className="rounded-xl border px-5 py-4 shadow-sm hover:shadow-md transition-shadow duration-200 bg-white dark:bg-[#1e1e2d] border-gray-100 dark:border-gray-700"
     >
       <div className="flex items-center gap-4">
         {/* Icon Circle */}
@@ -64,27 +60,18 @@ const StatCard = ({ icon, label, value, subValue, color = "indigo" }) => {
         {/* Text Content */}
         <div className="flex flex-col">
           <p
-            className="text-xs font-semibold uppercase tracking-wider"
-            style={{
-              color: mode === 'dark' ? '#9ca3af' : '#6b7280'
-            }}
+            className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
           >
             {label}
           </p>
           <div
-            className="text-2xl font-bold mt-0.5"
-            style={{
-              color: mode === 'dark' ? '#ffffff' : '#111827'
-            }}
+            className="text-2xl font-bold mt-0.5 text-gray-900 dark:text-white"
           >
             {value}
           </div>
           {subValue && (
             <p
-              className="text-xs font-medium mt-0.5"
-              style={{
-                color: mode === 'dark' ? '#9ca3af' : '#6b7280'
-              }}
+              className="text-xs font-medium mt-0.5 text-gray-500 dark:text-gray-400"
             >
               {subValue}
             </p>

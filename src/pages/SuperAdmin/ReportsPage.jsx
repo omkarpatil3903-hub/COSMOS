@@ -10,7 +10,7 @@ import {
   FaSortUp,
   FaSortDown,
   FaFlag,
-  FaDownload,
+  FaUpload,
   FaChartPie,
   FaChartLine,
   FaClipboardList,
@@ -18,6 +18,7 @@ import {
 } from "react-icons/fa";
 import { FaArrowsRotate } from "react-icons/fa6";
 import { useTheme } from "../../context/ThemeContext";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import GanttChart from "../../components/GanttChart";
 import toast from "react-hot-toast";
 import PageHeader from "../../components/PageHeader";
@@ -90,6 +91,7 @@ const normalizeStatus = (s) => {
 
 export default function ReportsPage() {
   const { mode } = useTheme();
+  const { buttonClass } = useThemeStyles();
   // ---------------------------------------------------
   // FILTER STATES
   // ---------------------------------------------------
@@ -652,8 +654,8 @@ export default function ReportsPage() {
       <PageHeader
         title="Analytics & Reports"
         actions={
-          <Button variant="secondary" onClick={exportReport}>
-            <FaDownload /> Export Excel
+          <Button variant="custom" className={buttonClass} onClick={exportReport}>
+            <FaUpload /> Export Excel
           </Button>
         }
       >
@@ -1289,8 +1291,8 @@ export default function ReportsPage() {
             title="Resource Performance"
             icon={<FaUsers />}
             actions={
-              <Button variant="secondary" onClick={exportResourceReport}>
-                <FaDownload /> Export Excel
+              <Button variant="custom" className={buttonClass} onClick={exportResourceReport}>
+                <FaUpload /> Export Excel
               </Button>
             }
           >

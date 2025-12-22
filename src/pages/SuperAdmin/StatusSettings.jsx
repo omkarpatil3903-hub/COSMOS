@@ -17,8 +17,10 @@ import {
 import ColorSwatchPicker from "../../components/ColorSwatchPicker";
 import { FaTimes, FaEdit, FaTrash, FaPlus, FaSearch, FaSave } from "react-icons/fa";
 import VoiceInput from "../../components/Common/VoiceInput";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 export default function StatusSettings() {
+  const { buttonClass } = useThemeStyles();
   const location = useLocation();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
@@ -238,7 +240,7 @@ export default function StatusSettings() {
             <span className="text-sm text-content-secondary [.dark_&]:text-gray-400">
               Showing {filtered.length} records
             </span>
-            <Button variant="primary" onClick={openAdd} className="shrink-0">
+            <Button variant="custom" className={`shrink-0 ${buttonClass}`} onClick={openAdd}>
               <FaPlus /> Add Status
             </Button>
           </div>
@@ -356,7 +358,7 @@ export default function StatusSettings() {
                           </span>
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-2.5 text-sm sticky right-0 z-10 bg-transparent transition-colors">
+                      <td className="whitespace-nowrap px-6 py-2.5 text-sm sticky right-0 z-10 group-odd:bg-white group-even:bg-gray-50 [.dark_&]:group-odd:bg-[#181B2A] [.dark_&]:group-even:bg-[#1F2234] transition-colors">
                         <div className="flex items-center justify-center space-x-3">
                           {isCore ? (
                             <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 [.dark_&]:bg-white/10 [.dark_&]:text-gray-300">
@@ -477,13 +479,13 @@ export default function StatusSettings() {
                   Cancel
                 </Button>
                 <Button
-                  variant="primary"
+                  variant="custom"
+                  className={`flex items-center gap-2 ${buttonClass}`}
                   onClick={save}
                   disabled={saving || !value.trim() || !color}
-                  className="flex items-center gap-2"
                 >
                   {saving ? <FaPlus className="animate-spin" /> : <FaSave />}
-                  {saving ? "Saving..." : "Save"}
+                  {saving ? (editing ? "Updating..." : "Saving...") : (editing ? "Update" : "Save")}
                 </Button>
               </div>
             </div>

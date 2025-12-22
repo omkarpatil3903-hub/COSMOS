@@ -1,6 +1,7 @@
 import { FaFlag, FaCalendarAlt, FaDownload } from "react-icons/fa";
 import { getPriorityBadge } from "../utils/colorMaps";
 import toast from "react-hot-toast";
+
 export default function KanbanBoard({
   tasks,
   onMove,
@@ -14,6 +15,7 @@ export default function KanbanBoard({
   showReassignOnCard = false,
   users = [], // resources only
   onReassign, // function(taskId, encodedValue)
+  columns,
 }) {
 
   // Function to download all images for a task
@@ -39,16 +41,38 @@ export default function KanbanBoard({
       }, index * 500); // Stagger downloads by 500ms to avoid browser blocking
     });
   };
-  const columns = [
-    { key: "To-Do", title: "To-Do" },
-    { key: "In Progress", title: "In Progress" },
-    { key: "Done", title: "Done" },
+
+  const displayColumns = (columns && columns.length > 0) ? columns : [
+    { key: "To-Do", title: "To-Do", color: "#3B82F6" },
+    { key: "In Progress", title: "In Progress", color: "#F59E0B" },
+    { key: "Done", title: "Done", color: "#10B981" },
   ];
 
-  const grouped = Object.fromEntries(columns.map((c) => [c.key, []]));
+  const grouped = Object.fromEntries(displayColumns.map((c) => [c.key, []]));
+
+  // Helper to safely get background tint from color
+  const getBgTint = (color) => {
+    if (!color) return "#FFFFFF";
+    // Check if hex
+    if (color.startsWith('#') && (color.length === 7 || color.length === 9)) {
+      return `${color.substring(0, 7)}0D`; // append 5% alpha
+    }
+    return "#FFFFFF";
+  };
+
   tasks.forEach((t) => {
-    if (!grouped[t.status]) grouped[t.status] = [];
-    grouped[t.status].push(t);
+    // Direct match
+    if (grouped[t.status]) {
+      grouped[t.status].push(t);
+    }
+    // Case insensitive match fallback
+    else {
+      const lower = (t.status || "").toLowerCase();
+      const col = displayColumns.find(c => c.key.toLowerCase() === lower);
+      if (col && grouped[col.key]) {
+        grouped[col.key].push(t);
+      }
+    }
   });
 
   const onDragStart = (e, taskId) => {
@@ -61,7 +85,6 @@ export default function KanbanBoard({
     const limit = wipLimits?.[status];
     const blocked = enforceWip && Number.isFinite(limit) && count >= limit;
     if (blocked) {
-      // don't call preventDefault -> drop not allowed
       e.dataTransfer.dropEffect = "none";
       return;
     }
@@ -83,8 +106,8 @@ export default function KanbanBoard({
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {columns.map((col) => {
+    <div className="flex gap-4 overflow-x-auto pb-4 items-start">
+      {displayColumns.map((col) => {
         const count = grouped[col.key]?.length || 0;
         const limit = wipLimits?.[col.key];
         const hasLimit = Number.isFinite(limit);
@@ -104,12 +127,27 @@ export default function KanbanBoard({
         return (
           <div
             key={col.key}
-            className="flex min-h-[300px] flex-col rounded-lg border border-subtle bg-surface"
+            className="flex min-h-[300px] w-80 min-w-[320px] flex-col rounded-lg border shrink-0"
+            style={{
+              backgroundColor: col.color ? `${col.color}08` : "#FAFAFA",
+              borderColor: col.color ? `${col.color}40` : "#E5E7EB",
+              borderTop: col.color ? `3px solid ${col.color}` : "3px solid #E5E7EB"
+            }}
           >
             <div
-              className={`flex items-center justify-between border-b border-subtle p-3 ${headerClass}`}
+              className={`flex items-center justify-between border-b p-3 ${headerClass}`}
+              style={{ borderColor: col.color ? `${col.color}40` : "#E5E7EB" }}
             >
-              <div className="text-sm font-semibold text-content-secondary">
+              <div
+                className="text-sm font-semibold flex items-center gap-2"
+                style={{ color: col.color || "#4B5563" }}
+              >
+                {col.color && (
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: col.color }}
+                  />
+                )}
                 {col.title}
               </div>
               <div className={`text-xs ${countClass}`}>
@@ -152,6 +190,10 @@ export default function KanbanBoard({
                       : "border-subtle bg-surface"
                       } ${t.archived ? "opacity-70" : ""}`}
                     title="Drag to another column to change status"
+                    style={{
+                      borderLeft: col.color ? `4px solid ${col.color}` : undefined,
+                      backgroundColor: getBgTint(col.color)
+                    }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">

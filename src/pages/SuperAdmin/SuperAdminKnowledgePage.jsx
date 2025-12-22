@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { collection, doc, onSnapshot, query, addDoc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import Card from "../../components/Card";
@@ -9,6 +10,7 @@ import AddKnowledgeModal from "../../components/knowledge/AddKnowledgeModal";
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 
 export default function SuperAdminKnowledgePage() {
+  const { buttonClass } = useThemeStyles();
   const [knowledge, setKnowledge] = useState([]);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState({ key: "createdAt", dir: "desc" });
@@ -173,7 +175,7 @@ export default function SuperAdminKnowledgePage() {
                   <option value="title:desc">Title Z→A</option>
                 </select>
               </label>
-              <Button onClick={handleAdd}>+ Add Knowledge</Button>
+              <Button variant="custom" onClick={handleAdd} className={buttonClass}>+ Add Knowledge</Button>
             </div>
           }
         />

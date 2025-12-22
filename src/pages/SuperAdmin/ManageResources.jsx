@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useTheme } from "../../context/ThemeContext";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import {
   FaSearch,
   FaSortAmountDownAlt,
@@ -60,26 +60,7 @@ const tableHeaders = [
 ];
 
 function ManageResources() {
-  const { accent } = useTheme();
-
-  // Get dynamic button background color based on theme
-  const getButtonClass = () => {
-    if (accent === 'black') return 'bg-blue-600 hover:bg-blue-700 shadow-sm text-white';
-
-    switch (accent) {
-      case 'purple': return 'bg-purple-600 hover:bg-purple-700 shadow-sm text-white';
-      case 'blue': return 'bg-sky-600 hover:bg-sky-700 shadow-sm text-white';
-      case 'pink': return 'bg-pink-600 hover:bg-pink-700 shadow-sm text-white';
-      case 'violet': return 'bg-violet-600 hover:bg-violet-700 shadow-sm text-white';
-      case 'orange': return 'bg-amber-600 hover:bg-amber-700 shadow-sm text-white';
-      case 'teal': return 'bg-teal-600 hover:bg-teal-700 shadow-sm text-white';
-      case 'bronze': return 'bg-amber-600 hover:bg-amber-700 shadow-sm text-white';
-      case 'mint': return 'bg-emerald-600 hover:bg-emerald-700 shadow-sm text-white';
-      default: return 'bg-indigo-600 hover:bg-indigo-700 shadow-sm text-white';
-    }
-  };
-
-  const buttonClass = getButtonClass();
+  const { buttonClass } = useThemeStyles();
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -703,6 +684,7 @@ function ManageResources() {
                     Showing {filteredResources.length} records
                   </span>
                   <Button
+                    variant="custom"
                     onClick={() => {
                       setFormData({
                         fullName: "",
