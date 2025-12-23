@@ -17,6 +17,8 @@ import {
   FaFileInvoice,
   FaCalendarAlt,
   FaProjectDiagram,
+  FaChevronLeft,
+  FaChevronRight,
 } from "react-icons/fa";
 import {
   subscribeToEmployeeExpenses,
@@ -29,14 +31,7 @@ import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import toast from "react-hot-toast";
 import VoiceInput from "../../components/Common/VoiceInput";
-
-const statusColors = {
-  Draft: "bg-gray-100 text-gray-700",
-  Submitted: "bg-blue-100 text-blue-700",
-  Approved: "bg-emerald-100 text-emerald-700",
-  Rejected: "bg-red-100 text-red-700",
-  Paid: "bg-purple-100 text-purple-700",
-};
+import { EXPENSE_CATEGORIES, getStatusColorClass } from "../../config/expenseConfig";
 
 const EmployeeExpenses = () => {
   const { user } = useAuthContext();
@@ -53,6 +48,8 @@ const EmployeeExpenses = () => {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
 
   const [form, setForm] = useState({
     title: "",
@@ -147,12 +144,23 @@ const EmployeeExpenses = () => {
     });
   }, [expenses, statusFilter, categoryFilter, fromDate, toDate, searchQuery]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, categoryFilter, fromDate, toDate, searchQuery]);
+
   const stats = useMemo(() => {
     const total = expenses.length;
     const submitted = expenses.filter((e) => e.status === "Submitted").length;
     const approved = expenses.filter((e) => e.status === "Approved").length;
     const paid = expenses.filter((e) => e.status === "Paid").length;
-    return { total, submitted, approved, paid };
+    const approvedAmount = expenses
+      .filter((e) => e.status === "Approved")
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const totalAmount = expenses
+      .filter((e) => e.status === "Paid")
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    return { total, submitted, approved, paid, approvedAmount, totalAmount };
   }, [expenses]);
 
   const handleChange = (field, value) => {
@@ -223,7 +231,7 @@ const EmployeeExpenses = () => {
     try {
       let receiptUrl = null;
       if (form.receipt) {
-        receiptUrl = await uploadReceipt(form.receipt);
+        receiptUrl = await uploadReceipt(form.receipt, user.uid);
       }
 
       const selectedProject = assignedProjects.find(
@@ -252,7 +260,11 @@ const EmployeeExpenses = () => {
 
       if (editingId) {
         await updateExpense(editingId, payload);
-        toast.success(status === "Draft" ? "Draft updated" : "Expense updated");
+        if (form.status === "Rejected" && status === "Submitted") {
+          toast.success("Expense resubmitted for approval");
+        } else {
+          toast.success(status === "Draft" ? "Draft updated" : "Expense updated");
+        }
       } else {
         await createExpense({ ...payload, receiptUrl });
         toast.success(
@@ -292,7 +304,8 @@ const EmployeeExpenses = () => {
         />
         <StatCard
           label="Approved"
-          value={stats.approved}
+          value={`₹${stats.approvedAmount?.toFixed(2) || "0.00"}`}
+          subValue={`${stats.approved} claim${stats.approved !== 1 ? "s" : ""}`}
           icon={<FaMoneyCheckAlt className="h-5 w-5" />}
           color="green"
         />
@@ -451,7 +464,7 @@ const EmployeeExpenses = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filtered.map((e) => (
+                {filtered.slice((page - 1) * pageSize, page * pageSize).map((e) => (
                   <tr
                     key={e.id}
                     className="hover:bg-gray-50 transition-colors group"
@@ -503,20 +516,18 @@ const EmployeeExpenses = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex flex-col items-center gap-2">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[e.status] ||
-                            "bg-gray-100 text-gray-800"
-                            }`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(e.status, false)}`}
                         >
                           {e.status || "Unknown"}
                         </span>
 
-                        {e.status === "Draft" && (
+                        {(e.status === "Draft" || e.status === "Rejected") && (
                           <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => handleEdit(e)}
                               className="text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
                             >
-                              Edit
+                              {e.status === "Rejected" ? "Edit & Resubmit" : "Edit"}
                             </button>
                             <span className="text-gray-300">|</span>
                             <button
@@ -527,6 +538,11 @@ const EmployeeExpenses = () => {
                             </button>
                           </div>
                         )}
+                        {e.status === "Rejected" && e.rejectionReason && (
+                          <p className="text-xs text-red-500 mt-1 max-w-[150px] truncate" title={e.rejectionReason}>
+                            Reason: {e.rejectionReason}
+                          </p>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -536,6 +552,54 @@ const EmployeeExpenses = () => {
           </div>
         )}
       </Card>
+
+      {/* Pagination */}
+      {!loading && filtered.length > 0 && (
+        <div className="flex items-center justify-between bg-white px-4 py-3 border border-gray-200 rounded-lg">
+          <div className="flex flex-1 justify-between sm:hidden">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(Math.ceil(filtered.length / pageSize), p + 1))}
+              disabled={page >= Math.ceil(filtered.length / pageSize)}
+              className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+            <p className="text-sm text-gray-700">
+              Showing <span className="font-medium">{Math.min((page - 1) * pageSize + 1, filtered.length)}</span> to{" "}
+              <span className="font-medium">{Math.min(page * pageSize, filtered.length)}</span> of{" "}
+              <span className="font-medium">{filtered.length}</span> results
+            </p>
+            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <FaChevronLeft className="h-3 w-3" />
+              </button>
+              <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300">
+                {page} / {Math.ceil(filtered.length / pageSize) || 1}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(Math.ceil(filtered.length / pageSize), p + 1))}
+                disabled={page >= Math.ceil(filtered.length / pageSize)}
+                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <FaChevronRight className="h-3 w-3" />
+              </button>
+            </nav>
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
