@@ -762,7 +762,7 @@ function ManageProjects({ onlyMyManaged = false }) {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-white/10 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-white/10 border-l-4 border-l-blue-500 [.dark_&]:border-l-blue-400 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-blue-600 [.dark_&]:text-blue-400">
@@ -788,7 +788,7 @@ function ManageProjects({ onlyMyManaged = false }) {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-white/10 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-white/10 border-l-4 border-l-green-500 [.dark_&]:border-l-green-400 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-green-600 [.dark_&]:text-green-400">
@@ -814,7 +814,7 @@ function ManageProjects({ onlyMyManaged = false }) {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-white/10 border-l-4 border-l-yellow-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-white/10 border-l-4 border-l-yellow-500 [.dark_&]:border-l-yellow-400 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-yellow-600 [.dark_&]:text-yellow-400">
@@ -844,7 +844,7 @@ function ManageProjects({ onlyMyManaged = false }) {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-white/10 border-l-4 border-l-red-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-white/10 border-l-4 border-l-red-500 [.dark_&]:border-l-red-400 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-red-600 [.dark_&]:text-red-400">

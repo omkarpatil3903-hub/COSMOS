@@ -31,6 +31,7 @@ function EditResourceModal({
   serverErrors = {},
   clearServerError = () => { },
   isSubmitting = false,
+  hasChanges = true,
 }) {
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);

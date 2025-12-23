@@ -571,7 +571,7 @@ function ManageResources() {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-white [.dark_&]:bg-gray-800 rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-gray-700 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-white [.dark_&]:bg-slate-800/60 [.dark_&]:backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-blue-500/30 border-l-4 border-l-blue-500 [.dark_&]:border-l-blue-400 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-blue-600 [.dark_&]:text-blue-400">
@@ -581,7 +581,7 @@ function ManageResources() {
                       {resources.length}
                     </p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-blue-200/50 [.dark_&]:bg-blue-900/30 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 [.dark_&]:bg-blue-500/20 flex items-center justify-center">
                     <FaPlus className="text-blue-600 [.dark_&]:text-blue-400 text-xl" />
                   </div>
                 </div>
@@ -599,7 +599,7 @@ function ManageResources() {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-white [.dark_&]:bg-gray-800 rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-gray-700 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-white [.dark_&]:bg-slate-800/60 [.dark_&]:backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-green-500/30 border-l-4 border-l-green-500 [.dark_&]:border-l-green-400 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-green-600 [.dark_&]:text-green-400">Active</p>
@@ -607,7 +607,7 @@ function ManageResources() {
                       {resources.filter((r) => r.status === "Active").length}
                     </p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-green-200/50 [.dark_&]:bg-green-900/30 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-green-100 [.dark_&]:bg-green-500/20 flex items-center justify-center">
                     <FaCheckCircle className="text-green-600 [.dark_&]:text-green-400 text-xl" />
                   </div>
                 </div>
@@ -625,7 +625,7 @@ function ManageResources() {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-white [.dark_&]:bg-gray-800 rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-gray-700 border-l-4 border-l-purple-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-white [.dark_&]:bg-slate-800/60 [.dark_&]:backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-purple-500/30 border-l-4 border-l-purple-500 [.dark_&]:border-l-purple-400 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-purple-600 [.dark_&]:text-purple-400">In-house</p>
@@ -636,7 +636,7 @@ function ManageResources() {
                       }
                     </p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-purple-200/50 [.dark_&]:bg-purple-900/30 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-purple-100 [.dark_&]:bg-purple-500/20 flex items-center justify-center">
                     <FaUsers className="text-purple-600 [.dark_&]:text-purple-400 text-xl" />
                   </div>
                 </div>
@@ -654,7 +654,7 @@ function ManageResources() {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-white [.dark_&]:bg-gray-800 rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-gray-700 border-l-4 border-l-orange-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-white [.dark_&]:bg-slate-800/60 [.dark_&]:backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-orange-500/30 border-l-4 border-l-orange-500 [.dark_&]:border-l-orange-400 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-orange-600 [.dark_&]:text-orange-400">
@@ -667,7 +667,7 @@ function ManageResources() {
                       }
                     </p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-orange-200/50 [.dark_&]:bg-orange-900/30 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-orange-100 [.dark_&]:bg-orange-500/20 flex items-center justify-center">
                     <FaUserTie className="text-orange-600 [.dark_&]:text-orange-400 text-xl" />
                   </div>
                 </div>

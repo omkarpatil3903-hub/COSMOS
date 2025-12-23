@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";
+import { FaPlus, FaCheck, FaTrash } from "react-icons/fa";
 import Button from "../Button";
 import { db } from "../../firebase";
-import { collection, onSnapshot, orderBy, query, where, doc, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, orderBy, query, where, doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
 
 function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projectId, canEditAccess = true }) {
   const { buttonClass } = useThemeStyles();
   const [name, setName] = useState("");
+  const [folder, setFolder] = useState(""); // Selected folder from dropdown
+  const [availableFolders, setAvailableFolders] = useState([]); // Folders from Firestore
   const [file, setFile] = useState(null);
   const [errors, setErrors] = useState({});
   const [admins, setAdmins] = useState([]);
@@ -20,6 +23,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
   useEffect(() => {
     if (!isOpen) {
       setName("");
+      setFolder("");
       setFile(null);
       setErrors({});
       setSelectedAdmin([]);
@@ -41,6 +45,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
   useEffect(() => {
     if (isOpen && initialDoc) {
       setName(initialDoc.name || "");
+      setFolder(initialDoc.folder || "");
       setSelectedAdmin(Array.isArray(initialDoc.access?.admin) ? initialDoc.access.admin : []);
       setSelectedMember(Array.isArray(initialDoc.access?.member) ? initialDoc.access.member : []);
     }
@@ -112,9 +117,27 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     return () => unsub();
   }, [allowedIds, projectId]);
 
+  // Load available folders from Firestore
+  useEffect(() => {
+    const foldersDocRef = doc(db, "documents", "folders");
+    const unsub = onSnapshot(foldersDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setAvailableFolders(data.folderNames || []);
+      } else {
+        setAvailableFolders([]);
+      }
+    }, (error) => {
+      console.error("Error fetching folders:", error);
+      setAvailableFolders([]);
+    });
+    return () => unsub();
+  }, []);
+
   const validate = () => {
     const e = {};
     if (!name.trim()) e.name = "Document name is required";
+    if (!folder) e.folder = "Please select a folder";
     if (!initialDoc && !file) e.file = "Please upload a document";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -136,6 +159,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     const doc = {
       id: initialDoc?.id || String(Date.now()),
       name: name.trim(),
+      folder: folder.trim(), // Required field, selected from dropdown
       location: "—",
       tags: [],
       updated: new Date().toLocaleDateString(),
@@ -201,6 +225,24 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
                       required
                     />
                     {errors.name && <span className="text-xs text-red-600">{errors.name}</span>}
+                  </label>
+
+                  <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary [.dark_&]:text-gray-400">
+                    Folder Name *
+                    <select
+                      value={folder}
+                      onChange={(e) => setFolder(e.target.value)}
+                      className={`w-full rounded-lg border ${errors.folder ? "border-red-500" : "border-subtle [.dark_&]:border-white/10"} bg-surface [.dark_&]:bg-[#181B2A] py-2 px-3 text-sm [.dark_&]:text-white focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100`}
+                      required
+                    >
+                      <option value="">Select a folder</option>
+                      {availableFolders.map((folderName) => (
+                        <option key={folderName} value={folderName}>
+                          {folderName}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.folder && <span className="text-xs text-red-600">{errors.folder}</span>}
                   </label>
 
                   <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary [.dark_&]:text-gray-400">

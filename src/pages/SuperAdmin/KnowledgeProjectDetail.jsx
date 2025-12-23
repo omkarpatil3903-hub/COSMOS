@@ -1,16 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { FaArrowLeft, FaRegComment, FaBookOpen, FaFileAlt, FaEdit, FaTrash, FaLightbulb, FaUser, FaCalendarAlt, FaClock } from "react-icons/fa";
+import { FaArrowLeft, FaRegComment, FaBookOpen, FaFileAlt, FaEdit, FaTrash, FaLightbulb, FaUser, FaCalendarAlt, FaClock, FaChevronUp, FaChevronDown } from "react-icons/fa";
 import Card from "../../components/Card";
 import { db, storage, auth } from "../../firebase";
 import { collection, onSnapshot, query, where, addDoc, serverTimestamp, doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject, updateMetadata, getBytes } from "firebase/storage";
 import { formatDate } from "../../utils/formatDate";
 import DocumentsTable from "../../components/documents/DocumentsTable";
+import GroupedDocumentsView from "../../components/documents/GroupedDocumentsView";
 import SearchActions from "../../components/SearchActions";
 import Button from "../../components/Button";
 import AddDocumentModal from "../../components/documents/AddDocumentModal";
+import ManageFoldersModal from "../../components/documents/ManageFoldersModal";
 import AddKnowledgeModal from "../../components/knowledge/AddKnowledgeModal";
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 
@@ -48,6 +50,9 @@ export default function KnowledgeProjectDetail() {
   const [knRowsPerPage, setKnRowsPerPage] = useState(9);
   const [showDeleteKnModal, setShowDeleteKnModal] = useState(false);
   const [deleteKnTarget, setDeleteKnTarget] = useState(null);
+  const [showDocDropdown, setShowDocDropdown] = useState(false);
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const dropdownButtonRef = React.useRef(null);
 
   useEffect(() => {
     const decoded = decodeURIComponent(projectName || "");
@@ -146,6 +151,7 @@ export default function KnowledgeProjectDetail() {
           viewed: "-",
           shared: Boolean(data.shared),
           access: data.access || { admin: [], member: [] },
+          folder: data.folder || "", // Add folder field
           children: data.children || 0,
           url: data.fileDataUrl || data.url || "",
           storagePath: data.storagePath || "",
@@ -412,6 +418,21 @@ export default function KnowledgeProjectDetail() {
   const confirmDeleteKnowledge = async () => {
     if (!deleteKnTarget) return;
     try {
+      // Delete all associated documents from storage and Firestore
+      if (deleteKnTarget.documents && Array.isArray(deleteKnTarget.documents)) {
+        for (const docItem of deleteKnTarget.documents) {
+          // Delete from storage if storagePath exists
+          if (docItem.storagePath) {
+            try {
+              await deleteObject(ref(storage, docItem.storagePath));
+            } catch (err) {
+              console.warn("Failed to delete from storage:", docItem.storagePath, err);
+            }
+          }
+        }
+      }
+
+      // Delete the knowledge document from Firestore
       await deleteDoc(doc(db, "knowledge", deleteKnTarget.id));
       setShowDeleteKnModal(false);
       setDeleteKnTarget(null);
@@ -460,42 +481,24 @@ export default function KnowledgeProjectDetail() {
         await uploadBytes(storageRef, form._file, meta);
         downloadURL = await getDownloadURL(storageRef);
       } else if (editingDoc?.storagePath) {
-        const oldPath = editingDoc.storagePath;
-        const oldRef = ref(storage, oldPath);
-        // Build a friendly filename aligned with the edited document name, preserving extension
-        const prevExt = (() => {
-          const name = editingDoc.filename || "";
-          const idx = name.lastIndexOf(".");
-          if (idx > 0 && idx < name.length - 1) return name.slice(idx + 1);
-          return getExtFromType(editingDoc.fileType);
-        })();
-        const computedFilename = sanitize(`${form.name}${prevExt ? `.${prevExt}` : ""}`);
-        const newPath = `Documents/${resolvedProjectId}/${computedFilename}`;
+        // Editing without new file - just update metadata, don't try to copy file
+        const oldRef = ref(storage, editingDoc.storagePath);
         const custom = {
           projectId: resolvedProjectId,
           documentName: form.name || editingDoc.name || "",
-          filename: computedFilename,
+          filename: editingDoc.filename || "",
           updatedBy: auth.currentUser?.uid || "",
           updatedAt: new Date().toISOString(),
         };
 
-        if (newPath !== oldPath) {
-          try {
-            // Copy bytes to new object to effectively rename
-            const bytes = await getBytes(oldRef);
-            const newRef = ref(storage, newPath);
-            await uploadBytes(newRef, bytes, { contentType: editingDoc.fileType || undefined, customMetadata: custom });
-            downloadURL = await getDownloadURL(newRef);
-            await deleteObject(oldRef);
-            storagePath = newPath;
-          } catch (err) {
-            // Fallback: update metadata on existing object if copy fails
-            try { await updateMetadata(oldRef, { customMetadata: custom }); } catch { }
-          }
-        } else {
-          // Same path, only update metadata
-          try { await updateMetadata(oldRef, { customMetadata: custom }); } catch { }
+        // Only update metadata, don't rename file to avoid CORS issues
+        try {
+          await updateMetadata(oldRef, { customMetadata: custom });
+        } catch (err) {
+          console.warn("Failed to update metadata:", err);
         }
+        storagePath = editingDoc.storagePath;
+        downloadURL = editingDoc.url;
       }
 
       if (editingDoc && editingDoc.id) {
@@ -513,6 +516,7 @@ export default function KnowledgeProjectDetail() {
           name: form.name,
           shared: Boolean(form.shared),
           access: form.access || { admin: [], member: [] },
+          folder: form.folder, // Required field from dropdown
           filename: nextFilename || editingDoc.filename || null,
           fileType: form._file?.type || editingDoc.fileType || null,
           fileSize: form._file?.size || editingDoc.fileSize || null,
@@ -524,16 +528,28 @@ export default function KnowledgeProjectDetail() {
           updatedByUid: auth.currentUser?.uid || "",
           updatedByName: currentUserName,
         };
+
+        if (!payload.folder) {
+          alert("Please select a folder");
+          return;
+        }
         if (downloadURL) payload.url = downloadURL;
         if (storagePath) payload.storagePath = storagePath;
         await updateDoc(refDoc, payload);
         setEditingDoc(null);
         setOpenAddDoc(false);
       } else {
-        await addDoc(collection(db, "documents"), {
+        // New document
+        if (!form.folder) {
+          alert("Please select a folder");
+          return;
+        }
+
+        const newDocPayload = {
           name: form.name,
           shared: Boolean(form.shared),
           access: form.access || { admin: [], member: [] },
+          folder: form.folder, // Required field from dropdown
           filename: form._file?.name || null,
           fileType: form._file?.type || null,
           fileSize: form._file?.size || null,
@@ -547,7 +563,10 @@ export default function KnowledgeProjectDetail() {
           createdByName: currentUserName,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        });
+        };
+
+        const docRef = await addDoc(collection(db, "documents"), newDocPayload);
+
         setOpenAddDoc(false);
       }
     } catch (e) {
@@ -808,7 +827,59 @@ export default function KnowledgeProjectDetail() {
               onChange={setDocSearch}
               placeholder="Search by name, location or tag"
               rightActions={(isSuperAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource") ? (
-                <Button variant="custom" onClick={() => setOpenAddDoc(true)} className={buttonClass}>+ Add Document</Button>
+                <div className="relative" ref={dropdownButtonRef}>
+                  <div className={`${buttonClass} flex items-center rounded-lg text-white text-sm font-medium overflow-hidden`}>
+                    {/* Left part - Add Document */}
+                    <button
+                      onClick={() => setOpenAddDoc(true)}
+                      className="px-4 py-2 hover:opacity-90 transition-opacity"
+                    >
+                      + Add Document
+                    </button>
+
+                    {/* Divider */}
+                    <div className="h-5 w-px bg-white/30"></div>
+
+                    {/* Right part - Dropdown toggle */}
+                    <button
+                      onClick={() => setShowDocDropdown(!showDocDropdown)}
+                      className="px-2 py-2 hover:opacity-90 transition-opacity"
+                    >
+                      {showDocDropdown ? (
+                        <FaChevronUp className="h-3 w-3" />
+                      ) : (
+                        <FaChevronDown className="h-3 w-3" />
+                      )}
+                    </button>
+                  </div>
+
+                  {showDocDropdown && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-[9998]"
+                        onClick={() => setShowDocDropdown(false)}
+                      ></div>
+                      <div
+                        className={`fixed rounded-lg shadow-lg ${buttonClass} border-none z-[9999]`}
+                        style={{
+                          top: dropdownButtonRef.current ? `${dropdownButtonRef.current.getBoundingClientRect().bottom + 8}px` : '0',
+                          right: dropdownButtonRef.current ? `${window.innerWidth - dropdownButtonRef.current.getBoundingClientRect().right}px` : '0',
+                          width: dropdownButtonRef.current ? `${dropdownButtonRef.current.getBoundingClientRect().width}px` : 'auto'
+                        }}
+                      >
+                        <button
+                          onClick={() => {
+                            setShowFolderModal(true);
+                            setShowDocDropdown(false);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-white hover:opacity-90 rounded-lg transition-opacity font-medium"
+                        >
+                          + Add Folder
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               ) : null}
             />
           </Card>
@@ -817,7 +888,7 @@ export default function KnowledgeProjectDetail() {
               const canEditDocs = isSuperAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource";
               const canDeleteDocs = isSuperAdminRoute;
               return (
-                <DocumentsTable
+                <GroupedDocumentsView
                   rows={visibleDocs}
                   query={docSearch}
                   showActions={canEditDocs || canDeleteDocs}
@@ -854,6 +925,12 @@ export default function KnowledgeProjectDetail() {
           )}
         </>
       )}
+
+      {/* Manage Folders Modal */}
+      <ManageFoldersModal
+        isOpen={showFolderModal}
+        onClose={() => setShowFolderModal(false)}
+      />
     </div>
   );
 }
