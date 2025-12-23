@@ -261,9 +261,13 @@ function MainLayout() {
       >
         <div className="flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft">
-              <FaShieldAlt className="h-5 w-5" aria-hidden="true" />
-            </span>
+            <div className="rounded-full shadow-lg border-2 border-white/30 p-1">
+              <img
+                src="/cosmos logo.png"
+                alt="Cosmos Logo"
+                className="h-12 w-12 object-cover rounded-full"
+              />
+            </div>
             {!isCollapsed && (
               <div>
                 <p className="text-sm font-medium text-content-tertiary">

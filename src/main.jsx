@@ -39,6 +39,8 @@ import ProjectSettings from "./pages/SuperAdmin/ProjectSettings.jsx"; // TODO: V
 import StatusSettings from "./pages/SuperAdmin/StatusSettings.jsx"; // TODO: Verify path
 import ManagerLayout from "./components/layout/ManagerLayout";
 import KnowledgeProjectDetail from "./pages/SuperAdmin/KnowledgeProjectDetail.jsx";
+import KnowledgeDetailView from "./pages/SuperAdmin/KnowledgeDetailView.jsx";
+import DocumentViewer from "./pages/SuperAdmin/DocumentViewer.jsx";
 import ManagerKnowledgeManagement from "./pages/Manager/ManagerKnowledgeManagement.jsx";
 import ManagerExpenses from "./pages/Manager/ManagerExpenses.jsx";
 import ManagerDashboard from "./pages/Manager/ManagerDashboard.jsx";
@@ -228,6 +230,8 @@ const router = createBrowserRouter([
       { path: "/manage-clients", element: <ManageClients /> },
       { path: "/manage-projects", element: <ManageProjects /> },
       { path: "/knowledge-management", element: <SuperAdminKnowledgeManagement /> },
+      { path: "/knowledge/:id", element: <KnowledgeDetailView /> },
+      { path: "/document-viewer", element: <DocumentViewer /> },
       { path: "/knowledge-management/:projectName", element: <KnowledgeProjectDetail /> },
       { path: "/manage-knowledge", element: <ManageDocument /> },
       { path: "/mom", element: <Mom /> },
