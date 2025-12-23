@@ -39,6 +39,8 @@ import ProjectSettings from "./pages/SuperAdmin/ProjectSettings.jsx"; // TODO: V
 import StatusSettings from "./pages/SuperAdmin/StatusSettings.jsx"; // TODO: Verify path
 import ManagerLayout from "./components/layout/ManagerLayout";
 import KnowledgeProjectDetail from "./pages/SuperAdmin/KnowledgeProjectDetail.jsx";
+import KnowledgeDetailView from "./pages/SuperAdmin/KnowledgeDetailView.jsx";
+import DocumentViewer from "./pages/SuperAdmin/DocumentViewer.jsx";
 import ManagerKnowledgeManagement from "./pages/Manager/ManagerKnowledgeManagement.jsx";
 import ExpenseManagement from "./pages/SuperAdmin/ExpenseManagement.jsx";
 
@@ -150,39 +152,39 @@ const router = createBrowserRouter([
 
 
   {
-  path: "/admin",
-  element: (
-    <ProtectedRoute allowedRoles={["admin"]}>
-      <AdminLayout />
-    </ProtectedRoute>
-  ),
-  children: [
-    { path: "/admin", element: <AdminDashboardPage /> },
-    { path: "/admin/manage-resources", element: <AdminManageResources /> },
-    { path: "/admin/manage-clients", element: <AdminManageClients /> },
-    { path: "/admin/manage-projects", element: <AdminManageProjects /> },
-    { path: "/admin/knowledge-management", element: <AdminKnowledgeManagement /> },
-    { path: "/admin/knowledge-management/:projectName", element: <AdminKnowledgeProjectDetail /> },
-    { path: "/admin/manage-knowledge", element: <AdminManageDocument /> },
-    { path: "/admin/mom-pro", element: <AdminMomGeneratorPro /> },
-    { path: "/admin/task-management", element: <AdminTaskManagment /> },
-    { path: "/admin/reports", element: <AdminReportsPage /> },
-    { path: "/admin/expenses", element: <AdminExpenseManagement /> },
-    { path: "/admin/calendar", element: <AdminCalendar /> },
-    {
-      path: "/admin/settings",
-      element: <AdminSettings />,
-      children: [
-        { index: true, element: <Navigate to="add-hierarchy" replace /> },
-        { path: "add-hierarchy", element: <AdminAddHierarchy /> },
-        { path: "project-settings", element: <AdminProjectSettings /> },
-        { path: "status-settings", element: <AdminStatusSettings /> },
-        { path: "theme", element: <PortalThemeSettings /> },
-        { path: "profile", element: <PortalProfileSettings /> },
-      ],
-    },
-  ],
-},
+    path: "/admin",
+    element: (
+      <ProtectedRoute allowedRoles={["admin"]}>
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { path: "/admin", element: <AdminDashboardPage /> },
+      { path: "/admin/manage-resources", element: <AdminManageResources /> },
+      { path: "/admin/manage-clients", element: <AdminManageClients /> },
+      { path: "/admin/manage-projects", element: <AdminManageProjects /> },
+      { path: "/admin/knowledge-management", element: <AdminKnowledgeManagement /> },
+      { path: "/admin/knowledge-management/:projectName", element: <AdminKnowledgeProjectDetail /> },
+      { path: "/admin/manage-knowledge", element: <AdminManageDocument /> },
+      { path: "/admin/mom-pro", element: <AdminMomGeneratorPro /> },
+      { path: "/admin/task-management", element: <AdminTaskManagment /> },
+      { path: "/admin/reports", element: <AdminReportsPage /> },
+      { path: "/admin/expenses", element: <AdminExpenseManagement /> },
+      { path: "/admin/calendar", element: <AdminCalendar /> },
+      {
+        path: "/admin/settings",
+        element: <AdminSettings />,
+        children: [
+          { index: true, element: <Navigate to="add-hierarchy" replace /> },
+          { path: "add-hierarchy", element: <AdminAddHierarchy /> },
+          { path: "project-settings", element: <AdminProjectSettings /> },
+          { path: "status-settings", element: <AdminStatusSettings /> },
+          { path: "theme", element: <PortalThemeSettings /> },
+          { path: "profile", element: <PortalProfileSettings /> },
+        ],
+      },
+    ],
+  },
   // Project Manager Portal Routes (using "admin" role)
   {
     path: "/manager",
@@ -225,6 +227,8 @@ const router = createBrowserRouter([
       { path: "/manage-clients", element: <ManageClients /> },
       { path: "/manage-projects", element: <ManageProjects /> },
       { path: "/knowledge-management", element: <SuperAdminKnowledgeManagement /> },
+      { path: "/knowledge/:id", element: <KnowledgeDetailView /> },
+      { path: "/document-viewer", element: <DocumentViewer /> },
       { path: "/knowledge-management/:projectName", element: <KnowledgeProjectDetail /> },
       { path: "/manage-knowledge", element: <ManageDocument /> },
       { path: "/mom", element: <Mom /> },

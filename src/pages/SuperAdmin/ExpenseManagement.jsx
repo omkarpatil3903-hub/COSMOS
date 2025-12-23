@@ -292,7 +292,7 @@ const ExpenseManagement = () => {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-indigo-500 p-4 hover:shadow-md transition-shadow [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-indigo-500 [.dark_&]:border-l-indigo-400 p-4 hover:shadow-md transition-shadow [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-indigo-600 [.dark_&]:text-indigo-400">Total</p>
@@ -319,7 +319,7 @@ const ExpenseManagement = () => {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 [.dark_&]:border-l-blue-400 p-4 hover:shadow-md transition-shadow [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-600 [.dark_&]:text-blue-400">Submitted</p>
@@ -346,7 +346,7 @@ const ExpenseManagement = () => {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 [.dark_&]:border-l-green-400 p-4 hover:shadow-md transition-shadow [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-green-600 [.dark_&]:text-green-400">Approved</p>
@@ -373,7 +373,7 @@ const ExpenseManagement = () => {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-purple-500 p-4 hover:shadow-md transition-shadow [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-purple-500 [.dark_&]:border-l-purple-400 p-4 hover:shadow-md transition-shadow [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-purple-600 [.dark_&]:text-purple-400">

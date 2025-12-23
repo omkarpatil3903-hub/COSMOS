@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import Button from "../Button";
 import {
@@ -14,6 +14,7 @@ import {
   FaUsers,
   FaUser,
   FaUserEdit,
+  FaExclamationTriangle,
 } from "react-icons/fa";
 
 function DocumentPreviewModal({
@@ -26,6 +27,9 @@ function DocumentPreviewModal({
   variant = "default",
 }) {
   const { buttonClass } = useThemeStyles();
+  const [imageError, setImageError] = useState(false);
+  const [iframeError, setIframeError] = useState(false);
+
   if (!doc) return null;
   const admin = doc.access?.admin || [];
   const member = doc.access?.member || [];
@@ -168,18 +172,50 @@ function DocumentPreviewModal({
               {hasPreview ? (
                 <div className="w-full h-full flex items-center justify-center p-4">
                   {isImage ? (
-                    <img
-                      src={previewUrl}
-                      alt={doc.name}
-                      className="max-h-full max-w-full object-contain rounded-lg shadow-lg"
-                    />
+                    imageError ? (
+                      <div className="text-center p-8">
+                        <FaExclamationTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+                        <p className="text-gray-700 [.dark_&]:text-gray-300 text-lg font-semibold mb-2">
+                          Document Not Found
+                        </p>
+                        <p className="text-gray-500 [.dark_&]:text-gray-400 text-sm">
+                          The file has been deleted from storage or is no longer available.
+                        </p>
+                        <p className="text-gray-400 [.dark_&]:text-gray-500 text-xs mt-2">
+                          Please contact an administrator if you believe this is an error.
+                        </p>
+                      </div>
+                    ) : (
+                      <img
+                        src={previewUrl}
+                        alt={doc.name}
+                        onError={() => setImageError(true)}
+                        className="max-h-full max-w-full object-contain rounded-lg shadow-lg"
+                      />
+                    )
                   ) : isPdf ? (
-                    <iframe
-                      title="PDF Preview"
-                      src={previewUrl}
-                      className="w-full h-full rounded-lg"
-                      style={{ minHeight: variant === "compact" ? "70vh" : "78vh" }}
-                    />
+                    iframeError ? (
+                      <div className="text-center p-8">
+                        <FaExclamationTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+                        <p className="text-gray-700 [.dark_&]:text-gray-300 text-lg font-semibold mb-2">
+                          Document Not Found
+                        </p>
+                        <p className="text-gray-500 [.dark_&]:text-gray-400 text-sm">
+                          The file has been deleted from storage or is no longer available.
+                        </p>
+                        <p className="text-gray-400 [.dark_&]:text-gray-500 text-xs mt-2">
+                          Please contact an administrator if you believe this is an error.
+                        </p>
+                      </div>
+                    ) : (
+                      <iframe
+                        title="PDF Preview"
+                        src={previewUrl}
+                        onError={() => setIframeError(true)}
+                        className="w-full h-full rounded-lg"
+                        style={{ minHeight: variant === "compact" ? "70vh" : "78vh" }}
+                      />
+                    )
                   ) : (
                     <div className="text-center p-8">
                       <FaFile className="w-16 h-16 text-gray-300 mx-auto mb-4" />

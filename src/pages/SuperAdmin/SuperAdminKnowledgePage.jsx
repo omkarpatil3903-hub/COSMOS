@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { collection, doc, onSnapshot, query, addDoc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "../../firebase";
@@ -10,6 +11,7 @@ import AddKnowledgeModal from "../../components/knowledge/AddKnowledgeModal";
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 
 export default function SuperAdminKnowledgePage() {
+  const navigate = useNavigate();
   const { buttonClass } = useThemeStyles();
   const [knowledge, setKnowledge] = useState([]);
   const [search, setSearch] = useState("");
@@ -20,6 +22,10 @@ export default function SuperAdminKnowledgePage() {
   const [editing, setEditing] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  const handleKnowledgeClick = (knowledgeId) => {
+    navigate(`/knowledge/${knowledgeId}`);
+  };
 
   useEffect(() => {
     // Global knowledge list for Super Admin/Admin
@@ -46,6 +52,8 @@ export default function SuperAdminKnowledgePage() {
           updatedAt: data.updatedAt || null,
           createdByName: data.createdByName || "",
           updatedByName: data.updatedByName || "",
+          documents: data.documents || [],
+          access: data.access || { admin: [], member: [] },
         };
       });
       setKnowledge(list);
@@ -116,6 +124,7 @@ export default function SuperAdminKnowledgePage() {
           title: form.title,
           description: form.description,
           access: form.access || { admin: [], member: [] },
+          documents: form.documents || [],
           updatedAt: serverTimestamp(),
           updatedByUid: auth.currentUser?.uid || "",
           updatedByName: editing.updatedByName || editing.createdByName || "",
@@ -125,6 +134,7 @@ export default function SuperAdminKnowledgePage() {
           title: form.title,
           description: form.description,
           access: form.access || { admin: [], member: [] },
+          documents: form.documents || [],
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           createdByUid: auth.currentUser?.uid || "",
@@ -253,8 +263,9 @@ export default function SuperAdminKnowledgePage() {
                   <FaLightbulb className="h-4 w-4" />
                 </span>
                 <h3
-                  className="text-lg font-semibold leading-snug text-content-primary truncate max-w-[200px]"
+                  className="text-lg font-semibold leading-snug text-content-primary truncate max-w-[200px] cursor-pointer hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 transition-colors"
                   title={k.title}
+                  onClick={() => handleKnowledgeClick(k.id)}
                 >
                   {k.title.length > 10 ? `${k.title.substring(0, 10)}...` : k.title}
                 </h3>
