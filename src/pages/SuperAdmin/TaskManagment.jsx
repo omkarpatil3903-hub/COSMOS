@@ -33,7 +33,7 @@ import {
   FaSpinner,
 } from "react-icons/fa";
 
-import { db, app } from "../../firebase";
+import { db, app, auth } from "../../firebase";
 import { deleteTaskWithRelations } from "../../services/taskService";
 import { updateProjectProgress } from "../../utils/projectProgress";
 import {
@@ -82,7 +82,7 @@ const tsToISO = (v) => {
   return typeof v === "string" ? v : null;
 };
 
-function TasksManagement() {
+function TasksManagement({ onlyMyManagedProjects = false }) {
   const { user } = useAuthContext();
   const { buttonClass, iconColor, barColor } = useThemeStyles();
   const [tasks, setTasks] = useState([]);
@@ -1318,8 +1318,21 @@ function TasksManagement() {
   const filtered = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
 
+    // Get managed project IDs if filtering for manager
+    let managedProjectIds = null;
+    if (onlyMyManagedProjects) {
+      const currentUser = auth.currentUser;
+      managedProjectIds = projects
+        .filter(p => p.projectManagerId === currentUser?.uid)
+        .map(p => p.id);
+    }
+
     return tasks.filter((t) => {
       const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+      // 0. Manager Project Filter - only show tasks from managed projects
+      if (managedProjectIds && !managedProjectIds.includes(t.projectId)) return false;
+
       // 1. Global Visibility Check
       if (t.visibleFrom && t.visibleFrom > today) return false;
       if (!filters.showArchived && t.archived) return false;
@@ -1363,7 +1376,7 @@ function TasksManagement() {
 
       return true;
     });
-  }, [tasks, filters, projectMap, userMap, clientMap]);
+  }, [tasks, filters, projectMap, userMap, clientMap, onlyMyManagedProjects, projects]);
 
   // 1. Filtered Users (Resources)
   // If a project is selected in the filter, only show users involved in that project

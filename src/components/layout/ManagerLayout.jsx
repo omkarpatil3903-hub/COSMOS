@@ -16,8 +16,10 @@ import {
     FaTimes,
     FaUserTie,
     FaCog,
+    FaMoneyCheckAlt,
 } from "react-icons/fa";
 import { useTheme } from "../../context/ThemeContext";
+import PanelSwitcher from "../PanelSwitcher";
 
 // Reusable Sidebar Link Component
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
@@ -63,10 +65,9 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
         >
             {({ isActive }) => (
                 <>
-                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                        isActive
-                            ? `bg-surface ${accentTextClass}`
-                            : `${accentTextClass} bg-transparent`
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${isActive
+                        ? `bg-surface ${accentTextClass}`
+                        : `${accentTextClass} bg-transparent`
                         }`}>
                         {icon}
                     </span>
@@ -129,6 +130,11 @@ function ManagerLayout() {
             to: "/manager/knowledge-management",
             text: "Knowledge Management",
             icon: <FaFileAlt className="h-4 w-4" aria-hidden="true" />,
+        },
+        {
+            to: "/manager/expenses",
+            text: "Team Expenses",
+            icon: <FaMoneyCheckAlt className="h-4 w-4" aria-hidden="true" />,
         },
         {
             to: "/manager/settings",
@@ -212,7 +218,12 @@ function ManagerLayout() {
                     </button>
                 </div>
 
-                <nav className="mt-8 flex flex-1 flex-col gap-1 overflow-y-auto scrollbar-thin">
+                {/* Panel Switcher for role hierarchy access */}
+                <div className="mt-4 shrink-0">
+                    <PanelSwitcher isCollapsed={isCollapsed} />
+                </div>
+
+                <nav className="mt-4 flex flex-1 flex-col gap-1 overflow-y-auto scrollbar-thin">
                     {navigationItems.map((item) => (
                         <SidebarLink
                             key={item.to}

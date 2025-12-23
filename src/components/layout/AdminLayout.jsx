@@ -22,6 +22,7 @@ import {
   FaFileAlt,
 } from "react-icons/fa";
 import { useTheme } from "../../context/ThemeContext";
+import PanelSwitcher from "../PanelSwitcher";
 
 // NEW: A reusable link component to keep our code clean
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
@@ -40,32 +41,31 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
       if (to.includes('team')) return 'text-cyan-400';
       return 'text-indigo-400'; // Default color
     }
-    
+
     // For non-black themes, use the accent color
     return accent === "purple"
       ? "text-purple-400"
       : accent === "blue"
-      ? "text-sky-400"
-      : accent === "pink"
-      ? "text-pink-400"
-      : accent === "violet"
-      ? "text-violet-400"
-      : accent === "orange"
-      ? "text-amber-400"
-      : accent === "teal"
-      ? "text-teal-400"
-      : accent === "bronze"
-      ? "text-amber-500"
-      : accent === "mint"
-      ? "text-emerald-400"
-      : "text-indigo-400";
+        ? "text-sky-400"
+        : accent === "pink"
+          ? "text-pink-400"
+          : accent === "violet"
+            ? "text-violet-400"
+            : accent === "orange"
+              ? "text-amber-400"
+              : accent === "teal"
+                ? "text-teal-400"
+                : accent === "bronze"
+                  ? "text-amber-500"
+                  : accent === "mint"
+                    ? "text-emerald-400"
+                    : "text-indigo-400";
   };
-  
+
   const iconColor = getIconColor(to);
 
-  const baseClasses = `group flex items-center ${
-    isCollapsed ? "justify-center px-2" : "gap-3 px-3"
-  } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
+  const baseClasses = `group flex items-center ${isCollapsed ? "justify-center px-2" : "gap-3 px-3"
+    } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
   const activeClasses =
     "border-subtle bg-surface-strong text-content-primary shadow-soft";
   const inactiveClasses =
@@ -85,11 +85,10 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
       {({ isActive }) => (
         <>
           <span
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
-              isActive
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${isActive
                 ? `${accent === 'black' ? 'bg-black/20 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-surface'} ${iconColor}`
                 : `${iconColor} bg-transparent ${accent === 'black' ? 'opacity-80 hover:opacity-100 hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : ''}`
-            }`}
+              }`}
           >
             {icon}
           </span>
@@ -273,7 +272,12 @@ function AdminLayout() {
           </button>
         </div>
 
-        <nav className="mt-8 flex flex-1 flex-col gap-1 overflow-y-auto scrollbar-thin">
+        {/* Panel Switcher for role hierarchy access */}
+        <div className="mt-4 shrink-0">
+          <PanelSwitcher isCollapsed={isCollapsed} />
+        </div>
+
+        <nav className="mt-4 flex flex-1 flex-col gap-1 overflow-y-auto scrollbar-thin">
           {navigationItems.map((item) => (
             <SidebarLink
               key={item.to}

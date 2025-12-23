@@ -2,6 +2,7 @@ import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuthContext } from "../context/useAuthContext";
 import Spinner from "./Spinner";
+import { canAccessRoute } from "../config/roles";
 
 function ProtectedRoute({ children, allowedRoles = [] }) {
   const { user, userData, loading } = useAuthContext();
@@ -15,27 +16,18 @@ function ProtectedRoute({ children, allowedRoles = [] }) {
   // If no role restriction, allow any authenticated user
   if (!allowedRoles || allowedRoles.length === 0) return children;
 
-  // Check if user has required role
+  // Get user's effective role
   const effectiveRole = (userData?.role || "").trim().toLowerCase();
 
-  // Legacy compatibility: map 'resource' to 'member' if needed, or vice versa depending on what allowedRoles expects
-  // The new system uses: 'superadmin', 'admin', 'member', 'client'
-  // The routes expect: 'superadmin', 'admin', 'member', 'client', 'resource' (legacy)
-
-  // If user has the required role, allow access
-  if (effectiveRole && allowedRoles.includes(effectiveRole)) return children;
-
-  // Fallback for 'resource' role in routes (legacy support)
-  if (effectiveRole === "member" && allowedRoles.includes("resource"))
+  // Use hierarchy-based access check
+  // Higher-ranked roles can access lower-ranked panels
+  if (effectiveRole && canAccessRoute(effectiveRole, allowedRoles)) {
     return children;
-  if (effectiveRole === "resource" && allowedRoles.includes("member"))
-    return children;
+  }
 
-  // If user has the required role, allow access
-  if (effectiveRole && allowedRoles.includes(effectiveRole)) return children;
-
-  // If user is authenticated but doesn't have the required role, show unauthorized
+  // If user is authenticated but doesn't have sufficient role, show unauthorized
   return <Navigate to="/unauthorized" replace />;
 }
 
 export default ProtectedRoute;
+
