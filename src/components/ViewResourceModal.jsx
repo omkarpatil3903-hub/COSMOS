@@ -1,4 +1,5 @@
 import React from "react";
+import { useThemeStyles } from "../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";
 import {
   FaUser,
@@ -12,6 +13,8 @@ import {
 import Button from "./Button";
 
 function ViewResourceModal({ resource, onClose }) {
+  const { headerIconClass, badgeClass, gradientClass, hoverBorderClass, emailLinkClass, iconColor } = useThemeStyles();
+
   if (!resource) return null;
 
   return (
@@ -26,7 +29,7 @@ function ViewResourceModal({ resource, onClose }) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-[#181B2A] bg-gray-50/50 [.dark_&]:bg-[#181B2A] sticky top-0 z-10 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-500/20 [.dark_&]:text-indigo-300 rounded-lg">
+            <div className={`p-2 ${headerIconClass} rounded-lg`}>
               <FaUser className="h-5 w-5" />
             </div>
             <div>
@@ -58,7 +61,7 @@ function ViewResourceModal({ resource, onClose }) {
                     className="h-32 w-32 object-cover rounded-full border-4 border-white shadow-xl [.dark_&]:border-[#181B2A]"
                   />
                 ) : (
-                  <div className="h-32 w-32 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-4xl border-4 border-white shadow-xl [.dark_&]:border-[#181B2A]">
+                  <div className={`h-32 w-32 rounded-full bg-gradient-to-br ${gradientClass} flex items-center justify-center text-white font-bold text-4xl border-4 border-white shadow-xl [.dark_&]:border-[#181B2A]`}>
                     {resource.fullName?.charAt(0)?.toUpperCase()}
                   </div>
                 )}
@@ -77,10 +80,10 @@ function ViewResourceModal({ resource, onClose }) {
                   {resource.resourceRole || "No Role Assigned"}
                 </p>
                 <div className="mt-3 flex flex-wrap justify-center gap-2">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100 [.dark_&]:bg-indigo-500/10 [.dark_&]:text-indigo-300 [.dark_&]:border-indigo-500/30">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
                     {resource.resourceType}
                   </span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100 [.dark_&]:bg-purple-500/10 [.dark_&]:text-purple-300 [.dark_&]:border-purple-500/30">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
                     {resource.employmentType}
                   </span>
                 </div>
@@ -92,8 +95,8 @@ function ViewResourceModal({ resource, onClose }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                 {/* Contact Info */}
-                <div className="bg-gray-50 [.dark_&]:bg-[#1F2234] p-4 rounded-xl border border-gray-100 [.dark_&]:border-white/10 hover:border-indigo-100 [.dark_&]:hover:border-indigo-400 transition-colors">
-                  <div className="flex items-center gap-2 mb-2 text-indigo-600">
+                <div className={`bg-gray-50 [.dark_&]:bg-[#1F2234] p-4 rounded-xl border border-gray-100 [.dark_&]:border-white/10 ${hoverBorderClass} transition-colors`}>
+                  <div className={`flex items-center gap-2 mb-2 ${iconColor}`}>
                     <FaEnvelope className="h-4 w-4" />
                     <span className="text-xs font-bold uppercase tracking-wide">Email</span>
                   </div>
@@ -102,8 +105,8 @@ function ViewResourceModal({ resource, onClose }) {
                   </p>
                 </div>
 
-                <div className="bg-gray-50 [.dark_&]:bg-[#1F2234] p-4 rounded-xl border border-gray-100 [.dark_&]:border-white/10 hover:border-indigo-100 [.dark_&]:hover:border-indigo-400 transition-colors">
-                  <div className="flex items-center gap-2 mb-2 text-indigo-600">
+                <div className={`bg-gray-50 [.dark_&]:bg-[#1F2234] p-4 rounded-xl border border-gray-100 [.dark_&]:border-white/10 ${hoverBorderClass} transition-colors`}>
+                  <div className={`flex items-center gap-2 mb-2 ${iconColor}`}>
                     <FaPhone className="h-4 w-4" />
                     <span className="text-xs font-bold uppercase tracking-wide">Mobile</span>
                   </div>
@@ -113,8 +116,8 @@ function ViewResourceModal({ resource, onClose }) {
                 </div>
 
                 {/* Role Info */}
-                <div className="bg-gray-50 [.dark_&]:bg-[#1F2234] p-4 rounded-xl border border-gray-100 [.dark_&]:border-white/10 hover:border-indigo-100 [.dark_&]:hover:border-indigo-400 transition-colors">
-                  <div className="flex items-center gap-2 mb-2 text-indigo-600">
+                <div className={`bg-gray-50 [.dark_&]:bg-[#1F2234] p-4 rounded-xl border border-gray-100 [.dark_&]:border-white/10 ${hoverBorderClass} transition-colors`}>
+                  <div className={`flex items-center gap-2 mb-2 ${iconColor}`}>
                     <FaIdBadge className="h-4 w-4" />
                     <span className="text-xs font-bold uppercase tracking-wide">Role Type</span>
                   </div>
@@ -123,8 +126,8 @@ function ViewResourceModal({ resource, onClose }) {
                   </p>
                 </div>
 
-                <div className="bg-gray-50 [.dark_&]:bg-[#1F2234] p-4 rounded-xl border border-gray-100 [.dark_&]:border-white/10 hover:border-indigo-100 [.dark_&]:hover:border-indigo-400 transition-colors">
-                  <div className="flex items-center gap-2 mb-2 text-indigo-600">
+                <div className={`bg-gray-50 [.dark_&]:bg-[#1F2234] p-4 rounded-xl border border-gray-100 [.dark_&]:border-white/10 ${hoverBorderClass} transition-colors`}>
+                  <div className={`flex items-center gap-2 mb-2 ${iconColor}`}>
                     <FaCalendarAlt className="h-4 w-4" />
                     <span className="text-xs font-bold uppercase tracking-wide">Join Date</span>
                   </div>
@@ -134,8 +137,8 @@ function ViewResourceModal({ resource, onClose }) {
                 </div>
 
                 {/* Account Info */}
-                <div className="bg-gray-50 [.dark_&]:bg-[#1F2234] p-4 rounded-xl border border-gray-100 [.dark_&]:border-white/10 hover:border-indigo-100 [.dark_&]:hover:border-indigo-400 transition-colors sm:col-span-2">
-                  <div className="flex items-center gap-2 mb-2 text-indigo-600">
+                <div className={`bg-gray-50 [.dark_&]:bg-[#1F2234] p-4 rounded-xl border border-gray-100 [.dark_&]:border-white/10 ${hoverBorderClass} transition-colors sm:col-span-2`}>
+                  <div className={`flex items-center gap-2 mb-2 ${iconColor}`}>
                     <FaLock className="h-4 w-4" />
                     <span className="text-xs font-bold uppercase tracking-wide">Current Password</span>
                   </div>

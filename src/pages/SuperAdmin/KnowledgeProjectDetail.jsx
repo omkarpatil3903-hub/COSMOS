@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { FaArrowLeft, FaRegComment, FaBookOpen, FaFileAlt, FaEdit, FaTrash, FaLightbulb, FaUser, FaCalendarAlt, FaClock } from "react-icons/fa";
 import Card from "../../components/Card";
@@ -14,6 +15,7 @@ import AddKnowledgeModal from "../../components/knowledge/AddKnowledgeModal";
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 
 export default function KnowledgeProjectDetail() {
+  const { buttonClass, barColor } = useThemeStyles();
   const navigate = useNavigate();
   const { projectName } = useParams();
   const location = useLocation();
@@ -603,7 +605,7 @@ export default function KnowledgeProjectDetail() {
           <button
             onClick={() => setActiveTab("knowledge")}
             className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border ${activeTab === "knowledge"
-              ? "bg-indigo-600 text-white border-indigo-600"
+              ? `${barColor} text-white border-transparent`
               : "bg-white [.dark_&]:bg-[#181B2A] text-gray-700 [.dark_&]:text-gray-300 border-gray-200 [.dark_&]:border-white/10 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
               }`}
             aria-pressed={activeTab === "knowledge"}
@@ -614,7 +616,7 @@ export default function KnowledgeProjectDetail() {
           <button
             onClick={() => setActiveTab("documentation")}
             className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border ${activeTab === "documentation"
-              ? "bg-indigo-600 text-white border-indigo-600"
+              ? `${barColor} text-white border-transparent`
               : "bg-white [.dark_&]:bg-[#181B2A] text-gray-700 [.dark_&]:text-gray-300 border-gray-200 [.dark_&]:border-white/10 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
               }`}
             aria-pressed={activeTab === "documentation"}
@@ -654,7 +656,7 @@ export default function KnowledgeProjectDetail() {
                     </select>
                   </label>
                   {(isSuperAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource") && (
-                    <Button onClick={() => { setEditingKn(null); setOpenAddKn(true); }}>+ Add Knowledge</Button>
+                    <Button variant="custom" onClick={() => { setEditingKn(null); setOpenAddKn(true); }} className={buttonClass}>+ Add Knowledge</Button>
                   )}
                 </div>
               }
@@ -806,7 +808,7 @@ export default function KnowledgeProjectDetail() {
               onChange={setDocSearch}
               placeholder="Search by name, location or tag"
               rightActions={(isSuperAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource") ? (
-                <Button onClick={() => setOpenAddDoc(true)}>+ Add Document</Button>
+                <Button variant="custom" onClick={() => setOpenAddDoc(true)} className={buttonClass}>+ Add Document</Button>
               ) : null}
             />
           </Card>

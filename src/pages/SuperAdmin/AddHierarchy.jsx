@@ -23,8 +23,10 @@ import {
   FaSearch,
 } from "react-icons/fa";
 import VoiceInput from "../../components/Common/VoiceInput";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 export default function AddHierarchy() {
+  const { buttonClass } = useThemeStyles();
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -232,8 +234,8 @@ export default function AddHierarchy() {
             <span className="text-sm text-content-secondary [.dark_&]:text-gray-400">
               Showing {filtered.length} records
             </span>
-            <Button variant="primary" onClick={openCreate} className="shrink-0">
-              <FaPlus /> Add Hierarchy
+            <Button variant="custom" className={`shrink-0 ${buttonClass}`} onClick={openCreate}>
+              <FaPlus /> Add Hierarchy Level
             </Button>
           </div>
         }
@@ -355,7 +357,7 @@ export default function AddHierarchy() {
                               : "Member Role"}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-6 py-2.5 text-sm sticky right-0 z-10 bg-transparent transition-colors">
+                    <td className="whitespace-nowrap px-6 py-2.5 text-sm sticky right-0 z-10 group-odd:bg-white group-even:bg-gray-50 [.dark_&]:group-odd:bg-[#181B2A] [.dark_&]:group-even:bg-[#1F2234] transition-colors">
                       <div className="flex items-center justify-center space-x-3">
                         <button
                           onClick={(e) => handleEditClick(item, e)}
@@ -382,60 +384,66 @@ export default function AddHierarchy() {
       </Card>
 
       {open && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/30">
-          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between px-6 pt-6">
-              <h3 className="text-xl font-semibold">Create Hierarchy</h3>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 bg-black/30">
+          <div className="w-full max-w-full sm:max-w-2xl rounded-2xl bg-white shadow-2xl [.dark_&]:bg-[#181B2A] [.dark_&]:border [.dark_&]:border-white/10 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-6">
+              <h3 className="text-lg sm:text-xl font-semibold [.dark_&]:text-white">
+                {editing ? "Edit Hierarchy" : "Create Hierarchy"}
+              </h3>
               <button
                 onClick={close}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 [.dark_&]:text-gray-400 [.dark_&]:hover:text-gray-200"
               >
                 <FaTimes />
               </button>
             </div>
 
-            <div className="px-6 pt-4">
-              <div className="grid grid-cols-4 rounded-full bg-gray-100 p-1 text-sm font-medium [.dark_&]:bg-[#1F2234]">
+            <div className="px-4 sm:px-6 pt-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 rounded-full bg-gray-100 p-1 text-sm font-medium [.dark_&]:bg-[#1F2234]">
                 <button
                   onClick={() => setType("superadmin")}
-                  className={`rounded-full px-4 py-2 transition ${type === "superadmin"
+                  className={`rounded-full px-2 sm:px-4 py-2 text-xs sm:text-sm transition ${type === "superadmin"
                     ? "bg-white shadow-sm text-gray-900 [.dark_&]:bg-[#181B2A] [.dark_&]:text-white"
                     : "text-gray-500 [.dark_&]:text-gray-400"
                     }`}
                 >
-                  Super Admin Role
+                  <span className="hidden sm:inline">Super Admin Role</span>
+                  <span className="sm:hidden">Super Admin</span>
                 </button>
                 <button
                   onClick={() => setType("admin")}
-                  className={`rounded-full px-4 py-2 transition ${type === "admin"
+                  className={`rounded-full px-2 sm:px-4 py-2 text-xs sm:text-sm transition ${type === "admin"
                     ? "bg-white shadow-sm text-gray-900 [.dark_&]:bg-[#181B2A] [.dark_&]:text-white"
                     : "text-gray-500 [.dark_&]:text-gray-400"
                     }`}
                 >
-                  Admin Role
+                  <span className="hidden sm:inline">Admin Role</span>
+                  <span className="sm:hidden">Admin</span>
                 </button>
                 <button
                   onClick={() => setType("manager")}
-                  className={`rounded-full px-4 py-2 transition ${type === "manager"
+                  className={`rounded-full px-2 sm:px-4 py-2 text-xs sm:text-sm transition ${type === "manager"
                     ? "bg-white shadow-sm text-gray-900 [.dark_&]:bg-[#181B2A] [.dark_&]:text-white"
                     : "text-gray-500 [.dark_&]:text-gray-400"
                     }`}
                 >
-                  Manager Role
+                  <span className="hidden sm:inline">Manager Role</span>
+                  <span className="sm:hidden">Manager</span>
                 </button>
                 <button
                   onClick={() => setType("member")}
-                  className={`rounded-full px-4 py-2 transition ${type === "member"
+                  className={`rounded-full px-2 sm:px-4 py-2 text-xs sm:text-sm transition ${type === "member"
                     ? "bg-white shadow-sm text-gray-900 [.dark_&]:bg-[#181B2A] [.dark_&]:text-white"
                     : "text-gray-500 [.dark_&]:text-gray-400"
                     }`}
                 >
-                  Member Role
+                  <span className="hidden sm:inline">Member Role</span>
+                  <span className="sm:hidden">Member</span>
                 </button>
               </div>
             </div>
 
-            <div className="px-6 py-4">
+            <div className="px-4 sm:px-6 py-4">
               <label className="block text-sm font-medium mb-1 [.dark_&]:text-gray-300">
                 {type === "admin"
                   ? "Add Admin Role"
@@ -465,8 +473,8 @@ export default function AddHierarchy() {
               <Button variant="ghost" onClick={close} className="[.dark_&]:text-gray-300 [.dark_&]:hover:bg-white/10">
                 Cancel
               </Button>
-              <Button onClick={save} disabled={saving} variant="primary">
-                {saving ? "Saving..." : "Save"}
+              <Button onClick={save} disabled={saving} variant="custom" className={buttonClass}>
+                {saving ? (editing ? "Updating..." : "Saving...") : (editing ? "Update" : "Save")}
               </Button>
             </div>
           </div>

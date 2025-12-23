@@ -1,4 +1,5 @@
 import React from "react";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";
 import {
     FaBuilding,
@@ -12,6 +13,8 @@ import {
 import Button from "../Button";
 
 const ClientViewModal = ({ isOpen, onClose, client }) => {
+    const { headerIconClass, gradientClass, emailLinkClass } = useThemeStyles();
+
     if (!isOpen || !client) return null;
 
     return (
@@ -26,7 +29,7 @@ const ClientViewModal = ({ isOpen, onClose, client }) => {
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-white/10 bg-gray-50/50 [.dark_&]:bg-[#181B2A] sticky top-0 z-10 backdrop-blur-md">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-500/20 [.dark_&]:text-indigo-400 rounded-lg">
+                        <div className={`p-2 ${headerIconClass} rounded-lg`}>
                             <FaBuilding className="h-5 w-5" />
                         </div>
                         <div>
@@ -58,7 +61,7 @@ const ClientViewModal = ({ isOpen, onClose, client }) => {
                                         className="h-28 w-28 object-cover rounded-full border-4 border-white [.dark_&]:border-[#181B2A] shadow-xl ring-1 ring-gray-100 [.dark_&]:ring-white/10"
                                     />
                                 ) : (
-                                    <div className="h-28 w-28 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-4xl shadow-xl ring-4 ring-white [.dark_&]:ring-[#181B2A]">
+                                    <div className={`h-28 w-28 rounded-full bg-gradient-to-br ${gradientClass} flex items-center justify-center text-white font-bold text-4xl shadow-xl ring-4 ring-white [.dark_&]:ring-[#181B2A]`}>
                                         {client.companyName?.charAt(0)?.toUpperCase() || "C"}
                                     </div>
                                 )}
@@ -124,20 +127,24 @@ const ClientViewModal = ({ isOpen, onClose, client }) => {
     );
 };
 
-const InfoBox = ({ icon, label, value, isEmail }) => (
-    <div className="bg-white [.dark_&]:bg-white/5 border border-gray-100 [.dark_&]:border-white/10 p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 flex items-start gap-3">
-        <div className="p-2 bg-gray-50 [.dark_&]:bg-white/5 rounded-lg shrink-0">
-            {icon}
+const InfoBox = ({ icon, label, value, isEmail }) => {
+    const { emailLinkClass } = useThemeStyles();
+
+    return (
+        <div className="bg-white [.dark_&]:bg-white/5 border border-gray-100 [.dark_&]:border-white/10 p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 flex items-start gap-3">
+            <div className="p-2 bg-gray-50 [.dark_&]:bg-white/5 rounded-lg shrink-0">
+                {icon}
+            </div>
+            <div className="overflow-hidden">
+                <label className="block text-xs font-bold text-gray-400 [.dark_&]:text-gray-500 uppercase tracking-wide mb-0.5">
+                    {label}
+                </label>
+                <p className={`text-gray-900 [.dark_&]:text-white font-semibold text-sm truncate ${isEmail ? `${emailLinkClass} hover:underline cursor-pointer` : ''}`}>
+                    {value || "Not provided"}
+                </p>
+            </div>
         </div>
-        <div className="overflow-hidden">
-            <label className="block text-xs font-bold text-gray-400 [.dark_&]:text-gray-500 uppercase tracking-wide mb-0.5">
-                {label}
-            </label>
-            <p className={`text-gray-900 [.dark_&]:text-white font-semibold text-sm truncate ${isEmail ? 'text-indigo-600 [.dark_&]:text-indigo-400 hover:underline cursor-pointer' : ''}`}>
-                {value || "Not provided"}
-            </p>
-        </div>
-    </div>
-);
+    );
+};
 
 export default ClientViewModal;

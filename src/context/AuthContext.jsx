@@ -3,6 +3,7 @@ import { useState, useEffect, useContext } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
+import AppLoader from "../components/AppLoader";
 
 import AuthContext from "./AuthContextBase";
 
@@ -60,7 +61,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? <AppLoader /> : children}
     </AuthContext.Provider>
   );
 }

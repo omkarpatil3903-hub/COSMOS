@@ -1,4 +1,5 @@
 import React from "react";
+import { useThemeStyles } from "../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";
 import {
   FaLayerGroup,
@@ -25,6 +26,8 @@ const AddProjectModal = ({
   addErrors,
   setAddErrors,
 }) => {
+  const { iconColor, headerIconClass, buttonClass, badgeClass } = useThemeStyles();
+
   if (!showAddForm) return null;
 
   return (
@@ -36,7 +39,7 @@ const AddProjectModal = ({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-white/10 bg-gray-50/50 [.dark_&]:bg-[#181B2A] sticky top-0 z-10 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-500/20 [.dark_&]:text-indigo-400 rounded-lg">
+            <div className={`p-2 ${headerIconClass} rounded-lg`}>
               <FaLayerGroup className="h-5 w-5" />
             </div>
             <div>
@@ -67,7 +70,7 @@ const AddProjectModal = ({
               {/* Project Details Section */}
               <div className="space-y-6">
                 <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
-                  <FaLayerGroup className="text-indigo-500 [.dark_&]:text-indigo-400" />
+                  <FaLayerGroup className={`${iconColor} [.dark_&]:text-opacity-80`} />
                   <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
                     Project Details
                   </h3>
@@ -296,7 +299,7 @@ const AddProjectModal = ({
               {/* Timeline Section */}
               <div className="space-y-6">
                 <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
-                  <FaCalendarAlt className="text-indigo-500 [.dark_&]:text-indigo-400" />
+                  <FaCalendarAlt className={`${iconColor} [.dark_&]:text-opacity-80`} />
                   <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
                     Timeline
                   </h3>
@@ -364,7 +367,7 @@ const AddProjectModal = ({
               </div>
               <div className="flex items-center justify-between border-b border-gray-100 [.dark_&]:border-white/10 pb-2">
                 <div className="flex items-center gap-2">
-                  <FaBullseye className="text-indigo-500 [.dark_&]:text-indigo-400" />
+                  <FaBullseye className={`${iconColor} [.dark_&]:text-opacity-80`} />
                   <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
                     OKRs
                   </h3>
@@ -512,8 +515,9 @@ const AddProjectModal = ({
           </Button>
           <Button
             type="submit"
+            variant="custom"
             onClick={handleFormSubmit}
-            className="shadow-lg shadow-indigo-200"
+            className={`shadow-lg ${buttonClass}`}
           >
             Create Project
           </Button>

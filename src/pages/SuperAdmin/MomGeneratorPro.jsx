@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
   FaPlus,
   FaTrash,
-  FaFileAlt,
+  FaMagic,
   FaSpinner,
   FaSave,
   FaDownload,
@@ -38,6 +38,7 @@ import Card from "../../components/Card";
 import Button from "../../components/Button";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { useTheme } from "../../context/ThemeContext";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 // ---------- Utility: Rule-based notes generator (NO AI) ----------
 function toLines(text) {
@@ -137,6 +138,7 @@ ${nextSteps}
 
 export default function MomGeneratorPro() {
   const { mode } = useTheme();
+  const { buttonClass } = useThemeStyles();
   const inputClassName = `w-full px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all border rounded-sm ${mode === "dark"
     ? "bg-gray-900 border-gray-800 text-white"
     : "bg-gray-50 border-gray-300 text-black"
@@ -741,120 +743,120 @@ export default function MomGeneratorPro() {
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <PageHeader
-          title={`Minutes of Meeting`}
-          description={`AI-powered MOM generation with professional structured format`}
-        />
-        <div className="flex items-center gap-3 mt-2">
-          {!isGenerated ? (
-            <Button
-              onClick={generateMom}
-              variant="primary"
-              disabled={loading}
-              className="flex items-center gap-2 whitespace-nowrap"
-            >
-              {loading ? (
-                <FaSpinner className="animate-spin" />
-              ) : (
-                <FaFileAlt />
-              )}
-              {loading ? "Generating..." : "Generate MOM"}
-            </Button>
-          ) : (
-            <>
-              <Button onClick={resetGenerated} variant="secondary">
-                <FaUndo /> Edit Details
+      <PageHeader
+        title={`Minutes of Meeting`}
+        description={`AI-powered MOM generation with professional structured format`}
+        actions={
+          <div className="flex items-center gap-3">
+            {!isGenerated ? (
+              <Button
+                onClick={generateMom}
+                variant="custom"
+                className={`flex items-center gap-2 whitespace-nowrap ${buttonClass}`}
+                disabled={loading}
+              >
+                {loading ? (
+                  <FaSpinner className="animate-spin" />
+                ) : (
+                  <FaMagic />
+                )}
+                {loading ? "Generating..." : "Generate MOM"}
               </Button>
-
-              {/* Actions Dropdown Menu */}
-              <div className="relative">
-                <Button
-                  onClick={() => setShowActionsMenu(!showActionsMenu)}
-                  variant="primary"
-                  className="flex items-center gap-2"
-                >
-                  <FaEllipsisV /> Actions
+            ) : (
+              <>
+                <Button onClick={resetGenerated} variant="secondary">
+                  <FaUndo /> Edit Details
                 </Button>
 
-                {showActionsMenu && (
-                  <>
-                    {/* Backdrop to close menu */}
-                    <div
-                      className="fixed inset-0 z-[100]"
-                      onClick={() => setShowActionsMenu(false)}
-                    />
+                {/* Actions Dropdown Menu */}
+                <div className="relative">
+                  <Button
+                    onClick={() => setShowActionsMenu(!showActionsMenu)}
+                    variant="custom"
+                    className={`flex items-center gap-2 ${buttonClass}`}
+                  >
+                    <FaEllipsisV /> Actions
+                  </Button>
 
-                    {/* Dropdown Menu */}
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 py-2 z-[101]">
-                      {showSave && (
+                  {showActionsMenu && (
+                    <>
+                      {/* Backdrop to close menu */}
+                      <div
+                        className="fixed inset-0 z-[100]"
+                        onClick={() => setShowActionsMenu(false)}
+                      />
+
+                      {/* Dropdown Menu */}
+                      <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 py-2 z-[101]">
+                        {showSave && (
+                          <button
+                            onClick={() => {
+                              if (disableSave) return;
+                              setShowSaveConfirm(true);
+                            }}
+                            disabled={disableSave}
+                            className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${disableSave
+                              ? "text-gray-400 cursor-not-allowed"
+                              : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              }`}
+                          >
+                            <FaSave
+                              className={`flex-shrink-0 ${disableSave ? "text-gray-400" : "text-indigo-600 dark:text-indigo-400"
+                                }`}
+                            />
+                            <span>
+                              {saveLoading
+                                ? "Saving..."
+                                : isChangedSinceSave
+                                  ? "Save MOM"
+                                  : "Saved"}
+                            </span>
+                          </button>
+                        )}
+
                         <button
                           onClick={() => {
-                            if (disableSave) return;
-                            setShowSaveConfirm(true);
+                            handleExportPDF();
+                            setShowActionsMenu(false);
                           }}
-                          disabled={disableSave}
-                          className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${disableSave
-                            ? "text-gray-400 cursor-not-allowed"
-                            : "text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                            }`}
+                          className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors"
                         >
-                          <FaSave
-                            className={`flex-shrink-0 ${disableSave ? "text-gray-400" : "text-indigo-600 dark:text-indigo-400"
-                              }`}
-                          />
-                          <span>
-                            {saveLoading
-                              ? "Saving..."
-                              : isChangedSinceSave
-                                ? "Save MOM"
-                                : "Saved"}
-                          </span>
+                          <FaFilePdf className="text-red-600 flex-shrink-0" />
+                          <span>Export PDF</span>
                         </button>
-                      )}
 
-                      <button
-                        onClick={() => {
-                          handleExportPDF();
-                          setShowActionsMenu(false);
-                        }}
-                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors"
-                      >
-                        <FaFilePdf className="text-red-600 flex-shrink-0" />
-                        <span>Export PDF</span>
-                      </button>
+                        <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
 
-                      <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+                        <button
+                          onClick={() => {
+                            shareMom();
+                            setShowActionsMenu(false);
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors"
+                        >
+                          <FaShareAlt className="text-blue-600 flex-shrink-0" />
+                          <span>Share</span>
+                        </button>
 
-                      <button
-                        onClick={() => {
-                          shareMom();
-                          setShowActionsMenu(false);
-                        }}
-                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors"
-                      >
-                        <FaShareAlt className="text-blue-600 flex-shrink-0" />
-                        <span>Share</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          handlePrint();
-                          setShowActionsMenu(false);
-                        }}
-                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors"
-                      >
-                        <FaPrint className="text-gray-600 dark:text-gray-400 flex-shrink-0" />
-                        <span>Print</span>
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+                        <button
+                          onClick={() => {
+                            handlePrint();
+                            setShowActionsMenu(false);
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors"
+                        >
+                          <FaPrint className="text-gray-600 dark:text-gray-400 flex-shrink-0" />
+                          <span>Print</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        }
+      />
 
       {/* Save confirmation modal */}
       {
@@ -1113,7 +1115,7 @@ export default function MomGeneratorPro() {
                   placeholder="Notes (required). One point per line (e.g., 'pending API', 'UI fix needed')"
                   spellCheck="true"
                 />
-                <Button onClick={addDiscussion} variant="primary">
+                <Button onClick={addDiscussion} variant="custom" className={buttonClass}>
                   <FaPlus /> Add Topic
                 </Button>
               </div>
@@ -1206,8 +1208,8 @@ export default function MomGeneratorPro() {
                   />
                   <Button
                     onClick={addActionItem}
-                    variant="primary"
-                    className="!px-3"
+                    variant="custom"
+                    className={`!px-3 ${buttonClass}`}
                   >
                     <FaPlus /> Add
                   </Button>

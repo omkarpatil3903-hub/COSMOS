@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useThemeStyles } from "../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";
 import {
   FaEye,
@@ -19,21 +20,23 @@ import { doc, onSnapshot } from "firebase/firestore";
 
 function EditResourceModal({
   showEditForm,
-  setShowEditForm,
   formData,
   setFormData,
   onSubmit,
   onClose,
+  existingEmails = [],
   imagePreview,
   onImageChange,
   onImageRemove = () => { },
-  existingEmails = [],
+  serverErrors = {},
+  clearServerError = () => { },
   isSubmitting = false,
-  hasChanges = true,
 }) {
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [roleOptions, setRoleOptions] = useState([]);
+
+  const { buttonClass, iconColor, headerIconClass } = useThemeStyles();
 
   const emailInUse = (val) =>
     existingEmails.includes((val || "").toLowerCase());
@@ -143,7 +146,7 @@ function EditResourceModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-[#181B2A] bg-gray-50/50 [.dark_&]:bg-[#181B2A] sticky top-0 z-10 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-500/20 [.dark_&]:text-indigo-300 rounded-lg">
+            <div className={`p-2 ${headerIconClass} rounded-lg`}>
               <FaEdit className="h-5 w-5" />
             </div>
             <div>
@@ -169,7 +172,7 @@ function EditResourceModal({
             {/* Column 1: Basic Info */}
             <div className="space-y-6">
               <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
-                <FaUser className="text-indigo-500 [.dark_&]:text-indigo-300" />
+                <FaUser className={`${iconColor} [.dark_&]:text-opacity-80`} />
                 <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
                   Basic Info
                 </h3>
@@ -186,11 +189,11 @@ function EditResourceModal({
                         className="h-24 w-24 object-cover rounded-full border-4 border-white/90 [.dark_&]:border-surface-strong shadow-lg"
                       />
                     ) : (
-                      <div className="h-24 w-24 rounded-full bg-indigo-50 [.dark_&]:bg-indigo-500/10 flex items-center justify-center border-4 border-white/90 [.dark_&]:border-surface-strong shadow-lg text-indigo-200 [.dark_&]:text-indigo-300">
+                      <div className={`h-24 w-24 rounded-full flex items-center justify-center border-4 border-white/90 [.dark_&]:border-surface-strong shadow-lg ${headerIconClass.replace('p-2', '')}`}>
                         <FaCamera className="h-8 w-8" />
                       </div>
                     )}
-                    <label className="absolute bottom-0 right-0 p-2 bg-indigo-600 text-white rounded-full shadow-md cursor-pointer hover:bg-indigo-700 transition-colors">
+                    <label className={`absolute bottom-0 right-0 p-2 text-white rounded-full shadow-md cursor-pointer transition-colors ${buttonClass}`}>
                       <FaCamera className="h-3 w-3" />
                       <input
                         type="file"
@@ -313,7 +316,7 @@ function EditResourceModal({
             {/* Column 2: Role & Employment */}
             <div className="space-y-6">
               <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
-                <FaBriefcase className="text-indigo-500 [.dark_&]:text-indigo-300" />
+                <FaBriefcase className={`${iconColor} [.dark_&]:text-opacity-80`} />
                 <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
                   Role & Employment
                 </h3>
@@ -410,7 +413,7 @@ function EditResourceModal({
             {/* Column 3: Account & Access */}
             <div className="space-y-6">
               <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
-                <FaLock className="text-indigo-500 [.dark_&]:text-indigo-300" />
+                <FaLock className={`${iconColor} [.dark_&]:text-opacity-80`} />
                 <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
                   Account & Access
                 </h3>
@@ -479,9 +482,10 @@ function EditResourceModal({
           </Button>
           <Button
             type="submit"
+            variant="custom"
             onClick={handleSubmit}
             disabled={disableSubmit}
-            className="shadow-lg shadow-indigo-200"
+            className={`shadow-lg ${buttonClass}`}
           >
             {isSubmitting && <FaSpinner className="h-4 w-4 animate-spin mr-2" />}
             {isSubmitting

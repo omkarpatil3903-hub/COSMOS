@@ -770,7 +770,7 @@ const EmployeeTasks = () => {
   const availableProjects = [
     ...new Set(baseTasks.map((task) => task.projectName).filter(Boolean)),
   ];
-  
+
 
   // Calculate task statistics
   const stats = {
@@ -874,8 +874,8 @@ const EmployeeTasks = () => {
       const dueStr = t?.dueDate?.toDate
         ? t.dueDate.toDate().toISOString().slice(0, 10)
         : typeof t?.dueDate === "string"
-        ? t.dueDate.slice(0, 10)
-        : "";
+          ? t.dueDate.slice(0, 10)
+          : "";
       return norm(t.status) !== "done" && dueStr && todayStr && dueStr === todayStr;
     });
   }, [filteredTasks, todayStr]);
@@ -942,18 +942,18 @@ const EmployeeTasks = () => {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-gray-500 p-4 hover:shadow-md transition-all hover:scale-[1.02]">
+          <div className="bg-white dark:bg-[#1e1e2d] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 border-l-4 border-l-gray-500 p-4 hover:shadow-md transition-all hover:scale-[1.02]">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="text-xs font-medium text-gray-500 mb-1">To-Do</p>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">To-Do</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
                   {
                     baseTasks.filter((t) => t.status === "To-Do" || !t.status)
                       .length
                   }
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
                 <FaClipboardList className="text-gray-500 text-xl" />
               </div>
             </div>
@@ -971,17 +971,17 @@ const EmployeeTasks = () => {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-all hover:scale-[1.02]">
+          <div className="bg-white dark:bg-[#1e1e2d] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-all hover:scale-[1.02]">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="text-xs font-medium text-gray-500 mb-1">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                   In Progress
                 </p>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
                   {stats.inProgress}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
                 <FaClock className="text-blue-500 text-xl" />
               </div>
             </div>
@@ -999,17 +999,17 @@ const EmployeeTasks = () => {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-all hover:scale-[1.02]">
+          <div className="bg-white dark:bg-[#1e1e2d] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-all hover:scale-[1.02]">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="text-xs font-medium text-gray-500 mb-1">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                   Completed
                 </p>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
                   {stats.completed}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0">
                 <FaCheckCircle className="text-green-500 text-xl" />
               </div>
             </div>
@@ -1027,17 +1027,17 @@ const EmployeeTasks = () => {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-red-500 p-4 hover:shadow-md transition-all hover:scale-[1.02]">
+          <div className="bg-white dark:bg-[#1e1e2d] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 border-l-4 border-l-red-500 p-4 hover:shadow-md transition-all hover:scale-[1.02]">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="text-xs font-medium text-gray-500 mb-1">
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                   Overdue
                 </p>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
                   {stats.overdue}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
                 <FaExclamationTriangle className="text-red-500 text-xl" />
               </div>
             </div>

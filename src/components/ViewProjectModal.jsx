@@ -1,4 +1,5 @@
 import React from "react";
+import { useThemeStyles } from "../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";
 import {
   FaCalendarAlt,
@@ -18,6 +19,8 @@ const ViewProjectModal = ({
   selectedProject,
   setSelectedProject,
 }) => {
+  const { headerIconClass, badgeClass, iconColor } = useThemeStyles();
+
   if (!showViewModal || !selectedProject) return null;
 
   const getProgressColor = (progress) => {
@@ -36,7 +39,7 @@ const ViewProjectModal = ({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-white/10 bg-gray-50/50 [.dark_&]:bg-[#181B2A] sticky top-0 z-10 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+            <div className={`p-2 ${headerIconClass} rounded-lg`}>
               <FaLayerGroup className="h-5 w-5" />
             </div>
             <div>
@@ -132,7 +135,7 @@ const ViewProjectModal = ({
 
               <div className="bg-white [.dark_&]:bg-white/5 border border-gray-100 [.dark_&]:border-white/10 rounded-xl p-4 shadow-sm">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="p-1.5 bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-500/20 [.dark_&]:text-indigo-400 rounded-md">
+                  <div className={`p-1.5 ${headerIconClass} rounded-md`}>
                     <FaUsers className="h-4 w-4" />
                   </div>
                   <h3 className="text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wide">Team</h3>
@@ -154,7 +157,7 @@ const ViewProjectModal = ({
                         {selectedProject.assigneeNames.map((name) => (
                           <span
                             key={name}
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 [.dark_&]:bg-indigo-500/10 [.dark_&]:text-indigo-300 border border-indigo-200 [.dark_&]:border-indigo-500/20"
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${badgeClass} border`}
                           >
                             {name}
                           </span>
@@ -172,7 +175,7 @@ const ViewProjectModal = ({
               {/* OKRs Section */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
-                  <FaBullseye className="text-indigo-600 [.dark_&]:text-indigo-400 h-5 w-5" />
+                  <FaBullseye className={`${iconColor} [.dark_&]:text-opacity-80 h-5 w-5`} />
                   <h3 className="text-lg font-bold text-gray-900 [.dark_&]:text-white">
                     Objectives & Key Results
                   </h3>

@@ -1,4 +1,5 @@
 import React from "react";
+import { useThemeStyles } from "../hooks/useThemeStyles";
 import { FaTimes, FaPlus, FaEdit } from "react-icons/fa";
 import VoiceInput from "./Common/VoiceInput";
 
@@ -16,6 +17,8 @@ const EditProjectModal = ({
   editErrors,
   setEditErrors,
 }) => {
+  const { iconColor, headerIconClass, buttonClass } = useThemeStyles();
+
   if (!showEditForm) return null;
 
   const handleOKRChange = (index, field, value) => {
@@ -63,8 +66,8 @@ const EditProjectModal = ({
         {/* Header */}
         <div className="flex items-start justify-between p-6 border-b border-gray-200 [.dark_&]:border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
-              <FaEdit className="w-6 h-6 text-indigo-600" />
+            <div className={`w-12 h-12 rounded-full ${headerIconClass} flex items-center justify-center`}>
+              <FaEdit className="w-6 h-6" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900 [.dark_&]:text-white">Edit Project</h2>
@@ -382,7 +385,7 @@ const EditProjectModal = ({
           <button
             type="submit"
             onClick={handleEditSubmit}
-            className="px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+            className={`px-6 py-2.5 text-sm font-semibold text-white ${buttonClass} rounded-lg transition-colors shadow-sm`}
           >
             Update Project
           </button>

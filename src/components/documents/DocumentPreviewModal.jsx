@@ -1,4 +1,5 @@
 import React from "react";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import Button from "../Button";
 import {
   FaChevronLeft,
@@ -24,6 +25,7 @@ function DocumentPreviewModal({
   onNavigate,
   variant = "default",
 }) {
+  const { buttonClass } = useThemeStyles();
   if (!doc) return null;
   const admin = doc.access?.admin || [];
   const member = doc.access?.member || [];
@@ -137,8 +139,8 @@ function DocumentPreviewModal({
                     }
                     disabled={!enablePrev}
                     className={`p-2 rounded-md transition-all ${enablePrev
-                        ? "bg-white [.dark_&]:bg-[#181B2A] hover:bg-indigo-50 [.dark_&]:hover:bg-white/10 text-gray-700 [.dark_&]:text-white hover:text-indigo-600 [.dark_&]:hover:text-white shadow-sm"
-                        : "bg-gray-50 [.dark_&]:bg-white/5 text-gray-300 [.dark_&]:text-gray-600 cursor-not-allowed"
+                      ? "bg-white [.dark_&]:bg-[#181B2A] hover:bg-indigo-50 [.dark_&]:hover:bg-white/10 text-gray-700 [.dark_&]:text-white hover:text-indigo-600 [.dark_&]:hover:text-white shadow-sm"
+                      : "bg-gray-50 [.dark_&]:bg-white/5 text-gray-300 [.dark_&]:text-gray-600 cursor-not-allowed"
                       }`}
                     title="Previous Document"
                   >
@@ -153,8 +155,8 @@ function DocumentPreviewModal({
                     }
                     disabled={!enableNext}
                     className={`p-2 rounded-md transition-all ${enableNext
-                        ? "bg-white [.dark_&]:bg-[#181B2A] hover:bg-indigo-50 [.dark_&]:hover:bg-white/10 text-gray-700 [.dark_&]:text-white hover:text-indigo-600 [.dark_&]:hover:text-white shadow-sm"
-                        : "bg-gray-50 [.dark_&]:bg-white/5 text-gray-300 [.dark_&]:text-gray-600 cursor-not-allowed"
+                      ? "bg-white [.dark_&]:bg-[#181B2A] hover:bg-indigo-50 [.dark_&]:hover:bg-white/10 text-gray-700 [.dark_&]:text-white hover:text-indigo-600 [.dark_&]:hover:text-white shadow-sm"
+                      : "bg-gray-50 [.dark_&]:bg-white/5 text-gray-300 [.dark_&]:text-gray-600 cursor-not-allowed"
                       }`}
                     title="Next Document"
                   >
@@ -365,6 +367,8 @@ function DocumentPreviewModal({
             Cancel
           </Button>
           <Button
+            variant="custom"
+            className={buttonClass}
             onClick={() => {
               if (typeof onSave === "function") {
                 onSave(doc);

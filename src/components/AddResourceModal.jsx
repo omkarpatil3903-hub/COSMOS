@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useTheme } from "../context/ThemeContext";
+import { useThemeStyles } from "../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";
 import {
   FaEye,
@@ -35,56 +35,8 @@ function AddResourceModal({
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [roleOptions, setRoleOptions] = useState([]);
-  const { accent } = useTheme();
 
-  const getIconColor = () => {
-    if (accent === 'black') return 'text-blue-500';
-    switch (accent) {
-      case 'purple': return 'text-purple-500';
-      case 'blue': return 'text-sky-500';
-      case 'pink': return 'text-pink-500';
-      case 'violet': return 'text-violet-500';
-      case 'orange': return 'text-amber-500';
-      case 'teal': return 'text-teal-500';
-      case 'bronze': return 'text-amber-600';
-      case 'mint': return 'text-emerald-500';
-      default: return 'text-indigo-500';
-    }
-  };
-
-  const getButtonClass = () => {
-    if (accent === 'black') return 'bg-blue-600 hover:bg-blue-700 text-white';
-    switch (accent) {
-      case 'purple': return 'bg-purple-600 hover:bg-purple-700 text-white';
-      case 'blue': return 'bg-sky-600 hover:bg-sky-700 text-white';
-      case 'pink': return 'bg-pink-600 hover:bg-pink-700 text-white';
-      case 'violet': return 'bg-violet-600 hover:bg-violet-700 text-white';
-      case 'orange': return 'bg-amber-600 hover:bg-amber-700 text-white';
-      case 'teal': return 'bg-teal-600 hover:bg-teal-700 text-white';
-      case 'bronze': return 'bg-amber-600 hover:bg-amber-700 text-white';
-      case 'mint': return 'bg-emerald-600 hover:bg-emerald-700 text-white';
-      default: return 'bg-indigo-600 hover:bg-indigo-700 text-white';
-    }
-  };
-
-  const getHeaderIconClass = () => {
-    if (accent === 'black') return 'bg-blue-100 text-blue-600 [.dark_&]:bg-blue-500/20 [.dark_&]:text-blue-300';
-    switch (accent) {
-      case 'purple': return 'bg-purple-100 text-purple-600 [.dark_&]:bg-purple-500/20 [.dark_&]:text-purple-300';
-      case 'blue': return 'bg-sky-100 text-sky-600 [.dark_&]:bg-sky-500/20 [.dark_&]:text-sky-300';
-      case 'pink': return 'bg-pink-100 text-pink-600 [.dark_&]:bg-pink-500/20 [.dark_&]:text-pink-300';
-      case 'violet': return 'bg-violet-100 text-violet-600 [.dark_&]:bg-violet-500/20 [.dark_&]:text-violet-300';
-      case 'orange': return 'bg-amber-100 text-amber-600 [.dark_&]:bg-amber-500/20 [.dark_&]:text-amber-300';
-      case 'teal': return 'bg-teal-100 text-teal-600 [.dark_&]:bg-teal-500/20 [.dark_&]:text-teal-300';
-      case 'bronze': return 'bg-amber-100 text-amber-600 [.dark_&]:bg-amber-500/20 [.dark_&]:text-amber-300';
-      case 'mint': return 'bg-emerald-100 text-emerald-600 [.dark_&]:bg-emerald-500/20 [.dark_&]:text-emerald-300';
-      default: return 'bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-500/20 [.dark_&]:text-indigo-300';
-    }
-  };
-
-  const iconColor = getIconColor();
-  const buttonClass = getButtonClass();
-  const headerIconClass = getHeaderIconClass();
+  const { buttonClass, iconColor, headerIconClass } = useThemeStyles();
 
   const emailInUse = (val) =>
     existingEmails.includes((val || "").toLowerCase());
@@ -194,7 +146,7 @@ function AddResourceModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-[#181B2A] bg-gray-50/50 [.dark_&]:bg-[#181B2A] sticky top-0 z-10 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-500/20 [.dark_&]:text-indigo-300 rounded-lg">
+            <div className={`p-2 ${headerIconClass} rounded-lg`}>
               <FaUser className="h-5 w-5" />
             </div>
             <div>
@@ -242,11 +194,11 @@ function AddResourceModal({
                         className="h-24 w-24 object-cover rounded-full border-4 border-white/90 [.dark_&]:border-surface-strong shadow-lg"
                       />
                     ) : (
-                      <div className="h-24 w-24 rounded-full bg-indigo-50 [.dark_&]:bg-indigo-500/10 flex items-center justify-center border-4 border-white/90 [.dark_&]:border-surface-strong shadow-lg text-indigo-200 [.dark_&]:text-indigo-300">
+                      <div className={`h-24 w-24 rounded-full flex items-center justify-center border-4 border-white/90 [.dark_&]:border-surface-strong shadow-lg ${headerIconClass.replace('p-2', '')}`}>
                         <FaCamera className="h-8 w-8" />
                       </div>
                     )}
-                    <label className="absolute bottom-0 right-0 p-2 bg-indigo-600 text-white rounded-full shadow-md cursor-pointer hover:bg-indigo-700 transition-colors">
+                    <label className={`absolute bottom-0 right-0 p-2 text-white rounded-full shadow-md cursor-pointer transition-colors ${buttonClass}`}>
                       <FaCamera className="h-3 w-3" />
                       <input
                         type="file"
@@ -540,6 +492,7 @@ function AddResourceModal({
           </Button>
           <Button
             type="submit"
+            variant="custom"
             onClick={handleSubmit}
             disabled={disableSubmit}
             className={`shadow-lg ${buttonClass}`}

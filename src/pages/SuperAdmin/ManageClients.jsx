@@ -1,5 +1,6 @@
 // src/pages/ManageClients.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import {
   FaSearch,
   FaSortAmountDownAlt,
@@ -52,6 +53,8 @@ const tableHeaders = [
 ];
 
 function ManageClients() {
+  const { buttonClass } = useThemeStyles();
+
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -321,7 +324,7 @@ function ManageClients() {
               <span className="text-sm font-medium text-content-secondary">
                 Showing {filteredClients.length} records
               </span>
-              <Button onClick={() => setShowAddForm(true)}>
+              <Button variant="custom" onClick={() => setShowAddForm(true)} className={`flex items-center justify-center gap-2 ${buttonClass}`}>
                 <FaPlus className="h-4 w-4" /> Add Client
               </Button>
             </div>

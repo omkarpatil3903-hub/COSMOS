@@ -1936,7 +1936,12 @@ function DashboardPage() {
               </div>
 
               {/* Footer stats */}
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+              <div
+                className="mt-6 p-4 rounded-lg"
+                style={{
+                  backgroundColor: mode === 'dark' ? '#1f2937' : '#f9fafb'
+                }}
+              >
                 <div className="text-sm text-content-secondary">
                   <div className="flex justify-between items-center">
                     <span>Total Active Projects:</span>

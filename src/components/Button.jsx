@@ -25,6 +25,8 @@ function Button({
       "text-content-secondary hover:bg-surface-subtle hover:text-content-primary focus-visible:ring-indigo-500",
     danger:
       "bg-red-600 text-white shadow-soft hover:bg-red-700 focus-visible:ring-red-500",
+    custom:
+      "", // No default styles - allows full control via className prop
   };
 
   // Disabled styles
@@ -35,10 +37,8 @@ function Button({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      // This line is now updated to include the external className
-      className={`${baseStyle} ${
-        styles[variant] || styles.primary
-      } ${disabledStyle} ${className}`}
+      // When using custom variant, className should override everything
+      className={`${baseStyle} ${variant === 'custom' ? className : `${styles[variant] || styles.primary} ${className}`}`}
       {...props}
     >
       {children}

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";
 import Button from "../Button";
 import { db } from "../../firebase";
 import { collection, onSnapshot, orderBy, query, where, doc, getDoc } from "firebase/firestore";
 
 function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projectId, canEditAccess = true }) {
+  const { buttonClass } = useThemeStyles();
   const [name, setName] = useState("");
   const [file, setFile] = useState(null);
   const [errors, setErrors] = useState({});
@@ -301,7 +303,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
 
             <div className="flex justify-end gap-3 pt-2">
               <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button type="submit">{initialDoc ? "Save Changes" : "Add Document"}</Button>
+              <Button type="submit" variant="custom" className={buttonClass}>{initialDoc ? "Save Changes" : "Add Document"}</Button>
             </div>
           </form>
         </div>
