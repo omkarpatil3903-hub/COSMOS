@@ -1,9 +1,10 @@
 // src/context/AuthContext.jsx
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useMemo } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import AppLoader from "../components/AppLoader";
+import { getAccessiblePanels } from "../config/roles";
 
 import AuthContext from "./AuthContextBase";
 
@@ -57,7 +58,13 @@ export function AuthProvider({ children }) {
     return () => unsubscribe(); // Cleanup the listener
   }, []);
 
-  const value = { user, userData, loading };
+  // Compute accessible panels based on user's role
+  const accessiblePanels = useMemo(() => {
+    const role = userData?.role?.toLowerCase() || '';
+    return getAccessiblePanels(role);
+  }, [userData?.role]);
+
+  const value = { user, userData, loading, accessiblePanels };
 
   return (
     <AuthContext.Provider value={value}>
@@ -69,3 +76,4 @@ export function AuthProvider({ children }) {
 export const useAuthContext = () => {
   return useContext(AuthContext);
 };
+

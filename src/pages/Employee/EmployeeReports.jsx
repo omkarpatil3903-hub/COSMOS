@@ -272,22 +272,20 @@ TIME:     ${reportData.reportTime}
 ------------------------------------------
              DAILY PROGRESS
 ------------------------------------------
-${
-  tasksCompletedToday.length > 0
-    ? tasksCompletedToday.map((task) => `[x] ${task.title}`).join("\n")
-    : "(No tasks completed today)"
-}
+${tasksCompletedToday.length > 0
+            ? tasksCompletedToday.map((task) => `[x] ${task.title}`).join("\n")
+            : "(No tasks completed today)"
+          }
 
 ------------------------------------------
         PENDING / IN PROGRESS
 ------------------------------------------
-${
-  todayTasks.length > 0
-    ? todayTasks
-        .map((task) => `[ ] ${task.title} (${task.priority}) - ${task.status}`)
-        .join("\n")
-    : "(No pending tasks for today)"
-}
+${todayTasks.length > 0
+            ? todayTasks
+              .map((task) => `[ ] ${task.title} (${task.priority}) - ${task.status}`)
+              .join("\n")
+            : "(No pending tasks for today)"
+          }
 
 ------------------------------------------
                SUMMARY
@@ -298,8 +296,8 @@ ${
 
 ==========================================
 Generated on: ${formatDateToDDMMYYYY(
-          new Date()
-        )} at ${new Date().toLocaleTimeString()}
+            new Date()
+          )} at ${new Date().toLocaleTimeString()}
 ==========================================`;
       } else if (reportType === "Weekly") {
         // Weekly Report Content
@@ -502,15 +500,12 @@ Generated on: ${formatDateToDDMMYYYY(
 
       const filename =
         reportType === "Daily"
-          ? `Daily_Report_${reportData.reportDate.replace(/\//g, "-")}_${
-              reportData.employeeName
-            }.pdf`
+          ? `Daily_Report_${reportData.reportDate.replace(/\//g, "-")}_${reportData.employeeName
+          }.pdf`
           : reportType === "Weekly"
-          ? `Weekly_Report_${reportData.weekNumber.replace(/\s/g, "_")}_${
-              reportData.employeeName
+            ? `Weekly_Report_${reportData.weekNumber.replace(/\s/g, "_")}_${reportData.employeeName
             }.pdf`
-          : `Monthly_Report_${reportData.monthName.replace(/\s/g, "_")}_${
-              reportData.employeeName
+            : `Monthly_Report_${reportData.monthName.replace(/\s/g, "_")}_${reportData.employeeName
             }.pdf`;
 
       const url = URL.createObjectURL(pdfBlob);
@@ -539,20 +534,17 @@ Generated on: ${formatDateToDDMMYYYY(
       reportType === "Daily"
         ? `Daily Report - ${reportData.reportDate}`
         : reportType === "Weekly"
-        ? `Weekly Report - ${reportData.weekNumber}`
-        : `Monthly Report - ${reportData.monthName}`;
+          ? `Weekly Report - ${reportData.weekNumber}`
+          : `Monthly Report - ${reportData.monthName}`;
 
     const filename =
       reportType === "Daily"
-        ? `Daily_Report_${reportData.reportDate.replace(/\//g, "-")}_${
-            reportData.employeeName
-          }.pdf`
+        ? `Daily_Report_${reportData.reportDate.replace(/\//g, "-")}_${reportData.employeeName
+        }.pdf`
         : reportType === "Weekly"
-        ? `Weekly_Report_${reportData.weekNumber.replace(/\s/g, "_")}_${
-            reportData.employeeName
+          ? `Weekly_Report_${reportData.weekNumber.replace(/\s/g, "_")}_${reportData.employeeName
           }.pdf`
-        : `Monthly_Report_${reportData.monthName.replace(/\s/g, "_")}_${
-            reportData.employeeName
+          : `Monthly_Report_${reportData.monthName.replace(/\s/g, "_")}_${reportData.employeeName
           }.pdf`;
 
     try {
@@ -614,8 +606,8 @@ Generated on: ${formatDateToDDMMYYYY(
       reportType === "Daily"
         ? `Daily Report - ${reportData.reportDate} - ${reportData.employeeName}`
         : reportType === "Weekly"
-        ? `Weekly Report - ${reportData.weekNumber} - ${reportData.employeeName}`
-        : `Monthly Report - ${reportData.monthName} - ${reportData.employeeName}`;
+          ? `Weekly Report - ${reportData.weekNumber} - ${reportData.employeeName}`
+          : `Monthly Report - ${reportData.monthName} - ${reportData.employeeName}`;
     const body = encodeURIComponent(reportData.reportContent);
     window.open(`mailto:?subject=${subject}&body=${body}`);
   };
@@ -632,8 +624,8 @@ Generated on: ${formatDateToDDMMYYYY(
         reportType === "Daily"
           ? `employee-report-${reportData.reportDate.replace(/\//g, "-")}.txt`
           : reportType === "Weekly"
-          ? `employee-report-${reportData.weekNumber.replace(/\s/g, "-")}.txt`
-          : `employee-report-${reportData.monthName.replace(/\s/g, "-")}.txt`;
+            ? `employee-report-${reportData.weekNumber.replace(/\s/g, "-")}.txt`
+            : `employee-report-${reportData.monthName.replace(/\s/g, "-")}.txt`;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
@@ -656,8 +648,8 @@ Generated on: ${formatDateToDDMMYYYY(
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600"></div>
-          <p className="mt-2 text-gray-600">Loading reports...</p>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 dark:border-indigo-800 border-t-indigo-600"></div>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Loading reports...</p>
         </div>
       </div>
     );
@@ -685,67 +677,67 @@ Generated on: ${formatDateToDDMMYYYY(
       {/* Overview Stats - Updated Card Style */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Projects Card */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-[#1e1e2d] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-xs font-medium text-gray-500 mb-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Total Projects
               </p>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">
                 {totalProjects}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-              <FaProjectDiagram className="text-blue-500 text-xl" />
+            <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+              <FaProjectDiagram className="text-blue-500 dark:text-blue-400 text-xl" />
             </div>
           </div>
         </div>
 
         {/* Total Tasks Card */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-purple-500 p-4 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-[#1e1e2d] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 border-l-4 border-l-purple-500 p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-xs font-medium text-gray-500 mb-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Total Tasks
               </p>
-              <p className="text-3xl font-bold text-gray-900">{totalTasks}</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">{totalTasks}</p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0">
-              <FaTasks className="text-purple-500 text-xl" />
+            <div className="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center flex-shrink-0">
+              <FaTasks className="text-purple-500 dark:text-purple-400 text-xl" />
             </div>
           </div>
         </div>
 
         {/* Completed Card */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-[#1e1e2d] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-xs font-medium text-gray-500 mb-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Completed
               </p>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">
                 {completedTasks}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
-              <FaCheckCircle className="text-green-500 text-xl" />
+            <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0">
+              <FaCheckCircle className="text-green-500 dark:text-green-400 text-xl" />
             </div>
           </div>
         </div>
 
         {/* Completion Rate Card */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-indigo-500 p-4 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-[#1e1e2d] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 border-l-4 border-l-indigo-500 p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-xs font-medium text-gray-500 mb-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Completion Rate
               </p>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">
                 {taskCompletionRate.toFixed(0)}%
               </p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0">
-              <FaChartBar className="text-indigo-500 text-xl" />
+            <div className="w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center flex-shrink-0">
+              <FaChartBar className="text-indigo-500 dark:text-indigo-400 text-xl" />
             </div>
           </div>
         </div>
@@ -760,12 +752,12 @@ Generated on: ${formatDateToDDMMYYYY(
           <div className="space-y-4">
             <div>
               <div className="flex justify-between text-sm mb-1">
-                <span className="text-gray-600">Overall Progress</span>
-                <span className="font-medium text-gray-900">
+                <span className="text-gray-600 dark:text-gray-400">Overall Progress</span>
+                <span className="font-medium text-gray-900 dark:text-white">
                   {taskCompletionRate.toFixed(1)}%
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                 <div
                   className="bg-indigo-600 h-3 rounded-full transition-all"
                   style={{ width: `${taskCompletionRate}%` }}
@@ -774,49 +766,48 @@ Generated on: ${formatDateToDDMMYYYY(
             </div>
 
             <div className="grid grid-cols-3 gap-2 pt-4">
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <p className="text-xl font-bold text-green-600">
+              <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <p className="text-xl font-bold text-green-600 dark:text-green-400">
                   {completedTasks}
                 </p>
-                <p className="text-xs text-gray-600 mt-1">Done</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Done</p>
               </div>
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <p className="text-xl font-bold text-blue-600">
+              <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
                   {inProgressTasks}
                 </p>
-                <p className="text-xs text-gray-600 mt-1">In Progress</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">In Progress</p>
               </div>
-              <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                <p className="text-xl font-bold text-yellow-600">
+              <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                <p className="text-xl font-bold text-yellow-600 dark:text-yellow-400">
                   {pendingTasks}
                 </p>
-                <p className="text-xs text-gray-600 mt-1">To-Do</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">To-Do</p>
               </div>
             </div>
           </div>
         </Card>
 
         <Card>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Tasks by Priority
           </h3>
           <div className="space-y-4">
             <div>
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-600">High Priority</span>
-                <span className="font-medium text-red-600">
+                <span className="text-gray-600 dark:text-gray-400">High Priority</span>
+                <span className="font-medium text-red-600 dark:text-red-400">
                   {highPriorityTasks} tasks
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                 <div
                   className="bg-red-600 h-2 rounded-full transition-all"
                   style={{
-                    width: `${
-                      totalTasks > 0
-                        ? (highPriorityTasks / totalTasks) * 100
-                        : 0
-                    }%`,
+                    width: `${totalTasks > 0
+                      ? (highPriorityTasks / totalTasks) * 100
+                      : 0
+                      }%`,
                   }}
                 ></div>
               </div>
@@ -824,20 +815,19 @@ Generated on: ${formatDateToDDMMYYYY(
 
             <div>
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-600">Medium Priority</span>
-                <span className="font-medium text-yellow-600">
+                <span className="text-gray-600 dark:text-gray-400">Medium Priority</span>
+                <span className="font-medium text-yellow-600 dark:text-yellow-400">
                   {mediumPriorityTasks} tasks
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                 <div
                   className="bg-yellow-600 h-2 rounded-full transition-all"
                   style={{
-                    width: `${
-                      totalTasks > 0
-                        ? (mediumPriorityTasks / totalTasks) * 100
-                        : 0
-                    }%`,
+                    width: `${totalTasks > 0
+                      ? (mediumPriorityTasks / totalTasks) * 100
+                      : 0
+                      }%`,
                   }}
                 ></div>
               </div>
@@ -845,18 +835,17 @@ Generated on: ${formatDateToDDMMYYYY(
 
             <div>
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-600">Low Priority</span>
-                <span className="font-medium text-green-600">
+                <span className="text-gray-600 dark:text-gray-400">Low Priority</span>
+                <span className="font-medium text-green-600 dark:text-green-400">
                   {lowPriorityTasks} tasks
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                 <div
                   className="bg-green-600 h-2 rounded-full transition-all"
                   style={{
-                    width: `${
-                      totalTasks > 0 ? (lowPriorityTasks / totalTasks) * 100 : 0
-                    }%`,
+                    width: `${totalTasks > 0 ? (lowPriorityTasks / totalTasks) * 100 : 0
+                      }%`,
                   }}
                 ></div>
               </div>
@@ -867,33 +856,33 @@ Generated on: ${formatDateToDDMMYYYY(
 
       {/* Detailed Breakdown */}
       <Card>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Activity Summary
         </h3>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-[#1e1e2d]">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Category
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Total
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Completed
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   In Progress
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Pending
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-[#181b2a] divide-y divide-gray-200 dark:divide-gray-700">
               <tr>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                   Projects
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -910,7 +899,7 @@ Generated on: ${formatDateToDDMMYYYY(
                 </td>
               </tr>
               <tr>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                   Tasks
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -927,7 +916,7 @@ Generated on: ${formatDateToDDMMYYYY(
                 </td>
               </tr>
               <tr>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                   High Priority
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -979,31 +968,28 @@ Generated on: ${formatDateToDDMMYYYY(
                 <div className="flex bg-gray-100 p-1 rounded-lg w-fit">
                   <button
                     onClick={() => setReportType("Daily")}
-                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
-                      reportType === "Daily"
-                        ? "bg-white text-indigo-600 shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${reportType === "Daily"
+                      ? "bg-white text-indigo-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                      }`}
                   >
                     Daily Report
                   </button>
                   <button
                     onClick={() => setReportType("Weekly")}
-                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
-                      reportType === "Weekly"
-                        ? "bg-white text-indigo-600 shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${reportType === "Weekly"
+                      ? "bg-white text-indigo-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                      }`}
                   >
                     Weekly Report
                   </button>
                   <button
                     onClick={() => setReportType("Monthly")}
-                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
-                      reportType === "Monthly"
-                        ? "bg-white text-indigo-600 shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${reportType === "Monthly"
+                      ? "bg-white text-indigo-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                      }`}
                   >
                     Monthly Report
                   </button>
@@ -1250,8 +1236,8 @@ Generated on: ${formatDateToDDMMYYYY(
                         {reportType === "Daily"
                           ? "Obstacles / Challenges"
                           : reportType === "Weekly"
-                          ? "Challenges"
-                          : "Challenges & Risks (One per line)"}
+                            ? "Challenges"
+                            : "Challenges & Risks (One per line)"}
                       </label>
                       {reportType === "Monthly" && (
                         <p className="text-xs text-gray-500 mb-1">
@@ -1819,15 +1805,15 @@ Generated on: ${formatDateToDDMMYYYY(
                                 );
                                 return updated >= sevenDaysAgo;
                               }).length === 0 && (
-                                <tr>
-                                  <td
-                                    className="border border-black p-2 text-center text-gray-500"
-                                    colSpan="3"
-                                  >
-                                    No activity recorded this week
-                                  </td>
-                                </tr>
-                              )}
+                                  <tr>
+                                    <td
+                                      className="border border-black p-2 text-center text-gray-500"
+                                      colSpan="3"
+                                    >
+                                      No activity recorded this week
+                                    </td>
+                                  </tr>
+                                )}
                             </tbody>
                           </table>
                         </div>

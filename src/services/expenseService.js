@@ -10,18 +10,35 @@ import {
   onSnapshot,
   serverTimestamp,
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "../firebase";
 
 const expensesCol = collection(db, "expenses");
 
-export const uploadReceipt = async (file) => {
+/**
+ * Upload receipt to Firebase Storage
+ * @param {File} file - The file to upload
+ * @param {string} employeeId - Employee ID for folder organization
+ * @returns {Promise<string|null>} - Download URL or null
+ */
+export const uploadReceipt = async (file, employeeId = "unknown") => {
   if (!file) return null;
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = (error) => reject(error);
-  });
+
+  try {
+    // Create a unique filename with timestamp
+    const timestamp = Date.now();
+    const safeName = file.name.replace(/[^a-zA-Z0-9.]/g, "_");
+    const filePath = `receipts/${employeeId}/${timestamp}_${safeName}`;
+
+    const storageRef = ref(storage, filePath);
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+
+    return downloadURL;
+  } catch (error) {
+    console.error("Failed to upload receipt to storage:", error);
+    throw error;
+  }
 };
 
 // Employee creates an expense (usually status "Submitted" or "Draft")

@@ -25,7 +25,7 @@ import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import SkeletonRow from "../../components/SkeletonRow";
-import { db } from "../../firebase";
+import { db, auth } from "../../firebase";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 
 import {
@@ -89,7 +89,7 @@ const normalizeStatus = (s) => {
   return "To-Do";
 };
 
-export default function ReportsPage() {
+export default function ReportsPage({ onlyMyManagedProjects = false }) {
   const { mode } = useTheme();
   const { buttonClass } = useThemeStyles();
   // ---------------------------------------------------
@@ -138,6 +138,7 @@ export default function ReportsPage() {
               name: data.projectName || data.name || "Untitled",
               color: data.color || "#6b7280",
               status: data.status || "Active",
+              projectManagerId: data.projectManagerId || "",
               startDate: data.startDate
                 ? data.startDate.toDate().toISOString().slice(0, 10)
                 : null,
@@ -221,8 +222,27 @@ export default function ReportsPage() {
   // ---------------------------------------------------
   // FILTERED TASKS
   // ---------------------------------------------------
+
+  // Get managed project IDs for Manager filtering
+  const managedProjectIds = useMemo(() => {
+    if (!onlyMyManagedProjects) return null;
+    const currentUser = auth.currentUser;
+    return projects
+      .filter(p => p.projectManagerId === currentUser?.uid)
+      .map(p => p.id);
+  }, [projects, onlyMyManagedProjects]);
+
+  // Filter projects for Manager view
+  const filteredProjects = useMemo(() => {
+    if (!managedProjectIds) return projects;
+    return projects.filter(p => managedProjectIds.includes(p.id));
+  }, [projects, managedProjectIds]);
+
   const filteredData = useMemo(() => {
-    const filteredTasks = tasks.filter((t) => {
+    let filteredTasks = tasks.filter((t) => {
+      // Manager project filter
+      if (managedProjectIds && !managedProjectIds.includes(t.projectId)) return false;
+
       const matchProject = !selectedProject || t.projectId === selectedProject;
       const matchEmployee =
         !selectedEmployee ||
@@ -233,7 +253,7 @@ export default function ReportsPage() {
     });
 
     return { tasks: filteredTasks };
-  }, [tasks, selectedProject, selectedEmployee]);
+  }, [tasks, selectedProject, selectedEmployee, managedProjectIds]);
 
   // ---------------------------------------------------
   // STATS CALCULATIONS
@@ -316,10 +336,10 @@ export default function ReportsPage() {
   // Gantt
   // ---------------------------------------------------
   const ganttData = useMemo(() => {
-    if (!projects.length) return [];
+    if (!filteredProjects.length) return [];
 
     // ----- 1. PROJECT PARENTS -----
-    const projectParents = projects.map((p) => {
+    const projectParents = filteredProjects.map((p) => {
       let duration = 1;
 
       if (p.startDate && p.endDate) {
@@ -378,7 +398,7 @@ export default function ReportsPage() {
     });
     console.log("gantt task Data ", taskRows);
     return [...projectParents, ...taskRows];
-  }, [projects, filteredData.tasks]);
+  }, [filteredProjects, filteredData.tasks]);
 
   // ---------------------------------------------------
   // ICON + CARD STYLE MEMOS
@@ -726,7 +746,7 @@ export default function ReportsPage() {
               >
                 <option value="">All Projects</option>
 
-                {projects.map((p) => (
+                {filteredProjects.map((p) => (
                   <option key={p.id} value={p.id} className="truncate">
                     {p.name}
                   </option>

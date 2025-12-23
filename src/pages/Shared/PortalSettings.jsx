@@ -10,7 +10,7 @@ export default function PortalSettings() {
       to: "theme",
       label: "Theme",
       icon: (
-        <span className="inline-flex items-center justify-center rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-1 text-xs text-indigo-600">
+        <span className="inline-flex items-center justify-center rounded-md border border-indigo-200 [.dark_&]:border-indigo-500/30 bg-indigo-50 [.dark_&]:bg-indigo-500/20 px-1.5 py-1 text-xs text-indigo-600 [.dark_&]:text-indigo-400">
           <FaPalette className="h-3.5 w-3.5" />
         </span>
       ),
@@ -19,7 +19,7 @@ export default function PortalSettings() {
       to: "profile",
       label: "Profile",
       icon: (
-        <span className="inline-flex items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-1 text-xs text-emerald-600">
+        <span className="inline-flex items-center justify-center rounded-md border border-emerald-200 [.dark_&]:border-emerald-500/30 bg-emerald-50 [.dark_&]:bg-emerald-500/20 px-1.5 py-1 text-xs text-emerald-600 [.dark_&]:text-emerald-400">
           <FaUserCircle className="h-3.5 w-3.5" />
         </span>
       ),
@@ -27,7 +27,7 @@ export default function PortalSettings() {
   ];
 
   return (
-    <div className="font-sans text-gray-800">
+    <div className="font-sans text-gray-800 [.dark_&]:text-gray-200">
       <PageHeader title="Settings">Manage your theme and profile.</PageHeader>
 
       <div className="space-y-6">
@@ -41,10 +41,9 @@ export default function PortalSettings() {
                       to={t.to}
                       end
                       className={({ isActive }) =>
-                        `flex items-center gap-2 px-4 pb-2 pt-2 text-sm font-medium transition-colors duration-150 border-b-2 ${
-                          isActive
-                            ? "text-gray-900 border-gray-900"
-                            : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                        `flex items-center gap-2 px-4 pb-2 pt-2 text-sm font-medium transition-colors duration-150 border-b-2 ${isActive
+                          ? "text-gray-900 [.dark_&]:text-white border-gray-900 [.dark_&]:border-white"
+                          : "text-gray-500 [.dark_&]:text-gray-400 border-transparent hover:text-gray-700 [.dark_&]:hover:text-gray-200 hover:border-gray-300 [.dark_&]:hover:border-gray-600"
                         }`
                       }
                     >
@@ -71,3 +70,4 @@ export default function PortalSettings() {
     </div>
   );
 }
+

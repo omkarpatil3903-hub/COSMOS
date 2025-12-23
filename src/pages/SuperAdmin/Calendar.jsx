@@ -14,7 +14,7 @@ import {
   FaClock,
   FaTasks,
 } from "react-icons/fa";
-import { db } from "../../firebase";
+import { db, auth } from "../../firebase";
 import {
   TYPE_CLASSES,
   PRIORITY_CLASSES,
@@ -55,7 +55,7 @@ const buildDefaultEventForm = (baseDate = new Date()) => ({
   attendeesText: "",
 });
 
-function Calendar() {
+function Calendar({ onlyMyManagedProjects = false }) {
   const { mode } = useTheme();
   const [events, setEvents] = useState([]);
   const [meetingRequests, setMeetingRequests] = useState([]);
@@ -250,6 +250,21 @@ function Calendar() {
     };
   }, []);
 
+  // Get managed project IDs for Manager filtering
+  const managedProjectIds = useMemo(() => {
+    if (!onlyMyManagedProjects) return null;
+    const currentUser = auth.currentUser;
+    return projects
+      .filter(p => p.projectManagerId === currentUser?.uid)
+      .map(p => p.id);
+  }, [projects, onlyMyManagedProjects]);
+
+  // Filter projects for Manager view
+  const filteredProjects = useMemo(() => {
+    if (!managedProjectIds) return projects;
+    return projects.filter(p => managedProjectIds.includes(p.id));
+  }, [projects, managedProjectIds]);
+
   // Combine events and tasks with dueDate, expanding recurring tasks within the visible month
   const allEvents = useMemo(() => {
     const eventList = [...events];
@@ -257,6 +272,9 @@ function Calendar() {
     // Add tasks with dueDate as events
     tasks.forEach((task) => {
       if (!task.dueDate || task.archived) return;
+
+      // Skip tasks not in managed projects (for Manager view)
+      if (managedProjectIds && !managedProjectIds.includes(task.projectId)) return;
 
       // Determine the visible month range based on currentDate
       const monthStart = new Date(
@@ -344,7 +362,7 @@ function Calendar() {
       "tasks)"
     );
     return eventList;
-  }, [events, tasks, clients, currentDate]);
+  }, [events, tasks, clients, currentDate, managedProjectIds]);
 
   const upcomingEvents = useMemo(() => {
     const now = new Date();
@@ -925,7 +943,7 @@ function Calendar() {
             onFilterProjectChange={setFilterProject}
             filterEmployee={filterEmployee}
             onFilterEmployeeChange={setFilterEmployee}
-            projects={projects}
+            projects={filteredProjects}
             resources={resources}
             onAddEvent={() => openEventModal(null)}
             onAddTask={openTaskModal}

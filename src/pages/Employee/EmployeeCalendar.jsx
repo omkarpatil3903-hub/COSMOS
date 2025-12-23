@@ -290,7 +290,7 @@ const EmployeeCalendar = () => {
       days.push(
         <div
           key={`empty-${i}`}
-          className="h-28 border border-gray-100 bg-gray-50"
+          className="h-28 border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900"
         />
       );
     }
@@ -310,29 +310,25 @@ const EmployeeCalendar = () => {
       days.push(
         <div
           key={day}
-          className={`h-28 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 ${
-            isPast
-              ? "bg-gray-50 hover:bg-gray-100 opacity-60"
-              : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
-          } ${
-            isToday
-              ? "bg-gradient-to-br from-blue-100 to-blue-50 border-blue-400 border-2 opacity-100 ring-2 ring-blue-200"
+          className={`h-28 border border-gray-200 dark:border-gray-700 p-2 cursor-pointer relative transition-all duration-200 ${isPast
+            ? "bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 opacity-60"
+            : "dark:bg-[#1e1e2d] hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-inner hover:border-blue-300"
+            } ${isToday
+              ? "bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/40 dark:to-blue-900/20 border-blue-400 border-2 opacity-100 ring-2 ring-blue-200 dark:ring-blue-800"
               : ""
-          } ${
-            isSelected
-              ? "bg-gradient-to-br from-indigo-100 to-indigo-50 border-indigo-400 border-2 opacity-100 ring-2 ring-indigo-200"
+            } ${isSelected
+              ? "bg-gradient-to-br from-indigo-100 to-indigo-50 dark:from-indigo-900/40 dark:to-indigo-900/20 border-indigo-400 border-2 opacity-100 ring-2 ring-indigo-200 dark:ring-indigo-800"
               : ""
-          }`}
+            }`}
           onClick={() => setSelectedDate(date)}
         >
           <div
-            className={`text-sm font-bold mb-1 ${
-              isPast && !isToday
-                ? "text-gray-400"
-                : isToday
-                ? "text-blue-700 text-base"
-                : "text-gray-800"
-            } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
+            className={`text-sm font-bold mb-1 ${isPast && !isToday
+              ? "text-gray-400"
+              : isToday
+                ? "text-blue-700 dark:text-blue-400 text-base"
+                : "text-gray-800 dark:text-gray-200"
+              } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
           >
             {day}
           </div>
@@ -343,8 +339,8 @@ const EmployeeCalendar = () => {
               const typeKey = isEvent
                 ? String(item.type || "meeting").toLowerCase()
                 : item.isRecurring
-                ? "recurring"
-                : "task";
+                  ? "recurring"
+                  : "task";
               const priorityKey = String(
                 item.priority || "medium"
               ).toLowerCase();
@@ -356,9 +352,8 @@ const EmployeeCalendar = () => {
               return (
                 <div
                   key={item.id}
-                  className={`text-xs p-1.5 rounded-md ${
-                    isPast ? "bg-gray-200 text-gray-500" : typeBadge
-                  } truncate relative shadow-sm hover:shadow-md transition-shadow cursor-pointer`}
+                  className={`text-xs p-1.5 rounded-md ${isPast ? "bg-gray-200 text-gray-500" : typeBadge
+                    } truncate relative shadow-sm hover:shadow-md transition-shadow cursor-pointer`}
                   title={item.title}
                 >
                   {/* Priority strip on the left -- hidden for meetings */}
@@ -382,7 +377,7 @@ const EmployeeCalendar = () => {
               );
             })}
             {dayItems.length > 2 && (
-              <div className="text-xs text-gray-600 font-semibold bg-gray-100 rounded px-2 py-1 text-center hover:bg-gray-200 transition-colors cursor-pointer">
+              <div className="text-xs text-gray-600 dark:text-gray-300 font-semibold bg-gray-100 dark:bg-gray-800 rounded px-2 py-1 text-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer">
                 +{dayItems.length - 2} more
               </div>
             )}
@@ -504,8 +499,8 @@ const EmployeeCalendar = () => {
           <Card className="p-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="h-10 w-64 bg-gray-200 animate-pulse rounded" />
-                <div className="h-10 w-20 bg-gray-200 animate-pulse rounded" />
+                <div className="h-10 w-64 bg-gray-200 dark:bg-white/10 animate-pulse rounded" />
+                <div className="h-10 w-20 bg-gray-200 dark:bg-white/10 animate-pulse rounded" />
               </div>
             </div>
           </Card>
@@ -514,7 +509,7 @@ const EmployeeCalendar = () => {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
               <Card key={i} className="border-l-4">
-                <div className="h-20 bg-gray-200 animate-pulse rounded" />
+                <div className="h-20 bg-gray-200 dark:bg-white/10 animate-pulse rounded" />
               </Card>
             ))}
           </div>
@@ -526,15 +521,15 @@ const EmployeeCalendar = () => {
                 {Array.from({ length: 35 }).map((_, i) => (
                   <div
                     key={i}
-                    className="h-24 bg-gray-200 animate-pulse rounded"
+                    className="h-24 bg-gray-200 dark:bg-white/10 animate-pulse rounded"
                   />
                 ))}
               </div>
             </Card>
             <Card className="p-4">
               <div className="space-y-3">
-                <div className="h-6 bg-gray-200 animate-pulse rounded" />
-                <div className="h-32 bg-gray-200 animate-pulse rounded" />
+                <div className="h-6 bg-gray-200 dark:bg-white/10 animate-pulse rounded" />
+                <div className="h-32 bg-gray-200 dark:bg-white/10 animate-pulse rounded" />
               </div>
             </Card>
           </div>
@@ -557,17 +552,17 @@ const EmployeeCalendar = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => navigateMonth(-1)}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300"
                 >
                   <FaChevronLeft />
                 </button>
-                <h2 className="text-lg font-semibold min-w-[200px] text-center">
+                <h2 className="text-lg font-semibold min-w-[200px] text-center dark:text-white">
                   {monthNames[currentDate.getMonth()]}{" "}
                   {currentDate.getFullYear()}
                 </h2>
                 <button
                   onClick={() => navigateMonth(1)}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300"
                 >
                   <FaChevronRight />
                 </button>
@@ -588,7 +583,7 @@ const EmployeeCalendar = () => {
                   setFilterType(e.target.value);
                   setFilterStatus("all");
                 }}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
                 <option value="all">All Items</option>
                 <option value="meetings">Meetings</option>
@@ -598,7 +593,7 @@ const EmployeeCalendar = () => {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
                 <option value="all">All Status</option>
                 {filterType === "meetings" && (
@@ -692,7 +687,7 @@ const EmployeeCalendar = () => {
               ].map((day) => (
                 <div
                   key={day}
-                  className="p-3 text-center font-semibold text-gray-700 border-b border-gray-200"
+                  className="p-3 text-center font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700"
                 >
                   {day.slice(0, 3)}
                 </div>
@@ -700,20 +695,20 @@ const EmployeeCalendar = () => {
             </div>
 
             {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded overflow-hidden">
+            <div className="grid grid-cols-7 gap-0 border border-gray-200 dark:border-gray-700 rounded overflow-hidden">
               {renderCalendarDays()}
             </div>
           </Card>
 
           {/* Task Details Sidebar */}
           <Card className="p-4">
-            <h3 className="font-semibold text-lg mb-4 border-b pb-2">
+            <h3 className="font-semibold text-lg mb-4 border-b dark:border-gray-700 pb-2 dark:text-white">
               {selectedDate
                 ? selectedDate.toLocaleDateString("en-US", {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                  })
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                })
                 : "Select a date"}
             </h3>
 
@@ -721,10 +716,10 @@ const EmployeeCalendar = () => {
               <div className="space-y-3 max-h-[600px] overflow-y-auto">
                 {getItemsForDate(selectedDate).length === 0 ? (
                   <div className="text-center py-8">
-                    <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
+                    <div className="bg-gray-100 dark:bg-gray-800 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3">
                       <FaCalendarAlt className="text-gray-400 text-2xl" />
                     </div>
-                    <p className="text-gray-500 text-sm font-medium">
+                    <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
                       No items on this date
                     </p>
                     <p className="text-gray-400 text-xs mt-1">
@@ -750,8 +745,8 @@ const EmployeeCalendar = () => {
                       const displayLabel = isAdminCreated
                         ? "by admin"
                         : item.status
-                        ? item.status.replace(/\b\w/g, (ch) => ch.toUpperCase())
-                        : "Pending";
+                          ? item.status.replace(/\b\w/g, (ch) => ch.toUpperCase())
+                          : "Pending";
                       const displayClass = isAdminCreated
                         ? "bg-blue-100 text-blue-700"
                         : statusClass;
@@ -866,19 +861,18 @@ const EmployeeCalendar = () => {
                             Due Date:{" "}
                             {item.dueDate
                               ? new Date(
-                                  item.dueDate?.toDate?.() || item.dueDate
-                                ).toLocaleDateString()
+                                item.dueDate?.toDate?.() || item.dueDate
+                              ).toLocaleDateString()
                               : "No due date"}
                           </div>
                           {item.priority && (
                             <div>
                               Priority:{" "}
                               <span
-                                className={`inline-block ml-1 px-2 py-0.5 rounded ${
-                                  PRIORITY_CLASSES[
-                                    String(item.priority).toLowerCase()
-                                  ]?.badge || "bg-gray-100 text-gray-700"
-                                }`}
+                                className={`inline-block ml-1 px-2 py-0.5 rounded ${PRIORITY_CLASSES[
+                                  String(item.priority).toLowerCase()
+                                ]?.badge || "bg-gray-100 text-gray-700"
+                                  }`}
                               >
                                 {item.priority}
                               </span>
@@ -920,7 +914,7 @@ const EmployeeCalendar = () => {
                               Assigned:{" "}
                               {new Date(
                                 item.assignedDate?.toDate?.() ||
-                                  item.assignedDate
+                                item.assignedDate
                               ).toLocaleDateString()}
                             </div>
                           )}
@@ -972,9 +966,8 @@ const EmployeeCalendar = () => {
           {/* Main Floating Button */}
           <button
             onClick={() => setShowFloatingMenu(!showFloatingMenu)}
-            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${
-              showFloatingMenu ? "rotate-45" : ""
-            }`}
+            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${showFloatingMenu ? "rotate-45" : ""
+              }`}
             title="Add Task"
           >
             <FaPlus className="text-xl group-hover:scale-110 transition-transform" />

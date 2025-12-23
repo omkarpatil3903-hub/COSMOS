@@ -17,6 +17,8 @@ import {
   FaFileInvoice,
   FaCalendarAlt,
   FaProjectDiagram,
+  FaChevronLeft,
+  FaChevronRight,
 } from "react-icons/fa";
 import {
   subscribeToEmployeeExpenses,
@@ -29,14 +31,7 @@ import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import toast from "react-hot-toast";
 import VoiceInput from "../../components/Common/VoiceInput";
-
-const statusColors = {
-  Draft: "bg-gray-100 text-gray-700",
-  Submitted: "bg-blue-100 text-blue-700",
-  Approved: "bg-emerald-100 text-emerald-700",
-  Rejected: "bg-red-100 text-red-700",
-  Paid: "bg-purple-100 text-purple-700",
-};
+import { EXPENSE_CATEGORIES, getStatusColorClass } from "../../config/expenseConfig";
 
 const EmployeeExpenses = () => {
   const { user } = useAuthContext();
@@ -53,6 +48,8 @@ const EmployeeExpenses = () => {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
 
   const [form, setForm] = useState({
     title: "",
@@ -147,12 +144,23 @@ const EmployeeExpenses = () => {
     });
   }, [expenses, statusFilter, categoryFilter, fromDate, toDate, searchQuery]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, categoryFilter, fromDate, toDate, searchQuery]);
+
   const stats = useMemo(() => {
     const total = expenses.length;
     const submitted = expenses.filter((e) => e.status === "Submitted").length;
     const approved = expenses.filter((e) => e.status === "Approved").length;
     const paid = expenses.filter((e) => e.status === "Paid").length;
-    return { total, submitted, approved, paid };
+    const approvedAmount = expenses
+      .filter((e) => e.status === "Approved")
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const totalAmount = expenses
+      .filter((e) => e.status === "Paid")
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    return { total, submitted, approved, paid, approvedAmount, totalAmount };
   }, [expenses]);
 
   const handleChange = (field, value) => {
@@ -223,7 +231,7 @@ const EmployeeExpenses = () => {
     try {
       let receiptUrl = null;
       if (form.receipt) {
-        receiptUrl = await uploadReceipt(form.receipt);
+        receiptUrl = await uploadReceipt(form.receipt, user.uid);
       }
 
       const selectedProject = assignedProjects.find(
@@ -252,7 +260,11 @@ const EmployeeExpenses = () => {
 
       if (editingId) {
         await updateExpense(editingId, payload);
-        toast.success(status === "Draft" ? "Draft updated" : "Expense updated");
+        if (form.status === "Rejected" && status === "Submitted") {
+          toast.success("Expense resubmitted for approval");
+        } else {
+          toast.success(status === "Draft" ? "Draft updated" : "Expense updated");
+        }
       } else {
         await createExpense({ ...payload, receiptUrl });
         toast.success(
@@ -292,7 +304,8 @@ const EmployeeExpenses = () => {
         />
         <StatCard
           label="Approved"
-          value={stats.approved}
+          value={`₹${stats.approvedAmount?.toFixed(2) || "0.00"}`}
+          subValue={`${stats.approved} claim${stats.approved !== 1 ? "s" : ""}`}
           icon={<FaMoneyCheckAlt className="h-5 w-5" />}
           color="green"
         />
@@ -379,22 +392,22 @@ const EmployeeExpenses = () => {
       <Card>
         {loading ? (
           <div className="py-12 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 mb-4 animate-pulse">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 mb-4 animate-pulse">
               <FaMoneyBillWave className="text-xl" />
             </div>
-            <p className="text-gray-500 font-medium">
+            <p className="text-gray-500 dark:text-gray-400 font-medium">
               Loading your expenses...
             </p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="py-16 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 text-gray-400 mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 dark:bg-gray-800 text-gray-400 mb-4">
               <FaFileInvoice className="text-3xl" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               No expenses found
             </h3>
-            <p className="text-gray-500 mt-1 max-w-sm mx-auto">
+            <p className="text-gray-500 dark:text-gray-400 mt-1 max-w-sm mx-auto">
               You haven't submitted any expenses matching your filters yet.
             </p>
             <Button
@@ -408,55 +421,55 @@ const EmployeeExpenses = () => {
             </Button>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-[#1e1e2d]">
                 <tr>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
                     Date
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
                     Expense Details
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
                     Project
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
                     Category
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
                     Amount
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
                     Status
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filtered.map((e) => (
+              <tbody className="bg-white dark:bg-[#181b2a] divide-y divide-gray-200 dark:divide-gray-700">
+                {filtered.slice((page - 1) * pageSize, page * pageSize).map((e) => (
                   <tr
                     key={e.id}
-                    className="hover:bg-gray-50 transition-colors group"
+                    className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       <div className="flex items-center gap-2">
                         <FaCalendarAlt className="text-gray-400" />
                         {e.date || "-"}
@@ -464,11 +477,11 @@ const EmployeeExpenses = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                           {e.title}
                         </span>
                         {e.description && (
-                          <span className="text-xs text-gray-500 line-clamp-1 mt-0.5">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
                             {e.description}
                           </span>
                         )}
@@ -476,8 +489,8 @@ const EmployeeExpenses = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {e.projectName ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
-                          <FaProjectDiagram className="text-[10px] text-indigo-500" />
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
+                          <FaProjectDiagram className="text-[10px] text-indigo-500 dark:text-indigo-400" />
                           {e.projectName}
                         </span>
                       ) : (
@@ -487,15 +500,15 @@ const EmployeeExpenses = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-                        <FaTag className="text-[10px] text-gray-500" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+                        <FaTag className="text-[10px] text-gray-500 dark:text-gray-400" />
                         {e.category || "Other"}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="text-sm font-bold text-gray-900">
+                      <div className="text-sm font-bold text-gray-900 dark:text-white">
                         {e.amount?.toFixed ? e.amount.toFixed(2) : e.amount}
-                        <span className="text-xs font-medium text-gray-500 ml-1">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1">
                           {e.currency || "INR"}
                         </span>
                       </div>
@@ -503,20 +516,18 @@ const EmployeeExpenses = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex flex-col items-center gap-2">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[e.status] ||
-                            "bg-gray-100 text-gray-800"
-                            }`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(e.status, false)}`}
                         >
                           {e.status || "Unknown"}
                         </span>
 
-                        {e.status === "Draft" && (
+                        {(e.status === "Draft" || e.status === "Rejected") && (
                           <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => handleEdit(e)}
                               className="text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
                             >
-                              Edit
+                              {e.status === "Rejected" ? "Edit & Resubmit" : "Edit"}
                             </button>
                             <span className="text-gray-300">|</span>
                             <button
@@ -526,6 +537,11 @@ const EmployeeExpenses = () => {
                               Delete
                             </button>
                           </div>
+                        )}
+                        {e.status === "Rejected" && e.rejectionReason && (
+                          <p className="text-xs text-red-500 mt-1 max-w-[150px] truncate" title={e.rejectionReason}>
+                            Reason: {e.rejectionReason}
+                          </p>
                         )}
                       </div>
                     </td>
@@ -537,15 +553,63 @@ const EmployeeExpenses = () => {
         )}
       </Card>
 
+      {/* Pagination */}
+      {!loading && filtered.length > 0 && (
+        <div className="flex items-center justify-between bg-white dark:bg-[#1e1e2d] px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+          <div className="flex flex-1 justify-between sm:hidden">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="relative inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(Math.ceil(filtered.length / pageSize), p + 1))}
+              disabled={page >= Math.ceil(filtered.length / pageSize)}
+              className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              Showing <span className="font-medium">{Math.min((page - 1) * pageSize + 1, filtered.length)}</span> to{" "}
+              <span className="font-medium">{Math.min(page * pageSize, filtered.length)}</span> of{" "}
+              <span className="font-medium">{filtered.length}</span> results
+            </p>
+            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                <FaChevronLeft className="h-3 w-3" />
+              </button>
+              <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 dark:text-white ring-1 ring-inset ring-gray-300 dark:ring-gray-600">
+                {page} / {Math.ceil(filtered.length / pageSize) || 1}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(Math.ceil(filtered.length / pageSize), p + 1))}
+                disabled={page >= Math.ceil(filtered.length / pageSize)}
+                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                <FaChevronRight className="h-3 w-3" />
+              </button>
+            </nav>
+          </div>
+        </div>
+      )}
+
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-white/20 overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-white/80 backdrop-blur-md">
+          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-[#1e1e2d] shadow-2xl border border-white/20 dark:border-gray-700 overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 px-6 py-4 bg-white/80 dark:bg-[#1e1e2d] backdrop-blur-md">
               <div>
-                <h2 className="text-lg font-bold text-gray-800">
+                <h2 className="text-lg font-bold text-gray-800 dark:text-white">
                   {editingId ? "Edit Expense" : "New Expense"}
                 </h2>
-                <p className="text-xs text-gray-500 font-medium mt-0.5">
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">
                   {editingId
                     ? "Update expense details"
                     : "Submit a new reimbursement claim"}
@@ -553,7 +617,7 @@ const EmployeeExpenses = () => {
               </div>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors text-gray-400 hover:text-gray-600 dark:hover:text-white"
               >
                 <FaTimes className="text-lg" />
               </button>
@@ -562,7 +626,7 @@ const EmployeeExpenses = () => {
             <div className="px-6 py-6 space-y-5 overflow-y-auto custom-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
                     Title
                   </label>
                   <div className="relative">
@@ -573,7 +637,7 @@ const EmployeeExpenses = () => {
                       value={form.title}
                       onChange={(e) => handleChange("title", e.target.value)}
                       placeholder="e.g. Client Lunch"
-                      className="w-full rounded-xl border-0 bg-gray-50 py-2.5 pl-10 pr-3 text-sm font-medium text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all"
+                      className="w-full rounded-xl border-0 bg-gray-50 dark:bg-gray-800 py-2.5 pl-10 pr-3 text-sm font-medium text-gray-900 dark:text-white ring-1 ring-inset ring-gray-200 dark:ring-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all"
                     />
                   </div>
                   {errors.title && (
@@ -583,7 +647,7 @@ const EmployeeExpenses = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
                     Date
                   </label>
                   <div className="relative">
@@ -591,7 +655,7 @@ const EmployeeExpenses = () => {
                       type="date"
                       value={form.date}
                       onChange={(e) => handleChange("date", e.target.value)}
-                      className="w-full rounded-xl border-0 bg-gray-50 py-2.5 px-3 text-sm font-medium text-gray-900 ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all"
+                      className="w-full rounded-xl border-0 bg-gray-50 dark:bg-gray-800 py-2.5 px-3 text-sm font-medium text-gray-900 dark:text-white ring-1 ring-inset ring-gray-200 dark:ring-gray-700 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all"
                     />
                   </div>
                   {errors.date && (
@@ -604,7 +668,7 @@ const EmployeeExpenses = () => {
 
               {/* Project Dropdown - New Field */}
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
                   Project (Optional)
                 </label>
                 <div className="relative">
@@ -614,7 +678,7 @@ const EmployeeExpenses = () => {
                   <select
                     value={form.projectId}
                     onChange={(e) => handleChange("projectId", e.target.value)}
-                    className="w-full rounded-xl border-0 bg-gray-50 py-2.5 pl-10 pr-3 text-sm font-medium text-gray-900 ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all appearance-none"
+                    className="w-full rounded-xl border-0 bg-gray-50 dark:bg-gray-800 py-2.5 pl-10 pr-3 text-sm font-medium text-gray-900 dark:text-white ring-1 ring-inset ring-gray-200 dark:ring-gray-700 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all appearance-none"
                   >
                     <option value="">Select Project</option>
                     {assignedProjects.map((project) => (
@@ -625,7 +689,7 @@ const EmployeeExpenses = () => {
                       </option>
                     ))}
                   </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500">
+                  <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500 dark:text-gray-400">
                     <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
                       <path
                         d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
@@ -636,7 +700,7 @@ const EmployeeExpenses = () => {
                   </div>
                 </div>
                 {assignedProjects.length === 0 && (
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                     No projects assigned to you yet
                   </p>
                 )}
@@ -644,14 +708,14 @@ const EmployeeExpenses = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
                     Category
                   </label>
                   <div className="relative">
                     <select
                       value={form.category}
                       onChange={(e) => handleChange("category", e.target.value)}
-                      className="w-full rounded-xl border-0 bg-gray-50 py-2.5 px-3 text-sm font-medium text-gray-900 ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all appearance-none"
+                      className="w-full rounded-xl border-0 bg-gray-50 dark:bg-gray-800 py-2.5 px-3 text-sm font-medium text-gray-900 dark:text-white ring-1 ring-inset ring-gray-200 dark:ring-gray-700 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all appearance-none"
                     >
                       <option>Travel</option>
                       <option>Food</option>
@@ -659,7 +723,7 @@ const EmployeeExpenses = () => {
                       <option>Office</option>
                       <option>Other</option>
                     </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500">
+                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500 dark:text-gray-400">
                       <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
                         <path
                           d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
@@ -672,7 +736,7 @@ const EmployeeExpenses = () => {
                 </div>
                 <div className="grid grid-cols-[1fr_auto] gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
                       Amount
                     </label>
                     <div className="relative">
@@ -684,7 +748,7 @@ const EmployeeExpenses = () => {
                         value={form.amount}
                         onChange={(e) => handleChange("amount", e.target.value)}
                         placeholder="0.00"
-                        className="w-full rounded-xl border-0 bg-gray-50 py-2.5 pl-10 pr-3 text-sm font-medium text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all"
+                        className="w-full rounded-xl border-0 bg-gray-50 dark:bg-gray-800 py-2.5 pl-10 pr-3 text-sm font-medium text-gray-900 dark:text-white ring-1 ring-inset ring-gray-200 dark:ring-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all"
                       />
                     </div>
                     {errors.amount && (
@@ -694,10 +758,10 @@ const EmployeeExpenses = () => {
                     )}
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                    <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
                       Currency
                     </label>
-                    <div className="w-20 rounded-xl border-0 bg-gray-100 py-2.5 px-3 text-sm font-bold text-gray-500 ring-1 ring-inset ring-gray-200 text-center cursor-not-allowed select-none">
+                    <div className="w-20 rounded-xl border-0 bg-gray-100 dark:bg-gray-700 py-2.5 px-3 text-sm font-bold text-gray-500 dark:text-gray-300 ring-1 ring-inset ring-gray-200 dark:ring-gray-600 text-center cursor-not-allowed select-none">
                       INR
                     </div>
                   </div>
@@ -705,7 +769,7 @@ const EmployeeExpenses = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
                   Description
                 </label>
                 <VoiceInput
@@ -714,21 +778,21 @@ const EmployeeExpenses = () => {
                   value={form.description}
                   onChange={(e) => handleChange("description", e.target.value)}
                   placeholder="Describe the expense details..."
-                  className="w-full rounded-xl border-0 bg-gray-50 py-3 px-4 text-sm font-medium text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all resize-none"
+                  className="w-full rounded-xl border-0 bg-gray-50 dark:bg-gray-800 py-3 px-4 text-sm font-medium text-gray-900 dark:text-white ring-1 ring-inset ring-gray-200 dark:ring-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all resize-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wide">
                   Receipt (Optional)
                 </label>
-                <div className="mt-1 flex justify-center rounded-xl border border-dashed border-gray-300 px-6 py-4 hover:bg-gray-50 transition-colors bg-white">
+                <div className="mt-1 flex justify-center rounded-xl border border-dashed border-gray-300 dark:border-gray-600 px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors bg-white dark:bg-gray-800">
                   <div className="text-center">
-                    <FaFileUpload className="mx-auto h-8 w-8 text-gray-300" />
-                    <div className="mt-2 flex text-sm leading-6 text-gray-600 justify-center">
+                    <FaFileUpload className="mx-auto h-8 w-8 text-gray-300 dark:text-gray-500" />
+                    <div className="mt-2 flex text-sm leading-6 text-gray-600 dark:text-gray-300 justify-center">
                       <label
                         htmlFor="file-upload"
-                        className="relative cursor-pointer rounded-md bg-white font-semibold text-indigo-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2 hover:text-indigo-500"
+                        className="relative cursor-pointer rounded-md bg-white dark:bg-transparent font-semibold text-indigo-600 dark:text-indigo-400 focus-within:outline-none focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2 hover:text-indigo-500"
                       >
                         <span>Upload a file</span>
                         <input
@@ -744,7 +808,7 @@ const EmployeeExpenses = () => {
                       </label>
                       <p className="pl-1">or drag and drop</p>
                     </div>
-                    <p className="text-xs leading-5 text-gray-500">
+                    <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">
                       {form.receipt
                         ? form.receipt.name
                         : "PNG, JPG, PDF up to 1MB"}
@@ -754,12 +818,12 @@ const EmployeeExpenses = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4 bg-gray-50/50">
+            <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 px-6 py-4 bg-gray-50/50 dark:bg-[#181b2a]">
               <Button
                 variant="secondary"
                 disabled={saving}
                 onClick={() => handleSubmit("Draft")}
-                className="bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 shadow-sm"
+                className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 shadow-sm"
               >
                 {editingId ? "Update Draft" : "Save as Draft"}
               </Button>
@@ -768,14 +832,14 @@ const EmployeeExpenses = () => {
                   variant="ghost"
                   onClick={() => setShowModal(false)}
                   disabled={saving}
-                  className="text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={() => handleSubmit("Submitted")}
                   disabled={saving}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 dark:shadow-none"
                 >
                   {saving ? "Saving..." : "Submit Expense"}
                 </Button>

@@ -19,6 +19,7 @@ import {
 import { FaFileAlt } from "react-icons/fa";
 import { useAuthContext } from "../../context/useAuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import PanelSwitcher from "../PanelSwitcher";
 
 // Reusable sidebar link component matching admin panel exactly
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
@@ -37,32 +38,31 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
       if (to.includes('settings')) return 'text-pink-400';
       return 'text-indigo-400'; // Default color
     }
-    
+
     // For non-black themes, use the accent color
     return accent === "purple"
       ? "text-purple-400"
       : accent === "blue"
-      ? "text-sky-400"
-      : accent === "pink"
-      ? "text-pink-400"
-      : accent === "violet"
-      ? "text-violet-400"
-      : accent === "orange"
-      ? "text-amber-400"
-      : accent === "teal"
-      ? "text-teal-400"
-      : accent === "bronze"
-      ? "text-amber-500"
-      : accent === "mint"
-      ? "text-emerald-400"
-      : "text-indigo-400";
+        ? "text-sky-400"
+        : accent === "pink"
+          ? "text-pink-400"
+          : accent === "violet"
+            ? "text-violet-400"
+            : accent === "orange"
+              ? "text-amber-400"
+              : accent === "teal"
+                ? "text-teal-400"
+                : accent === "bronze"
+                  ? "text-amber-500"
+                  : accent === "mint"
+                    ? "text-emerald-400"
+                    : "text-indigo-400";
   };
-  
+
   const iconColor = getIconColor(to);
 
-  const baseClasses = `group flex items-center ${
-    isCollapsed ? "justify-center px-2" : "gap-3 px-3"
-  } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
+  const baseClasses = `group flex items-center ${isCollapsed ? "justify-center px-2" : "gap-3 px-3"
+    } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
   const activeClasses =
     "border-subtle bg-surface-strong text-content-primary shadow-soft";
   const inactiveClasses =
@@ -81,11 +81,10 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
       {({ isActive }) => (
         <>
           <span
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
-              isActive
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${isActive
                 ? `${accent === 'black' ? 'bg-black/20 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-surface'} ${iconColor}`
                 : `${iconColor} bg-transparent ${accent === 'black' ? 'opacity-80 hover:opacity-100 hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : ''}`
-            }`}
+              }`}
           >
             {icon}
           </span>
@@ -196,9 +195,8 @@ function EmployeeLayout() {
       </a>
       <Toaster position="top-right" />
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${
-          isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
-        } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"}`}
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
+          } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"}`}
         aria-label="Primary"
       >
         <div className="flex items-center justify-between gap-4">
@@ -248,9 +246,8 @@ function EmployeeLayout() {
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <FaChevronLeft
-              className={`h-4 w-4 transition-transform duration-300 ${
-                isCollapsed ? "rotate-180" : ""
-              }`}
+              className={`h-4 w-4 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""
+                }`}
               aria-hidden="true"
             />
           </button>
@@ -265,7 +262,12 @@ function EmployeeLayout() {
           </button>
         </div>
 
-        <nav className="mt-8 flex flex-1 flex-col gap-1">
+        {/* Panel Switcher for role hierarchy access */}
+        <div className="mt-4 shrink-0">
+          <PanelSwitcher isCollapsed={isCollapsed} />
+        </div>
+
+        <nav className="mt-4 flex flex-1 flex-col gap-1">
           {navigationItems.map((item) => (
             <SidebarLink
               key={item.to}

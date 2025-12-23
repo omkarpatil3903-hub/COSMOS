@@ -149,7 +149,7 @@ const EmployeeProjects = () => {
   useEffect(() => {
     // Cleanup previous project listeners
     projectUnsubsRef.current.forEach((fn) => {
-      try { typeof fn === "function" && fn(); } catch {}
+      try { typeof fn === "function" && fn(); } catch { }
     });
     projectUnsubsRef.current = [];
 
@@ -182,7 +182,7 @@ const EmployeeProjects = () => {
 
     return () => {
       projectUnsubsRef.current.forEach((fn) => {
-        try { typeof fn === "function" && fn(); } catch {}
+        try { typeof fn === "function" && fn(); } catch { }
       });
       projectUnsubsRef.current = [];
     };
@@ -277,7 +277,7 @@ const EmployeeProjects = () => {
           {[1, 2].map((i) => (
             <div
               key={i}
-              className="h-40 bg-gray-200 animate-pulse rounded-lg"
+              className="h-40 bg-gray-200 dark:bg-white/10 animate-pulse rounded-lg"
             />
           ))}
         </div>
@@ -305,74 +305,74 @@ const EmployeeProjects = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Projects Card */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-[#1e1e2d] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-xs font-medium text-gray-500 mb-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Total Projects
               </p>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">
                 {totalProjects}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-              <FaProjectDiagram className="text-blue-500 text-xl" />
+            <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
+              <FaProjectDiagram className="text-blue-500 dark:text-blue-400 text-xl" />
             </div>
           </div>
         </div>
 
         {/* Total Tasks Card */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-purple-500 p-4 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-[#1e1e2d] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 border-l-4 border-l-purple-500 p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-xs font-medium text-gray-500 mb-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Total Tasks
               </p>
-              <p className="text-3xl font-bold text-gray-900">{tasks.length}</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">{tasks.length}</p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center flex-shrink-0">
-              <FaTasks className="text-purple-500 text-xl" />
+            <div className="w-12 h-12 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center flex-shrink-0">
+              <FaTasks className="text-purple-500 dark:text-purple-400 text-xl" />
             </div>
           </div>
         </div>
 
         {/* Completed Tasks Card */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-[#1e1e2d] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-xs font-medium text-gray-500 mb-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Completed
               </p>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">
                 {tasks.filter((t) => t.status === "Done").length}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
-              <FaCheckCircle className="text-green-500 text-xl" />
+            <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/20 flex items-center justify-center flex-shrink-0">
+              <FaCheckCircle className="text-green-500 dark:text-green-400 text-xl" />
             </div>
           </div>
         </div>
 
         {/* In Progress Tasks Card */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-amber-500 p-4 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-[#1e1e2d] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 border-l-4 border-l-amber-500 p-4 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-xs font-medium text-gray-500 mb-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 In Progress
               </p>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-3xl font-bold text-gray-900 dark:text-white">
                 {tasks.filter((t) => t.status === "In Progress").length}
               </p>
             </div>
-            <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0">
-              <FaClock className="text-amber-500 text-xl" />
+            <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center flex-shrink-0">
+              <FaClock className="text-amber-500 dark:text-amber-400 text-xl" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Search and Filter Controls */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         {/* Search Bar - Full Width */}
         <div className="relative w-full mb-4">
           <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -381,7 +381,7 @@ const EmployeeProjects = () => {
             placeholder="Search projects..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400"
           />
         </div>
 
@@ -391,13 +391,13 @@ const EmployeeProjects = () => {
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             {/* Sort Controls */}
             <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700 whitespace-nowrap">
+              <label className="text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
                 Sort by:
               </label>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-w-[120px]"
+                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-w-[120px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               >
                 <option value="none">None</option>
                 <option value="name">Name</option>
@@ -408,10 +408,9 @@ const EmployeeProjects = () => {
                 onClick={() =>
                   setSortOrder(sortOrder === "asc" ? "desc" : "asc")
                 }
-                className="p-2 text-gray-500 hover:text-gray-700 transition-colors border border-gray-300 rounded-lg"
-                title={`Sort ${
-                  sortOrder === "asc" ? "Descending" : "Ascending"
-                }`}
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white transition-colors border border-gray-300 dark:border-gray-600 rounded-lg dark:hover:bg-gray-700"
+                title={`Sort ${sortOrder === "asc" ? "Descending" : "Ascending"
+                  }`}
               >
                 {sortOrder === "asc" ? (
                   <FaSortAmountUp className="h-4 w-4" />
@@ -422,7 +421,7 @@ const EmployeeProjects = () => {
             </div>
 
             {/* Results Count */}
-            <div className="text-sm text-gray-500 whitespace-nowrap">
+            <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
               {filteredAndSortedProjects.length} of {projects.length} projects
             </div>
           </div>
@@ -430,11 +429,10 @@ const EmployeeProjects = () => {
           {/* Right Side - Show Completed Projects Button */}
           <button
             onClick={() => setShowCompleted(!showCompleted)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              showCompleted
-                ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
-                : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${showCompleted
+              ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border border-green-300 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-900/50"
+              : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700"
+              }`}
             title={
               showCompleted
                 ? "Hide completed projects"
@@ -452,26 +450,26 @@ const EmployeeProjects = () => {
       {filteredAndSortedProjects.length === 0 ? (
         <Card>
           <div className="text-center py-12">
-            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <div className="mx-auto w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
               {showCompleted ? (
                 <FaCheckCircle className="h-8 w-8 text-gray-400" />
               ) : (
                 <FaProjectDiagram className="h-8 w-8 text-gray-400" />
               )}
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
               {searchTerm
                 ? "No Projects Found"
                 : showCompleted
-                ? "No Completed Projects"
-                : "No Active Projects"}
+                  ? "No Completed Projects"
+                  : "No Active Projects"}
             </h3>
-            <p className="text-gray-500 max-w-md mx-auto">
+            <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
               {searchTerm
                 ? `No projects match your search "${searchTerm}". Try adjusting your search terms.`
                 : showCompleted
-                ? "You don't have any completed projects yet. Keep working on your current projects to see them here once completed."
-                : "You don't have any active projects assigned at the moment. New projects will appear here when assigned to you."}
+                  ? "You don't have any completed projects yet. Keep working on your current projects to see them here once completed."
+                  : "You don't have any active projects assigned at the moment. New projects will appear here when assigned to you."}
             </p>
           </div>
         </Card>
@@ -538,8 +536,8 @@ const EmployeeProjects = () => {
 
                       {/* OKRs (Objectives and Key Results) - Scrollable */}
                       {project.okrs && project.okrs.length > 0 && (
-                        <div className="pt-3 border-t border-gray-200">
-                          <p className="text-xs font-semibold text-gray-700 mb-2">
+                        <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
                             OKRs (Objectives & Key Results)
                           </p>
                           <div className="max-h-32 overflow-y-auto scrollbar-hide">
@@ -547,15 +545,15 @@ const EmployeeProjects = () => {
                               {project.okrs.map((okr, okrIndex) => (
                                 <div
                                   key={okrIndex}
-                                  className="bg-gray-50 p-2 rounded"
+                                  className="bg-gray-50 dark:bg-gray-800 p-2 rounded"
                                 >
-                                  <p className="text-xs font-medium text-gray-900 mb-1">
+                                  <p className="text-xs font-medium text-gray-900 dark:text-white mb-1">
                                     {okrIndex + 1}.{" "}
                                     {okr.objective || "No objective"}
                                   </p>
                                   {okr.keyResults &&
                                     okr.keyResults.length > 0 && (
-                                      <ul className="list-disc list-inside text-xs text-gray-600 space-y-0.5 ml-2">
+                                      <ul className="list-disc list-inside text-xs text-gray-600 dark:text-gray-400 space-y-0.5 ml-2">
                                         {okr.keyResults.map((kr, krIndex) => (
                                           <li key={krIndex}>{kr}</li>
                                         ))}
@@ -572,14 +570,14 @@ const EmployeeProjects = () => {
                     {/* Bottom Content - Fixed at bottom */}
                     <div className="mt-auto">
                       {/* Progress Section */}
-                      <div className="pt-4 border-t border-gray-200 mb-3">
+                      <div className="pt-4 border-t border-gray-200 dark:border-gray-700 mb-3">
                         <div className="flex items-center justify-between text-sm mb-2">
-                          <span className="text-gray-600">Progress</span>
-                          <span className="font-semibold text-gray-900">
+                          <span className="text-gray-600 dark:text-gray-400">Progress</span>
+                          <span className="font-semibold text-gray-900 dark:text-white">
                             {progress}%
                           </span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-1">
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
                           <div
                             className="bg-indigo-600 h-1 rounded-full transition-all"
                             style={{ width: `${progress}%` }}
@@ -588,16 +586,16 @@ const EmployeeProjects = () => {
                       </div>
 
                       {/* Task Stats */}
-                      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-200 mb-3">
+                      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-200 dark:border-gray-700 mb-3">
                         <div className="text-center">
-                          <p className="text-gray-500 text-xs">Your Tasks</p>
-                          <p className="font-semibold text-gray-900 text-lg">
+                          <p className="text-gray-500 dark:text-gray-400 text-xs">Your Tasks</p>
+                          <p className="font-semibold text-gray-900 dark:text-white text-lg">
                             {projectTasks.length}
                           </p>
                         </div>
                         <div className="text-center">
-                          <p className="text-gray-500 text-xs">Completed</p>
-                          <p className="font-semibold text-green-600 text-lg">
+                          <p className="text-gray-500 dark:text-gray-400 text-xs">Completed</p>
+                          <p className="font-semibold text-green-600 dark:text-green-400 text-lg">
                             {
                               projectTasks.filter((t) => t.status === "Done")
                                 .length
@@ -607,14 +605,14 @@ const EmployeeProjects = () => {
                       </div>
 
                       {/* Project Dates */}
-                      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-200 text-xs text-gray-600">
+                      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400">
                         <div className="flex items-center justify-center gap-1">
-                          <FaCalendarPlus className="h-3 w-3 text-blue-600" />
+                          <FaCalendarPlus className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                           <span className="font-medium">Assigned:</span>
                           <span>{formatDateToDDMMYYYY(startDate)}</span>
                         </div>
                         <div className="flex items-center justify-center gap-1">
-                          <FaClock className="h-3 w-3 text-red-600" />
+                          <FaClock className="h-3 w-3 text-red-600 dark:text-red-400" />
                           <span className="font-medium">Due:</span>
                           <span>{formatDateToDDMMYYYY(endDate)}</span>
                         </div>
