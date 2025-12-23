@@ -203,6 +203,7 @@ const router = createBrowserRouter([
       { path: "/manager/calendar", element: <Calendar onlyMyManagedProjects={true} /> },
       { path: "/manager/knowledge-management", element: <ManagerKnowledgeManagement /> },
       { path: "/manager/knowledge-management/:projectName", element: <KnowledgeProjectDetail /> },
+      { path: "/manager/knowledge/:id", element: <KnowledgeDetailView /> },
       { path: "/manager/expenses", element: <ManagerExpenses /> },
       {
         path: "/manager/settings",
