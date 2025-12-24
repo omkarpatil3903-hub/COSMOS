@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import { auth, db } from "../../firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { updateProfile, updateEmail } from "firebase/auth";
 import { FaUser, FaEnvelope, FaShieldAlt, FaCalendar, FaEdit, FaSave, FaTimes } from "react-icons/fa";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
@@ -21,32 +21,39 @@ export default function PortalProfileSettings() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const fetchUserInfo = async () => {
-      try {
-        const currentUser = auth.currentUser;
-        if (currentUser) {
-          // Try to get additional user data from Firestore
-          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-          const userData = userDoc.exists() ? userDoc.data() : {};
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
 
-          setUserInfo({
-            uid: currentUser.uid,
-            email: currentUser.email,
-            displayName: currentUser.displayName || userData.name || "Not set",
-            photoURL: currentUser.photoURL || userData.photoURL || null,
-            role: userData.role || "User",
-            createdAt: currentUser.metadata.creationTime,
-            lastSignIn: currentUser.metadata.lastSignInTime,
-          });
-        }
-      } catch (error) {
+    // Set up real-time listener for user data from Firestore
+    const userDocRef = doc(db, "users", currentUser.uid);
+    const unsubscribe = onSnapshot(
+      userDocRef,
+      (docSnap) => {
+        const userData = docSnap.exists() ? docSnap.data() : {};
+
+        setUserInfo({
+          uid: currentUser.uid,
+          email: currentUser.email,
+          displayName: currentUser.displayName || userData.name || "Not set",
+          photoURL: currentUser.photoURL || userData.photoURL || userData.imageUrl || null,
+          role: userData.role || "User",
+          createdAt: currentUser.metadata.creationTime,
+          lastSignIn: currentUser.metadata.lastSignInTime,
+        });
+
+        setLoading(false);
+      },
+      (error) => {
         console.error("Error fetching user info:", error);
-      } finally {
         setLoading(false);
       }
-    };
+    );
 
-    fetchUserInfo();
+    // Cleanup listener on unmount
+    return () => unsubscribe();
   }, []);
 
   const handleStartEdit = () => {

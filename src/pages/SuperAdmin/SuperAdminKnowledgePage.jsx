@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { collection, doc, onSnapshot, query, addDoc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
-import { db, auth } from "../../firebase";
+import { db, auth, storage } from "../../firebase";
+import { ref, deleteObject } from "firebase/storage";
 import Card from "../../components/Card";
 import SearchActions from "../../components/SearchActions";
 import Button from "../../components/Button";
@@ -149,11 +150,33 @@ export default function SuperAdminKnowledgePage() {
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     try {
+      // First, delete all documents from Firebase Storage
+      if (deleteTarget.documents && deleteTarget.documents.length > 0) {
+        const deletePromises = deleteTarget.documents.map(async (document) => {
+          if (document.storagePath) {
+            try {
+              const storageRef = ref(storage, document.storagePath);
+              await deleteObject(storageRef);
+            } catch (error) {
+              // Log error but continue with deletion
+              // File might already be deleted from storage
+              console.warn(`Failed to delete file from storage: ${document.storagePath}`, error);
+            }
+          }
+        });
+
+        // Wait for all storage deletions to complete
+        await Promise.all(deletePromises);
+      }
+
+      // Then delete the knowledge document from Firestore
       await deleteDoc(doc(db, "knowledge", deleteTarget.id));
+
       setShowDeleteModal(false);
       setDeleteTarget(null);
     } catch (e) {
       console.error("Failed to delete knowledge", e);
+      alert("Failed to delete knowledge. Please try again.");
     }
   };
 

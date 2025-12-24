@@ -115,6 +115,11 @@ const ClientFormModal = ({
         onSubmit(formData);
     };
 
+    const handleRemoveImage = () => {
+        setImagePreview(null);
+        setFormData((prev) => ({ ...prev, imageUrl: "" }));
+    };
+
     if (!isOpen) return null;
 
     return (
@@ -288,33 +293,40 @@ const ClientFormModal = ({
                                     <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300 mb-2">
                                         Company Logo
                                     </label>
-                                    <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 [.dark_&]:border-white/20 rounded-xl bg-gray-50 [.dark_&]:bg-white/5 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 transition-colors text-center">
-                                        {imagePreview ? (
-                                            <div className="relative group mb-4">
+                                    <div className="flex flex-col items-center justify-center">
+                                        <div className="relative">
+                                            {imagePreview ? (
                                                 <img
                                                     src={imagePreview}
                                                     alt="Preview"
-                                                    className="h-24 w-24 object-cover rounded-full border-4 border-white shadow-md"
+                                                    className="h-24 w-24 object-cover rounded-full border-4 border-gray-200 [.dark_&]:border-white/10 shadow-lg"
                                                 />
-                                                <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <FaCamera className="text-white h-6 w-6" />
+                                            ) : (
+                                                <div className={`h-24 w-24 rounded-full flex items-center justify-center ${headerIconClass.replace('p-2', '')} border-4 border-gray-200 [.dark_&]:border-white/10`}>
+                                                    <FaCamera className="h-8 w-8" />
                                                 </div>
-                                            </div>
-                                        ) : (
-                                            <div className={`h-24 w-24 rounded-full flex items-center justify-center mb-4 ${headerIconClass.replace('p-2', '')}`}>
-                                                <FaCamera className="h-8 w-8" />
-                                            </div>
+                                            )}
+                                            <label className="absolute bottom-0 right-0 cursor-pointer">
+                                                <div className={`h-8 w-8 rounded-full flex items-center justify-center shadow-lg border-2 border-white [.dark_&]:border-[#181B2A] transition-colors ${buttonClass}`}>
+                                                    <FaCamera className="h-4 w-4 text-white" />
+                                                </div>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={handleImageChange}
+                                                    className="hidden"
+                                                />
+                                            </label>
+                                        </div>
+                                        {imagePreview && (
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveImage}
+                                                className="mt-4 text-sm text-red-600 hover:text-red-700 font-semibold transition-colors"
+                                            >
+                                                Remove Profile
+                                            </button>
                                         )}
-                                        <label className="cursor-pointer">
-                                            <span className={`${linkColor} font-semibold hover:opacity-80`}>Upload a file</span>
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={handleImageChange}
-                                                className="hidden"
-                                            />
-                                        </label>
-                                        <p className="text-xs text-gray-400 mt-1">PNG, JPG up to 1MB</p>
                                     </div>
                                 </div>
 

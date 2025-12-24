@@ -153,13 +153,9 @@ function ManageProjects({ onlyMyManaged = false }) {
         resourceRoleType: String(u.resourceRoleType || "").toLowerCase(),
         status: u.status || "Active",
       }));
-      const managersOnly = normalized.filter(
-        (u) => u.resourceRoleType === "manager"
-      );
+      const managersOnly = normalized; // Show all users instead of filtering by role
       setManagers(managersOnly);
-      const assignables = normalized.filter(
-        (u) => u.resourceRoleType === "member" && u.status === "Active"
-      );
+      const assignables = normalized.filter((u) => u.status === "Active"); // Show all active users
       setAssigneesOptions(assignables);
     });
     return () => unsub();
@@ -222,14 +218,14 @@ function ManageProjects({ onlyMyManaged = false }) {
         return p.projectManagerId === currentUser.uid;
       })
       .map((p) => {
-      const projTasks = tasks.filter((t) => t.projectId === p.id);
-      const total = projTasks.length;
-      const done = projTasks.filter(
-        (t) => normalizeStatus(t.status) === "Done"
-      ).length;
-      const derived = total > 0 ? Math.round((done / total) * 100) : 0;
-      return { ...p, progress: derived };
-    });
+        const projTasks = tasks.filter((t) => t.projectId === p.id);
+        const total = projTasks.length;
+        const done = projTasks.filter(
+          (t) => normalizeStatus(t.status) === "Done"
+        ).length;
+        const derived = total > 0 ? Math.round((done / total) * 100) : 0;
+        return { ...p, progress: derived };
+      });
   }, [projects, tasks]);
 
   const completedProjectsCount = useMemo(() => {
@@ -264,8 +260,8 @@ function ManageProjects({ onlyMyManaged = false }) {
           (project.progress === 0
             ? "Not Started"
             : project.progress === 100
-            ? "Completed"
-            : "In Progress") || "";
+              ? "Completed"
+              : "In Progress") || "";
         return (
           (project.projectName || "").toLowerCase().includes(normalisedTerm) ||
           (project.clientName || "").toLowerCase().includes(normalisedTerm) ||
@@ -366,12 +362,12 @@ function ManageProjects({ onlyMyManaged = false }) {
 
     const hasValidOKR = Array.isArray(data.okrs)
       ? data.okrs.some(
-          (okr) =>
-            okr.objective &&
-            okr.objective.trim() &&
-            Array.isArray(okr.keyResults) &&
-            okr.keyResults.some((kr) => kr && kr.trim())
-        )
+        (okr) =>
+          okr.objective &&
+          okr.objective.trim() &&
+          Array.isArray(okr.keyResults) &&
+          okr.keyResults.some((kr) => kr && kr.trim())
+      )
       : false;
 
     if (!hasValidOKR) {
@@ -405,8 +401,8 @@ function ManageProjects({ onlyMyManaged = false }) {
         selectedManager?.name || formData.projectManagerName || "";
       const assigneeNames = Array.isArray(formData.assigneeIds)
         ? formData.assigneeIds
-            .map((id) => assigneesOptions.find((u) => u.id === id)?.name)
-            .filter(Boolean)
+          .map((id) => assigneesOptions.find((u) => u.id === id)?.name)
+          .filter(Boolean)
         : [];
       await addDoc(collection(db, "projects"), {
         projectName: formData.projectName,
@@ -504,8 +500,8 @@ function ManageProjects({ onlyMyManaged = false }) {
         selectedManager?.name || formData.projectManagerName || "";
       const assigneeNames = Array.isArray(formData.assigneeIds)
         ? formData.assigneeIds
-            .map((id) => assigneesOptions.find((u) => u.id === id)?.name)
-            .filter(Boolean)
+          .map((id) => assigneesOptions.find((u) => u.id === id)?.name)
+          .filter(Boolean)
         : [];
       await updateDoc(ref, {
         projectName: formData.projectName,
@@ -621,11 +617,10 @@ function ManageProjects({ onlyMyManaged = false }) {
               </span>
             </h3>
             <div
-              className={`space-y-3 ${
-                projects.length > 4
+              className={`space-y-3 ${projects.length > 4
                   ? "max-h-[750px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
                   : ""
-              }`}
+                }`}
             >
               {projects.map((project) => (
                 <div
@@ -873,11 +868,10 @@ function ManageProjects({ onlyMyManaged = false }) {
                 </span>
                 <button
                   onClick={() => setShowCompleted(!showCompleted)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    showCompleted
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${showCompleted
                       ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
                       : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
-                  }`}
+                    }`}
                   title={
                     showCompleted
                       ? "Hide completed projects"
@@ -892,22 +886,20 @@ function ManageProjects({ onlyMyManaged = false }) {
                 <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                   <button
                     onClick={() => setViewMode("table")}
-                    className={`p-2 rounded transition-colors ${
-                      viewMode === "table"
+                    className={`p-2 rounded transition-colors ${viewMode === "table"
                         ? "bg-white text-indigo-600 shadow"
                         : "text-gray-600 hover:text-gray-900"
-                    }`}
+                      }`}
                     title="List View"
                   >
                     <FaList className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setViewMode("kanban")}
-                    className={`p-2 rounded transition-colors ${
-                      viewMode === "kanban"
+                    className={`p-2 rounded transition-colors ${viewMode === "kanban"
                         ? "bg-white text-indigo-600 shadow"
                         : "text-gray-600 hover:text-gray-900"
-                    }`}
+                      }`}
                     title="Kanban View"
                   >
                     <FaTh className="w-4 h-4" />
@@ -1008,21 +1000,20 @@ function ManageProjects({ onlyMyManaged = false }) {
                         const ariaSort = !header.sortable
                           ? "none"
                           : isActive
-                          ? sortConfig.direction === "asc"
-                            ? "ascending"
-                            : "descending"
-                          : "none";
+                            ? sortConfig.direction === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : "none";
 
                         return (
                           <th
                             key={header.key}
                             scope="col"
                             aria-sort={ariaSort}
-                            className={`group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 ${
-                              header.key === "actions"
+                            className={`group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 ${header.key === "actions"
                                 ? "sticky right-0 z-10 bg-gray-50"
                                 : ""
-                            }`}
+                              }`}
                           >
                             {header.sortable ? (
                               <button
@@ -1073,17 +1064,16 @@ function ManageProjects({ onlyMyManaged = false }) {
                           <div className="flex items-center">
                             <div className="flex-1 bg-gray-200 rounded-full h-3 mr-3 min-w-[120px]">
                               <div
-                                className={`h-3 rounded-full transition-all duration-300 ${
-                                  project.progress === 0
+                                className={`h-3 rounded-full transition-all duration-300 ${project.progress === 0
                                     ? "bg-gray-400"
                                     : project.progress < 30
-                                    ? "bg-red-500"
-                                    : project.progress < 70
-                                    ? "bg-yellow-500"
-                                    : project.progress < 100
-                                    ? "bg-blue-500"
-                                    : "bg-green-500"
-                                }`}
+                                      ? "bg-red-500"
+                                      : project.progress < 70
+                                        ? "bg-yellow-500"
+                                        : project.progress < 100
+                                          ? "bg-blue-500"
+                                          : "bg-green-500"
+                                  }`}
                                 style={{ width: `${project.progress}%` }}
                               ></div>
                             </div>
