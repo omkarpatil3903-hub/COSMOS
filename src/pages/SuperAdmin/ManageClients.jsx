@@ -8,8 +8,9 @@ import {
   FaPlus,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
-import { db, functions } from "../../firebase";
+import { db, functions, storage } from "../../firebase";
 import { app as primaryApp } from "../../firebase";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { getApps, getApp, initializeApp as initApp } from "firebase/app";
 import {
   getAuth as getAuthMod,
@@ -184,9 +185,29 @@ function ManageClients() {
       );
       const uid = cred.user.uid;
 
-      // 2. Create Firestore Document
+      // 2. Upload profile image (if provided) to Storage
+      let uploadedUrl = "";
+      let storagePath = "";
+      if (submittedData.imageUrl) {
+        try {
+          const blob = await (await fetch(submittedData.imageUrl)).blob();
+          const mime = blob.type || "image/png";
+          const ext = mime.includes("jpeg") ? "jpg" : (mime.split("/")[1] || "png");
+          const path = `profiles/client/${uid}/${Date.now()}.${ext}`;
+          const storageRef = ref(storage, path);
+          await uploadBytes(storageRef, blob, { contentType: mime });
+          uploadedUrl = await getDownloadURL(storageRef);
+          storagePath = path;
+        } catch (uploadErr) {
+          console.error("Failed to upload client logo:", uploadErr);
+        }
+      }
+
+      // 3. Create Firestore Document
       await setDoc(doc(db, CLIENTS_COLLECTION, uid), {
         ...submittedData,
+        imageUrl: uploadedUrl,
+        imageStoragePath: storagePath,
         email,
         // Ensure we store the password for dev reference (as per your original requirement)
         password: submittedData.password || "******",
@@ -228,6 +249,46 @@ function ManageClients() {
           ? { email: submittedData.email.toLowerCase().trim() }
           : {}),
       };
+
+      // Handle image update
+      if (submittedData.imageUrl === "") {
+        // Image removed: delete from Storage and clear Firestore fields
+        const oldPath = selectedClient.imageStoragePath || "";
+        if (oldPath) {
+          try {
+            await deleteObject(ref(storage, oldPath));
+          } catch (delErr) {
+            console.error("Failed to delete image from storage:", delErr);
+            toast.error("Warning: Could not delete old image from storage");
+          }
+        }
+        updateData.imageUrl = "";
+        updateData.imageStoragePath = "";
+      } else if (submittedData.imageUrl && submittedData.imageUrl.startsWith("data:")) {
+        try {
+          const blob = await (await fetch(submittedData.imageUrl)).blob();
+          const mime = blob.type || "image/png";
+          const ext = mime.includes("jpeg") ? "jpg" : (mime.split("/")[1] || "png");
+          const path = `profiles/client/${selectedClient.id}/${Date.now()}.${ext}`;
+          const storageRef = ref(storage, path);
+          await uploadBytes(storageRef, blob, { contentType: mime });
+          const url = await getDownloadURL(storageRef);
+          updateData.imageUrl = url;
+          updateData.imageStoragePath = path;
+
+          // Delete old image if exists
+          const oldPath = selectedClient.imageStoragePath || "";
+          if (oldPath && oldPath !== path) {
+            try {
+              await deleteObject(ref(storage, oldPath));
+            } catch (delErr) {
+              console.warn("Failed to delete old image from storage:", delErr);
+            }
+          }
+        } catch (uploadErr) {
+          console.error("Failed to upload client logo:", uploadErr);
+        }
+      }
 
       if (submittedData.password) {
         // Call Cloud Function to update Auth password

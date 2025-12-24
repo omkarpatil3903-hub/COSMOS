@@ -135,6 +135,7 @@ const router = createBrowserRouter([
       { path: "/employee/documents", element: <EmployeeDocuments /> },
       { path: "/employee/knowledge-management", element: <EmployeeKnowledgeManagement /> },
       { path: "/employee/knowledge-management/:projectName", element: <KnowledgeProjectDetail /> },
+      { path: "/employee/knowledge/:id", element: <KnowledgeDetailView /> },
       {
         path: "/employee/manage-documents",
         element: <EmployeeManageDocument />,
@@ -167,6 +168,7 @@ const router = createBrowserRouter([
       { path: "/admin/manage-projects", element: <AdminManageProjects /> },
       { path: "/admin/knowledge-management", element: <AdminKnowledgeManagement /> },
       { path: "/admin/knowledge-management/:projectName", element: <AdminKnowledgeProjectDetail /> },
+      { path: "/admin/knowledge/:id", element: <KnowledgeDetailView /> },
       { path: "/admin/manage-knowledge", element: <AdminManageDocument /> },
       { path: "/admin/mom-pro", element: <AdminMomGeneratorPro /> },
       { path: "/admin/task-management", element: <AdminTaskManagment /> },

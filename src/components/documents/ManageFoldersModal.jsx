@@ -1,17 +1,32 @@
+
 import React, { useEffect, useState } from "react";
 import { HiXMark } from "react-icons/hi2";
-import { FaEdit, FaTrash, FaCheck, FaTimes } from "react-icons/fa";
+import { FaEdit, FaTrash, FaCheck, FaTimes, FaFolder } from "react-icons/fa";
 import Button from "../Button";
-import { db } from "../../firebase";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { db, storage } from "../../firebase";
+import { doc, onSnapshot, setDoc, collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
+import { ref, deleteObject } from "firebase/storage";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 function ManageFoldersModal({ isOpen, onClose }) {
     const { buttonClass } = useThemeStyles();
     const [folders, setFolders] = useState([]);
     const [newFolderName, setNewFolderName] = useState("");
+    const [newFolderColor, setNewFolderColor] = useState("#3B82F6"); // Default blue
     const [editingFolder, setEditingFolder] = useState(null);
     const [editedName, setEditedName] = useState("");
+    const [editedColor, setEditedColor] = useState("");
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [folderToDelete, setFolderToDelete] = useState(null);
+    const [deleteConfirmText, setDeleteConfirmText] = useState("");
+
+    // Predefined color palette
+    const colorPalette = [
+        '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16',
+        '#22C55E', '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9',
+        '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#C026D3',
+        '#E11D48', '#DB2777', '#EC4899', '#F43F5E', '#64748B',
+    ];
 
     // Load folders from Firestore
     useEffect(() => {
@@ -21,7 +36,16 @@ function ManageFoldersModal({ isOpen, onClose }) {
         const unsub = onSnapshot(foldersDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
-                setFolders(data.folderNames || []);
+                // Handle both old format (array of strings) and new format (array of objects)
+                const folderData = data.folders || data.folderNames || [];
+                const formattedFolders = folderData.map(f => {
+                    if (typeof f === 'string') {
+                        // Old format: convert to new format with default color
+                        return { name: f, color: '#3B82F6' };
+                    }
+                    return f; // New format: already has name and color
+                });
+                setFolders(formattedFolders);
             } else {
                 setFolders([]);
             }
@@ -36,71 +60,122 @@ function ManageFoldersModal({ isOpen, onClose }) {
         const trimmedName = newFolderName.trim();
         if (!trimmedName) return;
 
-        if (folders.includes(trimmedName)) {
+        if (folders.some(f => f.name === trimmedName)) {
             alert("Folder already exists!");
             return;
         }
 
         try {
             const foldersDocRef = doc(db, "documents", "folders");
-            const updatedFolders = [...folders, trimmedName].sort();
+            const newFolder = { name: trimmedName, color: newFolderColor };
+            const updatedFolders = [...folders, newFolder].sort((a, b) => a.name.localeCompare(b.name));
 
             await setDoc(foldersDocRef, {
-                folderNames: updatedFolders,
+                folders: updatedFolders,
                 updatedAt: new Date().toISOString()
             });
 
             setNewFolderName("");
+            setNewFolderColor("#3B82F6"); // Reset to default
         } catch (error) {
             console.error("Error adding folder:", error);
             alert("Failed to add folder. Please try again.");
         }
     };
 
-    const handleDeleteFolder = async (folderName) => {
-        if (!confirm(`Are you sure you want to delete the folder "${folderName}"?`)) {
-            return;
-        }
+    const handleDeleteClick = (folder) => {
+        setFolderToDelete(folder);
+        setShowDeleteModal(true);
+        setDeleteConfirmText("");
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!folderToDelete) return;
 
         try {
+            // Step 1: Find all documents in this folder
+            const documentsQuery = query(
+                collection(db, "documents"),
+                where("folder", "==", folderToDelete.name)
+            );
+            const documentsSnapshot = await getDocs(documentsQuery);
+
+            // Step 2: Delete all documents from Storage and Firestore
+            const deletePromises = documentsSnapshot.docs.map(async (documentDoc) => {
+                const documentData = documentDoc.data();
+
+                // Delete from Storage if storagePath exists
+                if (documentData.storagePath) {
+                    try {
+                        const storageRef = ref(storage, documentData.storagePath);
+                        await deleteObject(storageRef);
+                    } catch (storageError) {
+                        console.warn(`Failed to delete file from storage: ${documentData.storagePath} `, storageError);
+                    }
+                }
+
+                // Delete from Firestore
+                await deleteDoc(doc(db, "documents", documentDoc.id));
+            });
+
+            // Wait for all document deletions to complete
+            await Promise.all(deletePromises);
+
+            // Step 3: Remove folder from folders list
             const foldersDocRef = doc(db, "documents", "folders");
-            const updatedFolders = folders.filter(f => f !== folderName);
+            const updatedFolders = folders.filter(f => f.name !== folderToDelete.name);
 
             await setDoc(foldersDocRef, {
-                folderNames: updatedFolders,
+                folders: updatedFolders,
                 updatedAt: new Date().toISOString()
             });
+
+            setShowDeleteModal(false);
+            setFolderToDelete(null);
+            setDeleteConfirmText("");
         } catch (error) {
             console.error("Error deleting folder:", error);
             alert("Failed to delete folder. Please try again.");
         }
     };
 
-    const handleStartEdit = (folderName) => {
-        setEditingFolder(folderName);
-        setEditedName(folderName);
+    const truncateFolderName = (name, maxLength = 30) => {
+        if (name.length <= maxLength) return name;
+        return name.substring(0, maxLength) + "...";
+    };
+
+
+    const handleStartEdit = (folder) => {
+        setEditingFolder(folder);
+        setEditedName(folder.name);
+        setEditedColor(folder.color);
     };
 
     const handleSaveEdit = async () => {
         const trimmedName = editedName.trim();
         if (!trimmedName) return;
 
-        if (trimmedName !== editingFolder && folders.includes(trimmedName)) {
+        if (trimmedName !== editingFolder.name && folders.some(f => f.name === trimmedName)) {
             alert("Folder already exists!");
             return;
         }
 
         try {
             const foldersDocRef = doc(db, "documents", "folders");
-            const updatedFolders = folders.map(f => f === editingFolder ? trimmedName : f).sort();
+            const updatedFolders = folders.map(f =>
+                f.name === editingFolder.name
+                    ? { name: trimmedName, color: editedColor }
+                    : f
+            ).sort((a, b) => a.name.localeCompare(b.name));
 
             await setDoc(foldersDocRef, {
-                folderNames: updatedFolders,
+                folders: updatedFolders,
                 updatedAt: new Date().toISOString()
             });
 
             setEditingFolder(null);
             setEditedName("");
+            setEditedColor("");
         } catch (error) {
             console.error("Error editing folder:", error);
             alert("Failed to edit folder. Please try again.");
@@ -110,6 +185,7 @@ function ManageFoldersModal({ isOpen, onClose }) {
     const handleCancelEdit = () => {
         setEditingFolder(null);
         setEditedName("");
+        setEditedColor("");
     };
 
     if (!isOpen) return null;
@@ -135,6 +211,21 @@ function ManageFoldersModal({ isOpen, onClose }) {
                 <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
                     {/* Add New Folder */}
                     <div className="flex items-center gap-2">
+                        {/* Circular Color Picker (clickable) */}
+                        <label
+                            className="h-10 w-10 rounded-full flex-shrink-0 border-2 border-gray-300 [.dark_&]:border-white/10 cursor-pointer relative overflow-hidden"
+                            style={{ backgroundColor: newFolderColor }}
+                            title="Click to pick color"
+                        >
+                            <input
+                                type="color"
+                                value={newFolderColor}
+                                onChange={(e) => setNewFolderColor(e.target.value)}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                        </label>
+
+                        {/* Folder Name Input */}
                         <input
                             type="text"
                             value={newFolderName}
@@ -143,6 +234,8 @@ function ManageFoldersModal({ isOpen, onClose }) {
                             className="flex-1 rounded-lg border border-gray-300 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#1F2234] py-2 px-3 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                             onKeyPress={(e) => e.key === 'Enter' && handleAddFolder()}
                         />
+
+                        {/* Add Button */}
                         <button
                             onClick={handleAddFolder}
                             disabled={!newFolderName.trim()}
@@ -161,11 +254,26 @@ function ManageFoldersModal({ isOpen, onClose }) {
                             <div className="space-y-2">
                                 {folders.map((folder) => (
                                     <div
-                                        key={folder}
+                                        key={folder.name}
                                         className="flex items-center gap-2 p-3 rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-[#1F2234]"
                                     >
-                                        {editingFolder === folder ? (
-                                            <>
+                                        {editingFolder?.name === folder.name ? (
+                                            <div className="flex-1 flex items-center gap-2">
+                                                {/* Circular Color Picker (clickable) */}
+                                                <label
+                                                    className="h-8 w-8 rounded-full flex-shrink-0 border-2 border-gray-300 [.dark_&]:border-white/10 cursor-pointer relative overflow-hidden"
+                                                    style={{ backgroundColor: editedColor }}
+                                                    title="Click to pick color"
+                                                >
+                                                    <input
+                                                        type="color"
+                                                        value={editedColor}
+                                                        onChange={(e) => setEditedColor(e.target.value)}
+                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                    />
+                                                </label>
+
+                                                {/* Edit Input */}
                                                 <input
                                                     type="text"
                                                     value={editedName}
@@ -173,6 +281,7 @@ function ManageFoldersModal({ isOpen, onClose }) {
                                                     className="flex-1 rounded border border-gray-300 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-1 px-2 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                                     autoFocus
                                                 />
+
                                                 <button
                                                     onClick={handleSaveEdit}
                                                     className="p-1.5 rounded hover:bg-green-100 [.dark_&]:hover:bg-green-900/20 text-green-600 [.dark_&]:text-green-400"
@@ -187,10 +296,18 @@ function ManageFoldersModal({ isOpen, onClose }) {
                                                 >
                                                     <FaTimes className="h-3.5 w-3.5" />
                                                 </button>
-                                            </>
+                                            </div>
                                         ) : (
                                             <>
-                                                <span className="flex-1 text-sm font-medium text-gray-900 [.dark_&]:text-white">{folder}</span>
+                                                <div className="flex items-center gap-2 flex-1">
+                                                    <div
+                                                        className="h-6 w-6 rounded-full flex-shrink-0"
+                                                        style={{ backgroundColor: folder.color }}
+                                                    />
+                                                    <span className="flex-1 text-sm font-medium text-gray-900 [.dark_&]:text-white" title={folder.name}>
+                                                        {truncateFolderName(folder.name)}
+                                                    </span>
+                                                </div>
                                                 <button
                                                     onClick={() => handleStartEdit(folder)}
                                                     className="p-1.5 rounded hover:bg-indigo-100 [.dark_&]:hover:bg-indigo-900/20 text-indigo-600 [.dark_&]:text-indigo-400"
@@ -199,7 +316,7 @@ function ManageFoldersModal({ isOpen, onClose }) {
                                                     <FaEdit className="h-3.5 w-3.5" />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDeleteFolder(folder)}
+                                                    onClick={() => handleDeleteClick(folder)}
                                                     className="p-1.5 rounded hover:bg-red-100 [.dark_&]:hover:bg-red-900/20 text-red-600 [.dark_&]:text-red-400"
                                                     title="Delete"
                                                 >
@@ -219,6 +336,86 @@ function ManageFoldersModal({ isOpen, onClose }) {
                     <Button onClick={onClose} variant="ghost">Close</Button>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && folderToDelete && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div
+                        className="bg-[#2D2F3F] [.dark_&]:bg-[#2D2F3F] rounded-xl shadow-2xl w-full max-w-lg"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="p-6 border-b border-white/10">
+                            <h3 className="text-2xl font-bold text-white">Delete Folder</h3>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 space-y-5">
+                            {/* Warning Box */}
+                            <div className="p-4 bg-red-900/20 border-2 border-red-500/50 rounded-lg">
+                                <div className="flex items-start gap-3">
+                                    <span className="text-amber-400 text-xl mt-0.5">⚠</span>
+                                    <div>
+                                        <p className="text-amber-300 font-semibold mb-2">Warning: This action cannot be undone!</p>
+                                        <p className="text-red-300 text-sm leading-relaxed">
+                                            Deleting this folder will affect all documents currently assigned to it. All documents in this folder will be moved to the "General" folder.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Folder Info */}
+                            <div>
+                                <p className="text-gray-400 text-sm mb-2">Folder to delete:</p>
+                                <div className="px-4 py-3 bg-[#1E1E2D] rounded-lg border border-white/10">
+                                    <p className="text-white font-medium break-all">
+                                        {folderToDelete.name}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Confirmation Input */}
+                            <div>
+                                <label className="block text-gray-300 text-sm mb-2">
+                                    Type <span className="font-bold text-red-400">Delete {folderToDelete.name}</span> to confirm:
+                                </label>
+                                <input
+                                    type="text"
+                                    value={deleteConfirmText}
+                                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                    placeholder={`Delete ${folderToDelete.name}`}
+                                    className="w-full px-4 py-3 rounded-lg border-2 border-red-500/50 bg-[#1E1E2D] text-white placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors"
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="flex items-center justify-end gap-3 p-6 border-t border-white/10">
+                            <button
+                                onClick={() => {
+                                    setShowDeleteModal(false);
+                                    setFolderToDelete(null);
+                                    setDeleteConfirmText("");
+                                }}
+                                className="px-6 py-2.5 rounded-lg font-medium text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmDelete}
+                                disabled={deleteConfirmText !== `Delete ${folderToDelete.name}`}
+                                className={`px-6 py-2.5 rounded-lg font-medium transition-all ${deleteConfirmText === `Delete ${folderToDelete.name}`
+                                    ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/30'
+                                    : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                                    }`}
+                            >
+                                Delete Folder
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -253,7 +253,13 @@ function MainLayout() {
       <a className="sr-only-focusable" href="#main-content">
         Skip to main content
       </a>
-      <Toaster position="top-right" />
+      <Toaster
+        position="top-right"
+        containerStyle={{ zIndex: 100000 }}
+        toastOptions={{
+          style: { zIndex: 100000 },
+        }}
+      />
       <aside
         className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
           } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"} overflow-hidden`}

@@ -16,8 +16,9 @@ import {
 import { HiOutlineArrowDownTray, HiMiniArrowPath } from "react-icons/hi2";
 // Excel export not used on this page currently
 import toast from "react-hot-toast";
-import { db, app as primaryApp, functions } from "../../firebase";
+import { db, app as primaryApp, functions, storage } from "../../firebase";
 import { getApps, getApp, initializeApp as initApp } from "firebase/app";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import {
   getAuth as getAuthMod,
   createUserWithEmailAndPassword,
@@ -95,6 +96,7 @@ function ManageResources() {
     resourceRoleType: "",
     status: "Active",
     imageUrl: "",
+    imageStoragePath: "",
   });
 
   // State for image upload
@@ -138,6 +140,7 @@ function ManageResources() {
         resourceRole: u.resourceRole || "",
         resourceRoleType: u.resourceRoleType || "",
         imageUrl: u.imageUrl || "",
+        imageStoragePath: u.imageStoragePath || "",
         devPassword: u.devPassword || "",
       }));
       setResources(mapped);
@@ -298,21 +301,43 @@ function ManageResources() {
   // Handle image file selection and convert to base64
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      // Check file size (limit to 1MB for Firestore)
-      if (file.size > 1024 * 1024) {
-        toast.error("Image size should be less than 1MB");
-        return;
-      }
+    if (!file) return;
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result;
-        setImagePreview(base64String);
-        setImageFile(base64String); // Store base64 string
-      };
-      reader.readAsDataURL(file);
+    // Validate type
+    const validTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+    ];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Unsupported file type. Please select JPG, PNG, WebP or GIF');
+      return;
     }
+
+    // Allow up to 10MB
+    const maxBytes = 10 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      toast.error('Image size should be less than 10MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result;
+      setImagePreview(base64String);
+      setImageFile(base64String); // Store base64 string
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Remove current profile photo (mark change locally; commit on Update)
+  const handleRemoveImage = () => {
+    // Clear local preview and mark image as removed
+    setImageFile(null);
+    setImagePreview(null);
+    setFormData((prev) => ({ ...prev, imageUrl: "" }));
   };
 
   const mapAuthError = (code) => {
@@ -361,7 +386,24 @@ function ManageResources() {
       // Sign out from secondary app immediately so it doesn't interfere
       await signOutMod(secondaryAuth);
 
-      // 2. Create User Document in Firestore
+      // 2. Upload avatar to Storage (if provided) and create User Document in Firestore
+      let uploadedUrl = "";
+      let storagePath = "";
+      if (imageFile) {
+        try {
+          const blob = await (await fetch(imageFile)).blob();
+          const mime = blob.type || "image/png";
+          const ext = mime.includes("jpeg") ? "jpg" : (mime.split("/")[1] || "png");
+          const path = `profiles/resource/${user.uid}/${Date.now()}.${ext}`;
+          const storageRef = ref(storage, path);
+          await uploadBytes(storageRef, blob, { contentType: mime });
+          uploadedUrl = await getDownloadURL(storageRef);
+          storagePath = path;
+        } catch (uploadErr) {
+          console.error("Failed to upload resource avatar:", uploadErr);
+        }
+      }
+
       const newUser = {
         name: formData.fullName,
         email: normalisedEmail,
@@ -371,7 +413,8 @@ function ManageResources() {
         resourceRole: formData.resourceRole,
         resourceRoleType: formData.resourceRoleType,
         status: formData.status,
-        imageUrl: imageFile || "",
+        imageUrl: uploadedUrl,
+        imageStoragePath: storagePath,
         role: formData.resourceRoleType || "member", // Auto-assign role based on hierarchy type
         createdAt: serverTimestamp(),
         joinDate: new Date().toISOString().split("T")[0],
@@ -393,6 +436,7 @@ function ManageResources() {
         resourceRoleType: "",
         status: "Active",
         imageUrl: "",
+        imageStoragePath: "",
       });
       setImageFile(null);
       setImagePreview(null);
@@ -430,6 +474,7 @@ function ManageResources() {
       resourceRoleType: resource.resourceRoleType,
       status: resource.status,
       imageUrl: resource.imageUrl,
+      imageStoragePath: resource.imageStoragePath || "",
     };
     setFormData(editData);
     setInitialEditData(editData);
@@ -460,9 +505,32 @@ function ManageResources() {
       };
 
       if (imageFile) {
-        updates.imageUrl = imageFile;
+        try {
+          const blob = await (await fetch(imageFile)).blob();
+          const mime = blob.type || "image/png";
+          const ext = mime.includes("jpeg") ? "jpg" : (mime.split("/")[1] || "png");
+          const path = `profiles/resource/${selectedResource.id}/${Date.now()}.${ext}`;
+          const storageRef = ref(storage, path);
+          await uploadBytes(storageRef, blob, { contentType: mime });
+          const url = await getDownloadURL(storageRef);
+          updates.imageUrl = url;
+          updates.imageStoragePath = path;
+          // Optional cleanup: delete previous avatar if it existed
+          const oldPath = selectedResource.imageStoragePath;
+          if (oldPath && oldPath !== path) {
+            try { await deleteObject(ref(storage, oldPath)); } catch (delErr) { console.warn("Failed to delete old avatar:", delErr); }
+          }
+        } catch (uploadErr) {
+          console.error("Failed to upload resource avatar:", uploadErr);
+        }
       } else if (formData.imageUrl === "") {
-        updates.imageUrl = ""; // Image removed
+        // Image removed: delete from Storage and clear Firestore fields
+        const oldPath = selectedResource.imageStoragePath || formData.imageStoragePath || "";
+        if (oldPath) {
+          try { await deleteObject(ref(storage, oldPath)); } catch (delErr) { console.warn("Failed to delete avatar from storage:", delErr); }
+        }
+        updates.imageUrl = "";
+        updates.imageStoragePath = "";
       }
 
       if (formData.password) {
@@ -692,6 +760,7 @@ function ManageResources() {
                     resourceRoleType: "",
                     status: "Active",
                     imageUrl: "",
+                    imageStoragePath: "",
                   });
                   setImageFile(null);
                   setImagePreview(null);
@@ -1040,6 +1109,7 @@ function ManageResources() {
             resourceRoleType: "",
             status: "Active",
             imageUrl: "",
+            imageStoragePath: "",
           });
           setImageFile(null);
           setImagePreview(null);
@@ -1080,16 +1150,14 @@ function ManageResources() {
             resourceRoleType: "",
             status: "Active",
             imageUrl: "",
+            imageStoragePath: "",
           });
           setImageFile(null);
           setImagePreview(null);
         }}
         imagePreview={imagePreview}
         onImageChange={handleImageChange}
-        onImageRemove={() => {
-          setImageFile(null);
-          setImagePreview(null);
-        }}
+        onImageRemove={handleRemoveImage}
         existingEmails={resources
           .filter((r) => r.id !== selectedResource?.id)
           .map((r) => r.email.toLowerCase())}

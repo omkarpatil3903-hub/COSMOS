@@ -14,7 +14,6 @@ import {
   FaListAlt,
   FaSignOutAlt,
   FaChevronLeft,
-  FaShieldAlt,
   FaCalendarAlt,
   FaBars,
   FaTimes,
@@ -226,7 +225,13 @@ function AdminLayout() {
       <a className="sr-only-focusable" href="#main-content">
         Skip to main content
       </a>
-      <Toaster position="top-right" />
+      <Toaster
+        position="top-right"
+        containerStyle={{ zIndex: 100000 }}
+        toastOptions={{
+          style: { zIndex: 100000 },
+        }}
+      />
       <aside
         className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
           } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"} overflow-hidden`}
@@ -234,9 +239,13 @@ function AdminLayout() {
       >
         <div className="flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft">
-              <FaShieldAlt className="h-5 w-5" aria-hidden="true" />
-            </span>
+            <div className="rounded-full shadow-lg border-2 border-white/30 p-1">
+              <img
+                src="/cosmos logo.png"
+                alt="Cosmos Logo"
+                className="h-12 w-12 object-cover rounded-full"
+              />
+            </div>
             {!isCollapsed && (
               <div>
                 <p className="text-sm font-medium text-content-tertiary">

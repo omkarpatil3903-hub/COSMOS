@@ -153,13 +153,9 @@ function ManageProjects({ onlyMyManaged = false }) {
         resourceRoleType: String(u.resourceRoleType || "").toLowerCase(),
         status: u.status || "Active",
       }));
-      const managersOnly = normalized.filter(
-        (u) => u.resourceRoleType === "manager"
-      );
+      const managersOnly = normalized; // Show all users instead of filtering by role
       setManagers(managersOnly);
-      const assignables = normalized.filter(
-        (u) => u.resourceRoleType === "member" && u.status === "Active"
-      );
+      const assignables = normalized.filter((u) => u.status === "Active"); // Show all active users
       setAssigneesOptions(assignables);
     });
     return () => unsub();

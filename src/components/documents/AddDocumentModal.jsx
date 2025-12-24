@@ -123,7 +123,10 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     const unsub = onSnapshot(foldersDocRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setAvailableFolders(data.folderNames || []);
+        // Handle both old format (array of strings) and new format (array of objects)
+        const folderData = data.folders || data.folderNames || [];
+        const folderNames = folderData.map(f => typeof f === 'string' ? f : f.name);
+        setAvailableFolders(folderNames);
       } else {
         setAvailableFolders([]);
       }

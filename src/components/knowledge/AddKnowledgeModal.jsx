@@ -101,11 +101,33 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
     const unsub = onSnapshot(q, (snap) => {
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       const allowed = new Set(allowedIds);
-      const mapped = list
+      const allUsers = list
         .filter((u) => (projectId ? allowed.has(u.id) : true))
-        .map((u) => ({ id: u.id, name: u.name || u.fullName || "", type: String(u.resourceRoleType || "").toLowerCase() }));
-      setAdmins(mapped.filter((x) => x.type === "admin"));
-      setMembers(mapped.filter((x) => x.type === "member" || x.type === "resource"));
+        .map((u) => ({
+          id: u.id,
+          name: u.name || u.fullName || "",
+          type: String(u.resourceRoleType || "").toLowerCase()
+        }));
+
+      // Manager Users: All hierarchy levels for Manager-level access
+      // (SuperAdmin can grant themselves Manager access to see knowledge in Manager dashboard)
+      setAdmins(allUsers.filter((x) =>
+        x.type === "superadmin" ||
+        x.type === "admin" ||
+        x.type === "manager" ||
+        x.type === "member" ||
+        x.type === "resource"
+      ));
+
+      // Member Users: All hierarchy levels for Member-level access
+      // (SuperAdmin can grant themselves Member access to see knowledge in Employee dashboard)
+      setMembers(allUsers.filter((x) =>
+        x.type === "superadmin" ||
+        x.type === "admin" ||
+        x.type === "manager" ||
+        x.type === "member" ||
+        x.type === "resource"
+      ));
     });
     return () => unsub();
   }, [allowedIds, projectId]);
@@ -286,13 +308,13 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
                       <div className="mb-3 text-sm font-semibold text-content-secondary [.dark_&]:text-gray-300">Access</div>
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div>
-                          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-content-tertiary [.dark_&]:text-gray-500">Admin Users</div>
+                          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-content-tertiary [.dark_&]:text-gray-500">Manager Users</div>
                           <div className="max-h-40 overflow-y-auto rounded-md border border-subtle [.dark_&]:border-white/10 p-2">
                             {admins.length === 0 ? (
                               <div className="text-xs text-content-tertiary">No admin users</div>
                             ) : (
                               admins.map((u) => {
-                                const checked = selectedAdmin.includes(u.name);
+                                const checked = selectedAdmin.includes(u.id);
                                 return (
                                   <label key={`admin_${u.id}`} className="flex items-center gap-2 py-1 text-sm [.dark_&]:text-gray-300">
                                     <input
@@ -302,8 +324,8 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
                                       onChange={(e) => {
                                         setSelectedAdmin((prev) =>
                                           e.target.checked
-                                            ? Array.from(new Set([...prev, u.name]))
-                                            : prev.filter((n) => n !== u.name)
+                                            ? Array.from(new Set([...prev, u.id]))
+                                            : prev.filter((id) => id !== u.id)
                                         );
                                       }}
                                     />
@@ -321,7 +343,7 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
                               <div className="text-xs text-content-tertiary [.dark_&]:text-gray-500">No member users</div>
                             ) : (
                               members.map((u) => {
-                                const checked = selectedMember.includes(u.name);
+                                const checked = selectedMember.includes(u.id);
                                 return (
                                   <label key={`member_${u.id}`} className="flex items-center gap-2 py-1 text-sm [.dark_&]:text-gray-300">
                                     <input
@@ -331,8 +353,8 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
                                       onChange={(e) => {
                                         setSelectedMember((prev) =>
                                           e.target.checked
-                                            ? Array.from(new Set([...prev, u.name]))
-                                            : prev.filter((n) => n !== u.name)
+                                            ? Array.from(new Set([...prev, u.id]))
+                                            : prev.filter((id) => id !== u.id)
                                         );
                                       }}
                                     />

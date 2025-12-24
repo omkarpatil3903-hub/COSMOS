@@ -1,6 +1,8 @@
-import React, { useMemo, useState } from "react";
-import { FaFileAlt, FaEdit, FaTrash, FaChevronDown, FaChevronUp, FaFolder } from "react-icons/fa";
+import React, { useMemo, useState, useEffect } from "react";
+import { FaFileAlt, FaEdit, FaTrash, FaChevronDown, FaChevronUp, FaFolder, FaUser } from "react-icons/fa";
 import DocumentPreviewModal from "./DocumentPreviewModal";
+import { db } from "../../firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 
 function GroupedDocumentsView({
     rows: inputRows,
@@ -11,8 +13,37 @@ function GroupedDocumentsView({
 }) {
     const [previewDoc, setPreviewDoc] = useState(null);
     const [collapsedFolders, setCollapsedFolders] = useState({});
+    const [folderColors, setFolderColors] = useState({});
 
     const rows = inputRows ?? [];
+
+    // Fetch folder colors from Firestore
+    useEffect(() => {
+        const foldersDocRef = doc(db, "documents", "folders");
+        const unsub = onSnapshot(foldersDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const folderData = data.folders || data.folderNames || [];
+                const colorMap = {};
+
+                folderData.forEach(f => {
+                    if (typeof f === 'string') {
+                        colorMap[f] = '#3B82F6'; // Default blue for old format
+                    } else {
+                        colorMap[f.name] = f.color;
+                    }
+                });
+
+                setFolderColors(colorMap);
+            }
+        });
+        return () => unsub();
+    }, []);
+
+    // Get folder color from the fetched colors
+    const getFolderColor = (folderName) => {
+        return folderColors[folderName] || '#3B82F6'; // Default blue if not found
+    };
 
     // Group documents by folder
     const groupedDocs = useMemo(() => {
@@ -110,104 +141,128 @@ function GroupedDocumentsView({
                     const count = docs.length;
 
                     return (
-                        <div key={folderName} className="border border-gray-200 [.dark_&]:border-white/10 rounded-lg overflow-hidden">
-                            {/* Folder Header */}
+                        <div key={folderName} className="space-y-2">
+                            {/* Folder Header - Outside Card */}
                             <button
                                 onClick={() => toggleFolder(folderName)}
-                                className="w-full flex items-center justify-between p-4 bg-gray-50 [.dark_&]:bg-[#1F2234] hover:bg-gray-100 [.dark_&]:hover:bg-[#252838] transition-colors"
+                                className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors rounded w-full text-left"
                             >
-                                <div className="flex items-center gap-3">
-                                    <FaFolder className="h-4 w-4 text-orange-500" />
-                                    <span className="font-semibold text-gray-900 [.dark_&]:text-white uppercase text-sm tracking-wide">
-                                        {folderName}
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded-full bg-gray-200 [.dark_&]:bg-gray-700 text-gray-700 [.dark_&]:text-gray-300 text-xs font-medium">
-                                        {count}
-                                    </span>
-                                </div>
-                                {isCollapsed ? (
-                                    <FaChevronDown className="h-4 w-4 text-gray-500 [.dark_&]:text-gray-400" />
-                                ) : (
-                                    <FaChevronUp className="h-4 w-4 text-gray-500 [.dark_&]:text-gray-400" />
-                                )}
+                                <span className="text-gray-400 text-xs">
+                                    {isCollapsed ? (
+                                        <FaChevronDown className="h-3 w-3" />
+                                    ) : (
+                                        <FaChevronUp className="h-3 w-3" />
+                                    )}
+                                </span>
+                                <span
+                                    className="px-2 py-0.5 rounded text-xs font-bold uppercase text-white"
+                                    style={{ backgroundColor: getFolderColor(folderName) }}
+                                >
+                                    {folderName}
+                                </span>
+                                <span className="text-gray-400 text-sm font-medium ml-1">
+                                    {count}
+                                </span>
                             </button>
 
-                            {/* Document List */}
+                            {/* Document Table */}
                             {!isCollapsed && (
-                                <div className="bg-white [.dark_&]:bg-[#181B2A]">
+                                <div className="bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 rounded-lg shadow-sm overflow-hidden mt-2">
                                     {/* Table Header */}
-                                    <div className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-gray-200 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-[#1F2234]">
-                                        <div className="col-span-1 text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wider text-center">
-                                            SR. NO.
+                                    <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-gray-50 [.dark_&]:bg-white/5 border-b border-gray-100 [.dark_&]:border-white/10 text-[11px] font-bold text-gray-400 [.dark_&]:text-gray-500 uppercase tracking-wider">
+                                        <div className="col-span-1 flex items-center gap-2">
+                                            <span>SR. NO.</span>
                                         </div>
-                                        <div className="col-span-5 text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wider">
-                                            Document Name
+                                        <div className="col-span-3 flex items-center gap-2">
+                                            <FaFileAlt className="text-gray-400" />
+                                            <span>DOCUMENT NAME</span>
                                         </div>
-                                        <div className="col-span-2 text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wider">
-                                            Uploaded By
+                                        <div className="col-span-2 flex items-center gap-2">
+                                            <FaFolder className="text-gray-400" />
+                                            <span>FOLDER</span>
                                         </div>
-                                        <div className="col-span-2 text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wider">
-                                            Uploaded On
+                                        <div className="col-span-2 flex items-center gap-2">
+                                            <FaUser className="text-gray-400" />
+                                            <span>UPLOADED BY</span>
                                         </div>
-                                        {showActions && (
-                                            <div className="col-span-2 text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wider text-right">
-                                                Actions
-                                            </div>
-                                        )}
+                                        <div className="col-span-2 flex items-center gap-2">
+                                            <span>LAST UPDATED</span>
+                                        </div>
+                                        <div className="col-span-2 flex items-center justify-center gap-2">
+                                            <span>ACTIONS</span>
+                                        </div>
                                     </div>
 
                                     {/* Document Rows */}
                                     {docs.map((doc, index) => (
                                         <div
                                             key={doc.id}
-                                            onClick={() => handleView(doc)}
-                                            className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-gray-100 [.dark_&]:border-white/5 hover:bg-gray-50 [.dark_&]:hover:bg-[#1F2234] transition-colors cursor-pointer group"
+                                            className="grid grid-cols-12 gap-4 px-4 py-3 border-b border-gray-100 [.dark_&]:border-white/5 hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors cursor-pointer group last:border-b-0"
                                         >
-                                            <div className="col-span-1 flex items-center justify-center">
-                                                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 [.dark_&]:bg-[#1F2234] text-gray-600 [.dark_&]:text-gray-300 text-sm">
-                                                    {index + 1}
-                                                </div>
+                                            {/* SR. NO. */}
+                                            <div className="col-span-1 flex items-center text-sm text-gray-600 [.dark_&]:text-gray-400">
+                                                {index + 1}
                                             </div>
-                                            <div className="col-span-5 flex items-center gap-2">
-                                                <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-blue-50 [.dark_&]:bg-blue-900/20 text-blue-600 [.dark_&]:text-blue-400">
-                                                    <FaFileAlt />
-                                                </span>
-                                                <span className="truncate text-gray-900 [.dark_&]:text-white group-hover:text-blue-600 [.dark_&]:group-hover:text-blue-400 transition-colors">
+
+                                            {/* DOCUMENT NAME */}
+                                            <div
+                                                className="col-span-3 flex items-center gap-2"
+                                                onClick={() => handleView(doc)}
+                                            >
+                                                <FaFileAlt className="h-4 w-4 text-indigo-500 [.dark_&]:text-indigo-400 flex-shrink-0" />
+                                                <span className="text-sm font-medium text-gray-900 [.dark_&]:text-white truncate">
                                                     {doc.name}
                                                 </span>
                                             </div>
-                                            <div className="col-span-2 flex items-center text-gray-800 [.dark_&]:text-gray-300 text-sm">
-                                                {doc.createdByName || "-"}
+
+                                            {/* FOLDER */}
+                                            <div className="col-span-2 flex items-center gap-2">
+                                                <div
+                                                    className="h-3 w-3 rounded-full flex-shrink-0"
+                                                    style={{ backgroundColor: getFolderColor(doc.folder) }}
+                                                />
+                                                <span className="text-sm text-gray-700 [.dark_&]:text-gray-300 truncate">
+                                                    {doc.folder}
+                                                </span>
                                             </div>
-                                            <div className="col-span-2 flex items-center text-gray-700 [.dark_&]:text-gray-400 text-sm">
-                                                {doc.created || "-"}
+
+                                            {/* UPLOADED BY */}
+                                            <div className="col-span-2 flex items-center">
+                                                <span className="text-sm text-gray-600 [.dark_&]:text-gray-400 truncate">
+                                                    {doc.createdByName || "—"}
+                                                </span>
                                             </div>
-                                            {showActions && (
-                                                <div className="col-span-2 flex items-center justify-end gap-3">
-                                                    {onEdit && (
-                                                        <button
-                                                            type="button"
-                                                            title="Edit"
-                                                            aria-label="Edit"
-                                                            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white [.dark_&]:bg-[#1F2234] text-yellow-400 shadow-sm hover:bg-yellow-50 [.dark_&]:hover:bg-yellow-900/20 hover:shadow focus:outline-none"
-                                                            onClick={(e) => { e.stopPropagation(); onEdit(doc); }}
-                                                        >
-                                                            <FaEdit className="h-4 w-4" />
-                                                        </button>
-                                                    )}
-                                                    {onDelete && (
-                                                        <button
-                                                            type="button"
-                                                            title="Delete"
-                                                            aria-label="Delete"
-                                                            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white [.dark_&]:bg-[#1F2234] text-red-600 [.dark_&]:text-red-400 shadow-sm hover:bg-red-50 [.dark_&]:hover:bg-red-900/20 hover:shadow focus:outline-none"
-                                                            onClick={(e) => { e.stopPropagation(); onDelete(doc); }}
-                                                        >
-                                                            <FaTrash className="h-4 w-4" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            )}
+
+                                            {/* LAST UPDATED */}
+                                            <div className="col-span-2 flex items-center">
+                                                <span className="text-sm text-gray-600 [.dark_&]:text-gray-400">
+                                                    {doc.updated}
+                                                </span>
+                                            </div>
+
+                                            {/* ACTIONS */}
+                                            <div className="col-span-2 flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEdit(doc);
+                                                    }}
+                                                    className="p-1.5 rounded hover:bg-indigo-100 [.dark_&]:hover:bg-indigo-900/20 text-indigo-600 [.dark_&]:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    title="Edit"
+                                                >
+                                                    <FaEdit className="h-3.5 w-3.5" />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(doc);
+                                                    }}
+                                                    className="p-1.5 rounded hover:bg-red-100 [.dark_&]:hover:bg-red-900/20 text-red-600 [.dark_&]:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    title="Delete"
+                                                >
+                                                    <FaTrash className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
