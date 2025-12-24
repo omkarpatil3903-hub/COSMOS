@@ -449,15 +449,15 @@ function ManageClients() {
           </div>
 
           {/* Client Table */}
-          <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-            <table className="min-w-full divide-y divide-gray-200 bg-white">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+          <div className="w-full overflow-x-auto rounded-lg border border-subtle shadow-sm">
+            <table className="min-w-full divide-y divide-subtle bg-surface">
+              <thead className="bg-surface-subtle">
                 <tr>
                   {tableHeaders.map((header) => (
                     <th
                       key={header.key}
-                      className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 ${header.key === "actions"
-                        ? "sticky right-0 z-10 bg-gray-50"
+                      className={`px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-content-secondary border-b border-subtle ${header.key === "actions"
+                        ? "sticky right-0 z-10 bg-surface-subtle"
                         : ""
                         }`}
                     >
@@ -475,7 +475,7 @@ function ManageClients() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
+              <tbody className="divide-y divide-subtle bg-surface">
                 {currentRows.map((client, index) => (
                   <ClientTableRow
                     key={client.id}
@@ -490,7 +490,7 @@ function ManageClients() {
                   <tr>
                     <td
                       colSpan={tableHeaders.length}
-                      className="px-6 py-16 text-center text-gray-500"
+                      className="px-6 py-16 text-center text-content-tertiary"
                     >
                       No clients found.
                     </td>

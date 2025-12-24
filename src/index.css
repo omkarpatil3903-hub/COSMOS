@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
 
+/* Enable dark mode variant with class strategy */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
     --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
     --font-heading: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;

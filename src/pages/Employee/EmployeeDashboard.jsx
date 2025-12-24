@@ -45,8 +45,10 @@ const EmployeeDashboard = () => {
 
   // Utility function to format dates in dd/mm/yyyy format
   const formatDateToDDMMYYYY = (date) => {
-    if (!date) return "";
+    if (!date) return "No date";
     const d = date instanceof Date ? date : date?.toDate?.() || new Date(date);
+    // Check if date is valid
+    if (isNaN(d.getTime())) return "No date";
     const day = String(d.getDate()).padStart(2, "0");
     const month = String(d.getMonth() + 1).padStart(2, "0");
     const year = d.getFullYear();
@@ -764,7 +766,7 @@ ${todayTasks.length > 0
                 setShowQuickReminderMenu(false);
                 setShowQuickNotesMenu(false);
               }}
-              className="p-2 rounded-full hover:bg-gray-100 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               title="Quick actions"
             >
               <LuNotebookPen className="h-4 w-4" />
@@ -821,7 +823,7 @@ ${todayTasks.length > 0
                       setRemTitle("");
                       setRemDesc("");
                     }}
-                    className="p-1.5 rounded-md hover:bg-gray-100 text-indigo-600"
+                    className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-indigo-600 dark:text-indigo-400"
                     title="Add reminder"
                   >
                     <FaPlus className="h-3.5 w-3.5" />
@@ -1188,7 +1190,7 @@ ${todayTasks.length > 0
             )}
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+              className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
             >
               <FaBell className="h-6 w-6" />
               {/* Notification Badge */}
@@ -1458,8 +1460,8 @@ ${todayTasks.length > 0
                           </span>
                           <span
                             className={`text-xs ${isOverdue
-                              ? "text-red-600 font-semibold"
-                              : "text-gray-500"
+                              ? "text-red-600 dark:text-red-400 font-semibold"
+                              : "text-gray-500 dark:text-gray-400"
                               }`}
                           >
                             {formatDateToDDMMYYYY(dueDate)}
@@ -1468,7 +1470,7 @@ ${todayTasks.length > 0
                         </div>
                         <button
                           onClick={(e) => handleSetReminder(task, e)}
-                          className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-full transition-colors shrink-0"
+                          className="p-2 text-gray-400 dark:text-gray-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-full transition-colors shrink-0"
                           title="Set Reminder"
                         >
                           <FaBell />
@@ -1625,7 +1627,7 @@ ${todayTasks.length > 0
               </h3>
               <button
                 onClick={() => setShowReportModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 <svg
                   className="w-5 h-5"

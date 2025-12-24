@@ -63,7 +63,7 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
   const baseClasses = `group flex items-center ${isCollapsed ? "justify-center px-2" : "gap-3 px-3"
     } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
   const activeClasses =
-    "border-subtle bg-surface-strong text-content-primary shadow-soft";
+    "border-indigo-500/50 bg-indigo-500/10 dark:bg-indigo-500/20 text-content-primary shadow-soft dark:border-indigo-400/50";
   const inactiveClasses =
     "text-content-secondary hover:bg-surface-subtle hover:text-content-primary";
 
@@ -81,8 +81,8 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
         <>
           <span
             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${isActive
-                ? `${accent === 'black' ? 'bg-black/20 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-surface'} ${iconColor}`
-                : `${iconColor} bg-transparent ${accent === 'black' ? 'opacity-80 hover:opacity-100 hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : ''}`
+              ? `${accent === 'black' ? 'bg-black/20 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-surface'} ${iconColor}`
+              : `${iconColor} bg-transparent ${accent === 'black' ? 'opacity-80 hover:opacity-100 hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : ''}`
               }`}
           >
             {icon}

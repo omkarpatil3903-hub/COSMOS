@@ -297,22 +297,22 @@ export default function StatusSettings() {
           </div>
         </div>
 
-        <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-          <table className="min-w-full divide-y divide-gray-200 bg-white">
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+        <div className="w-full overflow-x-auto rounded-lg border border-subtle shadow-sm">
+          <table className="min-w-full divide-y divide-subtle bg-surface">
+            <thead className="bg-surface-subtle">
               <tr>
-                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-content-secondary border-b border-subtle">
                   Sr. No.
                 </th>
-                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-content-secondary border-b border-subtle">
                   Status Name
                 </th>
-                <th className="px-6 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 sticky right-0 z-10 bg-gray-50">
+                <th className="px-6 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-content-secondary border-b border-subtle sticky right-0 z-10 bg-surface-subtle">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-subtle bg-surface">
               {pageItems.length === 0 ? (
                 <tr>
                   <td
@@ -333,65 +333,65 @@ export default function StatusSettings() {
                     .join(" ");
 
                   return (
-                  <tr
-                    key={it.id}
-                    onClick={() => setPreview(it)}
-                    className="cursor-pointer group odd:bg-white even:bg-gray-50 hover:bg-indigo-50/50 transition-colors duration-150"
-                  >
-                    <td className="whitespace-nowrap px-6 py-2.5 text-sm font-medium text-gray-500">
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 transition-colors">
-                        {(page - 1) * pageSize + idx + 1}
-                      </div>
-                    </td>
-                    <td className="px-6 py-2.5">
-                      <div className="max-w-[200px]">
-                        <span
-                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase text-white"
-                          style={{ backgroundColor: it.color || "#6b7280" }}
-                          title={it.name}
-                        >
-                          {displayName}
-                        </span>
-                        {isCore && (
-                          <span className="ml-2 text-[10px] uppercase tracking-wide text-gray-400">
-                            Default
+                    <tr
+                      key={it.id}
+                      onClick={() => setPreview(it)}
+                      className="cursor-pointer group odd:bg-surface even:bg-surface-subtle hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-colors duration-150"
+                    >
+                      <td className="whitespace-nowrap px-6 py-2.5 text-sm font-medium text-content-tertiary">
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-surface-subtle transition-colors">
+                          {(page - 1) * pageSize + idx + 1}
+                        </div>
+                      </td>
+                      <td className="px-6 py-2.5">
+                        <div className="max-w-[200px]">
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase text-white"
+                            style={{ backgroundColor: it.color || "#6b7280" }}
+                            title={it.name}
+                          >
+                            {displayName}
                           </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-2.5 text-sm sticky right-0 z-10 bg-transparent transition-colors">
-                      <div className="flex items-center justify-center space-x-3">
-                        {isCore ? (
-                          <span className="text-[11px] text-gray-400">
-                            Fixed status (cannot edit/delete)
-                          </span>
-                        ) : (
-                          <>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEdit(it);
-                              }}
-                              className="flex items-center justify-center p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md transition-colors"
-                              title="Edit"
-                            >
-                              <FaEdit className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                confirmDelete(it);
-                              }}
-                              className="flex items-center justify-center p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md transition-colors"
-                              title="Delete"
-                            >
-                              <FaTrash className="h-4 w-4" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                          {isCore && (
+                            <span className="ml-2 text-[10px] uppercase tracking-wide text-content-tertiary">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-6 py-2.5 text-sm sticky right-0 z-10 bg-transparent transition-colors">
+                        <div className="flex items-center justify-center space-x-3">
+                          {isCore ? (
+                            <span className="text-[11px] text-content-tertiary">
+                              Fixed status (cannot edit/delete)
+                            </span>
+                          ) : (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openEdit(it);
+                                }}
+                                className="flex items-center justify-center p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md transition-colors"
+                                title="Edit"
+                              >
+                                <FaEdit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  confirmDelete(it);
+                                }}
+                                className="flex items-center justify-center p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md transition-colors"
+                                title="Delete"
+                              >
+                                <FaTrash className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
                   );
                 })
               )}
@@ -403,13 +403,13 @@ export default function StatusSettings() {
       {/* Add / Edit drawer */}
       {open && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+          <div className="w-full max-w-md rounded-lg bg-surface p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">
+              <h2 className="text-lg font-semibold text-content-primary">
                 {editing ? "Edit Status" : "Add Status"}
               </h2>
               <button
-                className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                className="rounded-full p-1 text-content-tertiary hover:bg-surface-subtle hover:text-content-primary"
                 onClick={close}
               >
                 <FaTimes />
@@ -425,7 +425,7 @@ export default function StatusSettings() {
                   <button
                     type="button"
                     onClick={() => colorInputRef.current?.click()}
-                    className="h-7 w-7 rounded-full border border-gray-200 shadow-sm"
+                    className="h-7 w-7 rounded-full border border-subtle shadow-sm"
                     style={{ backgroundColor: color || "#4F46E5" }}
                     title="Pick color"
                     aria-label="Pick color"
@@ -447,7 +447,7 @@ export default function StatusSettings() {
                   />
                 </div>
                 <div className="mt-3">
-                  <div className="text-xs font-medium text-gray-500 mb-1">Color</div>
+                  <div className="text-xs font-medium text-content-tertiary mb-1">Color</div>
                   <ColorSwatchPicker
                     value={color}
                     onSelect={(hex) => setColor(hex)}
@@ -459,14 +459,14 @@ export default function StatusSettings() {
                         type="color"
                         value={color}
                         onChange={(e) => setColor(e.target.value)}
-                        className="h-8 w-10 p-0 border border-gray-200 rounded"
+                        className="h-8 w-10 p-0 border border-subtle rounded"
                         aria-label="Pick custom color"
                       />
                       <input
                         type="text"
                         value={color}
                         onChange={(e) => setColor(e.target.value)}
-                        className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm"
+                        className="flex-1 rounded border border-subtle bg-surface px-2 py-1 text-sm text-content-primary"
                         placeholder="#4F46E5"
                       />
                     </div>
@@ -517,11 +517,11 @@ export default function StatusSettings() {
       {/* Preview simple modal */}
       {preview && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
+          <div className="w-full max-w-sm rounded-lg bg-surface p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Status Preview</h2>
+              <h2 className="text-lg font-semibold text-content-primary">Status Preview</h2>
               <button
-                className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                className="rounded-full p-1 text-content-tertiary hover:bg-surface-subtle hover:text-content-primary"
                 onClick={() => setPreview(null)}
               >
                 <FaTimes />

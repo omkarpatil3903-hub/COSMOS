@@ -172,10 +172,10 @@ export default function ProjectSettings() {
     const s = query.trim().toLowerCase();
     const base = s
       ? items.filter(
-          (x) =>
-            (x.name || "").toLowerCase().includes(s) ||
-            (x.level || "").toLowerCase().includes(s)
-        )
+        (x) =>
+          (x.name || "").toLowerCase().includes(s) ||
+          (x.level || "").toLowerCase().includes(s)
+      )
       : [...items];
     const getNum = (val) => {
       const m = String(val ?? "").match(/\d+(?:\.\d+)?/);
@@ -297,25 +297,25 @@ export default function ProjectSettings() {
           </div>
         </div>
 
-        <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-          <table className="min-w-full divide-y divide-gray-200 bg-white">
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+        <div className="w-full overflow-x-auto rounded-lg border border-subtle shadow-sm">
+          <table className="min-w-full divide-y divide-subtle bg-surface">
+            <thead className="bg-surface-subtle">
               <tr>
-                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-content-secondary border-b border-subtle">
                   Sr. No.
                 </th>
-                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-content-secondary border-b border-subtle">
                   Level
                 </th>
-                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-content-secondary border-b border-subtle">
                   Name
                 </th>
-                <th className="px-6 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 sticky right-0 z-10 bg-gray-50">
+                <th className="px-6 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-content-secondary border-b border-subtle sticky right-0 z-10 bg-surface-subtle">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-subtle bg-surface">
               {pageItems.length === 0 ? (
                 <tr>
                   <td
@@ -330,16 +330,16 @@ export default function ProjectSettings() {
                   <tr
                     key={item.id}
                     onClick={() => handleRowClick(item)}
-                    className="cursor-pointer group odd:bg-white even:bg-gray-50 hover:bg-indigo-50/50 transition-colors duration-150"
+                    className="cursor-pointer group odd:bg-surface even:bg-surface-subtle hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-colors duration-150"
                   >
-                    <td className="whitespace-nowrap px-6 py-2.5 text-sm font-medium text-gray-500">
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 transition-colors">
+                    <td className="whitespace-nowrap px-6 py-2.5 text-sm font-medium text-content-tertiary">
+                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-surface-subtle transition-colors">
                         {(page - 1) * pageSize + idx + 1}
                       </div>
                     </td>
                     <td className="px-6 py-2.5">
                       <div
-                        className="max-w-[100px] text-sm font-semibold text-gray-900 group-hover:text-blue-600 truncate transition-colors"
+                        className="max-w-[100px] text-sm font-semibold text-content-primary group-hover:text-blue-600 truncate transition-colors"
                         title={item.level || "-"}
                       >
                         {item.level || "-"}
@@ -347,7 +347,7 @@ export default function ProjectSettings() {
                     </td>
                     <td className="px-6 py-2.5">
                       <div
-                        className="max-w-[200px] text-sm font-semibold text-gray-900 group-hover:text-blue-600 truncate transition-colors"
+                        className="max-w-[200px] text-sm font-semibold text-content-primary group-hover:text-blue-600 truncate transition-colors"
                         title={item.name}
                       >
                         {item.name}
@@ -381,12 +381,12 @@ export default function ProjectSettings() {
 
       {open && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/30">
-          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl">
+          <div className="w-full max-w-2xl rounded-2xl bg-surface shadow-2xl">
             <div className="flex items-center justify-between px-6 pt-6">
-              <h3 className="text-xl font-semibold">Create Project Level</h3>
+              <h3 className="text-xl font-semibold text-content-primary">Create Project Level</h3>
               <button
                 onClick={close}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-content-tertiary hover:text-content-primary"
               >
                 <FaTimes />
               </button>
@@ -404,9 +404,8 @@ export default function ProjectSettings() {
                       setLevel(e.target.value);
                       if (levelError) setLevelError("");
                     }}
-                    className={`mt-1 w-full rounded border px-3 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                      levelError ? "border-red-500" : "border-gray-300"
-                    }`}
+                    className={`mt-1 w-full rounded border bg-surface text-content-primary px-3 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${levelError ? "border-red-500" : "border-subtle"
+                      }`}
                     placeholder="e.g., 1, 2, 3..."
                   />
                   {levelError && (
@@ -415,13 +414,13 @@ export default function ProjectSettings() {
                     </div>
                   )}
                 </label>
-                <label className="block text-sm font-medium">
+                <label className="block text-sm font-medium text-content-secondary">
                   Name
                   <input
                     type="text"
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                    className="mt-1 w-full rounded border border-subtle bg-surface text-content-primary px-3 py-2"
                     placeholder="e.g., Discovery"
                   />
                 </label>
@@ -466,12 +465,12 @@ export default function ProjectSettings() {
 
       {preview && (
         <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-black/30">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+          <div className="w-full max-w-md rounded-2xl bg-surface shadow-2xl">
             <div className="flex items-center justify-between px-6 pt-6">
-              <h3 className="text-xl font-semibold">Preview</h3>
+              <h3 className="text-xl font-semibold text-content-primary">Preview</h3>
               <button
                 onClick={() => setPreview(null)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-content-tertiary hover:text-content-primary"
               >
                 <FaTimes />
               </button>
@@ -479,12 +478,12 @@ export default function ProjectSettings() {
             <div className="px-6 py-4 space-y-3 text-sm">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="text-xs text-gray-500 mb-1">Name</div>
-                  <div className="font-medium">{preview?.name}</div>
+                  <div className="text-xs text-content-tertiary mb-1">Name</div>
+                  <div className="font-medium text-content-primary">{preview?.name}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-gray-500 mb-1">Type</div>
-                  <div className="font-medium">Project Level</div>
+                  <div className="text-xs text-content-tertiary mb-1">Type</div>
+                  <div className="font-medium text-content-primary">Project Level</div>
                 </div>
               </div>
             </div>

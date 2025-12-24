@@ -290,8 +290,8 @@ function Calendar() {
             task.status === "Done"
               ? "completed"
               : task.status === "In Progress"
-              ? "pending"
-              : "pending",
+                ? "pending"
+                : "pending",
           date: dateStr,
           time: "23:59",
           duration: 0,
@@ -308,8 +308,8 @@ function Calendar() {
             task.status === "Done"
               ? 100
               : task.status === "In Progress"
-              ? 50
-              : 0,
+                ? 50
+                : 0,
           isTask: true,
           taskId: task.id,
         });
@@ -498,7 +498,7 @@ function Calendar() {
         filterProject === "all" ||
         (event.isTask &&
           tasks.find((t) => t.id === event.taskId)?.projectId ===
-            filterProject);
+          filterProject);
 
       // Employee filter: check if employee is assigned to task or is attendee of event
       let employeeMatch = filterEmployee === "all";
@@ -741,7 +741,7 @@ function Calendar() {
       days.push(
         <div
           key={`empty-${i}`}
-          className="h-28 border border-gray-100 bg-gray-50"
+          className="h-28 border border-subtle bg-surface-subtle"
         ></div>
       );
     }
@@ -762,29 +762,25 @@ function Calendar() {
       days.push(
         <div
           key={day}
-          className={`min-h-28 max-h-48 border border-gray-200 p-2 cursor-pointer relative transition-all duration-200 overflow-hidden ${
-            isPast
-              ? "bg-gray-50 hover:bg-gray-100"
-              : "hover:bg-blue-50 hover:shadow-inner hover:border-blue-300"
-          } ${
-            isToday
-              ? "bg-gradient-to-br from-blue-100 to-blue-50 border-blue-400 border-2 opacity-100 ring-2 ring-blue-200"
+          className={`min-h-28 max-h-48 border border-subtle p-2 cursor-pointer relative transition-all duration-200 overflow-hidden ${isPast
+            ? "bg-surface-subtle hover:bg-surface"
+            : "bg-surface hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-inner hover:border-blue-300 dark:hover:border-blue-600"
+            } ${isToday
+              ? "bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/40 dark:to-blue-900/20 border-blue-400 border-2 opacity-100 ring-2 ring-blue-200 dark:ring-blue-700"
               : ""
-          } ${
-            isSelected
-              ? "bg-gradient-to-br from-indigo-100 to-indigo-50 border-indigo-400 border-2 opacity-100 ring-2 ring-indigo-200"
+            } ${isSelected
+              ? "bg-gradient-to-br from-indigo-100 to-indigo-50 dark:from-indigo-900/40 dark:to-indigo-900/20 border-indigo-400 border-2 opacity-100 ring-2 ring-indigo-200 dark:ring-indigo-700"
               : ""
-          }`}
+            }`}
           onClick={() => setSelectedDate(date)}
         >
           <div
-            className={`text-sm font-bold mb-1 ${
-              isPast && !isToday
-                ? "text-gray-500"
-                : isToday
-                ? "text-blue-700 text-base"
-                : "text-gray-800"
-            } ${isSelected && !isToday ? "text-indigo-700 text-base" : ""}`}
+            className={`text-sm font-bold mb-1 ${isPast && !isToday
+              ? "text-content-tertiary"
+              : isToday
+                ? "text-blue-700 dark:text-blue-400 text-base"
+                : "text-content-primary"
+              } ${isSelected && !isToday ? "text-indigo-700 dark:text-indigo-400 text-base" : ""}`}
           >
             {day}
           </div>
@@ -837,7 +833,7 @@ function Calendar() {
               );
             })}
             {dayEvents.length > 2 && (
-              <div className="text-xs text-gray-600 font-semibold bg-gray-100 rounded px-2 py-1 text-center hover:bg-gray-200 transition-colors cursor-pointer">
+              <div className="text-xs text-content-secondary font-semibold bg-surface-subtle rounded px-2 py-1 text-center hover:bg-surface transition-colors cursor-pointer">
                 +{dayEvents.length - 2} more
               </div>
             )}
@@ -864,13 +860,13 @@ function Calendar() {
           <Card className="p-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="h-10 w-64 bg-gray-200 animate-pulse rounded" />
-                <div className="h-10 w-20 bg-gray-200 animate-pulse rounded" />
+                <div className="h-10 w-64 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                <div className="h-10 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
               </div>
               <div className="flex items-center gap-3">
-                <div className="h-10 w-32 bg-gray-200 animate-pulse rounded" />
-                <div className="h-10 w-32 bg-gray-200 animate-pulse rounded" />
-                <div className="h-10 w-32 bg-gray-200 animate-pulse rounded" />
+                <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                <div className="h-10 w-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
               </div>
             </div>
           </Card>
@@ -879,7 +875,7 @@ function Calendar() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
               <Card key={i} className="border-l-4">
-                <div className="h-20 bg-gray-200 animate-pulse rounded" />
+                <div className="h-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
               </Card>
             ))}
           </div>
@@ -891,15 +887,15 @@ function Calendar() {
                 {Array.from({ length: 35 }).map((_, i) => (
                   <div
                     key={i}
-                    className="h-24 bg-gray-200 animate-pulse rounded"
+                    className="h-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded"
                   />
                 ))}
               </div>
             </Card>
             <Card className="p-4">
               <div className="space-y-3">
-                <div className="h-6 bg-gray-200 animate-pulse rounded" />
-                <div className="h-32 bg-gray-200 animate-pulse rounded" />
+                <div className="h-6 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
+                <div className="h-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded" />
               </div>
             </Card>
           </div>
@@ -926,10 +922,10 @@ function Calendar() {
             employeeScheduleInfo={
               filterEmployee !== "all"
                 ? {
-                    name:
-                      resources.find((r) => r.id === filterEmployee)?.name ||
-                      "Unknown Employee",
-                  }
+                  name:
+                    resources.find((r) => r.id === filterEmployee)?.name ||
+                    "Unknown Employee",
+                }
                 : null
             }
             onClearEmployeeFilter={() => setFilterEmployee("all")}
@@ -961,10 +957,10 @@ function Calendar() {
               <h3 className="font-semibold text-lg mb-4 border-b pb-2">
                 {selectedDate
                   ? selectedDate.toLocaleDateString("en-US", {
-                      weekday: "long",
-                      month: "long",
-                      day: "numeric",
-                    })
+                    weekday: "long",
+                    month: "long",
+                    day: "numeric",
+                  })
                   : "Select a date"}
               </h3>
 
@@ -1019,10 +1015,10 @@ function Calendar() {
                         const displayLabel = isAdminCreated
                           ? "by admin"
                           : event.status
-                          ? event.status.replace(/\b\w/g, (ch) =>
+                            ? event.status.replace(/\b\w/g, (ch) =>
                               ch.toUpperCase()
                             )
-                          : "Pending";
+                            : "Pending";
                         const displayClass = isAdminCreated
                           ? "bg-blue-100 text-blue-700"
                           : statusClass;
@@ -1030,7 +1026,7 @@ function Calendar() {
                         return (
                           <div
                             key={event.id}
-                            className="border-2 rounded-lg p-3 space-y-2 hover:shadow-lg transition-all duration-200 bg-white hover:border-blue-300"
+                            className="border-2 rounded-lg p-3 space-y-2 hover:shadow-lg transition-all duration-200 bg-surface hover:border-blue-300"
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div>
@@ -1063,7 +1059,7 @@ function Calendar() {
                               )}
                             </div>
 
-                            <div className="text-xs text-gray-600 space-y-1">
+                            <div className="text-xs text-content-secondary space-y-1">
                               <div>Time: {event.time || "—"}</div>
                               <div>Client: {contactName}</div>
                               <div>
@@ -1426,8 +1422,8 @@ function Calendar() {
                     Meeting Requests -{" "}
                     {activeRequestDate
                       ? new Date(
-                          activeRequestDate + "T00:00"
-                        ).toLocaleDateString()
+                        activeRequestDate + "T00:00"
+                      ).toLocaleDateString()
                       : ""}
                   </h2>
                   <button
@@ -1647,13 +1643,13 @@ function Calendar() {
         <div className="relative">
           {/* Dropdown Menu */}
           {showFloatingMenu && (
-            <div className="absolute bottom-16 right-0 bg-white rounded-lg shadow-xl border border-gray-200 py-2 min-w-[160px] animate-in slide-in-from-bottom-2">
+            <div className="absolute bottom-16 right-0 bg-surface rounded-lg shadow-xl border border-subtle py-2 min-w-[160px] animate-in slide-in-from-bottom-2">
               <button
                 onClick={() => {
                   openEventModal(null);
                   setShowFloatingMenu(false);
                 }}
-                className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-gray-700 transition-colors"
+                className="w-full px-4 py-3 text-left hover:bg-surface-subtle flex items-center gap-3 text-content-primary transition-colors"
               >
                 <FaCalendarAlt className="text-indigo-600" />
                 <span className="font-medium">Add Event</span>
@@ -1663,7 +1659,7 @@ function Calendar() {
                   openTaskModal();
                   setShowFloatingMenu(false);
                 }}
-                className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center gap-3 text-gray-700 transition-colors"
+                className="w-full px-4 py-3 text-left hover:bg-surface-subtle flex items-center gap-3 text-content-primary transition-colors"
               >
                 <FaTasks className="text-emerald-600" />
                 <span className="font-medium">Add Task</span>
@@ -1674,9 +1670,8 @@ function Calendar() {
           {/* Main Floating Button */}
           <button
             onClick={() => setShowFloatingMenu(!showFloatingMenu)}
-            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${
-              showFloatingMenu ? "rotate-45" : ""
-            }`}
+            className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center group ${showFloatingMenu ? "rotate-45" : ""
+              }`}
             title="Add Event or Task"
           >
             <FaPlus className="text-xl group-hover:scale-110 transition-transform" />

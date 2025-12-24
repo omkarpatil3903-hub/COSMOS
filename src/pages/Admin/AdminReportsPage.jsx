@@ -697,7 +697,7 @@ export default function ReportsPage() {
             ------------------------------- */}
             <div className="min-w-0">
               <label className="block">
-                <span className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                <span className="mb-2 flex items-center gap-2 text-sm font-medium text-content-secondary">
                   <FaProjectDiagram style={iconStyles.secondary} />
                   Project Filter
                 </span>
@@ -707,15 +707,7 @@ export default function ReportsPage() {
                 value={selectedProject}
                 onChange={(e) => setSelectedProject(e.target.value)}
                 aria-label="Filter by project"
-                style={{
-                  "--tw-ring-color": UI_COLORS.secondary + "33",
-                  borderColor: "#d1d5db",
-                }}
-                onFocus={(e) =>
-                  (e.target.style.borderColor = UI_COLORS.secondary)
-                }
-                onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                className="max-w-full w-full truncate rounded-lg border bg-white px-3 py-2.5 text-sm shadow-sm transition-all focus:ring-2"
+                className="max-w-full w-full truncate rounded-lg border border-subtle bg-surface text-content-primary px-3 py-2.5 text-sm shadow-sm transition-all focus:ring-2 focus:ring-indigo-300"
               >
                 <option value="">All Projects</option>
 
@@ -732,7 +724,7 @@ export default function ReportsPage() {
             ------------------------------- */}
             <div className="min-w-0">
               <label className="block">
-                <span className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                <span className="mb-2 flex items-center gap-2 text-sm font-medium text-content-secondary">
                   <FaUsers style={iconStyles.success} />
                   Employee Filter
                 </span>
@@ -742,15 +734,7 @@ export default function ReportsPage() {
                 value={selectedEmployee}
                 onChange={(e) => setSelectedEmployee(e.target.value)}
                 aria-label="Filter by employee"
-                style={{
-                  "--tw-ring-color": UI_COLORS.success + "33",
-                  borderColor: "#d1d5db",
-                }}
-                onFocus={(e) =>
-                  (e.target.style.borderColor = UI_COLORS.success)
-                }
-                onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                className="max-w-full w-full truncate rounded-lg border bg-white px-3 py-2.5 text-sm shadow-sm transition-all focus:ring-2"
+                className="max-w-full w-full truncate rounded-lg border border-subtle bg-surface text-content-primary px-3 py-2.5 text-sm shadow-sm transition-all focus:ring-2 focus:ring-indigo-300"
               >
                 <option value="">All Employees</option>
 
@@ -773,11 +757,11 @@ export default function ReportsPage() {
           {/* Total Tasks */}
           <Card
             style={cardStyles.primaryBorder}
-            className="border-t-4 bg-gradient-to-br from-blue-50 to-white transition-all duration-300 hover:shadow-lg"
+            className="border-t-4 bg-gradient-to-br from-blue-50 to-white dark:from-blue-900/20 dark:to-[#181B2A] transition-all duration-300 hover:shadow-lg"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Tasks</p>
+                <p className="text-sm font-medium text-content-secondary">Total Tasks</p>
                 <p
                   className="mt-1 animate-[fadeIn_0.5s_ease-in] text-3xl font-bold"
                   style={{ color: UI_COLORS.primary }}
@@ -801,11 +785,11 @@ export default function ReportsPage() {
           {/* Completed */}
           <Card
             style={{ borderTopColor: UI_COLORS.success }}
-            className="border-t-4 bg-gradient-to-br from-green-50 to-white transition-all duration-300 hover:shadow-lg"
+            className="border-t-4 bg-gradient-to-br from-green-50 to-white dark:from-green-900/20 dark:to-[#181B2A] transition-all duration-300 hover:shadow-lg"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Completed</p>
+                <p className="text-sm font-medium text-content-secondary">Completed</p>
                 <p
                   className="mt-1 animate-[fadeIn_0.5s_ease-in] text-3xl font-bold"
                   style={{ color: UI_COLORS.success }}
@@ -829,11 +813,11 @@ export default function ReportsPage() {
           {/* In Progress */}
           <Card
             style={{ borderTopColor: UI_COLORS.warning }}
-            className="border-t-4 bg-gradient-to-br from-amber-50 to-white transition-all duration-300 hover:shadow-lg"
+            className="border-t-4 bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/20 dark:to-[#181B2A] transition-all duration-300 hover:shadow-lg"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">In Progress</p>
+                <p className="text-sm font-medium text-content-secondary">In Progress</p>
                 <p
                   className="mt-1 animate-[fadeIn_0.5s_ease-in] text-3xl font-bold"
                   style={{ color: UI_COLORS.warning }}
@@ -857,11 +841,11 @@ export default function ReportsPage() {
           {/* Completion Rate */}
           <Card
             style={{ borderTopColor: UI_COLORS.secondary }}
-            className="border-t-4 bg-gradient-to-br from-purple-50 to-white transition-all duration-300 hover:shadow-lg"
+            className="border-t-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-900/20 dark:to-[#181B2A] transition-all duration-300 hover:shadow-lg"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-medium text-content-secondary">
                   Completion Rate
                 </p>
                 <p
@@ -872,8 +856,8 @@ export default function ReportsPage() {
                 </p>
               </div>
 
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
-                <FaChartLine className="h-6 w-6 text-purple-600" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/50">
+                <FaChartLine className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
             </div>
           </Card>
@@ -885,7 +869,7 @@ export default function ReportsPage() {
           {/* Status Distribution Pie Chart */}
           <Card title="Status Distribution" icon={<FaChartPie />}>
             {loading ? (
-              <div className="h-72 animate-pulse rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100" />
+              <div className="h-72 animate-pulse rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800" />
             ) : stats.totalTasks === 0 ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <div
@@ -898,11 +882,11 @@ export default function ReportsPage() {
                   />
                 </div>
 
-                <div className="mb-2 text-lg font-semibold text-gray-800">
+                <div className="mb-2 text-lg font-semibold text-content-primary">
                   No Task Data Available
                 </div>
 
-                <div className="mb-4 max-w-xs text-center text-sm text-gray-500">
+                <div className="mb-4 max-w-xs text-center text-sm text-content-tertiary">
                   Try clearing filters to view your task distribution
                 </div>
 
@@ -949,7 +933,7 @@ export default function ReportsPage() {
           {/* Tasks Over Time Line Chart */}
           <Card title="Tasks Over Time" icon={<FaChartLine />}>
             {loading ? (
-              <div className="h-72 animate-pulse rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100" />
+              <div className="h-72 animate-pulse rounded-lg bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 dark:from-gray-800 dark:via-gray-700 dark:to-gray-800" />
             ) : (
               <div className="h-[280px] w-full min-w-0">
                 <ResponsiveContainer minWidth={0} minHeight={0}>
@@ -1010,7 +994,7 @@ export default function ReportsPage() {
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <FaCheckCircle className="text-green-600" />
-                  <span className="text-sm font-semibold text-gray-800">
+                  <span className="text-sm font-semibold text-content-primary">
                     Completed
                   </span>
                 </div>
@@ -1019,11 +1003,11 @@ export default function ReportsPage() {
                   <span className="text-sm font-bold text-green-600">
                     {stats.completedTasks}
                   </span>
-                  <span className="text-xs text-gray-500">tasks</span>
+                  <span className="text-xs text-content-tertiary">tasks</span>
                 </div>
               </div>
 
-              <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100 shadow-inner">
+              <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700 shadow-inner">
                 <div
                   className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-green-500 to-green-600 shadow-sm transition-all duration-500"
                   style={{ width: `${completedWidth}%` }}
@@ -1042,7 +1026,7 @@ export default function ReportsPage() {
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <FaClock className="animate-pulse text-cyan-600" />
-                  <span className="text-sm font-semibold text-gray-800">
+                  <span className="text-sm font-semibold text-content-primary">
                     In Progress
                   </span>
                 </div>
@@ -1051,11 +1035,11 @@ export default function ReportsPage() {
                   <span className="text-sm font-bold text-cyan-600">
                     {stats.inProgressTasks}
                   </span>
-                  <span className="text-xs text-gray-500">tasks</span>
+                  <span className="text-xs text-content-tertiary">tasks</span>
                 </div>
               </div>
 
-              <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100 shadow-inner">
+              <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700 shadow-inner">
                 <div
                   className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-cyan-500 to-cyan-600 shadow-sm transition-all duration-500"
                   style={{ width: `${inProgressWidth}%` }}
@@ -1073,21 +1057,21 @@ export default function ReportsPage() {
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FaTasks className="text-gray-600" />
-                  <span className="text-sm font-semibold text-gray-800">
+                  <FaTasks className="text-content-secondary" />
+                  <span className="text-sm font-semibold text-content-primary">
                     To-Do
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-gray-600">
+                  <span className="text-sm font-bold text-content-secondary">
                     {stats.todoTasks}
                   </span>
-                  <span className="text-xs text-gray-500">tasks</span>
+                  <span className="text-xs text-content-tertiary">tasks</span>
                 </div>
               </div>
 
-              <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100 shadow-inner">
+              <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700 shadow-inner">
                 <div
                   className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-gray-400 to-gray-500 shadow-sm transition-all duration-500"
                   style={{ width: `${todoWidth}%` }}
@@ -1264,8 +1248,8 @@ export default function ReportsPage() {
                         resource.completionRate >= 80
                           ? "text-green-600"
                           : resource.completionRate >= 50
-                          ? "text-yellow-600"
-                          : "text-red-600";
+                            ? "text-yellow-600"
+                            : "text-red-600";
 
                       return (
                         <tr

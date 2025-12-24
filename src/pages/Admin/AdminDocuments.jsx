@@ -32,10 +32,10 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
   const basePath = location.pathname.startsWith("/manager")
     ? "/manager/knowledge-management"
     : location.pathname.startsWith("/employee")
-    ? "/employee/knowledge-management"
-    : location.pathname.startsWith("/admin")
-    ? "/admin/knowledge-management"
-    : "/knowledge-management";
+      ? "/employee/knowledge-management"
+      : location.pathname.startsWith("/admin")
+        ? "/admin/knowledge-management"
+        : "/knowledge-management";
   useEffect(() => {
     if (location.pathname === "/knowledge-management") {
       document.title = "COSMOS | Knowldge Managment";
@@ -127,12 +127,12 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
         return p.projectManagerId === currentUser.uid;
       })
       .map((p) => {
-      const projTasks = tasks.filter((t) => t.projectId === p.id);
-      const total = projTasks.length;
-      const done = projTasks.filter((t) => normalizeStatus(t.status) === "Done").length;
-      const derived = total > 0 ? Math.round((done / total) * 100) : 0;
-      return { ...p, progress: derived };
-    });
+        const projTasks = tasks.filter((t) => t.projectId === p.id);
+        const total = projTasks.length;
+        const done = projTasks.filter((t) => normalizeStatus(t.status) === "Done").length;
+        const derived = total > 0 ? Math.round((done / total) * 100) : 0;
+        return { ...p, progress: derived };
+      });
   }, [projects, tasks]);
 
   const assignedProjectIds = useMemo(() => {
@@ -163,8 +163,8 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
           project.progress === 0
             ? "Not Started"
             : project.progress === 100
-            ? "Completed"
-            : "In Progress";
+              ? "Completed"
+              : "In Progress";
         return (
           (project.projectName || "").toLowerCase().includes(term) ||
           (project.clientName || "").toLowerCase().includes(term) ||
@@ -353,29 +353,29 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
           </div>
         }
       >
-        <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-          <table className="min-w-[1100px] divide-y divide-gray-200 bg-white">
+        <div className="w-full overflow-x-auto rounded-lg border border-subtle shadow-sm">
+          <table className="min-w-[1100px] divide-y divide-subtle bg-surface">
             <caption className="sr-only">
               Filtered project records with search and pagination controls
             </caption>
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+            <thead className="bg-surface-subtle">
               <tr>
                 {tableHeaders.map((header) => {
                   const isActive = sortConfig.key === header.key;
                   const ariaSort = !header.sortable
                     ? "none"
                     : isActive
-                    ? sortConfig.direction === "asc"
-                      ? "ascending"
-                      : "descending"
-                    : "none";
+                      ? sortConfig.direction === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : "none";
 
                   return (
                     <th
                       key={header.key}
                       scope="col"
                       aria-sort={ariaSort}
-                      className="group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200"
+                      className="group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-content-secondary border-b border-subtle"
                     >
                       {header.sortable ? (
                         <button
@@ -396,11 +396,11 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
                 })}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
+            <tbody className="divide-y divide-subtle bg-surface">
               {currentRows.map((project, index) => (
                 <tr
                   key={project.id}
-                  className="bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+                  className="bg-surface hover:bg-surface-subtle transition-colors cursor-pointer"
                   onClick={() =>
                     navigate(
                       `${basePath}/${encodeURIComponent(project.projectName || "")}`,
@@ -408,18 +408,18 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
                     )
                   }
                 >
-                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-500">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-content-tertiary">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-surface-subtle">
                       {indexOfFirstRow + index + 1}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                  <td className="px-6 py-4 text-sm font-semibold text-content-primary">
                     <span>{project.projectName}</span>
                   </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                  <td className="px-6 py-4 text-sm font-semibold text-content-primary">
                     <span>{project.clientName}</span>
                   </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                  <td className="px-6 py-4 text-sm font-semibold text-content-primary">
                     <span
                       title={project.projectManagerName || "-"}
                       className="block max-w-[160px] truncate"
@@ -429,35 +429,34 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm">
                     <div className="flex items-center">
-                      <div className="flex-1 bg-gray-200 rounded-full h-3 mr-3 min-w-[120px]">
+                      <div className="flex-1 bg-surface-subtle rounded-full h-3 mr-3 min-w-[120px]">
                         <div
-                          className={`h-3 rounded-full transition-all duration-300 ${
-                            project.progress === 0
+                          className={`h-3 rounded-full transition-all duration-300 ${project.progress === 0
                               ? "bg-gray-400"
                               : project.progress < 30
-                              ? "bg-red-500"
-                              : project.progress < 70
-                              ? "bg-yellow-500"
-                              : project.progress < 100
-                              ? "bg-blue-500"
-                              : "bg-green-500"
-                          }`}
+                                ? "bg-red-500"
+                                : project.progress < 70
+                                  ? "bg-yellow-500"
+                                  : project.progress < 100
+                                    ? "bg-blue-500"
+                                    : "bg-green-500"
+                            }`}
                           style={{ width: `${project.progress}%` }}
                         ></div>
                       </div>
-                      <span className="text-sm font-medium text-gray-700 min-w-[40px]">
+                      <span className="text-sm font-medium text-content-secondary min-w-[40px]">
                         {project.progress}%
                       </span>
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-content-secondary">
                     <div className="flex items-center">
                       <div className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-2"></div>
                       {formatDate(project.startDate)}
                     </div>
                   </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
-                    <div className="flex items-center bg-gray-50 rounded-lg px-3 py-1">
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-content-secondary">
+                    <div className="flex items-center bg-surface-subtle rounded-lg px-3 py-1">
                       <div className="w-1.5 h-1.5 rounded-full bg-red-400 mr-2"></div>
                       {formatDate(project.endDate)}
                     </div>
@@ -471,13 +470,13 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
                     className="px-6 py-16 text-center"
                   >
                     <div className="flex flex-col items-center justify-center">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gray-100 to-gray-200 flex items-center justify-center mb-4 animate-pulse">
-                        <FaSearch className="h-6 w-6 text-gray-400" />
+                      <div className="w-16 h-16 rounded-full bg-surface-subtle flex items-center justify-center mb-4 animate-pulse">
+                        <FaSearch className="h-6 w-6 text-content-tertiary" />
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                      <h3 className="text-lg font-semibold text-content-secondary mb-2">
                         No Projects Found
                       </h3>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-content-tertiary">
                         No projects match the selected filters. Adjust your search or try resetting filters.
                       </p>
                     </div>

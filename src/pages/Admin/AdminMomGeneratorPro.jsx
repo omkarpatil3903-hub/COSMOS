@@ -778,7 +778,7 @@ export default function MomGeneratorPro() {
                     />
 
                     {/* Dropdown Menu */}
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-lg shadow-2xl border border-gray-200 py-2 z-[101]">
+                    <div className="absolute right-0 top-full mt-2 w-56 bg-surface rounded-lg shadow-2xl border border-subtle py-2 z-[101]">
                       {showSave && (
                         <button
                           onClick={() => {
@@ -786,23 +786,21 @@ export default function MomGeneratorPro() {
                             setShowSaveConfirm(true);
                           }}
                           disabled={disableSave}
-                          className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${
-                            disableSave
-                              ? "text-gray-400 cursor-not-allowed"
-                              : "text-gray-700 hover:bg-gray-100"
-                          }`}
+                          className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${disableSave
+                            ? "text-content-tertiary cursor-not-allowed"
+                            : "text-content-primary hover:bg-surface-subtle"
+                            }`}
                         >
                           <FaSave
-                            className={`flex-shrink-0 ${
-                              disableSave ? "text-gray-400" : "text-indigo-600"
-                            }`}
+                            className={`flex-shrink-0 ${disableSave ? "text-content-tertiary" : "text-indigo-600"
+                              }`}
                           />
                           <span>
                             {saveLoading
                               ? "Saving..."
                               : isChangedSinceSave
-                              ? "Save MOM"
-                              : "Saved"}
+                                ? "Save MOM"
+                                : "Saved"}
                           </span>
                         </button>
                       )}
@@ -812,20 +810,20 @@ export default function MomGeneratorPro() {
                           handleExportPDF();
                           setShowActionsMenu(false);
                         }}
-                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
+                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-surface-subtle flex items-center gap-3 text-content-primary transition-colors"
                       >
                         <FaFilePdf className="text-red-600 flex-shrink-0" />
                         <span>Export PDF</span>
                       </button>
 
-                      <div className="border-t border-gray-200 my-2"></div>
+                      <div className="border-t border-subtle my-2"></div>
 
                       <button
                         onClick={() => {
                           shareMom();
                           setShowActionsMenu(false);
                         }}
-                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
+                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-surface-subtle flex items-center gap-3 text-content-primary transition-colors"
                       >
                         <FaShareAlt className="text-blue-600 flex-shrink-0" />
                         <span>Share</span>
@@ -836,7 +834,7 @@ export default function MomGeneratorPro() {
                           handlePrint();
                           setShowActionsMenu(false);
                         }}
-                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 flex items-center gap-3 text-gray-700 transition-colors"
+                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-surface-subtle flex items-center gap-3 text-content-primary transition-colors"
                       >
                         <FaPrint className="text-gray-600 flex-shrink-0" />
                         <span>Print</span>
@@ -853,9 +851,9 @@ export default function MomGeneratorPro() {
       {/* Save confirmation modal */}
       {showSaveConfirm && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h2 className="text-lg font-semibold mb-2">Save MOM?</h2>
-            <p className="text-sm text-gray-600 mb-4">
+          <div className="bg-surface rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-lg font-semibold text-content-primary mb-2">Save MOM?</h2>
+            <p className="text-sm text-content-secondary mb-4">
               Do you want to save this Minutes of Meeting with the current details?
             </p>
             <div className="flex justify-end gap-3">
@@ -902,7 +900,7 @@ export default function MomGeneratorPro() {
                   <select
                     value={projectId}
                     onChange={(e) => setProjectId(e.target.value)}
-                    className="w-full rounded border border-gray-300 px-3 py-2"
+                    className="w-full rounded border border-subtle bg-surface text-content-primary px-3 py-2"
                   >
                     <option value="">Select Project</option>
                     {projects.map((p) => (
@@ -933,7 +931,7 @@ export default function MomGeneratorPro() {
                       type="time"
                       value={meetingStartTime}
                       onChange={(e) => setMeetingStartTime(e.target.value)}
-                      className="w-full rounded border border-gray-300 px-3 py-2"
+                      className="w-full rounded border border-subtle bg-surface text-content-primary px-3 py-2"
                     />
                   </div>
                   <div>
@@ -944,7 +942,7 @@ export default function MomGeneratorPro() {
                       type="time"
                       value={meetingEndTime}
                       onChange={(e) => setMeetingEndTime(e.target.value)}
-                      className="w-full rounded border border-gray-300 px-3 py-2"
+                      className="w-full rounded border border-subtle bg-surface text-content-primary px-3 py-2"
                     />
                   </div>
                   <div>
@@ -1009,7 +1007,7 @@ export default function MomGeneratorPro() {
                     type="text"
                     value={momPreparedBy}
                     onChange={(e) => setMomPreparedBy(e.target.value)}
-                    className="w-full rounded border border-gray-300 px-3 py-2"
+                    className="w-full rounded border border-subtle bg-surface text-content-primary px-3 py-2"
                     placeholder="Your name"
                     spellCheck="true"
                   />
@@ -1186,7 +1184,7 @@ export default function MomGeneratorPro() {
                   type="text"
                   value={newActionPerson}
                   onChange={(e) => setNewActionPerson(e.target.value)}
-                  className="rounded border border-gray-300 px-3 py-2"
+                  className="rounded border border-subtle bg-surface text-content-primary px-3 py-2"
                   placeholder="Responsible person name..."
                   spellCheck="true"
                 />
@@ -1195,7 +1193,7 @@ export default function MomGeneratorPro() {
                     type="date"
                     value={newActionDeadline}
                     onChange={(e) => setNewActionDeadline(e.target.value)}
-                    className="flex-1 rounded border border-gray-300 px-3 py-2"
+                    className="flex-1 rounded border border-subtle bg-surface text-content-primary px-3 py-2"
                   />
                   <Button
                     onClick={addActionItem}
