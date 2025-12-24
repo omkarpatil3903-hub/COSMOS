@@ -14,7 +14,6 @@ import {
   FaCalendarAlt,
   FaChartBar,
   FaSignOutAlt,
-  FaUserCircle,
   FaBars,
   FaTimes,
   FaChevronLeft,
@@ -194,24 +193,13 @@ export default function ClientLayout() {
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            {userData?.imageUrl ? (
+            <div className="rounded-full shadow-lg border-2 border-white/30 p-1">
               <img
-                src={userData.imageUrl}
-                alt={userData?.clientName || userData?.companyName || "Client"}
-                className="h-10 w-10 rounded-xl object-cover shadow-soft"
-                onError={(e) => {
-                  e.target.style.display = "none";
-                  e.target.nextSibling.style.display = "flex";
-                }}
+                src="/cosmos logo.png"
+                alt="Cosmos Logo"
+                className="h-12 w-12 object-cover rounded-full"
               />
-            ) : null}
-            <span
-              className={`flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft ${
-                userData?.imageUrl ? "hidden" : ""
-              }`}
-            >
-              <FaUserCircle className="h-5 w-5" aria-hidden="true" />
-            </span>
+            </div>
             {!isCollapsed && (
               <div className="min-w-0">
                 <p

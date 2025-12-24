@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { FaArrowLeft, FaDownload, FaFileAlt, FaChevronDown, FaChevronUp, FaInfoCircle, FaUser, FaExclamationTriangle } from "react-icons/fa";
@@ -9,6 +9,7 @@ import Card from "../../components/Card";
 function KnowledgeDetailView() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { buttonClass } = useThemeStyles();
 
     const [knowledge, setKnowledge] = useState(null);
@@ -42,7 +43,15 @@ function KnowledgeDetailView() {
     }, [id]);
 
     const handleBack = () => {
-        navigate("/knowledge-management");
+        // Determine the correct base path based on current route
+        const basePath = location.pathname.startsWith("/admin")
+            ? "/admin/knowledge-management"
+            : location.pathname.startsWith("/manager")
+                ? "/manager/knowledge-management"
+                : location.pathname.startsWith("/employee")
+                    ? "/employee/knowledge-management"
+                    : "/knowledge-management";
+        navigate(basePath);
     };
 
     const handleDownload = (doc) => {

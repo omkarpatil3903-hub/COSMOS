@@ -6,12 +6,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where, addDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import Card from "../../components/Card";
 import SearchActions from "../../components/SearchActions";
 import Button from "../../components/Button";
-import { FaCalendarAlt, FaClock, FaLightbulb, FaUser, FaFolderOpen } from "react-icons/fa";
+import { FaCalendarAlt, FaClock, FaEdit, FaLightbulb, FaUser, FaFolderOpen } from "react-icons/fa";
+import AddKnowledgeModal from "../../components/knowledge/AddKnowledgeModal";
 
 export default function ManagerKnowledgePage() {
   const navigate = useNavigate();
@@ -23,6 +24,8 @@ export default function ManagerKnowledgePage() {
   const [sort, setSort] = useState({ key: "createdAt", dir: "desc" });
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(6);
+  const [openModal, setOpenModal] = useState(false);
+  const [editing, setEditing] = useState(null);
 
   // Get projects managed by current user
   useEffect(() => {
@@ -158,6 +161,46 @@ export default function ManagerKnowledgePage() {
     });
   }, [filteredKnowledge, search, sort]);
 
+  const handleAdd = () => {
+    setEditing(null);
+    setOpenModal(true);
+  };
+
+  const handleEdit = (k) => {
+    setEditing(k);
+    setOpenModal(true);
+  };
+
+  const handleSubmit = async (form) => {
+    try {
+      if (editing && editing.id) {
+        const ref = doc(db, "knowledge", editing.id);
+        await updateDoc(ref, {
+          title: form.title,
+          description: form.description,
+          access: form.access || { admin: [], member: [] },
+          documents: form.documents || [],
+          updatedAt: serverTimestamp(),
+          updatedByUid: auth.currentUser?.uid || "",
+          updatedByName: editing.updatedByName || editing.createdByName || "",
+        });
+      } else {
+        await addDoc(collection(db, "knowledge"), {
+          title: form.title,
+          description: form.description,
+          access: form.access || { admin: [], member: [] },
+          documents: form.documents || [],
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          createdByUid: auth.currentUser?.uid || "",
+          createdByName: auth.currentUser?.displayName || "",
+        });
+      }
+    } catch (e) {
+      console.error("Failed to save knowledge", e);
+    }
+  };
+
   const total = filteredSorted.length;
   const totalPages = Math.max(1, Math.ceil(total / rowsPerPage));
   const clampedPage = Math.min(Math.max(page, 1), totalPages);
@@ -214,6 +257,7 @@ export default function ManagerKnowledgePage() {
                   <option value="title:desc">Title Z→A</option>
                 </select>
               </label>
+              <Button variant="custom" onClick={handleAdd} className={buttonClass}>+ Add Knowledge</Button>
             </div>
           }
         />
@@ -270,16 +314,25 @@ export default function ManagerKnowledgePage() {
             return (
               <div
                 key={k.id}
-                onClick={() => handleKnowledgeClick(k.id)}
-                className="relative rounded-xl border border-subtle bg-surface-strong p-6 shadow-soft min-h-[280px] cursor-pointer hover:shadow-md hover:border-indigo-300 [.dark_&]:hover:border-indigo-500/50 transition-all"
+                className="relative rounded-xl border border-subtle bg-surface-strong p-6 shadow-soft min-h-[280px]"
               >
-                <div className="flex items-center gap-2 mb-2 pr-4">
+                <div className="absolute top-2 right-2 flex items-center gap-2">
+                  <button
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-content-secondary shadow-soft hover:bg-surface-subtle"
+                    title="Edit"
+                    onClick={() => handleEdit(k)}
+                  >
+                    <FaEdit className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 mb-2 pr-16">
                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-surface-subtle text-violet-400 border border-subtle">
                     <FaLightbulb className="h-4 w-4" />
                   </span>
                   <h3
-                    className="text-lg font-semibold leading-snug text-content-primary truncate max-w-[200px] hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 transition-colors"
+                    className="text-lg font-semibold leading-snug text-content-primary truncate max-w-[200px] cursor-pointer hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 transition-colors"
                     title={k.title}
+                    onClick={() => handleKnowledgeClick(k.id)}
                   >
                     {k.title.length > 20 ? `${k.title.substring(0, 20)}...` : k.title}
                   </h3>
@@ -341,6 +394,20 @@ export default function ManagerKnowledgePage() {
           )}
         </div>
       </Card>
+
+      {openModal && (
+        <AddKnowledgeModal
+          isOpen={openModal}
+          onClose={() => {
+            setOpenModal(false);
+            setEditing(null);
+          }}
+          onSubmit={handleSubmit}
+          initialItem={editing}
+          projectId={null}
+          canEditAccess={false}
+        />
+      )}
     </>
   );
 }

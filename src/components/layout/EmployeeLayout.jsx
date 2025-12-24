@@ -17,7 +17,6 @@ import {
   FaCog,
 } from "react-icons/fa";
 import { FaFileAlt } from "react-icons/fa";
-import { useAuthContext } from "../../context/useAuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import PanelSwitcher from "../PanelSwitcher";
 
@@ -98,10 +97,8 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
 function EmployeeLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { userData } = useAuthContext();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-  const [avatarError, setAvatarError] = useState(false);
 
   // Dynamic page title based on route
   useEffect(() => {
@@ -201,34 +198,19 @@ function EmployeeLayout() {
       >
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="h-10 w-10 overflow-hidden rounded-full shadow-md ring-1 ring-indigo-500/20">
-              {userData?.imageUrl && !avatarError ? (
-                <img
-                  src={userData.imageUrl}
-                  alt="Avatar"
-                  className="h-full w-full object-cover object-center transition-transform duration-200 hover:scale-105"
-                  onError={() => setAvatarError(true)}
-                />
-              ) : (
-                <div className="h-full w-full rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-semibold">
-                  {(
-                    userData?.name ||
-                    userData?.clientName ||
-                    userData?.email ||
-                    "U"
-                  )
-                    .toString()
-                    .charAt(0)
-                    .toUpperCase()}
-                </div>
-              )}
-            </span>
+            <div className="rounded-full shadow-lg border-2 border-white/30 p-1">
+              <img
+                src="/cosmos logo.png"
+                alt="Cosmos Logo"
+                className="h-12 w-12 object-cover rounded-full"
+              />
+            </div>
 
             {!isCollapsed && (
               <div className="min-w-0">
                 <p
                   className="text-sm font-medium text-content-tertiary truncate"
-                  title={userData?.name || "Employee"}
+                  title={"Employee"}
                 >
                   COSMOS
                 </p>
