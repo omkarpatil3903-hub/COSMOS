@@ -96,6 +96,9 @@ const EmployeeProjects = () => {
   const [primaryTasks, setPrimaryTasks] = useState([]);
   const [multiTasks, setMultiTasks] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [allTasks, setAllTasks] = useState([]); // All tasks for progress calculation
+  const [managerProjects, setManagerProjects] = useState([]); // Projects where user is manager
+  const [teamProjects, setTeamProjects] = useState([]); // Projects where user is in assigneeIds
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("none"); // none, name, progress, dueDate
@@ -144,7 +147,41 @@ const EmployeeProjects = () => {
     setTasks(Array.from(map.values()));
   }, [primaryTasks, multiTasks]);
 
-  // Manage project listeners for unique projectIds (chunked due to Firestore 'in' 10-limit)
+  // Subscribe to projects where user is the project manager
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const q = query(
+      collection(db, "projects"),
+      where("projectManagerId", "==", user.uid)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+      setManagerProjects(list);
+    });
+
+    return () => unsub();
+  }, [user]);
+
+  // Subscribe to projects where user is in assigneeIds (team member)
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const q = query(
+      collection(db, "projects"),
+      where("assigneeIds", "array-contains", user.uid)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+      setTeamProjects(list);
+    });
+
+    return () => unsub();
+  }, [user]);
+
+  // Manage project listeners for unique projectIds from tasks (chunked due to Firestore 'in' 10-limit)
   const projectUnsubsRef = useRef([]);
   useEffect(() => {
     // Cleanup previous project listeners
@@ -156,7 +193,6 @@ const EmployeeProjects = () => {
     const ids = Array.from(new Set(tasks.map((t) => t.projectId).filter(Boolean)));
     if (ids.length === 0) {
       setProjects([]);
-      setLoading(false);
       return;
     }
 
@@ -175,7 +211,6 @@ const EmployeeProjects = () => {
         // Keep order aligned with ids
         const list = ids.map((id) => aggregate.get(id)).filter(Boolean);
         setProjects(list);
-        if (loading) setLoading(false);
       });
       projectUnsubsRef.current.push(unsub);
     });
@@ -188,12 +223,45 @@ const EmployeeProjects = () => {
     };
   }, [tasks]);
 
+  // Subscribe to all tasks for progress calculation (for projects where user is manager but not assignee)
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "tasks"), (snap) => {
+      const list = snap.docs.map((d) => ({
+        id: d.id,
+        projectId: d.data().projectId || "",
+        status: d.data().status || "To-Do",
+      }));
+      setAllTasks(list);
+      setLoading(false);
+    });
+
+    return () => unsub();
+  }, []);
+
+  // Combine all project sources into a merged list (dedupe by id)
+  const mergedProjects = (() => {
+    const projectMap = new Map();
+    // Add projects from tasks
+    projects.forEach((p) => projectMap.set(p.id, p));
+    // Add projects where user is manager
+    managerProjects.forEach((p) => projectMap.set(p.id, p));
+    // Add projects where user is team member
+    teamProjects.forEach((p) => projectMap.set(p.id, p));
+    return Array.from(projectMap.values());
+  })();
+
+  // Get tasks assigned to current user for a project (for display purposes)
   const getProjectTasks = (projectId) => {
     return tasks.filter((t) => t.projectId === projectId);
   };
 
+  // Get ALL tasks for a project (for accurate progress calculation)
+  const getAllProjectTasks = (projectId) => {
+    return allTasks.filter((t) => t.projectId === projectId);
+  };
+
   const getProjectProgress = (projectId) => {
-    const projectTasks = getProjectTasks(projectId);
+    const projectTasks = getAllProjectTasks(projectId);
     if (projectTasks.length === 0) return 0;
     const completedTasks = projectTasks.filter(
       (t) => t.status === "Done"
@@ -202,13 +270,9 @@ const EmployeeProjects = () => {
   };
 
   // Filter and sort projects
-  const filteredAndSortedProjects = projects
+  const filteredAndSortedProjects = mergedProjects
     .filter((project) => {
       const progress = getProjectProgress(project.id);
-      const projectTasks = getProjectTasks(project.id);
-
-      // Only show projects where user has tasks
-      const hasUserTasks = projectTasks.length > 0;
 
       // Filter by search term
       const matchesSearch =
@@ -219,7 +283,7 @@ const EmployeeProjects = () => {
       const isCompleted = progress === 100;
       const shouldShow = showCompleted ? isCompleted : !isCompleted;
 
-      return hasUserTasks && matchesSearch && shouldShow;
+      return matchesSearch && shouldShow;
     })
     .sort((a, b) => {
       // If sortBy is 'none', maintain original order (no sorting)
@@ -254,15 +318,14 @@ const EmployeeProjects = () => {
       }
     });
 
-  // Count completed projects where user has tasks
-  const completedProjectsCount = projects.filter((project) => {
+  // Count completed projects
+  const completedProjectsCount = mergedProjects.filter((project) => {
     const progress = getProjectProgress(project.id);
-    const projectTasks = getProjectTasks(project.id);
-    return progress === 100 && projectTasks.length > 0;
+    return progress === 100;
   }).length;
 
   // New statistics calculations
-  const totalProjects = projects.length;
+  const totalProjects = mergedProjects.length;
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.status === "Done").length;
   const inProgressTasks = tasks.filter(
@@ -422,7 +485,7 @@ const EmployeeProjects = () => {
 
             {/* Results Count */}
             <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-              {filteredAndSortedProjects.length} of {projects.length} projects
+              {filteredAndSortedProjects.length} of {mergedProjects.length} projects
             </div>
           </div>
 
