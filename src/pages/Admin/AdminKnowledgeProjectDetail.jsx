@@ -26,7 +26,7 @@ export default function KnowledgeProjectDetail() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [resolvedProjectId, setResolvedProjectId] = useState("");
-  const [activeTab, setActiveTab] = useState(fromDocsTab ? "documentation" : "knowledge"); 
+  const [activeTab, setActiveTab] = useState(fromDocsTab ? "documentation" : "knowledge");
   const [docSearch, setDocSearch] = useState("");
   const [docs, setDocs] = useState([]);
   const [openAddDoc, setOpenAddDoc] = useState(false);
@@ -280,23 +280,23 @@ export default function KnowledgeProjectDetail() {
       const base = location.pathname.startsWith("/manager")
         ? "/manager/knowledge-management"
         : location.pathname.startsWith("/employee")
-        ? "/employee/knowledge-management"
-        : "/knowledge-management";
+          ? "/employee/knowledge-management"
+          : "/knowledge-management";
       navigate(base);
     }
   };
 
   const renderGroup = (label, items) => {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white">
-        <div className="flex items-center justify-between px-4 py-2 border-b bg-gray-50">
-          <div className="font-semibold text-gray-700 uppercase text-xs tracking-wide">{label}</div>
-          <div className="text-xs text-gray-600">{items.length}</div>
+      <div className="rounded-lg border border-subtle bg-surface">
+        <div className="flex items-center justify-between px-4 py-2 border-b bg-surface-subtle">
+          <div className="font-semibold text-content-secondary uppercase text-xs tracking-wide">{label}</div>
+          <div className="text-xs text-content-secondary">{items.length}</div>
         </div>
         <div className="w-full overflow-x-auto">
-          <table className="w-full bg-white">
+          <table className="w-full bg-surface">
             <thead>
-              <tr className="text-xs text-gray-500 bg-white">
+              <tr className="text-xs text-content-tertiary bg-surface">
                 <th className="px-4 py-2 text-left font-semibold">Name</th>
                 <th className="px-4 py-2 text-left font-semibold">Assignee</th>
                 <th className="px-4 py-2 text-left font-semibold">Due date</th>
@@ -305,40 +305,38 @@ export default function KnowledgeProjectDetail() {
                 <th className="px-4 py-2 text-left font-semibold">Comments</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-subtle">
               {items.map((t) => (
-                <tr key={t.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 text-sm text-gray-900">{t.title || "Task"}</td>
-                  <td className="px-4 py-2 text-sm text-gray-700">
-                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-100 text-gray-600 text-xs">👤</span>
+                <tr key={t.id} className="hover:bg-surface-subtle">
+                  <td className="px-4 py-2 text-sm text-content-primary">{t.title || "Task"}</td>
+                  <td className="px-4 py-2 text-sm text-content-secondary">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-surface-subtle text-content-secondary text-xs">👤</span>
                   </td>
-                  <td className="px-4 py-2 text-sm text-gray-700">{formatDate(t.dueDate)}</td>
+                  <td className="px-4 py-2 text-sm text-content-secondary">{formatDate(t.dueDate)}</td>
                   <td className="px-4 py-2 text-sm">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border ${
-                      String(t.priority || "Medium").toLowerCase() === "urgent"
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border ${String(t.priority || "Medium").toLowerCase() === "urgent"
                         ? "bg-red-100 text-red-800 border-red-200"
                         : String(t.priority || "Medium").toLowerCase() === "high"
-                        ? "bg-yellow-100 text-yellow-800 border-yellow-200"
-                        : "bg-gray-100 text-gray-800 border-gray-200"
-                    }`}>
+                          ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+                          : "bg-gray-100 text-gray-800 border-gray-200"
+                      }`}>
                       {t.priority || "Medium"}
                     </span>
                   </td>
                   <td className="px-4 py-2 text-sm">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${
-                      normalizeStatus(t.status) === "In Progress"
+                    <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${normalizeStatus(t.status) === "In Progress"
                         ? "bg-blue-100 text-blue-800"
                         : normalizeStatus(t.status) === "To-Do"
-                        ? "bg-gray-100 text-gray-800"
-                        : "bg-green-100 text-green-800"
-                    }`}>
+                          ? "bg-gray-100 text-gray-800"
+                          : "bg-green-100 text-green-800"
+                      }`}>
                       {normalizeStatus(t.status)}
                     </span>
                   </td>
                   <td className="px-4 py-2 text-sm text-gray-600">
                     <FaRegComment />
                   </td>
-                </tr>) )}
+                </tr>))}
               {!items.length && (
                 <tr>
                   <td className="px-4 py-6 text-sm text-gray-500" colSpan={6}>No tasks</td>
@@ -480,11 +478,11 @@ export default function KnowledgeProjectDetail() {
             storagePath = newPath;
           } catch (err) {
             // Fallback: update metadata on existing object if copy fails
-            try { await updateMetadata(oldRef, { customMetadata: custom }); } catch {}
+            try { await updateMetadata(oldRef, { customMetadata: custom }); } catch { }
           }
         } else {
           // Same path, only update metadata
-          try { await updateMetadata(oldRef, { customMetadata: custom }); } catch {}
+          try { await updateMetadata(oldRef, { customMetadata: custom }); } catch { }
         }
       }
 
@@ -561,7 +559,7 @@ export default function KnowledgeProjectDetail() {
     setIsDeleting(true);
     try {
       if (deleteTarget.storagePath) {
-        try { await deleteObject(ref(storage, deleteTarget.storagePath)); } catch {}
+        try { await deleteObject(ref(storage, deleteTarget.storagePath)); } catch { }
       }
       await deleteDoc(doc(db, "knowldge", resolvedProjectId, "Documents", deleteTarget.id));
       setShowDeleteModal(false);
@@ -575,17 +573,17 @@ export default function KnowledgeProjectDetail() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between px-3 py-3 border-b bg-white rounded-lg">
+      <div className="flex items-center justify-between px-3 py-3 border-b bg-surface rounded-lg">
         <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={handleBack}
-            className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+            className="inline-flex items-center gap-2 text-sm font-medium text-content-secondary hover:text-content-primary"
           >
             <FaArrowLeft />
             Back
           </button>
-          <span className="text-gray-300">/</span>
-          <div className="truncate font-semibold text-gray-900">{truncatedTitle}</div>
+          <span className="text-content-tertiary">/</span>
+          <div className="truncate font-semibold text-content-primary">{truncatedTitle}</div>
         </div>
       </div>
 
@@ -593,11 +591,10 @@ export default function KnowledgeProjectDetail() {
         <div className="flex items-center gap-2 px-3">
           <button
             onClick={() => setActiveTab("knowledge")}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border ${
-              activeTab === "knowledge"
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border ${activeTab === "knowledge"
                 ? "bg-indigo-600 text-white border-indigo-600"
-                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-            }`}
+                : "bg-surface text-content-primary border-subtle hover:bg-surface-subtle"
+              }`}
             aria-pressed={activeTab === "knowledge"}
           >
             <FaBookOpen className="h-4 w-4" />
@@ -605,11 +602,10 @@ export default function KnowledgeProjectDetail() {
           </button>
           <button
             onClick={() => setActiveTab("documentation")}
-            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border ${
-              activeTab === "documentation"
+            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border ${activeTab === "documentation"
                 ? "bg-indigo-600 text-white border-indigo-600"
-                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-            }`}
+                : "bg-surface text-content-primary border-subtle hover:bg-surface-subtle"
+              }`}
             aria-pressed={activeTab === "documentation"}
           >
             <FaFileAlt className="h-4 w-4" />
@@ -640,7 +636,7 @@ export default function KnowledgeProjectDetail() {
                 <label className="flex items-center gap-2">
                   <span>Sort by</span>
                   <select
-                    className="rounded-md border border-subtle bg-white px-2 py-1 text-sm"
+                    className="rounded-md border border-subtle bg-surface text-content-primary px-2 py-1 text-sm"
                     value={`${knSort.key}:${knSort.dir}`}
                     onChange={(e) => {
                       const [key, dir] = e.target.value.split(":");
@@ -659,7 +655,7 @@ export default function KnowledgeProjectDetail() {
                 <label className="flex items-center gap-2">
                   <span>Cards per page</span>
                   <select
-                    className="rounded-md border border-subtle bg-white px-2 py-1 text-sm"
+                    className="rounded-md border border-subtle bg-surface text-content-primary px-2 py-1 text-sm"
                     value={knRowsPerPage}
                     onChange={(e) => { setKnRowsPerPage(parseInt(e.target.value, 10)); setKnPage(1); }}
                   >
@@ -678,11 +674,11 @@ export default function KnowledgeProjectDetail() {
                 const canEdit = isSuperAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource";
                 const canDelete = isSuperAdminRoute || roleType === "admin";
                 return (
-                  <div key={k.id} className="relative rounded-xl border border-gray-200 bg-white p-6 shadow-sm min-h-[280px]">
+                  <div key={k.id} className="relative rounded-xl border border-subtle bg-surface p-6 shadow-sm min-h-[280px]">
                     <div className="absolute top-2 right-2 flex items-center gap-2">
                       {canEdit && (
                         <button
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-600 shadow hover:bg-gray-50"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-content-secondary shadow hover:bg-surface-subtle"
                           title="Edit"
                           onClick={() => handleEditKnowledge(k)}
                         >
@@ -691,7 +687,7 @@ export default function KnowledgeProjectDetail() {
                       )}
                       {canDelete && (
                         <button
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-red-600 shadow hover:bg-red-50"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-red-600 shadow hover:bg-red-50 dark:hover:bg-red-900/20"
                           title="Delete"
                           onClick={() => handleDeleteKnowledge(k)}
                         >

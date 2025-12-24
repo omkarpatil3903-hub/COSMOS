@@ -46,27 +46,27 @@ export default function ExpenseDetailModal({ expense, onClose, useDarkMode = tru
             onClick={onClose}
         >
             <div
-                className="bg-white [.dark_&]:bg-[#181B2A] rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative z-[10000] flex flex-col"
+                className="bg-surface rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative z-[10000] flex flex-col"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-white/10 bg-gray-50/50 [.dark_&]:bg-[#181B2A] sticky top-0 z-10 backdrop-blur-md">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-subtle bg-surface-subtle/50 sticky top-0 z-10 backdrop-blur-md">
                     <div className="flex items-center gap-3">
                         <div className={`p-2 ${headerIconClass} rounded-lg`}>
                             <FaMoneyBillWave className="h-5 w-5" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-gray-900 [.dark_&]:text-white leading-tight">
+                            <h2 className="text-lg font-bold text-content-primary leading-tight">
                                 {expense.title}
                             </h2>
-                            <p className="text-xs text-gray-500 [.dark_&]:text-gray-400 font-medium">
+                            <p className="text-xs text-content-tertiary font-medium">
                                 ID: {expense.id?.slice(0, 8)}...
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 rounded-full transition-all duration-200"
+                        className="p-2 text-content-tertiary hover:text-content-secondary hover:bg-surface-subtle rounded-full transition-all duration-200"
                     >
                         <HiXMark className="h-6 w-6" />
                     </button>
@@ -83,7 +83,7 @@ export default function ExpenseDetailModal({ expense, onClose, useDarkMode = tru
                                 {expense.status}
                             </span>
                             {expense.description && (
-                                <p className="text-sm text-gray-600 [.dark_&]:text-gray-400 max-w-md">
+                                <p className="text-sm text-content-secondary max-w-md">
                                     {expense.description}
                                 </p>
                             )}
@@ -92,72 +92,72 @@ export default function ExpenseDetailModal({ expense, onClose, useDarkMode = tru
                         {/* Top Section: Key Metrics */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {/* Amount Card */}
-                            <div className="bg-white [.dark_&]:bg-white/5 border border-gray-100 [.dark_&]:border-white/10 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <div className="bg-surface border border-subtle rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
                                 <div className="flex items-center gap-3 mb-2">
-                                    <div className="p-1.5 bg-green-100 text-green-600 [.dark_&]:bg-green-500/20 [.dark_&]:text-green-400 rounded-md">
+                                    <div className="p-1.5 bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 rounded-md">
                                         <FaMoneyBillWave className="h-4 w-4" />
                                     </div>
-                                    <span className="text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wide">
+                                    <span className="text-xs font-semibold text-content-tertiary uppercase tracking-wide">
                                         AMOUNT
                                     </span>
                                 </div>
-                                <p className="text-gray-900 [.dark_&]:text-white font-semibold text-xl">
+                                <p className="text-content-primary font-semibold text-xl">
                                     ₹{expense.amount?.toFixed?.(2) || expense.amount}
-                                    <span className="text-sm font-medium text-gray-500 [.dark_&]:text-gray-400 ml-1">
+                                    <span className="text-sm font-medium text-content-tertiary ml-1">
                                         {expense.currency || "INR"}
                                     </span>
                                 </p>
                             </div>
 
                             {/* Date Card */}
-                            <div className="bg-white [.dark_&]:bg-white/5 border border-gray-100 [.dark_&]:border-white/10 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <div className="bg-surface border border-subtle rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
                                 <div className="flex items-center gap-3 mb-2">
-                                    <div className="p-1.5 bg-blue-100 text-blue-600 [.dark_&]:bg-blue-500/20 [.dark_&]:text-blue-400 rounded-md">
+                                    <div className="p-1.5 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-md">
                                         <FaCalendarAlt className="h-4 w-4" />
                                     </div>
-                                    <span className="text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wide">
+                                    <span className="text-xs font-semibold text-content-tertiary uppercase tracking-wide">
                                         DATE
                                     </span>
                                 </div>
-                                <p className="text-gray-900 [.dark_&]:text-white font-semibold text-base">
+                                <p className="text-content-primary font-semibold text-base">
                                     {expense.date || "-"}
                                 </p>
                             </div>
 
                             {/* Category Card */}
-                            <div className="bg-white [.dark_&]:bg-white/5 border border-gray-100 [.dark_&]:border-white/10 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+                            <div className="bg-surface border border-subtle rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
                                 <div className="flex items-center gap-3 mb-2">
-                                    <div className="p-1.5 bg-purple-100 text-purple-600 [.dark_&]:bg-purple-500/20 [.dark_&]:text-purple-400 rounded-md">
+                                    <div className="p-1.5 bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-md">
                                         <FaTag className="h-4 w-4" />
                                     </div>
-                                    <span className="text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wide">
+                                    <span className="text-xs font-semibold text-content-tertiary uppercase tracking-wide">
                                         CATEGORY
                                     </span>
                                 </div>
-                                <p className="text-gray-900 [.dark_&]:text-white font-semibold text-base">
+                                <p className="text-content-primary font-semibold text-base">
                                     {expense.category || "Other"}
                                 </p>
                             </div>
                         </div>
 
                         {/* Employee & Project Info */}
-                        <div className="bg-white [.dark_&]:bg-white/5 border border-gray-100 [.dark_&]:border-white/10 rounded-xl p-4 shadow-sm">
+                        <div className="bg-surface border border-subtle rounded-xl p-4 shadow-sm">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <div className="text-xs text-gray-500 [.dark_&]:text-gray-400 font-semibold mb-1 flex items-center gap-1">
-                                        <FaUser className="h-3 w-3 text-gray-400" />
+                                    <div className="text-xs text-content-tertiary font-semibold mb-1 flex items-center gap-1">
+                                        <FaUser className="h-3 w-3" />
                                         Employee
                                     </div>
-                                    <div className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
+                                    <div className="text-sm font-medium text-content-primary">
                                         {expense.employeeName || "Unknown"}
                                     </div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-gray-500 [.dark_&]:text-gray-400 font-semibold mb-1 flex items-center gap-1">
-                                        <FaProjectDiagram className="h-3 w-3 text-gray-400" />
+                                    <div className="text-xs text-content-tertiary font-semibold mb-1 flex items-center gap-1">
+                                        <FaProjectDiagram className="h-3 w-3" />
                                         Project
                                     </div>
-                                    <div className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
+                                    <div className="text-sm font-medium text-content-primary">
                                         {expense.projectName || "No project"}
                                     </div>
                                 </div>
@@ -166,13 +166,13 @@ export default function ExpenseDetailModal({ expense, onClose, useDarkMode = tru
 
                         {/* Receipt Section */}
                         {expense.receiptUrl && (
-                            <div className="bg-white [.dark_&]:bg-white/5 border border-gray-100 [.dark_&]:border-white/10 rounded-xl p-4 shadow-sm">
+                            <div className="bg-surface border border-subtle rounded-xl p-4 shadow-sm">
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-2">
-                                        <div className="p-1.5 bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-500/20 [.dark_&]:text-indigo-400 rounded-md">
+                                        <div className="p-1.5 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-md">
                                             <FaFileInvoice className="h-4 w-4" />
                                         </div>
-                                        <span className="text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wide">
+                                        <span className="text-xs font-semibold text-content-tertiary uppercase tracking-wide">
                                             RECEIPT
                                         </span>
                                     </div>
@@ -193,12 +193,12 @@ export default function ExpenseDetailModal({ expense, onClose, useDarkMode = tru
                                     <img
                                         src={expense.receiptUrl}
                                         alt="Receipt"
-                                        className="max-h-48 rounded-lg border border-gray-200 [.dark_&]:border-white/10 object-contain w-full bg-gray-100 [.dark_&]:bg-white/5"
+                                        className="max-h-48 rounded-lg border border-subtle object-contain w-full bg-surface-subtle"
                                     />
                                 ) : (
-                                    <div className="p-6 rounded-lg bg-gray-50 [.dark_&]:bg-white/5 text-center border border-dashed border-gray-300 [.dark_&]:border-white/10">
-                                        <FaFileInvoice className="text-2xl text-gray-400 mx-auto mb-2" />
-                                        <p className="text-sm text-gray-500 [.dark_&]:text-gray-400">
+                                    <div className="p-6 rounded-lg bg-surface-subtle text-center border border-dashed border-subtle">
+                                        <FaFileInvoice className="text-2xl text-content-tertiary mx-auto mb-2" />
+                                        <p className="text-sm text-content-tertiary">
                                             Click link above to view receipt
                                         </p>
                                     </div>
@@ -253,7 +253,7 @@ export default function ExpenseDetailModal({ expense, onClose, useDarkMode = tru
                             )}
 
                         {/* Timestamps */}
-                        <div className="flex items-center gap-4 text-xs text-gray-400 [.dark_&]:text-gray-500 pt-4 border-t border-gray-100 [.dark_&]:border-white/10">
+                        <div className="flex items-center gap-4 text-xs text-content-tertiary pt-4 border-t border-subtle">
                             <div className="flex items-center gap-1">
                                 <FaClock />
                                 <span>Created: {formatDate(expense.createdAt)}</span>
@@ -268,7 +268,7 @@ export default function ExpenseDetailModal({ expense, onClose, useDarkMode = tru
                 </div>
 
                 {/* Footer */}
-                <div className="px-6 py-4 border-t border-gray-100 [.dark_&]:border-white/10 bg-gray-50/50 [.dark_&]:bg-[#181B2A] flex justify-end rounded-b-xl">
+                <div className="px-6 py-4 border-t border-subtle bg-surface-subtle/50 flex justify-end rounded-b-xl">
                     <Button
                         type="button"
                         variant="secondary"

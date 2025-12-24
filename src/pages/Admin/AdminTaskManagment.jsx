@@ -209,7 +209,7 @@ function TasksManagement() {
         }
       }
 
-      
+
       return resolved;
     },
     [userMap, clientMap]
@@ -1660,7 +1660,7 @@ function TasksManagement() {
   useEffect(() => {
     try {
       localStorage.setItem("tm_group_order", JSON.stringify(groupOrder));
-    } catch {}
+    } catch { }
   }, [groupOrder]);
 
   // Initialize and reconcile group order whenever status options change
@@ -1733,7 +1733,7 @@ function TasksManagement() {
     return map;
   }, [filtered, effectiveStatuses, todayStr, statusColorMap]);
 
-  
+
 
   const saveStatusColorToDB = useCallback(async (name, hex) => {
     try {
@@ -2021,7 +2021,7 @@ function TasksManagement() {
                 ))}
               </select>
 
-              <label className="flex items-center gap-2 px-3 py-2 text-sm text-content-primary bg-gray-50 rounded-lg border border-subtle cursor-pointer hover:bg-gray-100 transition-colors">
+              <label className="flex items-center gap-2 px-3 py-2 text-sm text-content-primary bg-surface-subtle rounded-lg border border-subtle cursor-pointer hover:bg-surface transition-colors">
                 <input
                   type="checkbox"
                   checked={filters.showArchived}
@@ -2047,7 +2047,7 @@ function TasksManagement() {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1 h-5 bg-emerald-600 rounded-full"></div>
-              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+              <h3 className="text-sm font-bold text-content-secondary uppercase tracking-wide">
                 Actions
               </h3>
             </div>
@@ -2075,13 +2075,13 @@ function TasksManagement() {
                   <FaDownload className="rotate-180" /> Export
                 </Button>
 
-                <div className="h-6 w-px bg-gray-300 mx-1"></div>
+                <div className="h-6 w-px bg-border-subtle mx-1"></div>
 
-                <div className="flex items-center rounded-lg border border-subtle bg-white p-0.5">
+                <div className="flex items-center rounded-lg border border-subtle bg-surface p-0.5">
                   <button
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === ""
                       ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-content-primary hover:bg-gray-100"
+                      : "text-content-primary hover:bg-surface-subtle"
                       }`}
                     onClick={() => updateFilter("assigneeType", "")}
                     type="button"
@@ -2091,7 +2091,7 @@ function TasksManagement() {
                   <button
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "user"
                       ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-content-primary hover:bg-gray-100"
+                      : "text-content-primary hover:bg-surface-subtle"
                       }`}
                     onClick={() => updateFilter("assigneeType", "user")}
                     type="button"
@@ -2101,7 +2101,7 @@ function TasksManagement() {
                   <button
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "client"
                       ? "bg-indigo-600 text-white shadow-sm"
-                      : "text-content-primary hover:bg-gray-100"
+                      : "text-content-primary hover:bg-surface-subtle"
                       }`}
                     onClick={() => updateFilter("assigneeType", "client")}
                     type="button"
@@ -2110,14 +2110,14 @@ function TasksManagement() {
                   </button>
                 </div>
 
-                <div className="h-6 w-px bg-gray-300 mx-1"></div>
+                <div className="h-6 w-px bg-border-subtle mx-1"></div>
 
-                <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                <div className="flex items-center gap-1 bg-surface-subtle rounded-lg p-1">
                   <button
                     onClick={() => setView("list")}
                     className={`p-2 rounded transition-all ${view === "list"
-                      ? "bg-white text-indigo-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                      ? "bg-surface text-indigo-600 shadow-sm"
+                      : "text-content-secondary hover:text-content-primary hover:bg-surface"
                       }`}
                     title="List View"
                   >
@@ -2126,8 +2126,8 @@ function TasksManagement() {
                   <button
                     onClick={() => setView("board")}
                     className={`p-2 rounded transition-all ${view === "board"
-                      ? "bg-white text-indigo-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                      ? "bg-surface text-indigo-600 shadow-sm"
+                      : "text-content-secondary hover:text-content-primary hover:bg-surface"
                       }`}
                     title="Kanban View"
                   >
@@ -2193,7 +2193,7 @@ function TasksManagement() {
                     onChange={(e) => selectAll(e.target.checked, filtered)}
                     className="accent-indigo-600 cursor-pointer"
                   />
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-content-tertiary">
                     {selectedIds.size} selected
                   </span>
                 </div>
@@ -2353,13 +2353,13 @@ function TasksManagement() {
           }}
         >
           <div
-            className="w-full max-w-sm rounded-lg bg-white p-4 shadow-xl"
+            className="w-full max-w-sm rounded-lg bg-surface p-4 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-2">
               <div className="text-sm font-semibold">Color</div>
               <button
-                className="p-1 rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                className="p-1 rounded text-content-tertiary hover:bg-surface-subtle hover:text-content-primary"
                 onClick={() => {
                   setShowStatusColorModal(false);
                   setShowAdvancedStatusColor(false);
@@ -2384,14 +2384,14 @@ function TasksManagement() {
                     type="color"
                     value={statusColorTemp}
                     onChange={(e) => setStatusColorTemp(e.target.value)}
-                    className="h-8 w-10 p-0 border border-gray-200 rounded"
+                    className="h-8 w-10 p-0 border border-subtle rounded"
                     aria-label="Pick custom color"
                   />
                   <input
                     type="text"
                     value={statusColorTemp}
                     onChange={(e) => setStatusColorTemp(e.target.value)}
-                    className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm"
+                    className="flex-1 rounded border border-subtle bg-surface px-2 py-1 text-sm text-content-primary"
                     placeholder="#3b82f6"
                   />
                 </div>
@@ -2462,16 +2462,16 @@ function TasksManagement() {
           onClick={closeGroupOptionsModal}
         >
           <div
-            className="bg-white rounded-xl shadow-xl w-full max-w-xs py-2 text-sm"
+            className="bg-surface rounded-xl shadow-xl w-full max-w-xs py-2 text-sm"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 pt-2 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+            <div className="px-4 pt-2 pb-1 text-[11px] font-semibold text-content-tertiary uppercase tracking-wide">
               Group options
             </div>
 
             <button
               type="button"
-              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-content-primary hover:bg-surface-subtle"
               onClick={() => handleGroupAction("rename")}
             >
               <span>Rename</span>
@@ -2479,7 +2479,7 @@ function TasksManagement() {
 
             <button
               type="button"
-              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-content-primary hover:bg-surface-subtle"
               onClick={() => handleGroupAction("new-status")}
             >
               <span>New status</span>
@@ -2487,17 +2487,17 @@ function TasksManagement() {
 
             <button
               type="button"
-              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-content-primary hover:bg-surface-subtle"
               onClick={() => handleGroupAction("edit-statuses")}
             >
               <span>Edit statuses</span>
             </button>
 
-            <div className="my-1 border-t border-gray-100" />
+            <div className="my-1 border-t border-subtle" />
 
             <button
               type="button"
-              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-content-primary hover:bg-surface-subtle"
               onClick={() => handleGroupAction("collapse-group")}
             >
               <span>Collapse group</span>
@@ -2505,17 +2505,17 @@ function TasksManagement() {
 
             <button
               type="button"
-              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-content-primary hover:bg-surface-subtle"
               onClick={() => handleGroupAction("hide-status")}
             >
               <span>Hide status</span>
             </button>
 
-            <div className="my-1 border-t border-gray-100" />
+            <div className="my-1 border-t border-subtle" />
 
             <button
               type="button"
-              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-content-primary hover:bg-surface-subtle"
               onClick={() => handleGroupAction("select-all")}
             >
               <span>Select all</span>
@@ -2523,17 +2523,17 @@ function TasksManagement() {
 
             <button
               type="button"
-              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-content-primary hover:bg-surface-subtle"
               onClick={() => handleGroupAction("collapse-all-groups")}
             >
               <span>Collapse all groups</span>
             </button>
 
-            <div className="my-1 border-t border-gray-100" />
+            <div className="my-1 border-t border-subtle" />
 
             <button
               type="button"
-              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 hover:bg-gray-50"
+              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-content-primary hover:bg-surface-subtle"
               onClick={() => handleGroupAction("automate-status")}
             >
               <span>Automate status</span>

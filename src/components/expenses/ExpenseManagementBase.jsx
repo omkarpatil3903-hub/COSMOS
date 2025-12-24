@@ -261,16 +261,16 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                     }}
                     className="cursor-pointer"
                 >
-                    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-indigo-500 p-4 hover:shadow-md transition-shadow ${useDarkMode ? "[.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10" : ""}`}>
+                    <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-indigo-500 p-4 hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className={`text-sm font-medium text-indigo-600 ${useDarkMode ? "[.dark_&]:text-indigo-400" : ""}`}>Total</p>
-                                <p className={`text-3xl font-bold text-indigo-900 mt-1 ${useDarkMode ? "[.dark_&]:text-white" : ""}`}>
+                                <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Total</p>
+                                <p className="text-3xl font-bold text-content-primary mt-1">
                                     {stats.total}
                                 </p>
                             </div>
-                            <div className={`w-12 h-12 rounded-full bg-indigo-200/50 flex items-center justify-center ${useDarkMode ? "[.dark_&]:bg-indigo-900/50" : ""}`}>
-                                <FaMoneyCheckAlt className={`text-indigo-600 text-xl ${useDarkMode ? "[.dark_&]:text-indigo-400" : ""}`} />
+                            <div className="w-12 h-12 rounded-full bg-indigo-200/50 dark:bg-indigo-900/50 flex items-center justify-center">
+                                <FaMoneyCheckAlt className="text-indigo-600 dark:text-indigo-400 text-xl" />
                             </div>
                         </div>
                     </div>
@@ -287,18 +287,18 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                     }}
                     className="cursor-pointer"
                 >
-                    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow ${useDarkMode ? "[.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10" : ""}`}>
+                    <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className={`text-sm font-medium text-green-600 ${useDarkMode ? "[.dark_&]:text-green-400" : ""}`}>
+                                <p className="text-sm font-medium text-green-600 dark:text-green-400">
                                     Approved (₹{stats.approvedAmount.toFixed(2)})
                                 </p>
-                                <p className={`text-3xl font-bold text-green-900 mt-1 ${useDarkMode ? "[.dark_&]:text-white" : ""}`}>
+                                <p className="text-3xl font-bold text-content-primary mt-1">
                                     {stats.approved}
                                 </p>
                             </div>
-                            <div className={`w-12 h-12 rounded-full bg-green-200/50 flex items-center justify-center ${useDarkMode ? "[.dark_&]:bg-green-900/50" : ""}`}>
-                                <FaCheckCircle className={`text-green-600 text-xl ${useDarkMode ? "[.dark_&]:text-green-400" : ""}`} />
+                            <div className="w-12 h-12 rounded-full bg-green-200/50 dark:bg-green-900/50 flex items-center justify-center">
+                                <FaCheckCircle className="text-green-600 dark:text-green-400 text-xl" />
                             </div>
                         </div>
                     </div>
@@ -315,18 +315,18 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                     }}
                     className="cursor-pointer"
                 >
-                    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-purple-500 p-4 hover:shadow-md transition-shadow ${useDarkMode ? "[.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10" : ""}`}>
+                    <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-purple-500 p-4 hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className={`text-sm font-medium text-purple-600 ${useDarkMode ? "[.dark_&]:text-purple-400" : ""}`}>
+                                <p className="text-sm font-medium text-purple-600 dark:text-purple-400">
                                     Paid (₹{stats.paidAmount.toFixed(2)})
                                 </p>
-                                <p className={`text-3xl font-bold text-purple-900 mt-1 ${useDarkMode ? "[.dark_&]:text-white" : ""}`}>
+                                <p className="text-3xl font-bold text-content-primary mt-1">
                                     {stats.paid}
                                 </p>
                             </div>
-                            <div className={`w-12 h-12 rounded-full bg-purple-200/50 flex items-center justify-center ${useDarkMode ? "[.dark_&]:bg-purple-900/50" : ""}`}>
-                                <FaRupeeSign className={`text-purple-600 text-xl ${useDarkMode ? "[.dark_&]:text-purple-400" : ""}`} />
+                            <div className="w-12 h-12 rounded-full bg-purple-200/50 dark:bg-purple-900/50 flex items-center justify-center">
+                                <FaRupeeSign className="text-purple-600 dark:text-purple-400 text-xl" />
                             </div>
                         </div>
                     </div>
@@ -337,39 +337,39 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
             <Card className="p-4">
                 <div className="mb-6">
                     <div className="flex items-center justify-between mb-3">
-                        <h2 className={`text-lg font-semibold text-gray-900 ${useDarkMode ? "[.dark_&]:text-white" : ""}`}>
+                        <h2 className="text-lg font-semibold text-content-primary">
                             Search & Actions
                         </h2>
-                        <span className={`text-sm text-gray-500 ${useDarkMode ? "[.dark_&]:text-gray-400" : ""}`}>
+                        <span className="text-sm text-content-tertiary">
                             Showing {filtered.length} records
                         </span>
                     </div>
-                    <hr className={`border-gray-200 ${useDarkMode ? "[.dark_&]:border-white/10" : ""}`} />
+                    <hr className="border-subtle" />
                 </div>
 
                 {/* Search Input */}
                 <div className="mb-4">
-                    <label className={`block text-sm font-medium text-gray-700 mb-2 ${useDarkMode ? "[.dark_&]:text-gray-300" : ""}`}>
+                    <label className="block text-sm font-medium text-content-secondary mb-2">
                         Search by title, employee, or description
                     </label>
                     <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <FaSearch className="h-4 w-4 text-gray-400" />
+                            <FaSearch className="h-4 w-4 text-content-tertiary" />
                         </div>
                         <input
                             type="text"
                             placeholder="e.g. Travel Expense or John Doe"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className={`pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${useDarkMode ? "[.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white" : ""}`}
+                            className="pl-10 pr-4 py-2 w-full border border-subtle rounded-lg bg-surface text-content-primary focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                         />
                     </div>
                 </div>
 
                 {/* Bulk Actions */}
                 {selectedIds.length > 0 && (
-                    <div className={`flex items-center gap-3 mb-4 p-3 bg-indigo-50 rounded-lg border border-indigo-200 ${useDarkMode ? "[.dark_&]:bg-indigo-900/20 [.dark_&]:border-indigo-500/30" : ""}`}>
-                        <span className={`text-sm font-medium text-indigo-700 ${useDarkMode ? "[.dark_&]:text-indigo-300" : ""}`}>
+                    <div className="flex items-center gap-3 mb-4 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-500/30">
+                        <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
                             {selectedIds.length} selected
                         </span>
                         <Button size="sm" onClick={handleBulkApprove}>
@@ -382,22 +382,22 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                 )}
 
                 {/* Filters */}
-                <div className={`pt-4 border-t border-gray-200 ${useDarkMode ? "[.dark_&]:border-white/10" : ""}`}>
+                <div className="pt-4 border-t border-subtle">
                     <div className="flex items-center gap-2 mb-3">
-                        <span className={`text-xs font-medium text-gray-500 uppercase tracking-wide ${useDarkMode ? "[.dark_&]:text-gray-400" : ""}`}>
+                        <span className="text-xs font-medium text-content-tertiary uppercase tracking-wide">
                             Filters:
                         </span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
-                            <label className={`block text-sm font-medium text-gray-700 mb-2 ${useDarkMode ? "[.dark_&]:text-gray-300" : ""}`}>
+                            <label className="block text-sm font-medium text-content-secondary mb-2">
                                 Status
                             </label>
                             <select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value)}
-                                className={`w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm ${useDarkMode ? "[.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white" : ""}`}
+                                className="w-full text-sm border border-subtle rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-surface text-content-primary shadow-sm"
                             >
                                 <option value="all">All Statuses</option>
                                 <option value="Draft">Draft</option>
@@ -409,13 +409,13 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                         </div>
 
                         <div>
-                            <label className={`block text-sm font-medium text-gray-700 mb-2 ${useDarkMode ? "[.dark_&]:text-gray-300" : ""}`}>
+                            <label className="block text-sm font-medium text-content-secondary mb-2">
                                 Category
                             </label>
                             <select
                                 value={categoryFilter}
                                 onChange={(e) => setCategoryFilter(e.target.value)}
-                                className={`w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm ${useDarkMode ? "[.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white" : ""}`}
+                                className="w-full text-sm border border-subtle rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-surface text-content-primary shadow-sm"
                             >
                                 <option value="all">All Categories</option>
                                 {EXPENSE_CATEGORIES.map((cat) => (
@@ -425,26 +425,26 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                         </div>
 
                         <div>
-                            <label className={`block text-sm font-medium text-gray-700 mb-2 ${useDarkMode ? "[.dark_&]:text-gray-300" : ""}`}>
+                            <label className="block text-sm font-medium text-content-secondary mb-2">
                                 From Date
                             </label>
                             <input
                                 type="date"
                                 value={fromDate}
                                 onChange={(e) => setFromDate(e.target.value)}
-                                className={`w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm ${useDarkMode ? "[.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white" : ""}`}
+                                className="w-full text-sm border border-subtle rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-surface text-content-primary shadow-sm"
                             />
                         </div>
 
                         <div>
-                            <label className={`block text-sm font-medium text-gray-700 mb-2 ${useDarkMode ? "[.dark_&]:text-gray-300" : ""}`}>
+                            <label className="block text-sm font-medium text-content-secondary mb-2">
                                 To Date
                             </label>
                             <input
                                 type="date"
                                 value={toDate}
                                 onChange={(e) => setToDate(e.target.value)}
-                                className={`w-full text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-white shadow-sm ${useDarkMode ? "[.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white" : ""}`}
+                                className="w-full text-sm border border-subtle rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-surface text-content-primary shadow-sm"
                             />
                         </div>
                     </div>
@@ -471,27 +471,27 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
             {/* Table */}
             {loading ? (
                 <div className="py-12 text-center">
-                    <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 mb-4 animate-pulse ${useDarkMode ? "[.dark_&]:bg-indigo-900/20 [.dark_&]:text-indigo-400" : ""}`}>
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 mb-4 animate-pulse">
                         <FaMoneyBillWave className="text-xl" />
                     </div>
-                    <p className={`text-gray-500 font-medium ${useDarkMode ? "[.dark_&]:text-gray-400" : ""}`}>Loading expenses...</p>
+                    <p className="text-content-tertiary font-medium">Loading expenses...</p>
                 </div>
             ) : filtered.length === 0 ? (
                 <div className="py-16 text-center">
-                    <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 text-gray-400 mb-4 ${useDarkMode ? "[.dark_&]:bg-white/5 [.dark_&]:text-gray-500" : ""}`}>
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-surface-subtle text-content-tertiary mb-4">
                         <FaFileInvoice className="text-3xl" />
                     </div>
-                    <h3 className={`text-lg font-semibold text-gray-900 ${useDarkMode ? "[.dark_&]:text-white" : ""}`}>
+                    <h3 className="text-lg font-semibold text-content-primary">
                         No expenses found
                     </h3>
-                    <p className={`text-gray-500 mt-1 max-w-sm mx-auto ${useDarkMode ? "[.dark_&]:text-gray-400" : ""}`}>
+                    <p className="text-content-tertiary mt-1 max-w-sm mx-auto">
                         No expenses match your current filters.
                     </p>
                 </div>
             ) : (
-                <div className={`overflow-x-auto rounded-xl border border-gray-200 shadow-sm ${useDarkMode ? "[.dark_&]:border-white/10" : ""}`}>
-                    <table className={`min-w-full divide-y divide-gray-200 ${useDarkMode ? "[.dark_&]:divide-white/5" : ""}`}>
-                        <thead className={`bg-gray-50 ${useDarkMode ? "[.dark_&]:bg-[#1F2234]" : ""}`}>
+                <div className="overflow-x-auto rounded-xl border border-subtle shadow-sm">
+                    <table className="min-w-full divide-y divide-subtle">
+                        <thead className="bg-surface-subtle">
                             <tr>
                                 <th scope="col" className="px-6 py-3 text-left w-10">
                                     <input
@@ -501,37 +501,37 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                         className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                     />
                                 </th>
-                                <th scope="col" className={`px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider ${useDarkMode ? "[.dark_&]:text-gray-400" : ""}`}>
+                                <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                     Sr. No.
                                 </th>
-                                <th scope="col" className={`px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${useDarkMode ? "[.dark_&]:text-gray-400" : ""}`}>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                     Employee
                                 </th>
-                                <th scope="col" className={`px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${useDarkMode ? "[.dark_&]:text-gray-400" : ""}`}>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                     Expense Details
                                 </th>
-                                <th scope="col" className={`px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${useDarkMode ? "[.dark_&]:text-gray-400" : ""}`}>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                     Project
                                 </th>
-                                <th scope="col" className={`px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${useDarkMode ? "[.dark_&]:text-gray-400" : ""}`}>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                     Category
                                 </th>
-                                <th scope="col" className={`px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider ${useDarkMode ? "[.dark_&]:text-gray-400" : ""}`}>
+                                <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                     Amount
                                 </th>
-                                <th scope="col" className={`px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider ${useDarkMode ? "[.dark_&]:text-gray-400" : ""}`}>
+                                <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                     Status
                                 </th>
-                                <th scope="col" className={`px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider ${useDarkMode ? "[.dark_&]:text-gray-400" : ""}`}>
+                                <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                     Actions
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className={`bg-white divide-y divide-gray-200 ${useDarkMode ? "[.dark_&]:bg-[#181B2A] [.dark_&]:divide-white/5" : ""}`}>
+                        <tbody className="bg-surface divide-y divide-subtle">
                             {filtered.slice((page - 1) * pageSize, page * pageSize).map((e, index) => (
                                 <tr
                                     key={e.id}
-                                    className={`hover:bg-gray-50 transition-colors group ${selectedIds.includes(e.id) ? `bg-indigo-50/50 ${useDarkMode ? "[.dark_&]:bg-indigo-900/20" : ""}` : `${useDarkMode ? "[.dark_&]:hover:bg-white/5" : ""}`}`}
+                                    className={`hover:bg-surface-subtle transition-colors group ${selectedIds.includes(e.id) ? "bg-indigo-50/50 dark:bg-indigo-900/20" : ""}`}
                                 >
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <input
@@ -542,17 +542,17 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                         />
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-600 text-xs font-medium">
+                                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-surface-subtle text-content-secondary text-xs font-medium">
                                             {(page - 1) * pageSize + index + 1}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <div className={`h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs mr-3 ${useDarkMode ? "[.dark_&]:bg-indigo-900/50 [.dark_&]:text-indigo-300" : ""}`}>
+                                            <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold text-xs mr-3">
                                                 {e.employeeName ? e.employeeName.charAt(0).toUpperCase() : "?"}
                                             </div>
                                             <div>
-                                                <div className={`text-sm font-medium text-gray-900 ${useDarkMode ? "[.dark_&]:text-white" : ""}`}>
+                                                <div className="text-sm font-medium text-content-primary">
                                                     {e.employeeName || "Unknown"}
                                                 </div>
                                             </div>
@@ -560,11 +560,11 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex flex-col">
-                                            <div className="flex items-center gap-2 text-xs text-gray-500 mb-0.5">
-                                                <FaCalendarAlt className="text-gray-400" />
+                                            <div className="flex items-center gap-2 text-xs text-content-tertiary mb-0.5">
+                                                <FaCalendarAlt className="text-content-tertiary" />
                                                 {e.date || "-"}
                                             </div>
-                                            <span className={`text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors ${useDarkMode ? "[.dark_&]:text-white" : ""}`}>
+                                            <span className="text-sm font-semibold text-content-primary group-hover:text-indigo-600 transition-colors">
                                                 {e.title}
                                             </span>
                                             {e.receiptUrl && (
@@ -596,9 +596,9 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right">
-                                        <div className={`text-sm font-bold text-gray-900 ${useDarkMode ? "[.dark_&]:text-white" : ""}`}>
+                                        <div className="text-sm font-bold text-content-primary">
                                             {e.amount?.toFixed ? e.amount.toFixed(2) : e.amount}
-                                            <span className={`text-xs font-medium text-gray-500 ml-1 ${useDarkMode ? "[.dark_&]:text-gray-400" : ""}`}>
+                                            <span className="text-xs font-medium text-content-tertiary ml-1">
                                                 {e.currency || "INR"}
                                             </span>
                                         </div>
@@ -657,26 +657,26 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
 
             {/* Pagination */}
             {!loading && filtered.length > 0 && (
-                <div className={`flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-b-xl ${useDarkMode ? "[.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10" : ""}`}>
+                <div className="flex items-center justify-between border-t border-subtle bg-surface px-4 py-3 sm:px-6 rounded-b-xl">
                     <div className="flex flex-1 justify-between sm:hidden">
                         <button
                             onClick={() => setPage((p) => Math.max(1, p - 1))}
                             disabled={page === 1}
-                            className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="relative inline-flex items-center rounded-md border border-subtle bg-surface px-4 py-2 text-sm font-medium text-content-primary hover:bg-surface-subtle disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Previous
                         </button>
                         <button
                             onClick={() => setPage((p) => Math.min(Math.ceil(filtered.length / pageSize), p + 1))}
                             disabled={page >= Math.ceil(filtered.length / pageSize)}
-                            className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="relative ml-3 inline-flex items-center rounded-md border border-subtle bg-surface px-4 py-2 text-sm font-medium text-content-primary hover:bg-surface-subtle disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Next
                         </button>
                     </div>
                     <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                         <div>
-                            <p className={`text-sm text-gray-700 ${useDarkMode ? "[.dark_&]:text-gray-300" : ""}`}>
+                            <p className="text-sm text-content-secondary">
                                 Showing <span className="font-medium">{Math.min((page - 1) * pageSize + 1, filtered.length)}</span> to{" "}
                                 <span className="font-medium">{Math.min(page * pageSize, filtered.length)}</span> of{" "}
                                 <span className="font-medium">{filtered.length}</span> results
@@ -687,18 +687,18 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                 <button
                                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                                     disabled={page === 1}
-                                    className={`relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed ${useDarkMode ? "[.dark_&]:ring-white/10 [.dark_&]:hover:bg-white/5" : ""}`}
+                                    className="relative inline-flex items-center rounded-l-md px-2 py-2 text-content-tertiary ring-1 ring-inset ring-subtle hover:bg-surface-subtle focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <span className="sr-only">Previous</span>
                                     <FaChevronLeft className="h-3 w-3" />
                                 </button>
-                                <span className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 ${useDarkMode ? "[.dark_&]:text-white [.dark_&]:ring-white/10" : ""}`}>
+                                <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-content-primary ring-1 ring-inset ring-subtle">
                                     {page} / {Math.ceil(filtered.length / pageSize) || 1}
                                 </span>
                                 <button
                                     onClick={() => setPage((p) => Math.min(Math.ceil(filtered.length / pageSize), p + 1))}
                                     disabled={page >= Math.ceil(filtered.length / pageSize)}
-                                    className={`relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed ${useDarkMode ? "[.dark_&]:ring-white/10 [.dark_&]:hover:bg-white/5" : ""}`}
+                                    className="relative inline-flex items-center rounded-r-md px-2 py-2 text-content-tertiary ring-1 ring-inset ring-subtle hover:bg-surface-subtle focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <span className="sr-only">Next</span>
                                     <FaChevronRight className="h-3 w-3" />
@@ -712,34 +712,34 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
             {/* Reject Modal */}
             {rejectingId && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className={`w-full max-w-md rounded-2xl bg-white shadow-2xl border border-white/20 overflow-hidden flex flex-col ${useDarkMode ? "[.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10" : ""}`}>
-                        <div className={`flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-white/80 backdrop-blur-md ${useDarkMode ? "[.dark_&]:bg-[#181B2A]/80 [.dark_&]:border-white/10" : ""}`}>
+                    <div className="w-full max-w-md rounded-2xl bg-surface shadow-2xl border border-subtle overflow-hidden flex flex-col">
+                        <div className="flex items-center justify-between border-b border-subtle px-6 py-4 bg-surface/80 backdrop-blur-md">
                             <div>
-                                <h2 className={`text-lg font-bold text-gray-800 ${useDarkMode ? "[.dark_&]:text-white" : ""}`}>
+                                <h2 className="text-lg font-bold text-content-primary">
                                     Reject Expense
                                 </h2>
-                                <p className={`text-xs text-gray-500 font-medium mt-0.5 ${useDarkMode ? "[.dark_&]:text-gray-400" : ""}`}>
+                                <p className="text-xs text-content-tertiary font-medium mt-0.5">
                                     Provide a reason for rejection
                                 </p>
                             </div>
                             <button
                                 onClick={() => setRejectingId(null)}
-                                className={`p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600 ${useDarkMode ? "[.dark_&]:hover:bg-white/10 [.dark_&]:hover:text-gray-300" : ""}`}
+                                className="p-2 hover:bg-surface-subtle rounded-full transition-colors text-content-tertiary hover:text-content-secondary"
                             >
                                 <FaTimes className="text-lg" />
                             </button>
                         </div>
 
                         <div className="px-6 py-6 space-y-4">
-                            <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex gap-3">
+                            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-500/30 rounded-xl p-4 flex gap-3">
                                 <FaExclamationTriangle className="text-amber-500 mt-0.5 flex-shrink-0" />
-                                <p className="text-sm text-amber-800">
+                                <p className="text-sm text-amber-800 dark:text-amber-300">
                                     The employee will be notified about this rejection. Please
                                     provide a clear reason to help them correct the issue.
                                 </p>
                             </div>
                             <div>
-                                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                                <label className="block text-xs font-semibold text-content-tertiary mb-1.5 uppercase tracking-wide">
                                     Reason for Rejection
                                 </label>
                                 <textarea
@@ -747,23 +747,23 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                     value={rejectReason}
                                     onChange={(e) => setRejectReason(e.target.value)}
                                     placeholder="e.g. Receipt is blurry, Amount mismatch..."
-                                    className={`w-full rounded-xl border-0 bg-gray-50 py-3 px-4 text-sm font-medium text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-red-500 transition-all resize-none ${useDarkMode ? "[.dark_&]:bg-[#1F2234] [.dark_&]:text-white [.dark_&]:ring-white/10" : ""}`}
+                                    className="w-full rounded-xl border-0 bg-surface-subtle py-3 px-4 text-sm font-medium text-content-primary ring-1 ring-inset ring-subtle placeholder:text-content-tertiary focus:ring-2 focus:ring-inset focus:ring-red-500 transition-all resize-none"
                                     autoFocus
                                 />
                             </div>
                         </div>
 
-                        <div className={`flex items-center justify-end gap-3 border-t border-gray-100 px-6 py-4 bg-gray-50/50 ${useDarkMode ? "[.dark_&]:bg-[#1F2234]/50 [.dark_&]:border-white/10" : ""}`}>
+                        <div className="flex items-center justify-end gap-3 border-t border-subtle px-6 py-4 bg-surface-subtle/50">
                             <Button
                                 variant="ghost"
                                 onClick={() => setRejectingId(null)}
-                                className={`text-gray-500 hover:text-gray-700 hover:bg-gray-100 ${useDarkMode ? "[.dark_&]:text-gray-400 [.dark_&]:hover:text-gray-300 [.dark_&]:hover:bg-white/10" : ""}`}
+                                className="text-content-tertiary hover:text-content-secondary hover:bg-surface-subtle"
                             >
                                 Cancel
                             </Button>
                             <Button
                                 onClick={handleConfirmReject}
-                                className="bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-200"
+                                className="bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-200 dark:shadow-red-900/20"
                             >
                                 Reject Expense
                             </Button>

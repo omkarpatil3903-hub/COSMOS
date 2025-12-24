@@ -746,7 +746,7 @@ Generated on: ${formatDateToDDMMYYYY(
       {/* Completion Rate & Priority Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Task Completion Rate
           </h3>
           <div className="space-y-4">
@@ -885,16 +885,16 @@ Generated on: ${formatDateToDDMMYYYY(
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                   Projects
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {totalProjects}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   -
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {totalProjects}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   -
                 </td>
               </tr>
@@ -902,16 +902,16 @@ Generated on: ${formatDateToDDMMYYYY(
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                   Tasks
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {totalTasks}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {completedTasks}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {inProgressTasks}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {pendingTasks}
                 </td>
               </tr>
@@ -919,24 +919,24 @@ Generated on: ${formatDateToDDMMYYYY(
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                   High Priority
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {highPriorityTasks}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {
                     tasks.filter(
                       (t) => t.priority === "High" && t.status === "Done"
                     ).length
                   }
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {
                     tasks.filter(
                       (t) => t.priority === "High" && t.status === "In Progress"
                     ).length
                   }
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {
                     tasks.filter(
                       (t) => t.priority === "High" && t.status === "To-Do"
@@ -956,7 +956,7 @@ Generated on: ${formatDateToDDMMYYYY(
           onClick={() => setShowReportModal(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-[95vw] h-[90vh] flex flex-col p-6"
+            className="bg-white dark:bg-[#1e1e2d] rounded-xl shadow-2xl w-full max-w-[95vw] h-[90vh] flex flex-col p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
@@ -997,7 +997,7 @@ Generated on: ${formatDateToDDMMYYYY(
               </div>
               <button
                 onClick={() => setShowReportModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 <svg
                   className="w-5 h-5"

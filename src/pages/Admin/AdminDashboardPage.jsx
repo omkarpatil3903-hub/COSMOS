@@ -610,8 +610,8 @@ function DashboardPage() {
   const LineChart = ({ data, title, dataKey, color = "#10B981" }) => {
     const values = Array.isArray(data)
       ? data
-          .map((d) => (d && typeof d[dataKey] === "number" ? d[dataKey] : null))
-          .filter((v) => typeof v === "number" && isFinite(v))
+        .map((d) => (d && typeof d[dataKey] === "number" ? d[dataKey] : null))
+        .filter((v) => typeof v === "number" && isFinite(v))
       : [];
 
     if (values.length === 0) {
@@ -850,19 +850,18 @@ function DashboardPage() {
                 <div
                   key={index}
                   className={`
-                    h-8 p-1 border border-gray-100 relative
-                    ${day ? "hover:bg-gray-50" : ""}
-                    ${isToday(day) ? "bg-blue-100 border-blue-300" : "bg-white"}
+                    h-8 p-1 border border-subtle relative
+                    ${day ? "hover:bg-surface-subtle" : ""}
+                    ${isToday(day) ? "bg-blue-100 dark:bg-blue-900/30 border-blue-300" : "bg-surface"}
                   `}
                 >
                   {day && (
                     <>
                       <div
-                        className={`text-center ${
-                          isToday(day)
+                        className={`text-center ${isToday(day)
                             ? "font-bold text-blue-600"
                             : "text-content-primary"
-                        }`}
+                          }`}
                       >
                         {day}
                       </div>
@@ -978,7 +977,7 @@ function DashboardPage() {
                 <LuNotebookPen className="h-5 w-5" />
               </button>
               {showQuickMenu && (
-                <div className="absolute right-0 top-9 z-30 w-44 rounded-lg bg-white shadow-lg border border-gray-200 text-sm">
+                <div className="absolute right-0 top-9 z-30 w-44 rounded-lg bg-surface shadow-lg border border-subtle text-sm">
                   <button
                     type="button"
                     onClick={() => {
@@ -986,7 +985,7 @@ function DashboardPage() {
                       setShowNotesMenu(false);
                       setShowQuickMenu(false);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50 text-gray-700 flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 hover:bg-surface-subtle text-content-primary flex items-center gap-2"
                   >
                     <LuAlarmClock className="h-3.5 w-3.5 text-indigo-500" />
                     <span>Reminders</span>
@@ -998,7 +997,7 @@ function DashboardPage() {
                       setShowReminderMenu(false);
                       setShowQuickMenu(false);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50 text-gray-700 border-t border-gray-100 flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 hover:bg-surface-subtle text-content-primary border-t border-subtle flex items-center gap-2"
                   >
                     <FaStickyNote className="h-3.5 w-3.5 text-amber-500" />
                     <span>Notes</span>
@@ -1007,9 +1006,9 @@ function DashboardPage() {
               )}
 
               {showReminderMenu && (
-                <div className="absolute right-0 top-11 z-20 w-80 rounded-lg bg-white shadow-lg border border-gray-200 p-3 text-sm">
+                <div className="absolute right-0 top-11 z-20 w-80 rounded-lg bg-surface shadow-lg border border-subtle p-3 text-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="font-semibold text-gray-800">Quick Reminders</div>
+                    <div className="font-semibold text-content-primary">Quick Reminders</div>
                     <button
                       type="button"
                       onClick={() => {
@@ -1390,7 +1389,7 @@ function DashboardPage() {
                       ))
                     )}
                   </div>
-                 
+
                 </div>
               )}
             </div>
@@ -1648,19 +1647,19 @@ function DashboardPage() {
                     <span className="font-semibold text-green-600">
                       {projects.length
                         ? Math.round(
-                            projects
-                              .map((p) => {
-                                const projTasks = tasks.filter(
-                                  (t) => t.projectId === p.id
-                                );
-                                const total = projTasks.length;
-                                const done = projTasks.filter(
-                                  (t) => normalizeStatus(t.status) === "Done"
-                                ).length;
-                                return total > 0 ? (done / total) * 100 : 0;
-                              })
-                              .reduce((a, b) => a + b, 0) / projects.length
-                          )
+                          projects
+                            .map((p) => {
+                              const projTasks = tasks.filter(
+                                (t) => t.projectId === p.id
+                              );
+                              const total = projTasks.length;
+                              const done = projTasks.filter(
+                                (t) => normalizeStatus(t.status) === "Done"
+                              ).length;
+                              return total > 0 ? (done / total) * 100 : 0;
+                            })
+                            .reduce((a, b) => a + b, 0) / projects.length
+                        )
                         : 0}
                       %
                     </span>

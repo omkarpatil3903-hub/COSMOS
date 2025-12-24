@@ -222,14 +222,14 @@ function ManageProjects({ onlyMyManaged = false }) {
         return p.projectManagerId === currentUser.uid;
       })
       .map((p) => {
-      const projTasks = tasks.filter((t) => t.projectId === p.id);
-      const total = projTasks.length;
-      const done = projTasks.filter(
-        (t) => normalizeStatus(t.status) === "Done"
-      ).length;
-      const derived = total > 0 ? Math.round((done / total) * 100) : 0;
-      return { ...p, progress: derived };
-    });
+        const projTasks = tasks.filter((t) => t.projectId === p.id);
+        const total = projTasks.length;
+        const done = projTasks.filter(
+          (t) => normalizeStatus(t.status) === "Done"
+        ).length;
+        const derived = total > 0 ? Math.round((done / total) * 100) : 0;
+        return { ...p, progress: derived };
+      });
   }, [projects, tasks]);
 
   const completedProjectsCount = useMemo(() => {
@@ -264,8 +264,8 @@ function ManageProjects({ onlyMyManaged = false }) {
           (project.progress === 0
             ? "Not Started"
             : project.progress === 100
-            ? "Completed"
-            : "In Progress") || "";
+              ? "Completed"
+              : "In Progress") || "";
         return (
           (project.projectName || "").toLowerCase().includes(normalisedTerm) ||
           (project.clientName || "").toLowerCase().includes(normalisedTerm) ||
@@ -366,12 +366,12 @@ function ManageProjects({ onlyMyManaged = false }) {
 
     const hasValidOKR = Array.isArray(data.okrs)
       ? data.okrs.some(
-          (okr) =>
-            okr.objective &&
-            okr.objective.trim() &&
-            Array.isArray(okr.keyResults) &&
-            okr.keyResults.some((kr) => kr && kr.trim())
-        )
+        (okr) =>
+          okr.objective &&
+          okr.objective.trim() &&
+          Array.isArray(okr.keyResults) &&
+          okr.keyResults.some((kr) => kr && kr.trim())
+      )
       : false;
 
     if (!hasValidOKR) {
@@ -405,8 +405,8 @@ function ManageProjects({ onlyMyManaged = false }) {
         selectedManager?.name || formData.projectManagerName || "";
       const assigneeNames = Array.isArray(formData.assigneeIds)
         ? formData.assigneeIds
-            .map((id) => assigneesOptions.find((u) => u.id === id)?.name)
-            .filter(Boolean)
+          .map((id) => assigneesOptions.find((u) => u.id === id)?.name)
+          .filter(Boolean)
         : [];
       await addDoc(collection(db, "projects"), {
         projectName: formData.projectName,
@@ -504,8 +504,8 @@ function ManageProjects({ onlyMyManaged = false }) {
         selectedManager?.name || formData.projectManagerName || "";
       const assigneeNames = Array.isArray(formData.assigneeIds)
         ? formData.assigneeIds
-            .map((id) => assigneesOptions.find((u) => u.id === id)?.name)
-            .filter(Boolean)
+          .map((id) => assigneesOptions.find((u) => u.id === id)?.name)
+          .filter(Boolean)
         : [];
       await updateDoc(ref, {
         projectName: formData.projectName,
@@ -614,36 +614,35 @@ function ManageProjects({ onlyMyManaged = false }) {
               status
             )} p-4 flex flex-col`}
           >
-            <h3 className="font-semibold text-gray-800 mb-4 flex items-center justify-between flex-shrink-0">
+            <h3 className="font-semibold text-content-primary mb-4 flex items-center justify-between flex-shrink-0">
               {status}
-              <span className="text-sm bg-white px-2 py-1 rounded-full">
+              <span className="text-sm bg-surface px-2 py-1 rounded-full">
                 {projects.length}
               </span>
             </h3>
             <div
-              className={`space-y-3 ${
-                projects.length > 4
-                  ? "max-h-[750px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
-                  : ""
-              }`}
+              className={`space-y-3 ${projects.length > 4
+                ? "max-h-[750px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+                : ""
+                }`}
             >
               {projects.map((project) => (
                 <div
                   key={project.id}
-                  className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow flex-shrink-0"
+                  className="bg-surface rounded-lg p-4 shadow-sm border border-subtle hover:shadow-md transition-shadow flex-shrink-0"
                 >
-                  <h4 className="font-medium text-gray-900 mb-2">
+                  <h4 className="font-medium text-content-primary mb-2">
                     {project.projectName}
                   </h4>
-                  <p className="text-sm text-gray-600 mb-2">
+                  <p className="text-sm text-content-secondary mb-2">
                     Client: {project.clientName}
                   </p>
                   <div className="mb-3">
-                    <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                    <div className="flex items-center justify-between text-xs text-content-secondary mb-1">
                       <span>Progress</span>
                       <span className="font-medium">{project.progress}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div className="w-full bg-surface-subtle rounded-full h-3">
                       <div
                         className={`h-3 rounded-full transition-all duration-300 ${getProgressColor(
                           project.progress
@@ -760,13 +759,13 @@ function ManageProjects({ onlyMyManaged = false }) {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-blue-600">
                       Total Projects
                     </p>
-                    <p className="text-3xl font-bold text-blue-900 mt-1">
+                    <p className="text-3xl font-bold text-content-primary mt-1">
                       {projects.length}
                     </p>
                   </div>
@@ -786,13 +785,13 @@ function ManageProjects({ onlyMyManaged = false }) {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-green-600">
                       Completed
                     </p>
-                    <p className="text-3xl font-bold text-green-900 mt-1">
+                    <p className="text-3xl font-bold text-content-primary mt-1">
                       {completedProjectsCount}
                     </p>
                   </div>
@@ -812,13 +811,13 @@ function ManageProjects({ onlyMyManaged = false }) {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-yellow-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-yellow-500 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-yellow-600">
                       In Progress
                     </p>
-                    <p className="text-3xl font-bold text-yellow-900 mt-1">
+                    <p className="text-3xl font-bold text-content-primary mt-1">
                       {
                         projects.filter(
                           (p) => p.progress > 0 && p.progress < 100
@@ -842,13 +841,13 @@ function ManageProjects({ onlyMyManaged = false }) {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 border-l-red-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-red-500 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-red-600">
                       Not Started
                     </p>
-                    <p className="text-3xl font-bold text-red-900 mt-1">
+                    <p className="text-3xl font-bold text-content-primary mt-1">
                       {projects.filter((p) => p.progress === 0).length}
                     </p>
                   </div>
@@ -873,11 +872,10 @@ function ManageProjects({ onlyMyManaged = false }) {
                 </span>
                 <button
                   onClick={() => setShowCompleted(!showCompleted)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    showCompleted
-                      ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
-                      : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
-                  }`}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${showCompleted
+                    ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
+                    : "bg-surface-subtle text-content-secondary border border-subtle hover:bg-surface"
+                    }`}
                   title={
                     showCompleted
                       ? "Hide completed projects"
@@ -889,25 +887,23 @@ function ManageProjects({ onlyMyManaged = false }) {
                     ? "Hide Completed"
                     : `View Completed (${completedProjectsCount})`}
                 </button>
-                <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                <div className="flex items-center gap-1 bg-surface-subtle rounded-lg p-1">
                   <button
                     onClick={() => setViewMode("table")}
-                    className={`p-2 rounded transition-colors ${
-                      viewMode === "table"
-                        ? "bg-white text-indigo-600 shadow"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
+                    className={`p-2 rounded transition-colors ${viewMode === "table"
+                      ? "bg-surface text-indigo-600 shadow"
+                      : "text-content-secondary hover:text-content-primary"
+                      }`}
                     title="List View"
                   >
                     <FaList className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setViewMode("kanban")}
-                    className={`p-2 rounded transition-colors ${
-                      viewMode === "kanban"
-                        ? "bg-white text-indigo-600 shadow"
-                        : "text-gray-600 hover:text-gray-900"
-                    }`}
+                    className={`p-2 rounded transition-colors ${viewMode === "kanban"
+                      ? "bg-surface text-indigo-600 shadow"
+                      : "text-content-secondary hover:text-content-primary"
+                      }`}
                     title="Kanban View"
                   >
                     <FaTh className="w-4 h-4" />
@@ -996,33 +992,32 @@ function ManageProjects({ onlyMyManaged = false }) {
                 </div>
               }
             >
-              <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                <table className="min-w-[1100px] divide-y divide-gray-200 bg-white">
+              <div className="w-full overflow-x-auto rounded-lg border border-subtle shadow-sm">
+                <table className="min-w-[1100px] divide-y divide-subtle bg-surface">
                   <caption className="sr-only">
                     Filtered project records with search and pagination controls
                   </caption>
-                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                  <thead className="bg-surface-subtle">
                     <tr>
                       {tableHeaders.map((header) => {
                         const isActive = sortConfig.key === header.key;
                         const ariaSort = !header.sortable
                           ? "none"
                           : isActive
-                          ? sortConfig.direction === "asc"
-                            ? "ascending"
-                            : "descending"
-                          : "none";
+                            ? sortConfig.direction === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : "none";
 
                         return (
                           <th
                             key={header.key}
                             scope="col"
                             aria-sort={ariaSort}
-                            className={`group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 ${
-                              header.key === "actions"
-                                ? "sticky right-0 z-10 bg-gray-50"
-                                : ""
-                            }`}
+                            className={`group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-content-secondary border-b border-subtle ${header.key === "actions"
+                              ? "sticky right-0 z-10 bg-surface-subtle"
+                              : ""
+                              }`}
                           >
                             {header.sortable ? (
                               <button
@@ -1043,19 +1038,19 @@ function ManageProjects({ onlyMyManaged = false }) {
                       })}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 bg-white">
+                  <tbody className="divide-y divide-subtle bg-surface">
                     {currentRows.map((project, index) => (
                       <tr
                         key={project.id}
-                        className="bg-white cursor-pointer hover:bg-gray-50 transition-colors"
+                        className="bg-surface cursor-pointer hover:bg-surface-subtle transition-colors"
                         onClick={() => handleView(project.id)}
                       >
-                        <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-500">
-                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100">
+                        <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-content-tertiary">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-surface-subtle">
                             {indexOfFirstRow + index + 1}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                        <td className="px-6 py-4 text-sm font-semibold text-content-primary">
                           <span>{project.projectName}</span>
                         </td>
                         <td className="px-6 py-4 text-sm font-semibold text-gray-900">
@@ -1071,40 +1066,39 @@ function ManageProjects({ onlyMyManaged = false }) {
                         </td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm">
                           <div className="flex items-center">
-                            <div className="flex-1 bg-gray-200 rounded-full h-3 mr-3 min-w-[120px]">
+                            <div className="flex-1 bg-surface-subtle rounded-full h-3 mr-3 min-w-[120px]">
                               <div
-                                className={`h-3 rounded-full transition-all duration-300 ${
-                                  project.progress === 0
-                                    ? "bg-gray-400"
-                                    : project.progress < 30
+                                className={`h-3 rounded-full transition-all duration-300 ${project.progress === 0
+                                  ? "bg-gray-400"
+                                  : project.progress < 30
                                     ? "bg-red-500"
                                     : project.progress < 70
-                                    ? "bg-yellow-500"
-                                    : project.progress < 100
-                                    ? "bg-blue-500"
-                                    : "bg-green-500"
-                                }`}
+                                      ? "bg-yellow-500"
+                                      : project.progress < 100
+                                        ? "bg-blue-500"
+                                        : "bg-green-500"
+                                  }`}
                                 style={{ width: `${project.progress}%` }}
                               ></div>
                             </div>
-                            <span className="text-sm font-medium text-gray-700 min-w-[40px]">
+                            <span className="text-sm font-medium text-content-secondary min-w-[40px]">
                               {project.progress}%
                             </span>
                           </div>
                         </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-content-secondary">
                           <div className="flex items-center">
                             <div className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-2"></div>
                             {formatDate(project.startDate)}
                           </div>
                         </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600">
-                          <div className="flex items-center bg-gray-50 rounded-lg px-3 py-1">
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-content-secondary">
+                          <div className="flex items-center bg-surface-subtle rounded-lg px-3 py-1">
                             <div className="w-1.5 h-1.5 rounded-full bg-red-400 mr-2"></div>
                             {formatDate(project.endDate)}
                           </div>
                         </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm sticky right-0 z-10 bg-white">
+                        <td className="whitespace-nowrap px-6 py-4 text-sm sticky right-0 z-10 bg-surface">
                           <div className="flex items-center space-x-3">
                             <button
                               onClick={(e) => {
