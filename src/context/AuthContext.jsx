@@ -5,6 +5,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import AppLoader from "../components/AppLoader";
 import { getAccessiblePanels } from "../config/roles";
+import { initializeAppFolders } from "../utils/initializeAppFolders";
 
 import AuthContext from "./AuthContextBase";
 
@@ -15,6 +16,9 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Initialize app folders (e.g., MOMs folder for superadmin/admin)
+    initializeAppFolders();
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {

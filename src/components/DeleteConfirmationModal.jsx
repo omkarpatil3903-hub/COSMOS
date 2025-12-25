@@ -1,5 +1,5 @@
 // src/components/DeleteConfirmationModal.jsx
-import React from "react";
+import React, { useState } from "react";
 import { FaExclamationTriangle, FaSpinner } from "react-icons/fa";
 
 function DeleteConfirmationModal({
@@ -14,11 +14,19 @@ function DeleteConfirmationModal({
   confirmLabel = "Delete",
   permanentMessage,
   isLoading = false,
+  requireTextConfirmation = false, // New prop for text confirmation
+  confirmationText = "", // Text that user needs to type
 }) {
+  const [inputText, setInputText] = useState("");
   const heading = title || "Confirm Deletion";
   const mainDescription =
     description || `Are you sure you want to delete this ${itemType}?`;
   const secondaryMessage = permanentMessage || "This action cannot be undone.";
+
+  // Check if delete button should be enabled
+  const canDelete = requireTextConfirmation
+    ? inputText === confirmationText
+    : true;
 
   return (
     <div className="bg-white [.dark_&]:bg-[#181B2A] p-6 rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
@@ -44,11 +52,30 @@ function DeleteConfirmationModal({
           <p className="text-gray-500 [.dark_&]:text-gray-400 text-xs mt-2 break-words">{secondaryMessage}</p>
         </div>
       </div>
+
+      {/* Text confirmation input */}
+      {requireTextConfirmation && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-2">
+            Type <span className="font-bold text-red-600 [.dark_&]:text-red-400">{confirmationText}</span> to confirm:
+          </label>
+          <input
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            placeholder={confirmationText}
+            className="w-full px-3 py-2 border border-gray-300 [.dark_&]:border-white/10 rounded-md bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+            autoFocus
+          />
+        </div>
+      )}
+
       <div className="flex justify-end gap-3 mt-6">
         <button
           type="button"
           onClick={onClose}
-          className="py-2 px-4 bg-gray-200 [.dark_&]:bg-gray-700 text-gray-800 [.dark_&]:text-gray-200 font-semibold rounded-md hover:bg-gray-300 [.dark_&]:hover:bg-gray-600 transition-colors"
+          disabled={isLoading}
+          className="py-2 px-4 bg-gray-200 [.dark_&]:bg-gray-700 text-gray-800 [.dark_&]:text-gray-200 font-semibold rounded-md hover:bg-gray-300 [.dark_&]:hover:bg-gray-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {cancelLabel}
         </button>
@@ -56,7 +83,7 @@ function DeleteConfirmationModal({
           type="button"
           onClick={onConfirm}
           className="py-2 px-4 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700 transition-colors shadow-sm hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
-          disabled={isLoading}
+          disabled={isLoading || !canDelete}
         >
           {isLoading && (
             <FaSpinner className="inline-block mr-2 h-4 w-4 animate-spin" />

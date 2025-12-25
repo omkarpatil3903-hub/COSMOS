@@ -29,6 +29,7 @@ import {
   getDocs,
   doc,
   getDoc,
+  setDoc,
   serverTimestamp,
 } from "firebase/firestore";
 import { db, storage, auth } from "../../firebase";
@@ -509,7 +510,7 @@ export default function MomGeneratorPro() {
         );
         const baseName = `${momNo}_${safeProject}_${meetingDate || ""}`;
         const filename = `${baseName}.pdf`;
-        const storagePath = `Documents/${projectId}/${filename}`;
+        const storagePath = `documents/moms/${filename}`;
         const storageRef = ref(storage, storagePath);
 
         // Render the current MoM DOM into a PDF using html2canvas + jsPDF
@@ -573,8 +574,30 @@ export default function MomGeneratorPro() {
           return u.displayName || u.email || "";
         })();
 
-        const knowledgeDocRef = await addDoc(collection(db, "knowldge", projectId, "Documents"), {
-          name: `${momNo} – ${selectedProject?.name || "Project"}`,
+        // Get user's role to show who saved it (superadmin/admin)
+        let userRole = "";
+        try {
+          const userDocRef = doc(db, "users", currentUser.uid);
+          const userSnap = await getDoc(userDocRef);
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            userRole = userData.role || userData.resourceRoleType || "";
+
+            // Ensure we have a valid role string
+            if (userRole && typeof userRole === 'string') {
+              userRole = userRole.trim();
+            } else {
+              userRole = ""; // Reset if not a valid string
+            }
+          }
+        } catch (err) {
+          console.error("Failed to get user role", err);
+        }
+
+        // Save to documents collection with momNo as document ID
+        await setDoc(doc(db, "documents", momNo), {
+          name: momNo, // Only MOM ID, no project name
+          folder: "MOMs", // Save all MOMs to the "MOMs" folder
           shared: true,
           access: {
             admin: projectStaffNames.admins || [],
@@ -586,27 +609,19 @@ export default function MomGeneratorPro() {
           url: downloadURL,
           storagePath,
           location: "—",
-          tags: [],
+          tags: ["MOM", momNo],
           children: 0,
           projectId,
           momNo,
-          momId: "", // will be set after moms metadata doc is created
+          momVersion: String(momVersion || 1),
           createdByUid: currentUser?.uid || "",
           createdByName,
+          createdByRole: userRole, // Store role to show who saved it
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
-
-        // After knowledge doc and storage are created, write minimal metadata into moms node
-        momDocRef = await addDoc(collection(db, "moms"), {
-          projectId: projectId || "",
-          momNo,
-          storagePath,
-          url: downloadURL,
-          createdAt: Timestamp.now(),
-        });
       } catch (err) {
-        console.error("Failed to save MOM document into knowledge documents", err);
+        console.error("Failed to save MOM document", err);
       }
 
       toast.success(`${momNo} saved`);

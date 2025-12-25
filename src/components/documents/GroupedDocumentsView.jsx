@@ -229,7 +229,18 @@ function GroupedDocumentsView({
                                             {/* UPLOADED BY */}
                                             <div className="col-span-2 flex items-center">
                                                 <span className="text-sm text-gray-600 [.dark_&]:text-gray-400 truncate">
-                                                    {doc.createdByName || "—"}
+                                                    {(() => {
+                                                        const role = doc.createdByRole || "";
+                                                        const name = doc.createdByName || "";
+
+                                                        // If role exists and is more than 2 characters, use it with proper capitalization
+                                                        if (role && role.length > 2) {
+                                                            return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+                                                        }
+
+                                                        // Otherwise, use the name
+                                                        return name || "—";
+                                                    })()}
                                                 </span>
                                             </div>
 
@@ -242,26 +253,31 @@ function GroupedDocumentsView({
 
                                             {/* ACTIONS */}
                                             <div className="col-span-2 flex items-center justify-center gap-2">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleEdit(doc);
-                                                    }}
-                                                    className="p-1.5 rounded hover:bg-indigo-100 [.dark_&]:hover:bg-indigo-900/20 text-indigo-600 [.dark_&]:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    title="Edit"
-                                                >
-                                                    <FaEdit className="h-3.5 w-3.5" />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDelete(doc);
-                                                    }}
-                                                    className="p-1.5 rounded hover:bg-red-100 [.dark_&]:hover:bg-red-900/20 text-red-600 [.dark_&]:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    title="Delete"
-                                                >
-                                                    <FaTrash className="h-3.5 w-3.5" />
-                                                </button>
+                                                {showActions && onEdit && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onEdit(doc);
+                                                        }}
+                                                        className="p-1.5 rounded hover:bg-indigo-100 [.dark_&]:hover:bg-indigo-900/20 text-indigo-600 [.dark_&]:text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        title="Edit"
+                                                    >
+                                                        <FaEdit className="h-3.5 w-3.5" />
+                                                    </button>
+                                                )}
+                                                {/* Delete button visible for all documents */}
+                                                {showActions && onDelete && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onDelete(doc);
+                                                        }}
+                                                        className="p-1.5 rounded hover:bg-red-100 [.dark_&]:hover:bg-red-900/20 text-red-600 [.dark_&]:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        title="Delete"
+                                                    >
+                                                        <FaTrash className="h-3.5 w-3.5" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     ))}

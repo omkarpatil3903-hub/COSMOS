@@ -4,7 +4,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { FaArrowLeft, FaRegComment, FaBookOpen, FaFileAlt, FaEdit, FaTrash, FaLightbulb, FaUser, FaCalendarAlt, FaClock, FaChevronUp, FaChevronDown } from "react-icons/fa";
 import Card from "../../components/Card";
 import { db, storage, auth } from "../../firebase";
-import { collection, onSnapshot, query, where, addDoc, serverTimestamp, doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, where, addDoc, serverTimestamp, doc, getDoc, getDocs, updateDoc, deleteDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject, updateMetadata, getBytes } from "firebase/storage";
 import { formatDate } from "../../utils/formatDate";
 import DocumentsTable from "../../components/documents/DocumentsTable";
@@ -159,8 +159,10 @@ export default function KnowledgeProjectDetail() {
           filename: data.filename || "",
           createdByUid: data.createdByUid || "",
           createdByName: data.createdByName || data.uploadedByName || "",
+          createdByRole: data.createdByRole || "", // Add role field
           updatedByUid: data.updatedByUid || "",
           updatedByName: data.updatedByName || data.editedByName || "",
+          momNo: data.momNo || "", // Add momNo for MOMs deletion
         };
       });
       setDocs(list);
@@ -590,10 +592,18 @@ export default function KnowledgeProjectDetail() {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
+      // Delete from storage
       if (deleteTarget.storagePath) {
-        try { await deleteObject(ref(storage, deleteTarget.storagePath)); } catch { }
+        try {
+          await deleteObject(ref(storage, deleteTarget.storagePath));
+        } catch (err) {
+          console.error("Failed to delete from storage:", err);
+        }
       }
+
+      // Delete from documents collection
       await deleteDoc(doc(db, "documents", deleteTarget.id));
+
       setShowDeleteModal(false);
       setDeleteTarget(null);
     } catch (e) {
@@ -674,7 +684,7 @@ export default function KnowledgeProjectDetail() {
                       <option value="title:desc">Title Z→A</option>
                     </select>
                   </label>
-                  {(isSuperAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource") && (
+                  {(isSuperAdminRoute || isManagerRoute || isEmployeeRoute || roleType === "admin" || roleType === "member" || roleType === "resource") && (
                     <Button variant="custom" onClick={() => { setEditingKn(null); setOpenAddKn(true); }} className={buttonClass}>+ Add Knowledge</Button>
                   )}
                 </div>
@@ -729,7 +739,7 @@ export default function KnowledgeProjectDetail() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {knPageRows.map((k) => {
-                const canEdit = isSuperAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource";
+                const canEdit = isSuperAdminRoute || isManagerRoute || isEmployeeRoute || roleType === "admin" || roleType === "member" || roleType === "resource";
                 const canDelete = isSuperAdminRoute || roleType === "admin";
                 return (
                   <div key={k.id} className="relative rounded-xl border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] p-6 shadow-sm min-h-[280px]">
@@ -826,7 +836,7 @@ export default function KnowledgeProjectDetail() {
               value={docSearch}
               onChange={setDocSearch}
               placeholder="Search by name, location or tag"
-              rightActions={(isSuperAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource") ? (
+              rightActions={(isSuperAdminRoute || isManagerRoute || isEmployeeRoute || roleType === "admin" || roleType === "member" || roleType === "resource") ? (
                 <div className="relative" ref={dropdownButtonRef}>
                   <div className={`${buttonClass} flex items-center rounded-lg text-white text-sm font-medium overflow-hidden`}>
                     {/* Left part - Add Document */}
@@ -885,7 +895,7 @@ export default function KnowledgeProjectDetail() {
           </Card>
           <Card title="Document List" tone="muted">
             {(() => {
-              const canEditDocs = isSuperAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource";
+              const canEditDocs = isSuperAdminRoute || isManagerRoute || isEmployeeRoute || roleType === "admin" || roleType === "member" || roleType === "resource";
               const canDeleteDocs = isSuperAdminRoute;
               return (
                 <GroupedDocumentsView
@@ -905,6 +915,7 @@ export default function KnowledgeProjectDetail() {
             initialDoc={editingDoc}
             projectId={resolvedProjectId}
             canEditAccess={isSuperAdminRoute || isManagerRoute || roleType === "admin"}
+            userRole={isSuperAdminRoute ? "superadmin" : isManagerRoute ? "manager" : isEmployeeRoute ? "employee" : roleType}
           />
           {showDeleteModal && (
             <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40" onClick={() => !isDeleting && setShowDeleteModal(false)}>
@@ -914,11 +925,15 @@ export default function KnowledgeProjectDetail() {
                   onConfirm={confirmDeleteDocument}
                   itemType="document"
                   title="Delete Document"
-                  description="Are you sure you want to permanently delete this document?"
+                  description={deleteTarget?.folder === "MOMs"
+                    ? "This is a Minutes of Meeting document. Deletion requires confirmation."
+                    : "Are you sure you want to permanently delete this document?"}
                   itemTitle={deleteTarget?.name}
                   itemSubtitle={deleteTarget?.filename}
                   confirmLabel="Delete"
                   isLoading={isDeleting}
+                  requireTextConfirmation={deleteTarget?.folder === "MOMs"}
+                  confirmationText={deleteTarget?.folder === "MOMs" ? deleteTarget?.name : ""}
                 />
               </div>
             </div>

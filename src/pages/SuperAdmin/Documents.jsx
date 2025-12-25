@@ -52,6 +52,7 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+  // Fetch ALL projects
   useEffect(() => {
     const q = query(collection(db, "projects"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
@@ -64,6 +65,7 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
           clientId: data.clientId || "",
           projectManagerId: data.projectManagerId || "",
           projectManagerName: data.projectManagerName || "",
+          assigneeIds: data.assigneeIds || [],
           progress: typeof data.progress === "number" ? data.progress : 0,
           startDate: data.startDate?.toDate
             ? data.startDate.toDate().toISOString().slice(0, 10)
@@ -81,6 +83,7 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
     return () => unsub();
   }, []);
 
+  // Fetch ALL tasks
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "tasks"), (snap) => {
       const list = snap.docs.map((d) => {
@@ -90,6 +93,7 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
           projectId: data.projectId || "",
           status: data.status || "To-Do",
           assigneeId: data.assigneeId || "",
+          assigneeIds: data.assigneeIds || [],
           assigneeType: data.assigneeType || "",
         };
       });
@@ -133,27 +137,47 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
         const derived = total > 0 ? Math.round((done / total) * 100) : 0;
         return { ...p, progress: derived };
       });
-  }, [projects, tasks]);
+  }, [projects, tasks, onlyMyManaged]);
 
   const assignedProjectIds = useMemo(() => {
     if (!onlyMyAssigned) return new Set();
     const u = auth.currentUser;
     if (!u) return new Set();
-    const ids = tasks
+
+    const projectIdsSet = new Set();
+
+    // 1. Projects where user is assigned to tasks (primary assignee)
+    tasks
       .filter((t) => t.assigneeId === u.uid && (t.assigneeType ? t.assigneeType === "user" : true))
-      .map((t) => t.projectId)
-      .filter(Boolean);
-    return new Set(ids);
-  }, [tasks, onlyMyAssigned]);
+      .forEach((t) => {
+        if (t.projectId) projectIdsSet.add(t.projectId);
+      });
+
+    // 2. Projects where user is in multi-assignee tasks
+    tasks
+      .filter((t) => Array.isArray(t.assigneeIds) && t.assigneeIds.includes(u.uid) && (t.assigneeType ? t.assigneeType === "user" : true))
+      .forEach((t) => {
+        if (t.projectId) projectIdsSet.add(t.projectId);
+      });
+
+    // 3. Projects where user is the project manager
+    projects
+      .filter((p) => p.projectManagerId === u.uid)
+      .forEach((p) => projectIdsSet.add(p.id));
+
+    // 4. Projects where user is in the project's assigneeIds array
+    projects
+      .filter((p) => Array.isArray(p.assigneeIds) && p.assigneeIds.includes(u.uid))
+      .forEach((p) => projectIdsSet.add(p.id));
+
+    return projectIdsSet;
+  }, [tasks, projects, onlyMyAssigned]);
 
   const filteredProjects = useMemo(() => {
     let result = [...projectsWithProgress];
 
-    if (onlyMyAssigned && assignedProjectIds.size) {
+    if (onlyMyAssigned) {
       result = result.filter((p) => assignedProjectIds.has(p.id));
-    } else if (onlyMyAssigned) {
-      // If user has no assigned projects via tasks, show none
-      result = [];
     }
 
     if (searchTerm) {
