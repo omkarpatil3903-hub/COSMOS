@@ -965,12 +965,12 @@ Generated on: ${formatDateToDDMMYYYY(
                   <FaFileAlt className="h-5 w-5 text-indigo-600" />
                   Generate Performance Report
                 </h3>
-                <div className="flex bg-gray-100 p-1 rounded-lg w-fit">
+                <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit">
                   <button
                     onClick={() => setReportType("Daily")}
                     className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${reportType === "Daily"
-                      ? "bg-white text-indigo-600 shadow-sm"
-                      : "text-gray-500 hover:text-gray-700"
+                      ? "bg-white dark:bg-[#1e1e2d] text-indigo-600 dark:text-indigo-400 shadow-sm"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                       }`}
                   >
                     Daily Report
@@ -978,8 +978,8 @@ Generated on: ${formatDateToDDMMYYYY(
                   <button
                     onClick={() => setReportType("Weekly")}
                     className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${reportType === "Weekly"
-                      ? "bg-white text-indigo-600 shadow-sm"
-                      : "text-gray-500 hover:text-gray-700"
+                      ? "bg-white dark:bg-[#1e1e2d] text-indigo-600 dark:text-indigo-400 shadow-sm"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                       }`}
                   >
                     Weekly Report
@@ -987,8 +987,8 @@ Generated on: ${formatDateToDDMMYYYY(
                   <button
                     onClick={() => setReportType("Monthly")}
                     className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${reportType === "Monthly"
-                      ? "bg-white text-indigo-600 shadow-sm"
-                      : "text-gray-500 hover:text-gray-700"
+                      ? "bg-white dark:bg-[#1e1e2d] text-indigo-600 dark:text-indigo-400 shadow-sm"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                       }`}
                   >
                     Monthly Report
@@ -1022,7 +1022,7 @@ Generated on: ${formatDateToDDMMYYYY(
                   {/* Form Fields */}
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Client Name
                       </label>
                       <VoiceInput
@@ -1033,12 +1033,12 @@ Generated on: ${formatDateToDDMMYYYY(
                             clientName: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
                         placeholder="e.g. Acme Corp"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Project Name
                       </label>
                       <VoiceInput
@@ -1049,7 +1049,7 @@ Generated on: ${formatDateToDDMMYYYY(
                             projectName: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
                         placeholder="e.g. Website Redesign"
                       />
                     </div>
@@ -1057,7 +1057,7 @@ Generated on: ${formatDateToDDMMYYYY(
                     {reportType === "Daily" ? (
                       <>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Daily Hours
                           </label>
                           <input
@@ -1069,12 +1069,12 @@ Generated on: ${formatDateToDDMMYYYY(
                                 dailyHours: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
                             placeholder="e.g. 8.0 Hrs"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Objective for the Day
                           </label>
                           <VoiceInput
@@ -1085,7 +1085,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                 objective: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
                             placeholder="Main goal for today"
                           />
                         </div>
@@ -1094,7 +1094,7 @@ Generated on: ${formatDateToDDMMYYYY(
                       <>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                               Week Number
                             </label>
                             <input
@@ -1106,12 +1106,12 @@ Generated on: ${formatDateToDDMMYYYY(
                                   weekNumber: e.target.value,
                                 }))
                               }
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
                               placeholder="e.g. Week 42"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                               Weekly Hours
                             </label>
                             <input
@@ -1123,14 +1123,14 @@ Generated on: ${formatDateToDDMMYYYY(
                                   weeklyHours: e.target.value,
                                 }))
                               }
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
                               placeholder="e.g. 40.0 Hrs"
                             />
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                               Start Date
                             </label>
                             <input
@@ -1142,12 +1142,12 @@ Generated on: ${formatDateToDDMMYYYY(
                                   weekStartDate: e.target.value,
                                 }))
                               }
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
                               placeholder="dd/mm/yyyy"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                               End Date
                             </label>
                             <input
@@ -1159,7 +1159,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                   weekEndDate: e.target.value,
                                 }))
                               }
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
                               placeholder="dd/mm/yyyy"
                             />
                           </div>
@@ -1168,7 +1168,7 @@ Generated on: ${formatDateToDDMMYYYY(
                     ) : (
                       // Monthly Report Inputs
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Month
                         </label>
                         <input
@@ -1180,7 +1180,7 @@ Generated on: ${formatDateToDDMMYYYY(
                               monthName: e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
                           placeholder="e.g. July 2025"
                         />
                       </div>
@@ -1188,7 +1188,7 @@ Generated on: ${formatDateToDDMMYYYY(
 
                     {reportType === "Monthly" && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Executive Summary
                         </label>
                         <VoiceInput
@@ -1200,7 +1200,7 @@ Generated on: ${formatDateToDDMMYYYY(
                               executiveSummary: e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-24"
+                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-24"
                           placeholder="Executive summary of the month..."
                         />
                       </div>
@@ -1208,7 +1208,7 @@ Generated on: ${formatDateToDDMMYYYY(
 
                     {reportType === "Monthly" && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Key Activities (One per line)
                         </label>
                         <p className="text-xs text-gray-500 mb-1">
@@ -1224,7 +1224,7 @@ Generated on: ${formatDateToDDMMYYYY(
                               objective: e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-24"
+                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-24"
                           placeholder="Marketing | Launched Campaign | 20% Growth"
                         />
                         // ...existing code...
@@ -1232,7 +1232,7 @@ Generated on: ${formatDateToDDMMYYYY(
                     )}
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         {reportType === "Daily"
                           ? "Obstacles / Challenges"
                           : reportType === "Weekly"
@@ -1253,7 +1253,7 @@ Generated on: ${formatDateToDDMMYYYY(
                             obstacles: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
                         placeholder={
                           reportType === "Monthly"
                             ? "Risk | Cause | Impact | Plan"
@@ -1264,7 +1264,7 @@ Generated on: ${formatDateToDDMMYYYY(
 
                     {reportType === "Daily" ? (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Next Action Plan (One per line)
                         </label>
                         <VoiceInput
@@ -1276,14 +1276,14 @@ Generated on: ${formatDateToDDMMYYYY(
                               nextActionPlan: e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
                           placeholder="What's next..."
                         />
                       </div>
                     ) : reportType === "Weekly" ? (
                       <>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Key Achievements (One per line)
                           </label>
                           <VoiceInput
@@ -1295,12 +1295,12 @@ Generated on: ${formatDateToDDMMYYYY(
                                 keyAchievements: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
                             placeholder="List key achievements..."
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Urgent Action Items (One per line)
                           </label>
                           <VoiceInput
@@ -1312,7 +1312,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                 urgentActions: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
                             placeholder="Urgent items..."
                           />
                         </div>
@@ -1321,7 +1321,7 @@ Generated on: ${formatDateToDDMMYYYY(
                       // Monthly Report Extra Fields
                       <>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Achievements / Highlights (One per line)
                           </label>
                           <VoiceInput
@@ -1333,12 +1333,12 @@ Generated on: ${formatDateToDDMMYYYY(
                                 keyAchievements: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
                             placeholder="List highlights..."
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Learnings & Observations
                           </label>
                           <VoiceInput
@@ -1350,12 +1350,12 @@ Generated on: ${formatDateToDDMMYYYY(
                                 learnings: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
                             placeholder="Key learnings..."
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Next Month's Objectives (One per line)
                           </label>
                           <p className="text-xs text-gray-500 mb-1">
@@ -1370,12 +1370,12 @@ Generated on: ${formatDateToDDMMYYYY(
                                 nextMonthObjectives: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
                             placeholder="Objective | Key Result"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Consultant's Note / Recommendations
                           </label>
                           <VoiceInput
@@ -1387,7 +1387,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                 consultantNote: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm h-20"
+                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
                             placeholder="Notes..."
                           />
                         </div>
@@ -1397,7 +1397,7 @@ Generated on: ${formatDateToDDMMYYYY(
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex-shrink-0 pt-4 border-t bg-white z-10">
+                <div className="flex-shrink-0 pt-4 border-t bg-white dark:bg-[#1e1e2d] dark:border-gray-700 z-10">
                   <Button
                     onClick={generateReportContent}
                     disabled={generatingReport}
@@ -1416,8 +1416,8 @@ Generated on: ${formatDateToDDMMYYYY(
               {/* RIGHT COLUMN: Visual Preview */}
               <div className="w-full lg:w-2/3 flex flex-col">
                 {/* Preview Header with Action Buttons */}
-                <div className="flex-shrink-0 flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                <div className="flex-shrink-0 flex items-center justify-between mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-200">
                     Report Preview
                   </h3>
                   {reportData.reportContent && (
@@ -1440,7 +1440,7 @@ Generated on: ${formatDateToDDMMYYYY(
                         onClick={handleShare}
                         disabled={generatingReport}
                         type="button"
-                        className="flex items-center justify-center gap-2 bg-white border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 px-6 py-2 rounded-full shadow-sm transition-all text-sm font-medium"
+                        className="flex items-center justify-center gap-2 bg-white dark:bg-transparent border-2 border-indigo-600 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-50 px-6 py-2 rounded-full shadow-sm transition-all text-sm font-medium"
                       >
                         <FaShareAlt className="h-4 w-4" />
                         Share
@@ -1450,7 +1450,7 @@ Generated on: ${formatDateToDDMMYYYY(
                 </div>
 
                 {/* Preview Content */}
-                <div className="flex-1 bg-gray-100 rounded-xl border border-gray-200 overflow-y-auto p-4 flex justify-center">
+                <div className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-y-auto p-4 flex justify-center">
                   {/* VISUAL PREVIEW - MATCHING SCREENSHOT */}
                   <div
                     id="report-preview"

@@ -245,6 +245,7 @@ ${points.map((p, i) => `${i + 1}. ${p}`).join("\n")}
    - Write in clear, formal, and professional tone suitable for business communication.
    - Use proper Markdown formatting with headings, bullet points, and bold text for clarity.
    - Keep it concise but *informative*, avoiding repetition.
+   - **CRITICAL**: The "Action Items" section must use a specific separator so it can be parsed programmatically.
 
 2. **MoM Sections to Include:**
 
@@ -262,20 +263,13 @@ Each decision should clearly indicate *what* was decided and *why* if relevant.
 
 #### 4. Action Items (for Employee Assignment)
 - Extract all **actionable tasks** from the discussion points.
-- Each task should include:
-  - Task Title
-  - Description
-  - Assigned To (if mentioned or deduce if possible)
-  - Priority (High / Medium / Low)
-  - Deadline (if specified, or mark as “TBD”)
-  - Status (default: “Pending”)
-- Present these in a Markdown table for clarity.
-
-Example format:
-
-| Task Title | Description | Assigned To | Priority | Deadline | Status |
-|-------------|-------------|-------------|-----------|-----------|---------|
-| Setup Firebase Integration | Configure and connect Firebase to dashboard | Ramesh | High | 05-Nov-2025 | Pending |
+- **IMPORTANT**: Surround the entire list of action items with "@@@ACTION_ITEMS_START@@@" and "@@@ACTION_ITEMS_END@@@" tags.
+- Each task line should be in the format: \`Task Title | Assigned To | Priority | Deadline\`
+- Example:
+  @@@ACTION_ITEMS_START@@@
+  - Update API documentation | Rahul | High | 2025-11-01
+  - Prepare marketing assets | Design Team | Medium | TBD
+  @@@ACTION_ITEMS_END@@@
 
 #### 5. Next Steps
 List follow-up plans, pending reviews, and upcoming tasks for the next meeting or sprint.
@@ -326,9 +320,29 @@ Now generate the **final Minutes of Meeting (MoM)** below:
 
       setGenerated(momText);
 
-      // Extract action items - for now, show all discussion points as potential action items
-      // In real implementation, AI would intelligently identify actual action items
-      const extractedActions = points.map((p) => `• ${p}`).join("\n");
+      setGenerated(momText);
+
+      // Parse Action Items using the strict delimiters
+      let extractedActions = "";
+      const actionRegex = /@@@ACTION_ITEMS_START@@@([\s\S]*?)@@@ACTION_ITEMS_END@@@/;
+      const match = momText.match(actionRegex);
+
+      if (match && match[1]) {
+        // Clean up the extracted text
+        extractedActions = match[1]
+          .split("\n")
+          .map(line => line.trim())
+          .filter(line => line.startsWith("-") || line.startsWith("*"))
+          .join("\n");
+      }
+
+      // If parsing fails or no tags found, fallback to AI's general text or empty
+      if (!extractedActions) {
+        // Fallback: Try to find a header "Action Items" and take content until next header
+        const fallbackMatch = momText.match(/#{1,4}\s*Action Items([\s\S]*?)(#{1,4}\s|$)/i);
+        extractedActions = fallbackMatch ? fallbackMatch[1].trim() : "";
+      }
+
       setActionItems(extractedActions);
 
       // Generate paragraph summary
@@ -561,29 +575,60 @@ Now generate the **final Minutes of Meeting (MoM)** below:
     setShowTaskConversion(true);
   };
 
-  const createTasksFromActions = () => {
+  const createTasksFromActions = async () => {
     const selected = Array.from(selectedActionItems);
     if (selected.length === 0)
       return toast.error("Select at least one action item");
 
-    // In a real app, this would create tasks in Firestore with momId link
-    const actionList = actionItems.split("\n").filter((a) => a.trim());
-    const tasksCreated = selected.map((idx) => {
-      const actionText = actionList[idx];
-      return {
-        title: actionText.replace(/^[•\-\d.]\s*/, ""),
-        projectId,
-        momId: currentMomId,
-        status: "To-Do",
-        priority: "Medium",
-        createdAt: new Date().toISOString(),
-      };
-    });
+    setLoading(true);
+    const toastId = toast.loading("Creating tasks...");
 
-    console.log("Tasks to create:", tasksCreated);
-    toast.success(`Created ${tasksCreated.length} task(s) from action items!`);
-    setShowTaskConversion(false);
-    setSelectedActionItems(new Set());
+    try {
+      const actionList = actionItems.split("\n").filter((a) => a.trim());
+      let createdCount = 0;
+
+      for (const idx of selected) {
+        const rawLine = actionList[idx].replace(/^[•\-\*]\s*/, ""); // Remove bullet
+
+        // Parse the line based on our prompt format: Task Title | Assigned To | Priority | Deadline
+        // Fallback to strict split if possible, otherwise use whole line as title
+        const parts = rawLine.split("|").map(p => p.trim());
+
+        const title = parts[0] || rawLine;
+        const assigneeName = parts[1] || "";
+        const priority = ["High", "Medium", "Low"].includes(parts[2]) ? parts[2] : "Medium";
+        const deadline = parts[3] !== "TBD" ? parts[3] : "";
+
+        // Attempt to find assignee ID if user exists in 'attendees' or project members (simplified here)
+        // For now, we'll store the assigneeName string.
+
+        const newTask = {
+          title: title,
+          description: `Generated from MoM: ${title}. ${assigneeName ? `Assigned to: ${assigneeName}` : ""}`,
+          status: "To-Do",
+          priority: priority,
+          projectId: projectId || "", // Link to project if selected
+          momId: currentMomId, // Link back to this MoM
+          source: "MoM",
+          createdAt: Timestamp.now(),
+          assigneeName: assigneeName, // Store name for reference
+          dueDate: deadline && !isNaN(Date.parse(deadline)) ? Timestamp.fromDate(new Date(deadline)) : null,
+          createdBy: "AI_MOM_GENERATOR"
+        };
+
+        await addDoc(collection(db, "tasks"), newTask);
+        createdCount++;
+      }
+
+      toast.success(`Successfully created ${createdCount} task(s)!`, { id: toastId });
+      setShowTaskConversion(false);
+      setSelectedActionItems(new Set());
+    } catch (error) {
+      console.error("Error creating tasks:", error);
+      toast.error("Failed to create tasks", { id: toastId });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const viewPastMom = (mom) => {

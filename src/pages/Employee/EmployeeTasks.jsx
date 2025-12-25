@@ -53,9 +53,11 @@ import AddReminderModal from "../../components/Reminders/AddReminderModal";
 import AddSelfTaskModal from "../../components/TaskManagment/AddSelfTaskModal";
 import EditSelfTaskModal from "../../components/TaskManagment/EditSelfTaskModal";
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 const EmployeeTasks = () => {
   const { user } = useAuthContext();
+  const { buttonClass, linkColor } = useThemeStyles();
   const [searchParams] = useSearchParams();
   const location = useLocation();
 
@@ -909,7 +911,7 @@ const EmployeeTasks = () => {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-32 bg-gray-200 animate-pulse rounded-lg"
+              className="h-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg"
             />
           ))}
         </div>
@@ -1049,12 +1051,12 @@ const EmployeeTasks = () => {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             {/* Source Toggle */}
-            <div className="flex bg-gray-100 p-1 rounded-lg mr-4">
+            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg mr-4">
               <button
                 onClick={() => setTaskSource("admin")}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${taskSource === "admin"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? `bg-white dark:bg-[#1e1e2d] ${linkColor} shadow-sm`
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                   }`}
               >
                 Assigned Tasks
@@ -1062,8 +1064,8 @@ const EmployeeTasks = () => {
               <button
                 onClick={() => setTaskSource("self")}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${taskSource === "self"
-                  ? "bg-white text-indigo-600 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? `bg-white dark:bg-[#1e1e2d] ${linkColor} shadow-sm`
+                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                   }`}
               >
                 My Tasks
@@ -1073,8 +1075,8 @@ const EmployeeTasks = () => {
             <button
               onClick={() => setViewMode("all")}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "all"
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? buttonClass
+                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                 }`}
             >
               All Tasks
@@ -1082,8 +1084,8 @@ const EmployeeTasks = () => {
             <button
               onClick={() => setViewMode("today")}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "today"
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? buttonClass
+                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                 }`}
             >
               <FaCalendar className="inline mr-1" />
@@ -1092,8 +1094,8 @@ const EmployeeTasks = () => {
             <button
               onClick={() => setViewMode("week")}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "week"
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? buttonClass
+                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                 }`}
             >
               This Week
@@ -1102,7 +1104,7 @@ const EmployeeTasks = () => {
               onClick={() => setViewMode("overdue")}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${viewMode === "overdue"
                 ? "bg-red-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                 }`}
             >
               <FaExclamationTriangle className="inline mr-1" />
@@ -1111,12 +1113,12 @@ const EmployeeTasks = () => {
           </div>
 
           {/* Display Mode Toggle */}
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
             <button
               onClick={() => setDisplayMode("list")}
               className={`p-2 rounded transition-colors ${displayMode === "list"
-                ? "bg-white text-indigo-600 shadow"
-                : "text-gray-600 hover:text-gray-900"
+                ? `bg-white dark:bg-[#1e1e2d] ${linkColor} shadow`
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                 }`}
               title="List View"
             >
@@ -1125,8 +1127,8 @@ const EmployeeTasks = () => {
             <button
               onClick={() => setDisplayMode("kanban")}
               className={`p-2 rounded transition-colors ${displayMode === "kanban"
-                ? "bg-white text-indigo-600 shadow"
-                : "text-gray-600 hover:text-gray-900"
+                ? `bg-white dark:bg-[#1e1e2d] ${linkColor} shadow`
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                 }`}
               title="Kanban View"
             >
@@ -1140,7 +1142,7 @@ const EmployeeTasks = () => {
         <div className="space-y-4">
           {/* Toolbar: selected count + actions */}
           <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               {taskSource === "self" && selectedSelfTaskIds.size > 0 && (
                 <span>{selectedSelfTaskIds.size} selected</span>
               )}
@@ -1156,7 +1158,7 @@ const EmployeeTasks = () => {
               )}
               <button
                 onClick={() => setShowAddSelfTaskModal(true)}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700"
+                className={`inline-flex items-center gap-2 px-3 py-2 rounded-md ${buttonClass} text-sm`}
               >
                 <FaPlus className="w-4 h-4" />
                 Add Self Task
@@ -1171,7 +1173,7 @@ const EmployeeTasks = () => {
               placeholder="Search tasks by title or description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
             />
             {searchQuery && (
               <button
@@ -1187,13 +1189,13 @@ const EmployeeTasks = () => {
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <FaFilter className="text-gray-500" />
-              <span className="font-medium text-gray-700">Filters:</span>
+              <span className="font-medium text-gray-700 dark:text-gray-300">Filters:</span>
             </div>
 
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
             >
               <option value="all">All Status</option>
               {effectiveStatuses.map((s) => (
@@ -1206,7 +1208,7 @@ const EmployeeTasks = () => {
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
             >
               <option value="all">All Priority</option>
               <option value="High">High</option>
@@ -1217,7 +1219,7 @@ const EmployeeTasks = () => {
             <select
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
             >
               <option value="all">All Projects</option>
               {[
@@ -1238,7 +1240,7 @@ const EmployeeTasks = () => {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
               >
                 <option value="dueDate">Sort by Due Date</option>
                 <option value="priority">Sort by Priority</option>
@@ -1247,7 +1249,7 @@ const EmployeeTasks = () => {
               </select>
             </div>
 
-            <div className="ml-auto text-sm text-gray-600 font-medium">
+            <div className="ml-auto text-sm text-gray-600 dark:text-gray-400 font-medium">
               Showing {filteredTasks.length} of {baseTasks.length} tasks
             </div>
           </div>
@@ -1259,9 +1261,9 @@ const EmployeeTasks = () => {
             projectFilter !== "all" ||
             viewMode !== "all") && (
               <div className="flex items-center gap-2 flex-wrap pt-2 border-t">
-                <span className="text-sm text-gray-600">Active filters:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Active filters:</span>
                 {searchQuery && (
-                  <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full flex items-center gap-1">
+                  <span className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300 text-xs rounded-full flex items-center gap-1">
                     Search: "{searchQuery}"
                     <button onClick={() => setSearchQuery("")}>
                       <FaTimes className="text-xs" />
@@ -1269,7 +1271,7 @@ const EmployeeTasks = () => {
                   </span>
                 )}
                 {statusFilter !== "all" && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
+                  <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs rounded-full flex items-center gap-1">
                     Status: {statusFilter}
                     <button onClick={() => setStatusFilter("all")}>
                       <FaTimes className="text-xs" />
@@ -1277,7 +1279,7 @@ const EmployeeTasks = () => {
                   </span>
                 )}
                 {priorityFilter !== "all" && (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center gap-1">
+                  <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs rounded-full flex items-center gap-1">
                     Priority: {priorityFilter}
                     <button onClick={() => setPriorityFilter("all")}>
                       <FaTimes className="text-xs" />
@@ -1285,7 +1287,7 @@ const EmployeeTasks = () => {
                   </span>
                 )}
                 {projectFilter !== "all" && (
-                  <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full flex items-center gap-1">
+                  <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 text-xs rounded-full flex items-center gap-1">
                     Project:{" "}
                     {projectFilter === "no-project"
                       ? "No Project"
@@ -1296,7 +1298,7 @@ const EmployeeTasks = () => {
                   </span>
                 )}
                 {viewMode !== "all" && (
-                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center gap-1">
+                  <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs rounded-full flex items-center gap-1">
                     View: {viewMode}
                     <button onClick={() => setViewMode("all")}>
                       <FaTimes className="text-xs" />
@@ -1386,8 +1388,8 @@ const EmployeeTasks = () => {
         <Card>
           {filteredTasks.length === 0 ? (
             <div className="text-center py-12">
-              <FaTasks className="text-gray-300 text-5xl mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">
+              <FaTasks className="text-gray-300 dark:text-gray-600 text-5xl mx-auto mb-4" />
+              <p className="text-gray-500 dark:text-gray-400 text-lg">
                 No tasks found matching the filters.
               </p>
               <p className="text-gray-400 text-sm mt-2">

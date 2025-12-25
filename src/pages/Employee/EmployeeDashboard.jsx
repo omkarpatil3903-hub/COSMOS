@@ -726,7 +726,7 @@ ${todayTasks.length > 0
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="h-32 bg-gray-200 animate-pulse rounded-lg"
+              className="h-32 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-lg"
             />
           ))}
         </div>
@@ -1517,7 +1517,7 @@ ${todayTasks.length > 0
                           Completed {formatDateToDDMMYYYY(completedDate)}
                         </span>
                         {task.priority && (
-                          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-white text-gray-700 border border-gray-200">
+                          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600">
                             {task.priority}
                           </span>
                         )}
@@ -1660,12 +1660,12 @@ ${todayTasks.length > 0
                       employeeName: e.target.value,
                     }))
                   }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:bg-gray-700 dark:text-white"
                   spellCheck="true"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Report Date
                 </label>
                 <input
@@ -1677,11 +1677,11 @@ ${todayTasks.length > 0
                       reportDate: e.target.value,
                     }))
                   }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:bg-gray-700 dark:text-white"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Report Time
                 </label>
                 <input
@@ -1693,7 +1693,7 @@ ${todayTasks.length > 0
                       reportTime: e.target.value,
                     }))
                   }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:bg-gray-700 dark:text-white"
                 />
               </div>
             </div>
@@ -1736,7 +1736,7 @@ ${todayTasks.length > 0
             {/* Report Preview */}
             {reportData.reportContent && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Report Preview
                 </label>
                 {isEditingReport ? (
@@ -1748,13 +1748,13 @@ ${todayTasks.length > 0
                         reportContent: e.target.value,
                       }))
                     }
-                    className="w-full h-96 rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                    className="w-full h-96 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-mono focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:bg-gray-700 dark:text-white"
                     placeholder="Report content will appear here..."
                   />
                 ) : (
-                  <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 h-96 overflow-y-auto">
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 h-96 overflow-y-auto">
                     <div
-                      className="prose prose-sm max-w-none"
+                      className="prose prose-sm max-w-none dark:prose-invert"
                       style={{ whiteSpace: "pre-wrap" }}
                     >
                       {reportData.reportContent}
