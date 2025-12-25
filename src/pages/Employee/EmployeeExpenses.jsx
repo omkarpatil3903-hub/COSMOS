@@ -532,14 +532,14 @@ const EmployeeExpenses = () => {
                             <span className="text-gray-300">|</span>
                             <button
                               onClick={() => handleDelete(e.id)}
-                              className="text-xs font-medium text-red-600 hover:text-red-800 hover:underline"
+                              className="text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:underline"
                             >
                               Delete
                             </button>
                           </div>
                         )}
                         {e.status === "Rejected" && e.rejectionReason && (
-                          <p className="text-xs text-red-500 mt-1 max-w-[150px] truncate" title={e.rejectionReason}>
+                          <p className="text-xs text-red-500 dark:text-red-400 mt-1 max-w-[150px] truncate" title={e.rejectionReason}>
                             Reason: {e.rejectionReason}
                           </p>
                         )}
@@ -641,7 +641,7 @@ const EmployeeExpenses = () => {
                     />
                   </div>
                   {errors.title && (
-                    <p className="mt-1 text-xs text-red-600 font-medium">
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400 font-medium">
                       {errors.title}
                     </p>
                   )}
@@ -659,7 +659,7 @@ const EmployeeExpenses = () => {
                     />
                   </div>
                   {errors.date && (
-                    <p className="mt-1 text-xs text-red-600 font-medium">
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400 font-medium">
                       {errors.date}
                     </p>
                   )}
@@ -752,7 +752,7 @@ const EmployeeExpenses = () => {
                       />
                     </div>
                     {errors.amount && (
-                      <p className="mt-1 text-xs text-red-600 font-medium">
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400 font-medium">
                         {errors.amount}
                       </p>
                     )}
