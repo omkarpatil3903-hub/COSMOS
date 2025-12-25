@@ -6,7 +6,7 @@ import Button from "../Button";
 import { db } from "../../firebase";
 import { collection, onSnapshot, orderBy, query, where, doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
 
-function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projectId, canEditAccess = true }) {
+function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projectId, canEditAccess = true, userRole = "" }) {
   const { buttonClass } = useThemeStyles();
   const [name, setName] = useState("");
   const [folder, setFolder] = useState(""); // Selected folder from dropdown
@@ -117,7 +117,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     return () => unsub();
   }, [allowedIds, projectId]);
 
-  // Load available folders from Firestore
+  // Load available folders from Firestore and filter based on user role
   useEffect(() => {
     const foldersDocRef = doc(db, "documents", "folders");
     const unsub = onSnapshot(foldersDocRef, (docSnap) => {
@@ -125,7 +125,23 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
         const data = docSnap.data();
         // Handle both old format (array of strings) and new format (array of objects)
         const folderData = data.folders || data.folderNames || [];
-        const folderNames = folderData.map(f => typeof f === 'string' ? f : f.name);
+
+        // Filter folders based on user role
+        const filteredFolders = folderData.filter(f => {
+          const folderObj = typeof f === 'string' ? { name: f } : f;
+
+          // If folder has visibleTo restriction, check if user's role is allowed
+          if (folderObj.visibleTo && Array.isArray(folderObj.visibleTo)) {
+            const normalizedRole = (userRole || "").toLowerCase();
+            const allowedRoles = folderObj.visibleTo.map(r => r.toLowerCase());
+            return allowedRoles.includes(normalizedRole);
+          }
+
+          // If no restriction, show to everyone
+          return true;
+        });
+
+        const folderNames = filteredFolders.map(f => typeof f === 'string' ? f : f.name);
         setAvailableFolders(folderNames);
       } else {
         setAvailableFolders([]);
@@ -135,7 +151,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
       setAvailableFolders([]);
     });
     return () => unsub();
-  }, []);
+  }, [userRole]);
 
   const validate = () => {
     const e = {};

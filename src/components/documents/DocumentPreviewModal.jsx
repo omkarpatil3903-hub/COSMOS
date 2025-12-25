@@ -268,12 +268,25 @@ function DocumentPreviewModal({
                   Document Info
                 </h3>
 
-                {doc.createdByName && (
+                {(doc.createdByRole || doc.createdByName) && (
                   <div className="flex items-center gap-3 mb-3">
                     <FaUser className="w-4 h-4 text-gray-400" />
                     <div className="flex-1">
                       <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">Uploaded By</p>
-                      <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">{doc.createdByName}</p>
+                      <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
+                        {(() => {
+                          const role = doc.createdByRole || "";
+                          const name = doc.createdByName || "";
+
+                          // If role exists and is valid, show it with proper capitalization
+                          if (role && role.length > 2) {
+                            return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+                          }
+
+                          // Otherwise, show the name
+                          return name || "—";
+                        })()}
+                      </p>
                     </div>
                   </div>
                 )}

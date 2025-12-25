@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from "react";
 import { HiXMark } from "react-icons/hi2";
-import { FaEdit, FaTrash, FaCheck, FaTimes, FaFolder } from "react-icons/fa";
+import { FaEdit, FaTrash, FaCheck, FaTimes, FaFolder, FaLock } from "react-icons/fa";
 import Button from "../Button";
 import { db, storage } from "../../firebase";
 import { doc, onSnapshot, setDoc, collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
@@ -273,13 +273,15 @@ function ManageFoldersModal({ isOpen, onClose }) {
                                                     />
                                                 </label>
 
-                                                {/* Edit Input */}
+                                                {/* Edit Input - Read-only for system folders */}
                                                 <input
                                                     type="text"
                                                     value={editedName}
                                                     onChange={(e) => setEditedName(e.target.value)}
-                                                    className="flex-1 rounded border border-gray-300 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-1 px-2 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                                    autoFocus
+                                                    disabled={folder.isSystem}
+                                                    className={`flex-1 rounded border border-gray-300 [.dark_&]:border-white/10 py-1 px-2 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 ${folder.isSystem ? 'bg-gray-100 [.dark_&]:bg-gray-700 cursor-not-allowed' : 'bg-white [.dark_&]:bg-[#181B2A]'}`}
+                                                    autoFocus={!folder.isSystem}
+                                                    title={folder.isSystem ? 'System folder name cannot be changed' : ''}
                                                 />
 
                                                 <button
@@ -301,27 +303,37 @@ function ManageFoldersModal({ isOpen, onClose }) {
                                             <>
                                                 <div className="flex items-center gap-2 flex-1">
                                                     <div
-                                                        className="h-6 w-6 rounded-full flex-shrink-0"
+                                                        className="h-6 w-6 rounded-full flex-shrink-0 relative flex items-center justify-center"
                                                         style={{ backgroundColor: folder.color }}
-                                                    />
+                                                    >
+                                                        {folder.isSystem && (
+                                                            <FaLock className="h-3 w-3 text-white drop-shadow-md" />
+                                                        )}
+                                                    </div>
                                                     <span className="flex-1 text-sm font-medium text-gray-900 [.dark_&]:text-white" title={folder.name}>
                                                         {truncateFolderName(folder.name)}
+                                                        {folder.isSystem && (
+                                                            <span className="ml-2 text-xs text-gray-500 [.dark_&]:text-gray-400">(System)</span>
+                                                        )}
                                                     </span>
                                                 </div>
                                                 <button
                                                     onClick={() => handleStartEdit(folder)}
                                                     className="p-1.5 rounded hover:bg-indigo-100 [.dark_&]:hover:bg-indigo-900/20 text-indigo-600 [.dark_&]:text-indigo-400"
-                                                    title="Edit"
+                                                    title={folder.isSystem ? "Edit color only" : "Edit"}
                                                 >
                                                     <FaEdit className="h-3.5 w-3.5" />
                                                 </button>
-                                                <button
-                                                    onClick={() => handleDeleteClick(folder)}
-                                                    className="p-1.5 rounded hover:bg-red-100 [.dark_&]:hover:bg-red-900/20 text-red-600 [.dark_&]:text-red-400"
-                                                    title="Delete"
-                                                >
-                                                    <FaTrash className="h-3.5 w-3.5" />
-                                                </button>
+                                                {/* Hide delete button for system folders */}
+                                                {!folder.isSystem && (
+                                                    <button
+                                                        onClick={() => handleDeleteClick(folder)}
+                                                        className="p-1.5 rounded hover:bg-red-100 [.dark_&]:hover:bg-red-900/20 text-red-600 [.dark_&]:text-red-400"
+                                                        title="Delete"
+                                                    >
+                                                        <FaTrash className="h-3.5 w-3.5" />
+                                                    </button>
+                                                )}
                                             </>
                                         )}
                                     </div>
