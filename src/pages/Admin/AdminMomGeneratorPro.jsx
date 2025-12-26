@@ -889,30 +889,48 @@ export default function MomGeneratorPro() {
         // Clone the element to avoid modifying the original
         const clonedElement = element.cloneNode(true);
 
-        // Remove all style/class attributes to avoid oklch issues
-        const stripOklchStyles = (el) => {
-          el.removeAttribute("style");
+        // Remove only class attributes (which may reference oklch via Tailwind/CSS vars)
+        // PRESERVE inline style attributes (which use safe hex colors in our MOM template)
+        const stripClasses = (el) => {
           el.removeAttribute("class");
           el.querySelectorAll("*").forEach((child) => {
-            child.removeAttribute("style");
             child.removeAttribute("class");
           });
         };
-        stripOklchStyles(clonedElement);
+        stripClasses(clonedElement);
 
-        // Add basic safe CSS for PDF rendering
+        // Add comprehensive CSS for PDF rendering that matches the on-screen preview
         const styleTag = document.createElement("style");
         styleTag.textContent = `
           * { 
-            color: #000 !important; 
-            background-color: transparent !important;
+            color: #000000 !important; 
             font-family: Arial, sans-serif !important;
+            box-sizing: border-box;
           }
-          table { border-collapse: collapse; width: 100%; }
-          td, th { border: 1px solid #000; padding: 8px; text-align: left; }
+          body { margin: 0; padding: 0; }
+          div { display: block; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+          td, th { 
+            border: 1px solid #000000; 
+            padding: 8px 16px; 
+            text-align: left; 
+            vertical-align: top;
+          }
           th { background-color: #f0f0f0 !important; font-weight: bold; }
-          h1, h2 { margin: 10px 0; }
-          p { margin: 4px 0; line-height: 1.5; }
+          tr:nth-child(odd) td:first-child { background-color: #f3f4f6; }
+          h1 { font-size: 24px; font-weight: bold; text-transform: uppercase; margin: 10px 0; text-align: center; }
+          h2 { font-size: 18px; font-weight: bold; margin: 15px 0 10px 0; }
+          h3 { font-size: 14px; font-weight: bold; margin: 10px 0; }
+          p { margin: 4px 0; line-height: 1.6; }
+          b, strong { font-weight: bold; }
+          ul, ol { margin: 8px 0; padding-left: 24px; }
+          li { margin: 4px 0; }
+          input, textarea, select { 
+            border: none !important; 
+            background: transparent !important; 
+            font-family: inherit !important;
+            font-size: inherit !important;
+          }
         `;
         clonedElement.insertBefore(styleTag, clonedElement.firstChild);
 
@@ -1065,32 +1083,50 @@ export default function MomGeneratorPro() {
     const toastId = toast.loading("Generating PDF...");
 
     try {
-      // Clone element and strip styles to avoid oklch color parsing errors
+      // Clone element and strip only class attributes to avoid oklch color parsing errors
+      // PRESERVE inline style attributes (which use safe hex colors in our MOM template)
       const clonedElement = element.cloneNode(true);
 
-      const stripOklchStyles = (el) => {
-        el.removeAttribute("style");
+      const stripClasses = (el) => {
         el.removeAttribute("class");
         el.querySelectorAll("*").forEach((child) => {
-          child.removeAttribute("style");
           child.removeAttribute("class");
         });
       };
-      stripOklchStyles(clonedElement);
+      stripClasses(clonedElement);
 
-      // Add basic safe CSS for PDF rendering
+      // Add comprehensive CSS for PDF rendering that matches the on-screen preview
       const styleTag = document.createElement("style");
       styleTag.textContent = `
         * { 
-          color: #000 !important; 
-          background-color: transparent !important;
+          color: #000000 !important; 
           font-family: Arial, sans-serif !important;
+          box-sizing: border-box;
         }
-        table { border-collapse: collapse; width: 100%; }
-        td, th { border: 1px solid #000; padding: 8px; text-align: left; }
+        body { margin: 0; padding: 0; }
+        div { display: block; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+        td, th { 
+          border: 1px solid #000000; 
+          padding: 8px 16px; 
+          text-align: left; 
+          vertical-align: top;
+        }
         th { background-color: #f0f0f0 !important; font-weight: bold; }
-        h1, h2 { margin: 10px 0; }
-        p { margin: 4px 0; line-height: 1.5; }
+        tr:nth-child(odd) td:first-child { background-color: #f3f4f6; }
+        h1 { font-size: 24px; font-weight: bold; text-transform: uppercase; margin: 10px 0; text-align: center; }
+        h2 { font-size: 18px; font-weight: bold; margin: 15px 0 10px 0; }
+        h3 { font-size: 14px; font-weight: bold; margin: 10px 0; }
+        p { margin: 4px 0; line-height: 1.6; }
+        b, strong { font-weight: bold; }
+        ul, ol { margin: 8px 0; padding-left: 24px; }
+        li { margin: 4px 0; }
+        input, textarea, select { 
+          border: none !important; 
+          background: transparent !important; 
+          font-family: inherit !important;
+          font-size: inherit !important;
+        }
       `;
       clonedElement.insertBefore(styleTag, clonedElement.firstChild);
 
