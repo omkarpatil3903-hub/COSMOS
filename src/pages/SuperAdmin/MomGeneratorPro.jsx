@@ -434,15 +434,16 @@ export default function MomGeneratorPro() {
       setDiscussions(builtDiscussions);
       setActionItems(builtActions);
 
-      // Prefetch next MOM number for header display so user sees MOM_00X immediately
+      // Prefetch next MOM number for header display from documents collection
       try {
         let nextNumber = 1;
-        const qn = query(collection(db, "moms"), limit(200));
+        // Query documents collection for existing MOMs
+        const qn = query(collection(db, "documents"), limit(500));
         const snap = await getDocs(qn);
         snap.forEach((d) => {
-          const data = d.data() || {};
-          const existing = String(data.momNo || "");
-          const match = existing.match(/MOM_(\d+)/i);
+          // Document ID itself is the momNo (e.g., MOM_001)
+          const docId = d.id;
+          const match = docId.match(/MOM_(\d+)/i);
           if (match) {
             const num = parseInt(match[1], 10);
             if (!isNaN(num) && num >= nextNumber) nextNumber = num + 1;
@@ -480,12 +481,13 @@ export default function MomGeneratorPro() {
       if (!momNo) {
         let nextNumber = 1;
         try {
-          const qn = query(collection(db, "moms"), limit(200));
+          // Query documents collection for existing MOMs
+          const qn = query(collection(db, "documents"), limit(500));
           const snap = await getDocs(qn);
           snap.forEach((d) => {
-            const data = d.data() || {};
-            const existing = String(data.momNo || "");
-            const match = existing.match(/MOM_(\d+)/i);
+            // Document ID itself is the momNo (e.g., MOM_001)
+            const docId = d.id;
+            const match = docId.match(/MOM_(\d+)/i);
             if (match) {
               const num = parseInt(match[1], 10);
               if (!isNaN(num) && num >= nextNumber) nextNumber = num + 1;
@@ -501,8 +503,7 @@ export default function MomGeneratorPro() {
       // Reflect this MOM number in the UI header as the MOM ID
       setMomNoState(momNo);
 
-      // Additionally, save a PDF snapshot as a document in knowledge management for this project
-      let momDocRef = null;
+      // Save MOM as a PDF snapshot to storage and metadata to documents collection
       try {
         const safeProject = (selectedProject?.name || "Project").replace(
           /[^a-zA-Z0-9._-]/g,
@@ -510,7 +511,8 @@ export default function MomGeneratorPro() {
         );
         const baseName = `${momNo}_${safeProject}_${meetingDate || ""}`;
         const filename = `${baseName}.pdf`;
-        const storagePath = `documents/moms/${filename}`;
+        // Save to documents/moms folder with momNo structure
+        const storagePath = `documents/moms/${momNo}/${filename}`;
         const storageRef = ref(storage, storagePath);
 
         // Render the current MoM DOM into a PDF using html2canvas + jsPDF
