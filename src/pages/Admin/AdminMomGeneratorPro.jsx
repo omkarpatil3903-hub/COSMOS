@@ -22,6 +22,7 @@ import toast from "react-hot-toast";
 import {
   collection,
   addDoc,
+  setDoc,
   query,
   orderBy,
   Timestamp,
@@ -325,39 +326,50 @@ export default function MomGeneratorPro() {
   // Auto-suggest attendees from project team when project is selected
   useEffect(() => {
     const suggestProjectTeam = async () => {
-      if (!projectId) return;
+      if (!projectId || users.length === 0) return;
       try {
         const projectDoc = await getDoc(doc(db, "projects", projectId));
         if (projectDoc.exists()) {
           const data = projectDoc.data();
-          const teamMembers = [];
+          const teamMemberIds = [];
+          const adminIds = [];
+          const memberIds = [];
 
-          // Collect team member IDs from various fields
-          if (data.managerId) teamMembers.push(data.managerId);
+          if (data.managerId) {
+            teamMemberIds.push(data.managerId);
+            adminIds.push(data.managerId);
+          }
           if (data.assignedTo) {
-            if (Array.isArray(data.assignedTo)) {
-              teamMembers.push(...data.assignedTo);
-            } else {
-              teamMembers.push(data.assignedTo);
-            }
+            const arr = Array.isArray(data.assignedTo) ? data.assignedTo : [data.assignedTo];
+            teamMemberIds.push(...arr);
+            memberIds.push(...arr);
           }
           if (data.teamMembers && Array.isArray(data.teamMembers)) {
-            teamMembers.push(...data.teamMembers);
+            teamMemberIds.push(...data.teamMembers);
+            memberIds.push(...data.teamMembers);
           }
 
           // Auto-select unique team members
-          const uniqueTeam = [...new Set(teamMembers)].filter(Boolean);
+          const uniqueTeam = [...new Set(teamMemberIds)].filter(Boolean);
           if (uniqueTeam.length > 0 && attendees.length === 0) {
             setAttendees(uniqueTeam);
             toast.success(`Auto-selected ${uniqueTeam.length} team member(s) from project`);
           }
+
+          // Derive Names for Access Control
+          const adminNames = adminIds.map(id => users.find(u => u.id === id)?.name).filter(Boolean);
+          const memberNames = memberIds.map(id => users.find(u => u.id === id)?.name).filter(Boolean);
+          setProjectStaffNames({
+            admins: [...new Set(adminNames)],
+            members: [...new Set(memberNames)]
+          });
         }
       } catch (err) {
         console.error("Error fetching project team:", err);
       }
     };
     suggestProjectTeam();
-  }, [projectId]);
+  }, [projectId, users]);
 
   // Load frequent external attendees from localStorage
   const [frequentExternalAttendees, setFrequentExternalAttendees] = useState(() => {
@@ -555,15 +567,17 @@ export default function MomGeneratorPro() {
   };
 
   const finishGeneration = async () => {
-    // Prefetch next MOM number 
+    // Prefetch next MOM number from documents collection
     try {
       let nextNumber = 1;
-      const qn = query(collection(db, "moms"), limit(200));
+      // Query documents collection for existing MOMs (scan recent docs to find last MOM no)
+      const qn = query(collection(db, "documents"), orderBy("createdAt", "desc"), limit(100));
       const snap = await getDocs(qn);
       snap.forEach((d) => {
-        const data = d.data() || {};
-        const existing = String(data.momNo || "");
-        const match = existing.match(/MOM_(\d+)/i);
+        // Document ID itself is the momNo (e.g., MOM_001)
+        const docId = d.id;
+        // Check if ID matches MOM pattern
+        const match = docId.match(/^MOM_(\d+)$/i);
         if (match) {
           const num = parseInt(match[1], 10);
           if (!isNaN(num) && num >= nextNumber) nextNumber = num + 1;
@@ -846,12 +860,13 @@ export default function MomGeneratorPro() {
       if (!momNo) {
         let nextNumber = 1;
         try {
-          const qn = query(collection(db, "moms"), limit(200));
+          // Query documents collection for existing MOMs
+          const qn = query(collection(db, "documents"), orderBy("createdAt", "desc"), limit(100));
           const snap = await getDocs(qn);
           snap.forEach((d) => {
-            const data = d.data() || {};
-            const existing = String(data.momNo || "");
-            const match = existing.match(/MOM_(\d+)/i);
+            // Document ID itself is the momNo (e.g., MOM_001)
+            const docId = d.id;
+            const match = docId.match(/^MOM_(\d+)$/i);
             if (match) {
               const num = parseInt(match[1], 10);
               if (!isNaN(num) && num >= nextNumber) nextNumber = num + 1;
@@ -867,8 +882,7 @@ export default function MomGeneratorPro() {
       // Reflect this MOM number in the UI header as the MOM ID
       setMomNoState(momNo);
 
-      // Additionally, save a PDF snapshot as a document in knowledge management for this project
-      let momDocRef = null;
+      // Save MOM as a PDF snapshot to storage and metadata to documents collection
       try {
         const safeProject = (selectedProject?.name || "Project").replace(
           /[^a-zA-Z0-9._-]/g,
@@ -876,7 +890,8 @@ export default function MomGeneratorPro() {
         );
         const baseName = `${momNo}_${safeProject}_${meetingDate || ""}`;
         const filename = `${baseName}.pdf`;
-        const storagePath = `Documents/${projectId}/${filename}`;
+        // Save to documents/moms folder with momNo structure
+        const storagePath = `documents/moms/${momNo}/${filename}`;
         const storageRef = ref(storage, storagePath);
 
         // Render the current MoM DOM into a PDF using html2canvas + jsPDF
@@ -1005,12 +1020,12 @@ export default function MomGeneratorPro() {
           comments: comments || [],
         };
 
-        // Create new MoM document with full data
-        momDocRef = await addDoc(collection(db, "moms"), momData);
-
-        // Create Knowledge Document entry (linking to PDF)
-        await addDoc(collection(db, "knowldge", projectId, "Documents"), {
+        // Create MoM document in documents collection with momNo as document ID
+        const momDocRef = doc(db, "documents", momNo);
+        await setDoc(momDocRef, {
+          ...momData,
           name: `${momNo} – ${selectedProject?.name || "Project"}`,
+          folder: "MOMs",
           shared: true,
           access: {
             admin: projectStaffNames.admins || [],
@@ -1024,13 +1039,8 @@ export default function MomGeneratorPro() {
           location: "—",
           tags: ["MoM"],
           children: 0,
-          projectId,
-          momNo,
-          momId: momDocRef.id, // Link to the rich MoM doc
           createdByUid: currentUser?.uid || "",
           createdByName,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
         });
 
         toast.success(`${momNo} saved successfully!`);
@@ -1042,10 +1052,7 @@ export default function MomGeneratorPro() {
         throw err; // Re-throw to be caught by outer block
       }
 
-      toast.success(`${momNo} saved successfully!`);
-      setMomVersion((v) => v + 1);
-      setLastSavedSnapshot(currentSnapshot);
-      setEditSession(false);
+
     } catch (e) {
       console.error(e);
       toast.error("Save failed");

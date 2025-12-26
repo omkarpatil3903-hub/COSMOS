@@ -1,19 +1,23 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { FaArrowLeft, FaRegComment, FaBookOpen, FaFileAlt, FaEdit, FaTrash, FaLightbulb, FaUser, FaCalendarAlt, FaClock } from "react-icons/fa";
+import { FaArrowLeft, FaRegComment, FaBookOpen, FaFileAlt, FaEdit, FaTrash, FaLightbulb, FaUser, FaCalendarAlt, FaClock, FaChevronUp, FaChevronDown } from "react-icons/fa";
 import Card from "../../components/Card";
 import { db, storage, auth } from "../../firebase";
-import { collection, onSnapshot, query, where, addDoc, serverTimestamp, doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, where, addDoc, serverTimestamp, doc, getDoc, getDocs, updateDoc, deleteDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject, updateMetadata, getBytes } from "firebase/storage";
 import { formatDate } from "../../utils/formatDate";
 import DocumentsTable from "../../components/documents/DocumentsTable";
+import GroupedDocumentsView from "../../components/documents/GroupedDocumentsView";
 import SearchActions from "../../components/SearchActions";
 import Button from "../../components/Button";
 import AddDocumentModal from "../../components/documents/AddDocumentModal";
+import ManageFoldersModal from "../../components/documents/ManageFoldersModal";
 import AddKnowledgeModal from "../../components/knowledge/AddKnowledgeModal";
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 
 export default function KnowledgeProjectDetail() {
+  const { buttonClass, barColor } = useThemeStyles();
   const navigate = useNavigate();
   const { projectName } = useParams();
   const location = useLocation();
@@ -21,6 +25,7 @@ export default function KnowledgeProjectDetail() {
   const fromDocsTab = Boolean(location.state && location.state.fromDocsTab);
   const isManagerRoute = location.pathname.startsWith("/manager");
   const isEmployeeRoute = location.pathname.startsWith("/employee");
+  const isAdminRoute = location.pathname.startsWith("/admin");
 
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -46,6 +51,9 @@ export default function KnowledgeProjectDetail() {
   const [knRowsPerPage, setKnRowsPerPage] = useState(9);
   const [showDeleteKnModal, setShowDeleteKnModal] = useState(false);
   const [deleteKnTarget, setDeleteKnTarget] = useState(null);
+  const [showDocDropdown, setShowDocDropdown] = useState(false);
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const dropdownButtonRef = React.useRef(null);
 
   useEffect(() => {
     const decoded = decodeURIComponent(projectName || "");
@@ -79,14 +87,13 @@ export default function KnowledgeProjectDetail() {
     return () => unsub();
   }, [resolvedProjectId]);
 
-  // Load knowledge entries linked to this project: knowldge/{projectId}/Knowledge
+  // Load knowledge entries linked to this project
   useEffect(() => {
     if (!resolvedProjectId) {
       setKnowledge([]);
       return;
     }
-    const colRef = collection(db, "knowldge", resolvedProjectId, "Knowledge");
-    const qy = query(colRef);
+    const qy = query(collection(db, "knowledge"), where("projectId", "==", resolvedProjectId));
     const unsub = onSnapshot(qy, (snap) => {
       const list = snap.docs.map((d) => {
         const data = d.data() || {};
@@ -117,14 +124,13 @@ export default function KnowledgeProjectDetail() {
     return () => unsub();
   }, [resolvedProjectId]);
 
-  // Load documents linked to this project from nested path: knowldge/{projectId}/Documents
+  // Load documents linked to this project from documents collection
   useEffect(() => {
     if (!resolvedProjectId) {
       setDocs([]);
       return;
     }
-    const colRef = collection(db, "knowldge", resolvedProjectId, "Documents");
-    const q = query(colRef);
+    const q = query(collection(db, "documents"), where("projectId", "==", resolvedProjectId));
     const unsub = onSnapshot(q, (snap) => {
       const list = snap.docs.map((d) => {
         const data = d.data() || {};
@@ -146,6 +152,7 @@ export default function KnowledgeProjectDetail() {
           viewed: "-",
           shared: Boolean(data.shared),
           access: data.access || { admin: [], member: [] },
+          folder: data.folder || "", // Add folder field
           children: data.children || 0,
           url: data.fileDataUrl || data.url || "",
           storagePath: data.storagePath || "",
@@ -153,8 +160,10 @@ export default function KnowledgeProjectDetail() {
           filename: data.filename || "",
           createdByUid: data.createdByUid || "",
           createdByName: data.createdByName || data.uploadedByName || "",
+          createdByRole: data.createdByRole || "", // Add role field
           updatedByUid: data.updatedByUid || "",
           updatedByName: data.updatedByName || data.editedByName || "",
+          momNo: data.momNo || "", // Add momNo for MOMs deletion
         };
       });
       setDocs(list);
@@ -201,30 +210,66 @@ export default function KnowledgeProjectDetail() {
   const todo = useMemo(() => tasks.filter((t) => normalizeStatus(t.status) === "To-Do"), [tasks]);
 
   const visibleDocs = useMemo(() => {
-    if (isSuperAdminRoute) return docs;
-    const me = String(currentUserName || "").trim().toLowerCase();
-    if (!me) return [];
-    return docs.filter((d) => {
-      const access = d.access || {};
-      const admins = Array.isArray(access.admin) ? access.admin : [];
-      const members = Array.isArray(access.member) ? access.member : [];
-      const inList = [...admins, ...members].some(
-        (n) => String(n || "").trim().toLowerCase() === me
-      );
-      const createdBy = String(d.createdByName || "").trim().toLowerCase();
-      const updatedBy = String(d.updatedByName || "").trim().toLowerCase();
-      if (inList) return true;
-      if (createdBy && createdBy === me) return true;
-      if (updatedBy && updatedBy === me) return true;
-      return false;
-    });
-  }, [docs, isSuperAdminRoute, currentUserName]);
+    // Defines a function to clean the document name by removing the project suffix
+    const cleanName = (n) => {
+      if (!n) return "";
+      const pName = project?.projectName?.trim();
+      if (!pName) return n;
+
+      const suffix1 = ` – ${pName}`;
+      const suffix2 = ` - ${pName}`;
+      const suffix3 = `-${pName}`;
+
+      // Check for suffixes and remove them
+      if (n.endsWith(suffix1)) return n.slice(0, -suffix1.length);
+      if (n.endsWith(suffix2)) return n.slice(0, -suffix2.length);
+      if (n.endsWith(suffix3)) return n.slice(0, -suffix3.length);
+      return n;
+    };
+
+    // Filter logic
+    let filteredDocs = [];
+    if (isSuperAdminRoute || isAdmin || roleType === "admin" || isManagerRoute) {
+      filteredDocs = docs;
+    } else {
+      // For regular employees, check explicit access or ownership
+      const me = String(currentUserName || "").trim().toLowerCase();
+      if (!me) filteredDocs = [];
+      else {
+        filteredDocs = docs.filter((d) => {
+          // If shared is true, is it visible to everyone? 
+          if (d.shared) return true;
+
+          const access = d.access || {};
+          const admins = Array.isArray(access.admin) ? access.admin : [];
+          const members = Array.isArray(access.member) ? access.member : [];
+          const inList = [...admins, ...members].some(
+            (n) => String(n || "").trim().toLowerCase() === me
+          );
+          const createdBy = String(d.createdByName || "").trim().toLowerCase();
+          const updatedBy = String(d.updatedByName || "").trim().toLowerCase();
+          if (inList) return true;
+          if (createdBy && createdBy === me) return true;
+          if (updatedBy && updatedBy === me) return true;
+          return false;
+        });
+      }
+    }
+
+    // Map to clean names
+    return filteredDocs.map(d => ({ ...d, name: cleanName(d.name) }));
+
+  }, [docs, isSuperAdminRoute, isAdmin, roleType, isManagerRoute, currentUserName, project]);
 
   const visibleKnowledge = useMemo(() => {
-    if (isSuperAdminRoute) return knowledge;
+    // SuperAdmin, Admin, or Manager should see all knowledge
+    if (isSuperAdminRoute || isAdmin || roleType === "admin" || isManagerRoute) return knowledge;
+
+    // For regular employees, check explicit access or ownership
     const me = String(currentUserName || "").trim().toLowerCase();
     if (!me) return [];
     return knowledge.filter((k) => {
+      // Assuming access control for knowledge functions similarly
       const access = k.access || {};
       const admins = Array.isArray(access.admin) ? access.admin : [];
       const members = Array.isArray(access.member) ? access.member : [];
@@ -238,7 +283,7 @@ export default function KnowledgeProjectDetail() {
       if (updatedBy && updatedBy === me) return true;
       return false;
     });
-  }, [knowledge, isSuperAdminRoute, currentUserName]);
+  }, [knowledge, isSuperAdminRoute, isAdmin, roleType, isManagerRoute, currentUserName]);
 
   const knFilteredSorted = useMemo(() => {
     const q = knSearch.trim().toLowerCase();
@@ -275,13 +320,27 @@ export default function KnowledgeProjectDetail() {
   const truncatedTitle = title.length > 18 ? `${title.slice(0, 18)}…` : title;
 
   const handleBack = () => {
+    if (fromDocsTab) {
+      const base = location.pathname.startsWith("/manager")
+        ? "/manager/knowledge-management"
+        : location.pathname.startsWith("/employee")
+          ? "/employee/knowledge-management"
+          : location.pathname.startsWith("/admin")
+            ? "/admin/knowledge-management"
+            : "/knowledge-management";
+      navigate(base, { state: { activeTab: "documents" } });
+      return;
+    }
+
     if (location.key !== "default") navigate(-1);
     else {
       const base = location.pathname.startsWith("/manager")
         ? "/manager/knowledge-management"
         : location.pathname.startsWith("/employee")
           ? "/employee/knowledge-management"
-          : "/knowledge-management";
+          : location.pathname.startsWith("/admin")
+            ? "/admin/knowledge-management"
+            : "/knowledge-management";
       navigate(base);
     }
   };
@@ -315,20 +374,20 @@ export default function KnowledgeProjectDetail() {
                   <td className="px-4 py-2 text-sm text-content-secondary">{formatDate(t.dueDate)}</td>
                   <td className="px-4 py-2 text-sm">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold border ${String(t.priority || "Medium").toLowerCase() === "urgent"
-                        ? "bg-red-100 text-red-800 border-red-200"
-                        : String(t.priority || "Medium").toLowerCase() === "high"
-                          ? "bg-yellow-100 text-yellow-800 border-yellow-200"
-                          : "bg-gray-100 text-gray-800 border-gray-200"
+                      ? "bg-red-100 text-red-800 border-red-200"
+                      : String(t.priority || "Medium").toLowerCase() === "high"
+                        ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+                        : "bg-gray-100 text-gray-800 border-gray-200"
                       }`}>
                       {t.priority || "Medium"}
                     </span>
                   </td>
                   <td className="px-4 py-2 text-sm">
                     <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold ${normalizeStatus(t.status) === "In Progress"
-                        ? "bg-blue-100 text-blue-800"
-                        : normalizeStatus(t.status) === "To-Do"
-                          ? "bg-gray-100 text-gray-800"
-                          : "bg-green-100 text-green-800"
+                      ? "bg-blue-100 text-blue-800"
+                      : normalizeStatus(t.status) === "To-Do"
+                        ? "bg-gray-100 text-gray-800"
+                        : "bg-green-100 text-green-800"
                       }`}>
                       {normalizeStatus(t.status)}
                     </span>
@@ -356,7 +415,7 @@ export default function KnowledgeProjectDetail() {
     if (!resolvedProjectId) return;
     try {
       if (editingKn && editingKn.id) {
-        const refDoc = doc(db, "knowldge", resolvedProjectId, "Knowledge", editingKn.id);
+        const refDoc = doc(db, "knowledge", editingKn.id);
         const payload = {
           title: form.title,
           description: form.description,
@@ -364,12 +423,13 @@ export default function KnowledgeProjectDetail() {
           updatedAt: serverTimestamp(),
           updatedByUid: auth.currentUser?.uid || "",
           updatedByName: currentUserName,
+          projectId: resolvedProjectId,
         };
         await updateDoc(refDoc, payload);
         setEditingKn(null);
         setOpenAddKn(false);
       } else {
-        await addDoc(collection(db, "knowldge", resolvedProjectId, "Knowledge"), {
+        await addDoc(collection(db, "knowledge"), {
           title: form.title,
           description: form.description,
           access: form.access || { admin: [], member: [] },
@@ -377,6 +437,7 @@ export default function KnowledgeProjectDetail() {
           updatedAt: serverTimestamp(),
           createdByUid: auth.currentUser?.uid || "",
           createdByName: currentUserName,
+          projectId: resolvedProjectId,
         });
         setOpenAddKn(false);
       }
@@ -391,7 +452,7 @@ export default function KnowledgeProjectDetail() {
   };
 
   const handleDeleteKnowledge = (item) => {
-    const canDelete = isSuperAdminRoute || roleType === "admin";
+    const canDelete = isSuperAdminRoute || isAdminRoute || roleType === "admin";
     if (!canDelete || !resolvedProjectId) return;
     setDeleteKnTarget(item);
     setShowDeleteKnModal(true);
@@ -400,7 +461,22 @@ export default function KnowledgeProjectDetail() {
   const confirmDeleteKnowledge = async () => {
     if (!deleteKnTarget) return;
     try {
-      await deleteDoc(doc(db, "knowldge", resolvedProjectId, "Knowledge", deleteKnTarget.id));
+      // Delete all associated documents from storage and Firestore
+      if (deleteKnTarget.documents && Array.isArray(deleteKnTarget.documents)) {
+        for (const docItem of deleteKnTarget.documents) {
+          // Delete from storage if storagePath exists
+          if (docItem.storagePath) {
+            try {
+              await deleteObject(ref(storage, docItem.storagePath));
+            } catch (err) {
+              console.warn("Failed to delete from storage:", docItem.storagePath, err);
+            }
+          }
+        }
+      }
+
+      // Delete the knowledge document from Firestore
+      await deleteDoc(doc(db, "knowledge", deleteKnTarget.id));
       setShowDeleteKnModal(false);
       setDeleteKnTarget(null);
     } catch (e) {
@@ -432,7 +508,7 @@ export default function KnowledgeProjectDetail() {
       if (form._file) {
         const safeName = (form._file.name || "file").replace(/[^a-zA-Z0-9._-]/g, "-");
         if (!storagePath) {
-          storagePath = `Documents/${resolvedProjectId}/${safeName}`;
+          storagePath = `documents/${resolvedProjectId}/${safeName}`;
         }
         const storageRef = ref(storage, storagePath);
         const meta = {
@@ -448,46 +524,28 @@ export default function KnowledgeProjectDetail() {
         await uploadBytes(storageRef, form._file, meta);
         downloadURL = await getDownloadURL(storageRef);
       } else if (editingDoc?.storagePath) {
-        const oldPath = editingDoc.storagePath;
-        const oldRef = ref(storage, oldPath);
-        // Build a friendly filename aligned with the edited document name, preserving extension
-        const prevExt = (() => {
-          const name = editingDoc.filename || "";
-          const idx = name.lastIndexOf(".");
-          if (idx > 0 && idx < name.length - 1) return name.slice(idx + 1);
-          return getExtFromType(editingDoc.fileType);
-        })();
-        const computedFilename = sanitize(`${form.name}${prevExt ? `.${prevExt}` : ""}`);
-        const newPath = `Documents/${resolvedProjectId}/${computedFilename}`;
+        // Editing without new file - just update metadata, don't try to copy file
+        const oldRef = ref(storage, editingDoc.storagePath);
         const custom = {
           projectId: resolvedProjectId,
           documentName: form.name || editingDoc.name || "",
-          filename: computedFilename,
+          filename: editingDoc.filename || "",
           updatedBy: auth.currentUser?.uid || "",
           updatedAt: new Date().toISOString(),
         };
 
-        if (newPath !== oldPath) {
-          try {
-            // Copy bytes to new object to effectively rename
-            const bytes = await getBytes(oldRef);
-            const newRef = ref(storage, newPath);
-            await uploadBytes(newRef, bytes, { contentType: editingDoc.fileType || undefined, customMetadata: custom });
-            downloadURL = await getDownloadURL(newRef);
-            await deleteObject(oldRef);
-            storagePath = newPath;
-          } catch (err) {
-            // Fallback: update metadata on existing object if copy fails
-            try { await updateMetadata(oldRef, { customMetadata: custom }); } catch { }
-          }
-        } else {
-          // Same path, only update metadata
-          try { await updateMetadata(oldRef, { customMetadata: custom }); } catch { }
+        // Only update metadata, don't rename file to avoid CORS issues
+        try {
+          await updateMetadata(oldRef, { customMetadata: custom });
+        } catch (err) {
+          console.warn("Failed to update metadata:", err);
         }
+        storagePath = editingDoc.storagePath;
+        downloadURL = editingDoc.url;
       }
 
       if (editingDoc && editingDoc.id) {
-        const refDoc = doc(db, "knowldge", resolvedProjectId, "Documents", editingDoc.id);
+        const refDoc = doc(db, "documents", editingDoc.id);
         const extFromOld = (() => {
           const name = editingDoc.filename || "";
           const idx = name.lastIndexOf(".");
@@ -501,6 +559,7 @@ export default function KnowledgeProjectDetail() {
           name: form.name,
           shared: Boolean(form.shared),
           access: form.access || { admin: [], member: [] },
+          folder: form.folder, // Required field from dropdown
           filename: nextFilename || editingDoc.filename || null,
           fileType: form._file?.type || editingDoc.fileType || null,
           fileSize: form._file?.size || editingDoc.fileSize || null,
@@ -512,16 +571,28 @@ export default function KnowledgeProjectDetail() {
           updatedByUid: auth.currentUser?.uid || "",
           updatedByName: currentUserName,
         };
+
+        if (!payload.folder) {
+          alert("Please select a folder");
+          return;
+        }
         if (downloadURL) payload.url = downloadURL;
         if (storagePath) payload.storagePath = storagePath;
         await updateDoc(refDoc, payload);
         setEditingDoc(null);
         setOpenAddDoc(false);
       } else {
-        await addDoc(collection(db, "knowldge", resolvedProjectId, "Documents"), {
+        // New document
+        if (!form.folder) {
+          alert("Please select a folder");
+          return;
+        }
+
+        const newDocPayload = {
           name: form.name,
           shared: Boolean(form.shared),
           access: form.access || { admin: [], member: [] },
+          folder: form.folder, // Required field from dropdown
           filename: form._file?.name || null,
           fileType: form._file?.type || null,
           fileSize: form._file?.size || null,
@@ -535,7 +606,10 @@ export default function KnowledgeProjectDetail() {
           createdByName: currentUserName,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        });
+        };
+
+        const docRef = await addDoc(collection(db, "documents"), newDocPayload);
+
         setOpenAddDoc(false);
       }
     } catch (e) {
@@ -549,7 +623,8 @@ export default function KnowledgeProjectDetail() {
   };
 
   const handleDeleteDocument = (row) => {
-    if (!isAdmin || !resolvedProjectId) return;
+    const canDelete = isSuperAdminRoute || isAdminRoute || isAdmin;
+    if (!canDelete || !resolvedProjectId) return;
     setDeleteTarget(row);
     setShowDeleteModal(true);
   };
@@ -558,10 +633,18 @@ export default function KnowledgeProjectDetail() {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
+      // Delete from storage
       if (deleteTarget.storagePath) {
-        try { await deleteObject(ref(storage, deleteTarget.storagePath)); } catch { }
+        try {
+          await deleteObject(ref(storage, deleteTarget.storagePath));
+        } catch (err) {
+          console.error("Failed to delete from storage:", err);
+        }
       }
-      await deleteDoc(doc(db, "knowldge", resolvedProjectId, "Documents", deleteTarget.id));
+
+      // Delete from documents collection
+      await deleteDoc(doc(db, "documents", deleteTarget.id));
+
       setShowDeleteModal(false);
       setDeleteTarget(null);
     } catch (e) {
@@ -573,17 +656,17 @@ export default function KnowledgeProjectDetail() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between px-3 py-3 border-b bg-surface rounded-lg">
+      <div className="flex items-center justify-between px-3 py-3 border-b bg-white [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10 rounded-lg">
         <div className="flex items-center gap-2 min-w-0">
           <button
             onClick={handleBack}
-            className="inline-flex items-center gap-2 text-sm font-medium text-content-secondary hover:text-content-primary"
+            className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 hover:text-gray-900 [.dark_&]:hover:text-white"
           >
             <FaArrowLeft />
             Back
           </button>
-          <span className="text-content-tertiary">/</span>
-          <div className="truncate font-semibold text-content-primary">{truncatedTitle}</div>
+          <span className="text-gray-300 [.dark_&]:text-gray-600">/</span>
+          <div className="truncate font-semibold text-gray-900 [.dark_&]:text-white">{truncatedTitle}</div>
         </div>
       </div>
 
@@ -592,8 +675,8 @@ export default function KnowledgeProjectDetail() {
           <button
             onClick={() => setActiveTab("knowledge")}
             className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border ${activeTab === "knowledge"
-                ? "bg-indigo-600 text-white border-indigo-600"
-                : "bg-surface text-content-primary border-subtle hover:bg-surface-subtle"
+              ? `${barColor} text-white border-transparent`
+              : "bg-white [.dark_&]:bg-[#181B2A] text-gray-700 [.dark_&]:text-gray-300 border-gray-200 [.dark_&]:border-white/10 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
               }`}
             aria-pressed={activeTab === "knowledge"}
           >
@@ -603,8 +686,8 @@ export default function KnowledgeProjectDetail() {
           <button
             onClick={() => setActiveTab("documentation")}
             className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border ${activeTab === "documentation"
-                ? "bg-indigo-600 text-white border-indigo-600"
-                : "bg-surface text-content-primary border-subtle hover:bg-surface-subtle"
+              ? `${barColor} text-white border-transparent`
+              : "bg-white [.dark_&]:bg-[#181B2A] text-gray-700 [.dark_&]:text-gray-300 border-gray-200 [.dark_&]:border-white/10 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
               }`}
             aria-pressed={activeTab === "documentation"}
           >
@@ -621,64 +704,90 @@ export default function KnowledgeProjectDetail() {
               value={knSearch}
               onChange={setKnSearch}
               placeholder="Search by title or description"
-              rightActions={(isSuperAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource") ? (
-                <Button onClick={() => { setEditingKn(null); setOpenAddKn(true); }}>+ Add Knowledge</Button>
-              ) : null}
+              rightActions={
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-600 [.dark_&]:text-gray-400">Sort by</span>
+                    <select
+                      className="rounded-md border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#1F2234] px-2 py-1.5 text-sm [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={`${knSort.key}:${knSort.dir}`}
+                      onChange={(e) => {
+                        const [key, dir] = e.target.value.split(":");
+                        setKnSort({ key, dir });
+                        setKnPage(1);
+                      }}
+                    >
+                      <option value="createdAt:desc">Newest</option>
+                      <option value="createdAt:asc">Oldest</option>
+                      <option value="updatedAt:desc">Recently Updated</option>
+                      <option value="updatedAt:asc">Least Recently Updated</option>
+                      <option value="title:asc">Title A→Z</option>
+                      <option value="title:desc">Title Z→A</option>
+                    </select>
+                  </label>
+                  {(isSuperAdminRoute || isAdminRoute || isManagerRoute || isEmployeeRoute || roleType === "admin" || roleType === "member" || roleType === "resource") && (
+                    <Button variant="custom" onClick={() => { setEditingKn(null); setOpenAddKn(true); }} className={buttonClass}>+ Add Knowledge</Button>
+                  )}
+                </div>
+              }
             />
           </Card>
 
-          <Card title="Knowledge" tone="muted">
-            <div className="flex items-center justify-between mb-3 text-sm text-content-secondary">
-              <div>
-                Page {knClampedPage} of {knTotalPages}
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="flex items-center gap-2">
-                  <span>Sort by</span>
-                  <select
-                    className="rounded-md border border-subtle bg-surface text-content-primary px-2 py-1 text-sm"
-                    value={`${knSort.key}:${knSort.dir}`}
-                    onChange={(e) => {
-                      const [key, dir] = e.target.value.split(":");
-                      setKnSort({ key, dir });
-                      setKnPage(1);
-                    }}
-                  >
-                    <option value="createdAt:desc">Newest</option>
-                    <option value="createdAt:asc">Oldest</option>
-                    <option value="updatedAt:desc">Recently Updated</option>
-                    <option value="updatedAt:asc">Least Recently Updated</option>
-                    <option value="title:asc">Title A→Z</option>
-                    <option value="title:desc">Title Z→A</option>
-                  </select>
+          <Card
+            title="Knowledge"
+            tone="muted"
+            actions={
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-content-secondary">
+                  Page {knClampedPage} of {knTotalPages}
+                </span>
+                <label className="text-sm font-medium text-content-secondary">
+                  Cards per page
                 </label>
-                <label className="flex items-center gap-2">
-                  <span>Cards per page</span>
-                  <select
-                    className="rounded-md border border-subtle bg-surface text-content-primary px-2 py-1 text-sm"
-                    value={knRowsPerPage}
-                    onChange={(e) => { setKnRowsPerPage(parseInt(e.target.value, 10)); setKnPage(1); }}
+                <select
+                  className="rounded-md border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#1F2234] px-2 py-1.5 text-sm [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={knRowsPerPage}
+                  onChange={(e) => {
+                    setKnRowsPerPage(parseInt(e.target.value, 10));
+                    setKnPage(1);
+                  }}
+                >
+                  {[6, 12, 18].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setKnPage(Math.max(1, knClampedPage - 1))}
+                    disabled={knPage === 1}
                   >
-                    {[6, 12, 18].map((n) => (
-                      <option key={n} value={n}>{n}</option>
-                    ))}
-                  </select>
-                </label>
-                <Button variant="secondary" onClick={() => setKnPage(Math.max(1, knClampedPage - 1))}>Previous</Button>
-                <Button variant="secondary" onClick={() => setKnPage(Math.min(knTotalPages, knClampedPage + 1))}>Next</Button>
+                    Previous
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setKnPage(Math.min(knTotalPages, knClampedPage + 1))}
+                    disabled={knPage === knTotalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
-            </div>
+            }
+          >
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {knPageRows.map((k) => {
-                const canEdit = isSuperAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource";
-                const canDelete = isSuperAdminRoute || roleType === "admin";
+                const canEdit = isSuperAdminRoute || isAdminRoute || isManagerRoute || isEmployeeRoute || roleType === "admin" || roleType === "member" || roleType === "resource";
+                const canDelete = isSuperAdminRoute || isAdminRoute || roleType === "admin";
                 return (
-                  <div key={k.id} className="relative rounded-xl border border-subtle bg-surface p-6 shadow-sm min-h-[280px]">
+                  <div key={k.id} className="relative rounded-xl border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] p-6 shadow-sm min-h-[280px]">
                     <div className="absolute top-2 right-2 flex items-center gap-2">
                       {canEdit && (
                         <button
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-content-secondary shadow hover:bg-surface-subtle"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white [.dark_&]:bg-[#1F2234] text-gray-600 [.dark_&]:text-gray-400 shadow hover:bg-gray-50 [.dark_&]:hover:bg-white/10"
                           title="Edit"
                           onClick={() => handleEditKnowledge(k)}
                         >
@@ -687,7 +796,7 @@ export default function KnowledgeProjectDetail() {
                       )}
                       {canDelete && (
                         <button
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-red-600 shadow hover:bg-red-50 dark:hover:bg-red-900/20"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white [.dark_&]:bg-[#1F2234] text-red-600 [.dark_&]:text-red-400 shadow hover:bg-red-50 [.dark_&]:hover:bg-red-900/20"
                           title="Delete"
                           onClick={() => handleDeleteKnowledge(k)}
                         >
@@ -696,34 +805,34 @@ export default function KnowledgeProjectDetail() {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mb-2 pr-16">
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-violet-50 text-violet-600 border border-violet-200">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-violet-50 [.dark_&]:bg-violet-900/20 text-violet-600 [.dark_&]:text-violet-400 border border-violet-200 [.dark_&]:border-violet-500/20">
                         <FaLightbulb className="h-4 w-4" />
                       </span>
-                      <h3 className="text-lg font-semibold leading-snug text-gray-900 truncate max-w-[200px]" title={k.title}>{k.title.length > 10 ? `${k.title.substring(0, 10)}...` : k.title}</h3>
+                      <h3 className="text-lg font-semibold leading-snug text-gray-900 [.dark_&]:text-white truncate max-w-[200px]" title={k.title}>{k.title.length > 10 ? `${k.title.substring(0, 10)}...` : k.title}</h3>
                     </div>
-                    <hr className="my-3 border-t border-gray-200" />
-                    <p className="mt-1 mb-3 text-sm md:text-[0.95rem] leading-relaxed text-gray-800 line-clamp-4 whitespace-pre-wrap">{k.description}</p>
-                    <hr className="my-3 border-t border-gray-200" />
-                    <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-gray-600">
+                    <hr className="my-3 border-t border-gray-200 [.dark_&]:border-white/10" />
+                    <p className="mt-1 mb-3 text-sm md:text-[0.95rem] leading-relaxed text-gray-800 [.dark_&]:text-gray-300 line-clamp-4 whitespace-pre-wrap">{k.description}</p>
+                    <hr className="my-3 border-t border-gray-200 [.dark_&]:border-white/10" />
+                    <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-gray-600 [.dark_&]:text-gray-400">
                       {k.created && (
                         <span className="inline-flex items-center gap-1.5">
-                          <FaCalendarAlt className="w-3.5 h-3.5 text-gray-400" />
-                          <span className="text-gray-500">Created</span>
-                          <span className="font-medium text-gray-700">{k.created}</span>
+                          <FaCalendarAlt className="w-3.5 h-3.5 text-gray-400 [.dark_&]:text-gray-500" />
+                          <span className="text-gray-500 [.dark_&]:text-gray-400">Created</span>
+                          <span className="font-medium text-gray-700 [.dark_&]:text-gray-300">{k.created}</span>
                         </span>
                       )}
                       {k.createdByName && (
                         <span className="inline-flex items-center gap-1.5">
-                          <FaUser className="w-3.5 h-3.5 text-gray-400" />
-                          <span className="text-gray-500">By</span>
-                          <span className="font-medium text-gray-700">{k.createdByName}</span>
+                          <FaUser className="w-3.5 h-3.5 text-gray-400 [.dark_&]:text-gray-500" />
+                          <span className="text-gray-500 [.dark_&]:text-gray-400">By</span>
+                          <span className="font-medium text-gray-700 [.dark_&]:text-gray-300">{k.createdByName}</span>
                         </span>
                       )}
                       {k.updated && (
                         <span className="inline-flex items-center gap-1.5">
-                          <FaClock className="w-3.5 h-3.5 text-gray-400" />
-                          <span className="text-gray-500">Updated</span>
-                          <span className="font-medium text-gray-700">{k.updated}</span>
+                          <FaClock className="w-3.5 h-3.5 text-gray-400 [.dark_&]:text-gray-500" />
+                          <span className="text-gray-500 [.dark_&]:text-gray-400">Updated</span>
+                          <span className="font-medium text-gray-700 [.dark_&]:text-gray-300">{k.updated}</span>
                         </span>
                       )}
                     </div>
@@ -731,7 +840,7 @@ export default function KnowledgeProjectDetail() {
                 );
               })}
               {!knPageRows.length && (
-                <div className="col-span-full text-center text-sm text-gray-500 py-10">No knowledge found</div>
+                <div className="col-span-full text-center text-sm text-gray-500 [.dark_&]:text-gray-400 py-10">No knowledge found</div>
               )}
             </div>
           </Card>
@@ -742,7 +851,7 @@ export default function KnowledgeProjectDetail() {
             onSubmit={handleAddKnowledge}
             initialItem={editingKn}
             projectId={resolvedProjectId}
-            canEditAccess={isSuperAdminRoute || isManagerRoute || roleType === "admin"}
+            canEditAccess={isSuperAdminRoute || isAdminRoute || isManagerRoute || roleType === "admin"}
           />
 
           {showDeleteKnModal && (
@@ -768,17 +877,73 @@ export default function KnowledgeProjectDetail() {
               value={docSearch}
               onChange={setDocSearch}
               placeholder="Search by name, location or tag"
-              rightActions={(isSuperAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource") ? (
-                <Button onClick={() => setOpenAddDoc(true)}>+ Add Document</Button>
-              ) : null}
+              rightActions={
+                <div className="flex items-center gap-2">
+                  {(isSuperAdminRoute || isAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource") && (
+                    <div className="relative" ref={dropdownButtonRef}>
+                      <div className={`${buttonClass} flex items-center rounded-lg text-white text-sm font-medium overflow-hidden`}>
+                        {/* Left part - Add Document */}
+                        <button
+                          onClick={() => setOpenAddDoc(true)}
+                          className="px-4 py-2 hover:opacity-90 transition-opacity"
+                        >
+                          + Add Document
+                        </button>
+
+                        {/* Divider */}
+                        <div className="h-5 w-px bg-white/30"></div>
+
+                        {/* Right part - Dropdown toggle */}
+                        <button
+                          onClick={() => setShowDocDropdown(!showDocDropdown)}
+                          className="px-2 py-2 hover:opacity-90 transition-opacity"
+                        >
+                          {showDocDropdown ? (
+                            <FaChevronUp className="h-3 w-3" />
+                          ) : (
+                            <FaChevronDown className="h-3 w-3" />
+                          )}
+                        </button>
+                      </div>
+
+                      {showDocDropdown && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-[9998]"
+                            onClick={() => setShowDocDropdown(false)}
+                          ></div>
+                          <div
+                            className={`fixed rounded-lg shadow-lg ${buttonClass} border-none z-[9999]`}
+                            style={{
+                              top: dropdownButtonRef.current ? `${dropdownButtonRef.current.getBoundingClientRect().bottom + 8}px` : '0',
+                              right: dropdownButtonRef.current ? `${window.innerWidth - dropdownButtonRef.current.getBoundingClientRect().right}px` : '0',
+                              width: dropdownButtonRef.current ? `${dropdownButtonRef.current.getBoundingClientRect().width}px` : 'auto'
+                            }}
+                          >
+                            <button
+                              onClick={() => {
+                                setShowFolderModal(true);
+                                setShowDocDropdown(false);
+                              }}
+                              className="w-full px-4 py-2 text-left text-sm text-white hover:opacity-90 rounded-lg transition-opacity font-medium"
+                            >
+                              + Add Folder
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              }
             />
           </Card>
           <Card title="Document List" tone="muted">
             {(() => {
-              const canEditDocs = isSuperAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource";
-              const canDeleteDocs = isSuperAdminRoute;
+              const canEditDocs = isSuperAdminRoute || isAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource";
+              const canDeleteDocs = isSuperAdminRoute || isAdminRoute;
               return (
-                <DocumentsTable
+                <GroupedDocumentsView
                   rows={visibleDocs}
                   query={docSearch}
                   showActions={canEditDocs || canDeleteDocs}
@@ -794,7 +959,11 @@ export default function KnowledgeProjectDetail() {
             onSubmit={handleAddDocument}
             initialDoc={editingDoc}
             projectId={resolvedProjectId}
-            canEditAccess={isSuperAdminRoute || isManagerRoute || roleType === "admin"}
+            canEditAccess={isSuperAdminRoute || isAdminRoute || isManagerRoute || roleType === "admin"}
+          />
+          <ManageFoldersModal
+            isOpen={showFolderModal}
+            onClose={() => setShowFolderModal(false)}
           />
           {showDeleteModal && (
             <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40" onClick={() => !isDeleting && setShowDeleteModal(false)}>
@@ -804,11 +973,15 @@ export default function KnowledgeProjectDetail() {
                   onConfirm={confirmDeleteDocument}
                   itemType="document"
                   title="Delete Document"
-                  description="Are you sure you want to permanently delete this document?"
+                  description={deleteTarget?.folder === "MOMs"
+                    ? "This will permanently delete this MOM and its associated PDF. This action cannot be undone."
+                    : "Are you sure you want to permanently delete this document?"}
                   itemTitle={deleteTarget?.name}
                   itemSubtitle={deleteTarget?.filename}
                   confirmLabel="Delete"
                   isLoading={isDeleting}
+                  requireTextConfirmation={deleteTarget?.folder === "MOMs"}
+                  confirmationText={deleteTarget?.folder === "MOMs" ? deleteTarget?.name : ""}
                 />
               </div>
             </div>

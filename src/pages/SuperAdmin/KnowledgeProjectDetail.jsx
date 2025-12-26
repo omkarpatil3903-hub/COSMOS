@@ -467,7 +467,7 @@ export default function KnowledgeProjectDetail() {
       if (form._file) {
         const safeName = (form._file.name || "file").replace(/[^a-zA-Z0-9._-]/g, "-");
         if (!storagePath) {
-          storagePath = `Documents/${resolvedProjectId}/${safeName}`;
+          storagePath = `documents/${resolvedProjectId}/${safeName}`;
         }
         const storageRef = ref(storage, storagePath);
         const meta = {
