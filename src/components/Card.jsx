@@ -15,9 +15,9 @@ function Card({ title, icon, children, actions, className = "", tone = "surface"
   const { accent } = useTheme();
 
   const getToneClass = () => {
-    // If accent is 'black', force black background for dark appearance
+    // If accent is 'black', use grey background for dark mode to match stat cards
     if (accent === 'black') {
-      return "bg-white [.dark_&]:bg-[#000000] [.dark_&]:border-gray-800";
+      return "bg-white [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10";
     }
 
     return tone === "white"

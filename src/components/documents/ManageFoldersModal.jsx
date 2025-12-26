@@ -351,25 +351,25 @@ function ManageFoldersModal({ isOpen, onClose }) {
 
             {/* Delete Confirmation Modal */}
             {showDeleteModal && folderToDelete && (
-                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-white/50 [.dark_&]:bg-black/60 backdrop-blur-sm">
                     <div
-                        className="bg-[#2D2F3F] [.dark_&]:bg-[#2D2F3F] rounded-xl shadow-2xl w-full max-w-lg"
+                        className="rounded-xl shadow-2xl w-full max-w-lg" style={{ backgroundColor: 'white' }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header */}
-                        <div className="p-6 border-b border-white/10">
-                            <h3 className="text-2xl font-bold text-white">Delete Folder</h3>
+                        <div className="p-6 border-b border-gray-200 [.dark_&]:border-white/10">
+                            <h3 className="text-2xl font-bold text-gray-900 [.dark_&]:text-white">Delete Folder</h3>
                         </div>
 
                         {/* Content */}
                         <div className="p-6 space-y-5">
                             {/* Warning Box */}
-                            <div className="p-4 bg-red-900/20 border-2 border-red-500/50 rounded-lg">
+                            <div className="p-4 bg-red-50 [.dark_&]:bg-red-900/20 border-2 border-red-200 [.dark_&]:border-red-500/50 rounded-lg">
                                 <div className="flex items-start gap-3">
-                                    <span className="text-amber-400 text-xl mt-0.5">⚠</span>
+                                    <span className="text-amber-600 [.dark_&]:text-amber-400 text-xl mt-0.5">⚠</span>
                                     <div>
-                                        <p className="text-amber-300 font-semibold mb-2">Warning: This action cannot be undone!</p>
-                                        <p className="text-red-300 text-sm leading-relaxed">
+                                        <p className="text-amber-800 [.dark_&]:text-amber-300 font-semibold mb-2">Warning: This action cannot be undone!</p>
+                                        <p className="text-red-700 [.dark_&]:text-red-300 text-sm leading-relaxed">
                                             Deleting this folder will affect all documents currently assigned to it. All documents in this folder will be moved to the "General" folder.
                                         </p>
                                     </div>
@@ -378,9 +378,9 @@ function ManageFoldersModal({ isOpen, onClose }) {
 
                             {/* Folder Info */}
                             <div>
-                                <p className="text-gray-400 text-sm mb-2">Folder to delete:</p>
-                                <div className="px-4 py-3 bg-[#1E1E2D] rounded-lg border border-white/10">
-                                    <p className="text-white font-medium break-all">
+                                <p className="text-gray-600 [.dark_&]:text-gray-400 text-sm mb-2">Folder to delete:</p>
+                                <div className="px-4 py-3 bg-gray-100 [.dark_&]:bg-[#1E1E2D] rounded-lg border border-gray-200 [.dark_&]:border-white/10">
+                                    <p className="text-gray-900 [.dark_&]:text-white font-medium break-all">
                                         {folderToDelete.name}
                                     </p>
                                 </div>
@@ -388,29 +388,29 @@ function ManageFoldersModal({ isOpen, onClose }) {
 
                             {/* Confirmation Input */}
                             <div>
-                                <label className="block text-gray-300 text-sm mb-2">
-                                    Type <span className="font-bold text-red-400">Delete {folderToDelete.name}</span> to confirm:
+                                <label className="block text-gray-700 [.dark_&]:text-gray-300 text-sm mb-2">
+                                    Type <span className="font-bold text-red-600 [.dark_&]:text-red-400">Delete {folderToDelete.name}</span> to confirm:
                                 </label>
                                 <input
                                     type="text"
                                     value={deleteConfirmText}
                                     onChange={(e) => setDeleteConfirmText(e.target.value)}
                                     placeholder={`Delete ${folderToDelete.name}`}
-                                    className="w-full px-4 py-3 rounded-lg border-2 border-red-500/50 bg-[#1E1E2D] text-white placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors"
+                                    className="w-full px-4 py-3 rounded-lg border-2 border-red-300 [.dark_&]:border-red-500/50 bg-white [.dark_&]:bg-[#1E1E2D] text-gray-900 [.dark_&]:text-white placeholder-gray-400 [.dark_&]:placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors"
                                     autoFocus
                                 />
                             </div>
                         </div>
 
                         {/* Footer */}
-                        <div className="flex items-center justify-end gap-3 p-6 border-t border-white/10">
+                        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 [.dark_&]:border-white/10">
                             <button
                                 onClick={() => {
                                     setShowDeleteModal(false);
                                     setFolderToDelete(null);
                                     setDeleteConfirmText("");
                                 }}
-                                className="px-6 py-2.5 rounded-lg font-medium text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+                                className="px-6 py-2.5 rounded-lg font-medium text-gray-700 [.dark_&]:text-gray-300 hover:text-gray-900 [.dark_&]:hover:text-white hover:bg-gray-100 [.dark_&]:hover:bg-white/10 transition-colors"
                             >
                                 Cancel
                             </button>
@@ -419,7 +419,7 @@ function ManageFoldersModal({ isOpen, onClose }) {
                                 disabled={deleteConfirmText !== `Delete ${folderToDelete.name}`}
                                 className={`px-6 py-2.5 rounded-lg font-medium transition-all ${deleteConfirmText === `Delete ${folderToDelete.name}`
                                     ? 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/30'
-                                    : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                                    : 'bg-gray-300 [.dark_&]:bg-gray-600 text-gray-500 [.dark_&]:text-gray-400 cursor-not-allowed'
                                     }`}
                             >
                                 Delete Folder

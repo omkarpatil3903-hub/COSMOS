@@ -238,33 +238,30 @@ export default function ClientDashboard() {
   useEffect(() => {
     if (!uid) return;
     const q = query(collection(db, "notes"), where("userUid", "==", uid));
-    const load = async () => {
-      try {
-        const snap = await getDocs(q);
-        const items = snap.docs.map((d) => {
-          const data = d.data() || {};
-          return {
-            id: d.id,
-            text: data.bodyText || data.text || data.title || "",
-            isPinned: data.isPinned === true,
-            createdAt: data.createdAt || null,
-            updatedAt: data.updatedAt || null,
-          };
-        });
-        const sorted = [...items].sort((a, b) => {
-          if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-          const at = (a.updatedAt?.toMillis?.() || (a.updatedAt?.seconds ? a.updatedAt.seconds * 1000 : 0) || 0) ||
-            (a.createdAt?.toMillis?.() || (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0) || 0);
+    const unsub = onSnapshot(q, (snap) => {
+      const items = snap.docs.map((d) => {
+        const data = d.data() || {};
+        return {
+          id: d.id,
+          text: data.bodyText || data.text || data.title || "",
+          isPinned: data.isPinned === true,
+          createdAt: data.createdAt || null,
+          updatedAt: data.updatedAt || null,
+        };
+      });
+      const sorted = [...items].sort((a, b) => {
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+        const at = (a.updatedAt?.toMillis?.() || (a.updatedAt?.seconds ? a.updatedAt.seconds * 1000 : 0) || 0) ||
+          (a.createdAt?.toMillis?.() || (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0) || 0);
         const bt = (b.updatedAt?.toMillis?.() || (b.updatedAt?.seconds ? b.updatedAt.seconds * 1000 : 0) || 0) ||
-            (b.createdAt?.toMillis?.() || (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0) || 0);
-          return bt - at;
-        });
-        setNotes(sorted);
-      } catch (e) {
-        console.error("Failed to load notes", e);
-      }
-    };
-    load();
+          (b.createdAt?.toMillis?.() || (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0) || 0);
+        return bt - at;
+      });
+      setNotes(sorted);
+    }, (error) => {
+      console.error("Failed to load notes", error);
+    });
+    return () => unsub();
   }, [uid]);
 
   // Calculate stats
@@ -312,11 +309,10 @@ export default function ClientDashboard() {
     );
   }
 
-  const welcomeTitle = `Welcome${
-    userData?.clientName || userData?.name || userData?.companyName
-      ? ", " + (userData?.clientName || userData?.name || userData?.companyName)
-      : ""
-  }!`;
+  const welcomeTitle = `Welcome${userData?.clientName || userData?.name || userData?.companyName
+    ? ", " + (userData?.clientName || userData?.name || userData?.companyName)
+    : ""
+    }!`;
 
   return (
     <div>
@@ -332,13 +328,25 @@ export default function ClientDashboard() {
                   setShowReminderMenu(false);
                   setShowNotesMenu(false);
                 }}
-                className="p-2 rounded-full hover:bg-gray-100 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="p-2 rounded-full hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-gray-600 [.dark_&]:text-gray-300 hover:text-gray-900 [.dark_&]:hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 title="Quick actions"
               >
                 <LuNotebookPen className="h-4 w-4" />
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReminderMenu((v) => !v);
+                  setShowNotesMenu(false);
+                  setShowQuickMenu(false);
+                }}
+                className="p-2 rounded-full hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-gray-600 [.dark_&]:text-gray-300 hover:text-gray-900 [.dark_&]:hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                title="Notifications"
+              >
+                <FaBell className="h-4 w-4" />
+              </button>
               {showQuickMenu && (
-                <div className="absolute right-0 top-9 z-30 w-44 rounded-lg bg-white shadow-lg border border-gray-200 text-sm">
+                <div className="absolute right-0 top-9 z-30 w-44 rounded-lg bg-white [.dark_&]:bg-[#1F2234] shadow-lg border border-gray-200 [.dark_&]:border-white/20 text-sm">
                   <button
                     type="button"
                     onClick={() => {
@@ -346,7 +354,7 @@ export default function ClientDashboard() {
                       setShowNotesMenu(false);
                       setShowQuickMenu(false);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50 text-gray-700 flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 hover:bg-gray-50 [.dark_&]:hover:bg-white/5 text-gray-700 [.dark_&]:text-gray-200 flex items-center gap-2"
                   >
                     <LuAlarmClock className="h-3.5 w-3.5 text-indigo-500" />
                     <span>Reminders</span>
@@ -358,7 +366,7 @@ export default function ClientDashboard() {
                       setShowReminderMenu(false);
                       setShowQuickMenu(false);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50 text-gray-700 border-t border-gray-100 flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 hover:bg-gray-50 [.dark_&]:hover:bg-white/5 text-gray-700 [.dark_&]:text-gray-200 border-t border-gray-100 [.dark_&]:border-white/10 flex items-center gap-2"
                   >
                     <FaStickyNote className="h-3.5 w-3.5 text-amber-500" />
                     <span>Notes</span>
@@ -367,9 +375,9 @@ export default function ClientDashboard() {
               )}
 
               {showReminderMenu && (
-                <div className="absolute right-0 top-11 z-20 w-80 rounded-lg bg-white shadow-lg border border-gray-200 p-3 text-sm">
+                <div className="absolute right-0 top-11 z-20 w-80 rounded-lg bg-white [.dark_&]:bg-[#1F2234] shadow-lg border border-gray-200 [.dark_&]:border-white/20 p-3 text-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="font-semibold text-gray-800">Quick Reminders</div>
+                    <div className="font-semibold text-gray-800 [.dark_&]:text-white">Quick Reminders</div>
                     <button
                       type="button"
                       onClick={() => {
@@ -389,7 +397,7 @@ export default function ClientDashboard() {
                         setRemDesc("");
                         setShowInlineReminderForm((v) => !v);
                       }}
-                      className="p-1.5 rounded-md hover:bg-gray-100 text-indigo-600"
+                      className="p-1.5 rounded-md hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-indigo-600 [.dark_&]:text-indigo-400"
                       title="Add reminder"
                     >
                       <FaPlus className="h-3.5 w-3.5" />
@@ -441,11 +449,11 @@ export default function ClientDashboard() {
                           setSavingReminder(false);
                         }
                       }}
-                      className="mb-3 space-y-2 border border-gray-100 rounded-md p-2 bg-gray-50"
+                      className="mb-3 space-y-2 border border-gray-100 [.dark_&]:border-white/10 rounded-md p-2 bg-gray-50 [.dark_&]:bg-white/5"
                     >
                       <input
                         type="text"
-                        className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full rounded border border-gray-200 [.dark_&]:border-white/20 px-2 py-1 text-sm bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
                         placeholder="Reminder title"
                         value={remTitle}
                         onChange={(e) => setRemTitle(e.target.value)}
@@ -453,20 +461,20 @@ export default function ClientDashboard() {
                       <div className="grid grid-cols-2 gap-2">
                         <input
                           type="date"
-                          className="rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="rounded border border-gray-200 [.dark_&]:border-white/20 px-2 py-1 text-sm bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
                           value={remDate}
                           onChange={(e) => setRemDate(e.target.value)}
                         />
                         <input
                           type="time"
-                          className="rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="rounded border border-gray-200 [.dark_&]:border-white/20 px-2 py-1 text-sm bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
                           value={remTime}
                           onChange={(e) => setRemTime(e.target.value)}
                         />
                       </div>
                       <textarea
                         rows={2}
-                        className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full rounded border border-gray-200 [.dark_&]:border-white/20 px-2 py-1 text-xs bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
                         placeholder="Description (optional)"
                         value={remDesc}
                         onChange={(e) => setRemDesc(e.target.value)}
@@ -474,7 +482,7 @@ export default function ClientDashboard() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
-                          className="px-2 py-1 text-xs rounded-md hover:bg-gray-100"
+                          className="px-2 py-1 text-xs rounded-md text-gray-700 [.dark_&]:text-gray-300 hover:bg-gray-100 [.dark_&]:hover:bg-white/10"
                           onClick={() => {
                             setShowInlineReminderForm(false);
                             setEditingReminderId(null);
@@ -494,22 +502,22 @@ export default function ClientDashboard() {
                     </form>
                   )}
                   {quickReminders.length === 0 ? (
-                    <div className="text-xs text-gray-400">No reminders yet.</div>
+                    <div className="text-xs text-gray-400 [.dark_&]:text-gray-500">No reminders yet.</div>
                   ) : (
-                    <ul className="space-y-2 text-gray-700 max-h-60 overflow-y-auto">
+                    <ul className="space-y-2 text-gray-700 [.dark_&]:text-gray-300 max-h-60 overflow-y-auto">
                       {quickReminders.slice(0, 5).map((r) => (
                         <li key={r.id} className="group flex items-start justify-between gap-2">
                           <div className="flex items-start gap-2 flex-1 min-w-0">
                             <span className="mt-1">•</span>
                             <div className="flex-1 min-w-0">
                               <div className="text-sm truncate">{r.title}</div>
-                              <div className="text-[11px] text-gray-500">{formatDueTime(r.dueAt)}</div>
+                              <div className="text-[11px] text-gray-500 [.dark_&]:text-gray-400">{formatDueTime(r.dueAt)}</div>
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-800"
+                              className="p-1 rounded hover:bg-gray-200 [.dark_&]:hover:bg-white/10 text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-800 [.dark_&]:hover:text-gray-200"
                               title="Edit reminder"
                               onClick={() => {
                                 setShowInlineReminderForm(true);
@@ -534,7 +542,7 @@ export default function ClientDashboard() {
                             </button>
                             <button
                               type="button"
-                              className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-red-600"
+                              className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500"
                               title="Delete reminder"
                               onClick={async () => {
                                 try {
@@ -563,12 +571,12 @@ export default function ClientDashboard() {
               )}
 
               {showNotesMenu && (
-                <div className="absolute right-0 top-11 z-20 w-72 rounded-lg bg-white shadow-lg border border-gray-200 p-3 text-sm">
+                <div className="absolute right-0 top-11 z-20 w-80 rounded-lg bg-white [.dark_&]:bg-[#1F2234] shadow-lg border border-gray-200 [.dark_&]:border-white/20 p-3 text-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="font-semibold text-gray-800">Quick Notes</div>
+                    <div className="font-semibold text-gray-800 [.dark_&]:text-white">Quick Notes</div>
                     <div className="flex items-center gap-2">
                       {notes.length > 0 && (
-                        <span className="text-xs text-gray-400">{notes.length} {notes.length === 1 ? "Note" : "Notes"}</span>
+                        <span className="text-xs text-gray-400 [.dark_&]:text-gray-500">{notes.length} {notes.length === 1 ? "Note" : "Notes"}</span>
                       )}
                       <button
                         type="button"
@@ -633,27 +641,19 @@ export default function ClientDashboard() {
                   </div>
                   <textarea
                     rows={3}
-                    className="w-full border border-gray-200 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full border border-gray-200 [.dark_&]:border-white/20 rounded-md px-2 py-1 text-sm bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
                     placeholder="Write a quick note..."
                     value={noteInput}
                     onChange={(e) => setNoteInput(e.target.value)}
                   />
                   {notes.length > 0 && (
-                    <div className="mt-3 border-t border-gray-100 pt-2 max-h-40 overflow-y-auto space-y-2">
+                    <div className="mt-3 border-t border-gray-100 [.dark_&]:border-white/10 pt-2 max-h-40 overflow-y-auto space-y-2">
                       {notes.map((note) => (
                         <div
                           key={note.id}
-                          className="group flex items-start justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-2 py-1.5"
+                          className="group flex items-start justify-between gap-2 rounded-md border border-gray-100 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-white/5 px-2 py-1.5"
                         >
-                          <p className="text-xs text-gray-700 leading-snug flex-1 whitespace-pre-wrap break-all">
-                            {note.isPinned && (
-                              <span className="inline-flex items-center gap-1 text-amber-600 mr-1 align-top">
-                                <FaThumbtack className="h-3 w-3" />
-                              </span>
-                            )}
-                            {note.text}
-                          </p>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-start gap-2 flex-1">
                             <button
                               type="button"
                               onClick={async () => {
@@ -680,18 +680,23 @@ export default function ClientDashboard() {
                                   console.error("Failed to toggle pin", err);
                                 }
                               }}
-                              className={`p-1 rounded hover:bg-gray-200 ${note.isPinned ? "text-amber-600" : "text-gray-400 hover:text-gray-600"}`}
+                              className={`p-1 rounded hover:bg-gray-200 [.dark_&]:hover:bg-white/10 ${note.isPinned ? "text-amber-600 [.dark_&]:text-amber-400" : "text-gray-400 [.dark_&]:text-gray-500 hover:text-gray-600 [.dark_&]:hover:text-gray-300"}`}
                               title={note.isPinned ? "Unpin note" : "Pin note"}
                             >
                               <FaThumbtack className="h-3 w-3" />
                             </button>
+                            <p className="text-xs text-gray-700 [.dark_&]:text-gray-300 leading-snug whitespace-pre-wrap break-all flex-1">
+                              {note.text}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1">
                             <button
                               type="button"
                               onClick={() => {
                                 setNoteInput(note.text);
                                 setEditingNoteId(note.id);
                               }}
-                              className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-800"
+                              className="p-1 rounded hover:bg-gray-200 [.dark_&]:hover:bg-white/10 text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-800 [.dark_&]:hover:text-gray-200"
                               title="Edit note"
                             >
                               <span className="sr-only">Edit</span>
@@ -715,7 +720,7 @@ export default function ClientDashboard() {
                                   console.error("Failed to delete note", e);
                                 }
                               }}
-                              className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-red-600"
+                              className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500"
                               title="Delete note"
                             >
                               <span className="sr-only">Delete</span>
@@ -819,13 +824,12 @@ export default function ClientDashboard() {
                       </p>
                     </div>
                     <span
-                      className={`ml-2 px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${
-                        task.status === "Done"
-                          ? "bg-success-100 text-success-600"
-                          : task.status === "In Progress"
+                      className={`ml-2 px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${task.status === "Done"
+                        ? "bg-success-100 text-success-600"
+                        : task.status === "In Progress"
                           ? "bg-blue-100 text-blue-800"
                           : "bg-gray-100 text-gray-800"
-                      }`}
+                        }`}
                     >
                       {task.status || "To-Do"}
                     </span>
@@ -934,13 +938,12 @@ export default function ClientDashboard() {
                 </p>
                 <div className="flex items-center justify-between">
                   <span
-                    className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      project.status === "Completed"
-                        ? "bg-success-100 text-success-600"
-                        : project.status === "In Progress"
+                    className={`px-2 py-1 text-xs font-medium rounded-full ${project.status === "Completed"
+                      ? "bg-success-100 text-success-600"
+                      : project.status === "In Progress"
                         ? "bg-blue-100 text-blue-800"
                         : "bg-gray-100 text-gray-800"
-                    }`}
+                      }`}
                   >
                     {project.status || "Active"}
                   </span>

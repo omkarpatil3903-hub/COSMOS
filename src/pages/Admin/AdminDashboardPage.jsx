@@ -142,23 +142,23 @@ function DashboardPage() {
               `}
               >
                 <div className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 rounded-xl p-[2px] shadow-lg">
-                  <div className="bg-white rounded-xl px-4 py-3 flex items-center gap-3">
+                  <div className="bg-white dark:!bg-[#1e1e2d] rounded-xl px-4 py-3 flex items-center gap-3">
                     <div className="flex-1 min-w-0 max-h-16 overflow-y-auto">
                       <div className="flex items-center justify-between mb-0.5">
-                        <div className="text-[11px] font-semibold text-indigo-600 tracking-wide uppercase">
+                        <div className="text-[11px] font-semibold text-indigo-600 dark:!text-indigo-400 tracking-wide uppercase">
                           Reminder
                         </div>
                         {timeLabel && (
-                          <div className="ml-2 text-[10px] text-gray-500 font-medium whitespace-nowrap">
+                          <div className="ml-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
                             {timeLabel}
                           </div>
                         )}
                       </div>
-                      <div className="text-xs font-medium text-gray-900 break-words leading-snug">
+                      <div className="text-xs font-medium text-gray-900 dark:!text-white break-words leading-snug">
                         {r.title || "Untitled reminder"}
                       </div>
                       {r.description && (
-                        <div className="text-[11px] text-gray-600 mt-0.5 break-words leading-snug">
+                        <div className="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5 break-words leading-snug">
                           {r.description}
                         </div>
                       )}
@@ -513,10 +513,10 @@ function DashboardPage() {
     ) {
       return (
         <div>
-          <h3 className="text-lg font-semibold text-content-primary mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white mb-4">
             {title}
           </h3>
-          <div className="h-64 flex items-center justify-center text-sm text-content-tertiary">
+          <div className="h-64 flex items-center justify-center text-sm text-gray-500 [.dark_&]:text-gray-400">
             No data
           </div>
         </div>
@@ -524,7 +524,7 @@ function DashboardPage() {
     }
     return (
       <div>
-        <h3 className="text-lg font-semibold text-content-primary mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white mb-4">
           {title}
         </h3>
         <div className="h-64">
@@ -568,7 +568,7 @@ function DashboardPage() {
                     )}
                   </div>
                 </div>
-                <span className="text-xs text-content-secondary mt-2">
+                <span className="text-xs text-gray-600 [.dark_&]:text-gray-400 mt-2">
                   {item.name}
                 </span>
               </div>
@@ -580,7 +580,7 @@ function DashboardPage() {
                 className="w-3 h-3 rounded"
                 style={{ backgroundColor: color1 }}
               ></div>
-              <span className="text-xs text-content-secondary">{label1}</span>
+              <span className="text-xs text-gray-600 [.dark_&]:text-gray-400">{label1}</span>
             </div>
             {dataKey2 && (
               <div className="flex items-center gap-2">
@@ -588,7 +588,7 @@ function DashboardPage() {
                   className="w-3 h-3 rounded"
                   style={{ backgroundColor: color2 }}
                 ></div>
-                <span className="text-xs text-content-secondary">{label2}</span>
+                <span className="text-xs text-gray-600 [.dark_&]:text-gray-400">{label2}</span>
               </div>
             )}
             {dataKey3 && (
@@ -597,7 +597,7 @@ function DashboardPage() {
                   className="w-3 h-3 rounded"
                   style={{ backgroundColor: color3 }}
                 ></div>
-                <span className="text-xs text-content-secondary">{label3}</span>
+                <span className="text-xs text-gray-600 [.dark_&]:text-gray-400">{label3}</span>
               </div>
             )}
           </div>
@@ -617,10 +617,10 @@ function DashboardPage() {
     if (values.length === 0) {
       return (
         <div>
-          <h3 className="text-lg font-semibold text-content-primary mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white mb-4">
             {title}
           </h3>
-          <div className="h-64 flex items-center justify-center text-sm text-content-tertiary">
+          <div className="h-64 flex items-center justify-center text-sm text-gray-500 [.dark_&]:text-gray-400">
             No data
           </div>
         </div>
@@ -633,7 +633,7 @@ function DashboardPage() {
 
     return (
       <div>
-        <h3 className="text-lg font-semibold text-content-primary mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white mb-4">
           {title}
         </h3>
         <div className="h-64 relative">
@@ -661,7 +661,7 @@ function DashboardPage() {
                       title={`${item.name}: $${item[dataKey].toLocaleString()}`}
                     ></div>
                   </div>
-                  <span className="text-xs text-content-secondary mt-2">
+                  <span className="text-xs text-gray-600 [.dark_&]:text-gray-400 mt-2">
                     {item.name}
                   </span>
                 </div>
@@ -669,7 +669,7 @@ function DashboardPage() {
             })}
           </div>
           <div className="absolute bottom-0 left-0 right-0 text-center">
-            <p className="text-xs text-content-secondary">
+            <p className="text-xs text-gray-600 [.dark_&]:text-gray-400">
               Total Revenue: $
               {data.reduce((sum, d) => sum + d[dataKey], 0).toLocaleString()}
             </p>
@@ -707,7 +707,7 @@ function DashboardPage() {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-content-primary">
+          <h3 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white">
             Projects Progress
           </h3>
         </div>
@@ -718,17 +718,17 @@ function DashboardPage() {
           {sorted.map((p) => (
             <div key={p.id} className="space-y-1">
               <div className="flex items-center justify-between gap-2">
-                <div className="text-sm font-medium text-content-primary truncate flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900 [.dark_&]:text-white truncate flex-1 min-w-0">
                   <span className="truncate block" title={p.name}>
                     {p.name}
                   </span>
                   {p.client && (
-                    <span className="text-xs text-content-tertiary block truncate">
+                    <span className="text-xs text-gray-500 [.dark_&]:text-gray-400 block truncate">
                       ({p.client})
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-content-secondary whitespace-nowrap shrink-0">
+                <div className="text-xs text-gray-600 [.dark_&]:text-gray-400 whitespace-nowrap shrink-0">
                   {p.done}/{p.total} · {p.progress}%
                 </div>
               </div>
@@ -742,7 +742,7 @@ function DashboardPage() {
           ))}
           {sorted.length === 0 && (
             <div className="flex items-center justify-center h-full">
-              <div className="text-sm text-content-tertiary">
+              <div className="text-sm text-gray-500 [.dark_&]:text-gray-400">
                 No projects yet.
               </div>
             </div>
@@ -817,13 +817,13 @@ function DashboardPage() {
 
     return (
       <div>
-        <h3 className="text-lg font-semibold text-content-primary mb-4">
+        <h3 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white mb-4">
           {title}
         </h3>
         <div className="h-64 overflow-hidden">
           {/* Calendar Header */}
           <div className="mb-3">
-            <h4 className="text-center font-semibold text-content-primary">
+            <h4 className="text-center font-semibold text-gray-900 [.dark_&]:text-white">
               {monthNames[currentMonth]} {currentYear}
             </h4>
           </div>
@@ -833,7 +833,7 @@ function DashboardPage() {
             {dayNames.map((day) => (
               <div
                 key={day}
-                className="text-center text-xs font-medium text-content-secondary p-1"
+                className="text-center text-xs font-medium text-gray-600 [.dark_&]:text-gray-400 p-1"
               >
                 {day}
               </div>
@@ -859,8 +859,8 @@ function DashboardPage() {
                     <>
                       <div
                         className={`text-center ${isToday(day)
-                            ? "font-bold text-blue-600"
-                            : "text-content-primary"
+                          ? "font-bold text-blue-600 [.dark_&]:text-blue-400"
+                          : "text-gray-900 [.dark_&]:text-white"
                           }`}
                       >
                         {day}
@@ -895,13 +895,13 @@ function DashboardPage() {
 
         {/* Upcoming Events List */}
         <div className="mt-4 space-y-2 max-h-32 overflow-y-auto">
-          <h5 className="text-sm font-medium text-content-primary">
+          <h5 className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
             Upcoming Events
           </h5>
           {data
             .filter((event) => new Date(event.date) >= currentDate)
             .slice(0, 5).length === 0 ? (
-            <div className="text-xs text-content-tertiary">
+            <div className="text-xs text-gray-500 [.dark_&]:text-gray-400">
               No upcoming events.
             </div>
           ) : (
@@ -914,13 +914,13 @@ function DashboardPage() {
                     className="w-2 h-2 rounded-full flex-shrink-0"
                     style={{ backgroundColor: event.color }}
                   ></div>
-                  <span className="text-content-secondary">
+                  <span className="text-gray-600 [.dark_&]:text-gray-400">
                     {new Date(event.date).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                     })}
                   </span>
-                  <span className="text-content-primary font-medium truncate">
+                  <span className="text-gray-900 [.dark_&]:text-white font-medium truncate">
                     {event.title}
                   </span>
                 </div>
@@ -935,14 +935,14 @@ function DashboardPage() {
               className="w-2 h-2 rounded-full"
               style={{ backgroundColor: PRIORITY_HEX.high }}
             ></div>
-            <span className="text-content-secondary">High Priority</span>
+            <span className="text-gray-600 [.dark_&]:text-gray-400">High Priority</span>
           </div>
           <div className="flex items-center gap-1">
             <div
               className="w-2 h-2 rounded-full"
               style={{ backgroundColor: TYPE_HEX.meeting }}
             ></div>
-            <span className="text-content-secondary">Meetings</span>
+            <span className="text-gray-600 [.dark_&]:text-gray-400">Meetings</span>
           </div>
         </div>
       </div>
@@ -961,8 +961,9 @@ function DashboardPage() {
     <div>
       <PageHeader
         title={welcomeTitle}
+        className="[.dark_&]:text-white"
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" ref={quickMenusRef}>
             <div className="relative">
               <button
                 type="button"
@@ -1082,11 +1083,11 @@ function DashboardPage() {
                           setSavingReminder(false);
                         }
                       }}
-                      className="mb-3 space-y-2 border border-gray-100 rounded-md p-2 bg-gray-50"
+                      className="mb-3 space-y-2 border border-gray-100 [.dark_&]:border-white/10 rounded-md p-2 bg-gray-50 [.dark_&]:bg-white/5"
                     >
                       <input
                         type="text"
-                        className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full rounded border border-gray-200 [.dark_&]:border-white/20 px-2 py-1 text-sm bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
                         placeholder="Reminder title"
                         value={remTitle}
                         onChange={(e) => setRemTitle(e.target.value)}
@@ -1094,7 +1095,7 @@ function DashboardPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <input
                           type="date"
-                          className="rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="rounded border border-gray-200 [.dark_&]:border-white/20 px-2 py-1 text-sm bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
                           value={remDate}
                           onChange={(e) => setRemDate(e.target.value)}
                         />
@@ -1107,7 +1108,7 @@ function DashboardPage() {
                       </div>
                       <textarea
                         rows={2}
-                        className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full rounded border border-gray-200 [.dark_&]:border-white/20 px-2 py-1 text-xs bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
                         placeholder="Description (optional)"
                         value={remDesc}
                         onChange={(e) => setRemDesc(e.target.value)}
@@ -1115,7 +1116,7 @@ function DashboardPage() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
-                          className="px-2 py-1 text-xs rounded-md hover:bg-gray-100"
+                          className="px-2 py-1 text-xs rounded-md text-gray-700 [.dark_&]:text-gray-300 hover:bg-gray-100 [.dark_&]:hover:bg-white/10"
                           onClick={() => {
                             setShowInlineReminderForm(false);
                             setEditingReminderId(null);
@@ -1135,9 +1136,9 @@ function DashboardPage() {
                     </form>
                   )}
                   {quickReminders.length === 0 ? (
-                    <div className="text-xs text-gray-400">No reminders yet.</div>
+                    <div className="text-xs text-gray-400 [.dark_&]:text-gray-500">No reminders yet.</div>
                   ) : (
-                    <ul className="space-y-2 text-gray-700 max-h-60 overflow-y-auto">
+                    <ul className="space-y-2 text-gray-700 [.dark_&]:text-gray-300 max-h-60 overflow-y-auto">
                       {quickReminders.slice(0, 5).map((r) => (
                         <li key={r.id} className="group flex items-start justify-between gap-2">
                           <div className="flex items-start gap-2 flex-1 min-w-0">
@@ -1150,7 +1151,7 @@ function DashboardPage() {
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-800"
+                              className="p-1 rounded hover:bg-gray-200 [.dark_&]:hover:bg-white/10 text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-800 [.dark_&]:hover:text-gray-200"
                               title="Edit reminder"
                               onClick={() => {
                                 setShowInlineReminderForm(true);
@@ -1204,9 +1205,9 @@ function DashboardPage() {
               )}
 
               {showNotesMenu && (
-                <div className="absolute right-0 top-11 z-20 w-80 rounded-lg bg-white shadow-lg border border-gray-200 p-3 text-sm">
+                <div className="absolute right-0 top-11 z-20 w-80 rounded-lg bg-white [.dark_&]:bg-[#1F2234] shadow-lg border border-gray-200 [.dark_&]:border-white/20 p-3 text-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="font-semibold text-gray-800">Quick Notes</div>
+                    <div className="font-semibold text-gray-800 [.dark_&]:text-white">Quick Notes</div>
                     <div className="flex items-center gap-2">
                       {notes.length > 0 && (
                         <span className="text-xs text-gray-400">
@@ -1291,17 +1292,17 @@ function DashboardPage() {
                     rows={3}
                     value={noteInput}
                     onChange={(e) => setNoteInput(e.target.value)}
-                    className="w-full border border-gray-200 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full border border-gray-200 [.dark_&]:border-white/20 rounded-md px-2 py-1 text-sm bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
                     placeholder="Write a quick note..."
                   />
-                  <div className="mt-3 border-t border-gray-100 pt-2 max-h-40 overflow-y-auto space-y-2">
+                  <div className="mt-3 border-t border-gray-100 [.dark_&]:border-white/10 pt-2 max-h-40 overflow-y-auto space-y-2">
                     {notes.length === 0 ? (
-                      <div className="text-xs text-gray-400">No saved notes yet.</div>
+                      <div className="text-xs text-gray-400 [.dark_&]:text-gray-500">No saved notes yet.</div>
                     ) : (
                       notes.map((note) => (
                         <div
                           key={note.id}
-                          className="group flex items-start justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-2 py-1.5"
+                          className="group flex items-start justify-between gap-2 rounded-md border border-gray-100 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-white/5 px-2 py-1.5"
                         >
                           <div className="flex items-start gap-2 flex-1">
                             <button
@@ -1330,19 +1331,19 @@ function DashboardPage() {
                                   console.error("Failed to toggle pin", err);
                                 }
                               }}
-                              className={`p-1 rounded hover:bg-gray-200 ${note.isPinned ? "text-amber-600" : "text-gray-400 hover:text-gray-600"}`}
+                              className={`p-1 rounded hover:bg-gray-200 [.dark_&]:hover:bg-white/10 ${note.isPinned ? "text-amber-600 [.dark_&]:text-amber-400" : "text-gray-400 [.dark_&]:text-gray-500 hover:text-gray-600 [.dark_&]:hover:text-gray-300"}`}
                               title={note.isPinned ? "Unpin note" : "Pin note"}
                             >
                               <FaThumbtack className="h-3 w-3" />
                             </button>
-                            <div className="text-xs text-gray-700 leading-snug whitespace-pre-wrap break-all flex-1">
+                            <div className="text-xs text-gray-700 [.dark_&]:text-gray-300 leading-snug whitespace-pre-wrap break-all flex-1">
                               {note.text}
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-800"
+                              className="p-1 rounded hover:bg-gray-200 [.dark_&]:hover:bg-white/10 text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-800 [.dark_&]:hover:text-gray-200"
                               title="Edit note"
                               onClick={() => {
                                 setEditingNoteId(note.id);
@@ -1395,17 +1396,17 @@ function DashboardPage() {
             </div>
 
             <label className="flex items-center gap-2">
-              <span className="text-sm font-medium text-content-secondary">
+              <span className="text-sm font-medium text-gray-700 [.dark_&]:text-gray-300">
                 Filter by Project:
               </span>
               <select
                 value={selectedProject}
                 onChange={(e) => setSelectedProject(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="border border-gray-300 [.dark_&]:border-white/20 rounded-md px-3 py-2 text-sm bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
               >
-                <option value="">All Projects</option>
+                <option value="" className="bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white">All Projects</option>
                 {projects.map((project) => (
-                  <option key={project.id} value={project.id}>
+                  <option key={project.id} value={project.id} className="bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white">
                     {project.projectName || project.name || "Untitled"}
                   </option>
                 ))}
@@ -1414,8 +1415,10 @@ function DashboardPage() {
           </div>
         }
       >
-        Monitor project performance, client engagement, and manage resources
-        from a single control center.
+        <span className="text-gray-700 [.dark_&]:text-gray-300">
+          Monitor project performance, client engagement, and manage resources
+          from a single control center.
+        </span>
       </PageHeader>
 
       {/* --- Stat Cards Section --- */}
@@ -1472,7 +1475,7 @@ function DashboardPage() {
 
       {/* --- Analytical Graphs Section --- */}
       <div className="mt-10">
-        <h2 className="text-xl font-semibold text-content-primary sm:text-2xl mb-6">
+        <h2 className="text-xl font-semibold text-gray-900 [.dark_&]:text-white sm:text-2xl mb-6">
           Project Analytics Dashboard
         </h2>
 
@@ -1507,18 +1510,18 @@ function DashboardPage() {
 
           <Card className="p-6">
             <div>
-              <h3 className="text-lg font-semibold text-content-primary mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white mb-4">
                 Project Health Overview
               </h3>
               {statusSummary.total === 0 && (
-                <div className="text-sm text-content-tertiary mb-2">
+                <div className="text-sm text-gray-500 [.dark_&]:text-gray-400 mb-2">
                   No task data yet.
                 </div>
               )}
 
               {/* Status distribution stacked bar */}
               <div className="space-y-2">
-                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden flex">
+                <div className="w-full bg-gray-200 [.dark_&]:bg-white/10 rounded-full h-3 overflow-hidden flex">
                   {statusSummary.counts.done > 0 && (
                     <div
                       className="h-3 bg-green-500"
@@ -1541,31 +1544,31 @@ function DashboardPage() {
                     />
                   )}
                 </div>
-                <div className="flex flex-wrap items-center gap-4 text-xs text-content-secondary">
+                <div className="flex flex-wrap items-center gap-4 text-xs text-gray-600 [.dark_&]:text-gray-400">
                   <div className="flex items-center gap-2">
                     <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
                     Done:{" "}
-                    <span className="font-medium text-content-primary">
+                    <span className="font-medium text-gray-900 [.dark_&]:text-white">
                       {statusSummary.counts.done}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="inline-block w-2 h-2 rounded-full bg-blue-500" />
                     In Progress:{" "}
-                    <span className="font-medium text-content-primary">
+                    <span className="font-medium text-gray-900 [.dark_&]:text-white">
                       {statusSummary.counts.inProgress}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="inline-block w-2 h-2 rounded-full bg-gray-400" />
                     To-Do:{" "}
-                    <span className="font-medium text-content-primary">
+                    <span className="font-medium text-gray-900 [.dark_&]:text-white">
                       {statusSummary.counts.todo}
                     </span>
                   </div>
                   <div className="ml-auto text-xs">
                     Total tasks:{" "}
-                    <span className="font-medium text-content-primary">
+                    <span className="font-medium text-gray-900 [.dark_&]:text-white">
                       {statusSummary.total}
                     </span>
                   </div>
@@ -1574,21 +1577,21 @@ function DashboardPage() {
 
               {/* Portfolio health counts */}
               <div className="mt-6 grid grid-cols-3 gap-3">
-                <div className="p-3 rounded-lg bg-green-50 border border-green-100">
-                  <div className="text-xs text-green-700">On Track</div>
-                  <div className="text-lg font-semibold text-green-800">
+                <div className="p-3 rounded-lg bg-green-50 [.dark_&]:bg-green-500/10 border border-green-100 [.dark_&]:border-green-500/30">
+                  <div className="text-xs text-green-700 [.dark_&]:text-green-400">On Track</div>
+                  <div className="text-lg font-semibold text-green-800 [.dark_&]:text-green-300">
                     {projectHealth.counts.onTrack}
                   </div>
                 </div>
-                <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
-                  <div className="text-xs text-amber-700">Needs Attention</div>
-                  <div className="text-lg font-semibold text-amber-800">
+                <div className="p-3 rounded-lg bg-amber-50 [.dark_&]:bg-amber-500/10 border border-amber-100 [.dark_&]:border-amber-500/30">
+                  <div className="text-xs text-amber-700 [.dark_&]:text-amber-400">Needs Attention</div>
+                  <div className="text-lg font-semibold text-amber-800 [.dark_&]:text-amber-300">
                     {projectHealth.counts.needsAttention}
                   </div>
                 </div>
-                <div className="p-3 rounded-lg bg-red-50 border border-red-100">
-                  <div className="text-xs text-red-700">At Risk</div>
-                  <div className="text-lg font-semibold text-red-800">
+                <div className="p-3 rounded-lg bg-red-50 [.dark_&]:bg-red-500/10 border border-red-100 [.dark_&]:border-red-500/30">
+                  <div className="text-xs text-red-700 [.dark_&]:text-red-400">At Risk</div>
+                  <div className="text-lg font-semibold text-red-800 [.dark_&]:text-red-300">
                     {projectHealth.counts.atRisk}
                   </div>
                 </div>
@@ -1597,15 +1600,15 @@ function DashboardPage() {
               {/* Top at-risk projects */}
               <div className="mt-6">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium text-content-primary">
+                  <h4 className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
                     Top At-Risk Projects
                   </h4>
-                  <span className="text-xs text-content-secondary">
+                  <span className="text-xs text-gray-600 [.dark_&]:text-gray-400">
                     Showing up to 3
                   </span>
                 </div>
                 {projectHealth.topAtRisk.length === 0 ? (
-                  <div className="text-sm text-content-tertiary">
+                  <div className="text-sm text-gray-500 [.dark_&]:text-gray-400">
                     No at-risk projects. Keep it up!
                   </div>
                 ) : (
@@ -1613,14 +1616,14 @@ function DashboardPage() {
                     {projectHealth.topAtRisk.map((p) => (
                       <div key={p.id} className="space-y-1">
                         <div className="flex items-center justify-between">
-                          <div className="text-sm font-medium text-content-primary truncate">
+                          <div className="text-sm font-medium text-gray-900 [.dark_&]:text-white truncate">
                             {p.name}
                           </div>
-                          <div className="text-xs text-red-600 font-medium">
+                          <div className="text-xs text-red-600 [.dark_&]:text-red-400 font-medium">
                             {p.overdue} overdue
                           </div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="w-full bg-gray-200 [.dark_&]:bg-white/10 rounded-full h-2">
                           <div
                             className="h-2 rounded-full transition-all duration-500 bg-red-500"
                             style={{ width: `${p.progress}%` }}
@@ -1634,17 +1637,17 @@ function DashboardPage() {
               </div>
 
               {/* Footer stats */}
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm text-content-secondary">
+              <div className="mt-6 p-4 bg-gray-50 [.dark_&]:bg-white/5 rounded-lg border border-gray-100 [.dark_&]:border-white/10">
+                <div className="text-sm text-gray-600 [.dark_&]:text-gray-400">
                   <div className="flex justify-between items-center">
                     <span>Total Active Projects:</span>
-                    <span className="font-semibold text-content-primary">
+                    <span className="font-semibold text-gray-900 [.dark_&]:text-white">
                       {projects.length}
                     </span>
                   </div>
                   <div className="flex justify-between items-center mt-1">
                     <span>Average Completion Rate:</span>
-                    <span className="font-semibold text-green-600">
+                    <span className="font-semibold text-green-600 [.dark_&]:text-green-400">
                       {projects.length
                         ? Math.round(
                           projects

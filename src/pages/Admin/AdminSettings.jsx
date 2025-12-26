@@ -76,7 +76,7 @@ export default function Settings() {
 
       <div className="space-y-6">
         <Card className="p-4" tone="white">
-        
+
           <div className="border-b border-subtle">
             <div className="flex items-center gap-2 -mb-px">
               <div className="flex flex-wrap items-center gap-2">
@@ -86,12 +86,11 @@ export default function Settings() {
                       to={t.to}
                       end
                       className={({ isActive }) =>
-                      `flex items-center gap-2 px-4 pb-2 pt-2 text-sm font-medium transition-colors duration-150 border-b-2 ${
-                        isActive
+                        `flex items-center gap-2 px-4 pb-2 pt-2 text-sm font-medium transition-colors duration-150 border-b-2 ${isActive
                           ? "text-gray-900 border-gray-900"
                           : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
-                      }`
-                    }
+                        }`
+                      }
                     >
                       {t.icon}
                       <span>{t.label}</span>

@@ -296,58 +296,153 @@ function DashboardPage() {
     if (!uid) return;
     const q = query(collection(db, "notes"), where("userUid", "==", uid));
 
-    const load = async () => {
-      try {
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const items = snap.docs.map((d) => {
-            const data = d.data() || {};
-            return {
-              id: d.id,
-              text: data.bodyText || data.text || data.title || "",
-              isPinned: data.isPinned === true,
-              createdAt: data.createdAt || null,
-              updatedAt: data.updatedAt || null,
-            };
-          });
-          const sorted = [...items].sort((a, b) => {
-            if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-            const at = (a.updatedAt?.toMillis?.() || (a.updatedAt?.seconds ? a.updatedAt.seconds * 1000 : 0) || 0) ||
-              (a.createdAt?.toMillis?.() || (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0) || 0);
-            const bt = (b.updatedAt?.toMillis?.() || (b.updatedAt?.seconds ? b.updatedAt.seconds * 1000 : 0) || 0) ||
-              (b.createdAt?.toMillis?.() || (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0) || 0);
-            return bt - at;
-          });
-          setNotes(sorted);
-        } else {
-          setNotes([]);
-        }
-      } catch (e) {
-        console.error("Failed to load notes for user", e);
-      }
-    };
+    const unsub = onSnapshot(q, (snap) => {
+      const items = snap.docs.map((d) => {
+        const data = d.data() || {};
+        return {
+          id: d.id,
+          text: data.bodyText || data.text || data.title || "",
+          isPinned: data.isPinned === true,
+          createdAt: data.createdAt || null,
+          updatedAt: data.updatedAt || null,
+        };
+      });
+      const sorted = [...items].sort((a, b) => {
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+        const at = (a.updatedAt?.toMillis?.() || (a.updatedAt?.seconds ? a.updatedAt.seconds * 1000 : 0) || 0) ||
+          (a.createdAt?.toMillis?.() || (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0) || 0);
+        const bt = (b.updatedAt?.toMillis?.() || (b.updatedAt?.seconds ? b.updatedAt.seconds * 1000 : 0) || 0) ||
+          (b.createdAt?.toMillis?.() || (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0) || 0);
+        return bt - at;
+      });
+      setNotes(sorted);
+    }, (error) => {
+      console.error("Failed to load notes for user", error);
+    });
 
-    load();
+    return () => unsub();
   }, [userData?.uid, user?.uid]);
 
   useEffect(() => {
     const uid = userData?.uid || user?.uid;
     if (!uid) return;
+
+    const allRemindersRef = { current: [] };
+    const shownToastsRef = { current: new Set() };
+
+    // Function to check and show due reminders
+    const checkDueReminders = () => {
+      const now = new Date();
+      const due = allRemindersRef.current.filter((r) => {
+        const dueAt = r.dueAt?.toDate?.() || new Date(r.dueAt);
+        return dueAt <= now && !r.isRead && !shownToastsRef.current.has(r.id);
+      });
+
+      // Show custom toast for each newly due reminder
+      due.forEach((r) => {
+        const toastId = `reminder-${r.id}`;
+        shownToastsRef.current.add(r.id);
+        const when = r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt);
+        const timeLabel = isNaN(when.getTime())
+          ? ""
+          : when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+        console.log('Showing reminder toast:', r.title, 'at', timeLabel); // Debug log
+
+        toast.custom(
+          (t) => (
+            <div
+              className={`
+                pointer-events-auto w-72 max-w-xs transform transition-all duration-300
+                ${t.visible ? "translate-x-0 opacity-100" : "translate-x-3 opacity-0"}
+              `}
+            >
+              <div className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 rounded-xl p-[2px] shadow-lg">
+                <div className="bg-white dark:!bg-[#1e1e2d] rounded-xl px-4 py-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0 max-h-16 overflow-y-auto">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <div className="text-[11px] font-semibold text-indigo-600 dark:!text-indigo-400 tracking-wide uppercase">
+                        Reminder
+                      </div>
+                      {timeLabel && (
+                        <div className="ml-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
+                          {timeLabel}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs font-medium text-gray-900 dark:!text-white break-words leading-snug">
+                      {r.title || "Untitled reminder"}
+                    </div>
+                    {r.description && (
+                      <div className="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5 break-words leading-snug">
+                        {r.description}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await deleteDoc(doc(db, "reminders", r.id));
+                        shownToastsRef.current.delete(r.id);
+                      } catch (e) {
+                        console.error("Failed to delete reminder", e);
+                      }
+                      toast.dismiss(toastId);
+                    }}
+                    className="shrink-0 ml-1 text-gray-400 hover:text-red-500 transition-colors"
+                    aria-label="Dismiss reminder"
+                  >
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path
+                        fillRule="evenodd"
+                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ),
+          {
+            id: toastId,
+            duration: Infinity,
+            position: "top-right",
+          }
+        );
+      });
+    };
+
     const q = query(
       collection(db, "reminders"),
       where("userId", "==", uid),
       where("status", "==", "pending")
     );
     const unsub = onSnapshot(q, (snapshot) => {
-      const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      items.sort((a, b) => {
+      const raw = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      allRemindersRef.current = raw;
+
+      // Sort all reminders for the list
+      const items = raw.sort((a, b) => {
         const ad = a.dueAt?.toDate ? a.dueAt.toDate() : new Date(a.dueAt);
         const bd = b.dueAt?.toDate ? b.dueAt.toDate() : new Date(b.dueAt);
         return ad - bd;
       });
       setQuickReminders(items);
+
+      console.log('Loaded reminders:', allRemindersRef.current.length); // Debug log
+      // Check for due reminders
+      checkDueReminders();
     });
-    return () => unsub();
+
+    // Check every 10 seconds for newly due reminders
+    const intervalId = setInterval(checkDueReminders, 10000);
+
+    return () => {
+      unsub();
+      clearInterval(intervalId);
+    };
   }, [userData?.uid, user?.uid]);
 
   const formatDueTime = (ts) => {
