@@ -11,6 +11,10 @@ import {
   FaShareAlt,
   FaFilePdf,
   FaEllipsisV,
+  FaTasks,
+  FaComments,
+  FaMicrophone,
+  FaStop,
 } from "react-icons/fa";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
@@ -147,6 +151,7 @@ export default function MomGeneratorPro() {
   const [attendees, setAttendees] = useState([]); // userIds - Internal
   const [externalAttendees, setExternalAttendees] = useState(""); // Comma-separated names
   const [momPreparedBy, setMomPreparedBy] = useState("");
+  const [specialAgenda, setSpecialAgenda] = useState(""); // Special meeting agenda/objectives
 
   // Versioning
   const [momVersion, setMomVersion] = useState(1);
@@ -165,6 +170,21 @@ export default function MomGeneratorPro() {
   const [newActionTask, setNewActionTask] = useState("");
   const [newActionPerson, setNewActionPerson] = useState(""); // Now stores text instead of userId
   const [newActionDeadline, setNewActionDeadline] = useState("");
+  const [lastGenerateTime, setLastGenerateTime] = useState(0);
+
+  // Task conversion state
+  const [showTaskConversion, setShowTaskConversion] = useState(false);
+  const [selectedActionItems, setSelectedActionItems] = useState(new Set());
+  // Per-task overrides: { [index]: { assigneeId, assigneeName, dueDate, priority, assignedDate } }
+  const [taskOverrides, setTaskOverrides] = useState({});
+
+  // Comments
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState("");
+
+  // Voice-to-text
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = React.useRef(null);
 
   // Generated output (no AI)
   const [discussions, setDiscussions] = useState([]); // [{topic, notes(html)}]
@@ -302,6 +322,61 @@ export default function MomGeneratorPro() {
     fetchNextVersion();
   }, [projectId]);
 
+  // Auto-suggest attendees from project team when project is selected
+  useEffect(() => {
+    const suggestProjectTeam = async () => {
+      if (!projectId) return;
+      try {
+        const projectDoc = await getDoc(doc(db, "projects", projectId));
+        if (projectDoc.exists()) {
+          const data = projectDoc.data();
+          const teamMembers = [];
+
+          // Collect team member IDs from various fields
+          if (data.managerId) teamMembers.push(data.managerId);
+          if (data.assignedTo) {
+            if (Array.isArray(data.assignedTo)) {
+              teamMembers.push(...data.assignedTo);
+            } else {
+              teamMembers.push(data.assignedTo);
+            }
+          }
+          if (data.teamMembers && Array.isArray(data.teamMembers)) {
+            teamMembers.push(...data.teamMembers);
+          }
+
+          // Auto-select unique team members
+          const uniqueTeam = [...new Set(teamMembers)].filter(Boolean);
+          if (uniqueTeam.length > 0 && attendees.length === 0) {
+            setAttendees(uniqueTeam);
+            toast.success(`Auto-selected ${uniqueTeam.length} team member(s) from project`);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching project team:", err);
+      }
+    };
+    suggestProjectTeam();
+  }, [projectId]);
+
+  // Load frequent external attendees from localStorage
+  const [frequentExternalAttendees, setFrequentExternalAttendees] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("frequentExternalAttendees") || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  // Save external attendees to localStorage when they change
+  const saveExternalAttendee = (name) => {
+    const trimmed = name.trim();
+    if (!trimmed || frequentExternalAttendees.includes(trimmed)) return;
+    const updated = [trimmed, ...frequentExternalAttendees].slice(0, 20); // Keep max 20
+    setFrequentExternalAttendees(updated);
+    localStorage.setItem("frequentExternalAttendees", JSON.stringify(updated));
+  };
+
   // Helpers
   const toggleAttendee = (userId) => {
     setAttendees((prev) =>
@@ -357,6 +432,73 @@ export default function MomGeneratorPro() {
     setInputActionItems(inputActionItems.filter((a) => a.id !== id));
   };
 
+  const addComment = () => {
+    if (!newComment.trim()) return;
+    const currentUser = auth.currentUser;
+    const authorName = currentUser?.displayName || currentUser?.email || "Admin";
+
+    const comment = {
+      id: crypto.randomUUID(),
+      text: newComment.trim(),
+      author: authorName,
+      authorId: currentUser?.uid || "",
+      timestamp: new Date().toISOString(),
+    };
+    setComments((prev) => [...prev, comment]);
+    setNewComment("");
+    toast.success("Comment added (Save to persist)");
+  };
+
+  // Voice-to-text functions
+  const startVoiceInput = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Voice input not supported in this browser. Try Chrome.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = false; // Changed to false to prevent duplication
+    recognition.lang = "en-IN";
+
+    recognition.onresult = (event) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          transcript += event.results[i][0].transcript;
+        }
+      }
+      if (transcript) {
+        setNewDiscussionNotes((prev) => (prev + " " + transcript).trim());
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      toast.error("Voice input error: " + event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+    toast.success("Listening... Speak now");
+  };
+
+  const stopVoiceInput = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+    toast.success("Voice input stopped");
+  };
+
   // DnD reordering
   const reorder = (list, startIndex, endIndex) => {
     const result = Array.from(list);
@@ -385,73 +527,308 @@ export default function MomGeneratorPro() {
     }
   };
 
-  // --------- GENERATE (No AI) ----------
+  // --------- GENERATE (AI with Fallback) ----------
+  const generateOfflineMom = async () => {
+    // Build structured "discussions" using rule-based generator
+    const builtDiscussions = inputDiscussions.map((d) => ({
+      topic: d.topic,
+      notes: generateStructuredNotes(d.topic, d.notes),
+    }));
+
+    // Lightly polish task wording
+    const polish = (task) => {
+      const t = task.trim();
+      const cap = t.charAt(0).toUpperCase() + t.slice(1);
+      return cap.replace(/\.+$/, "");
+    };
+
+    const builtActions = inputActionItems.map((a) => ({
+      task: polish(a.task),
+      responsiblePerson: a.responsiblePerson,
+      responsiblePersonId: a.responsiblePersonId, // Keep strictly for manual entry if populated
+      deadline: a.deadline,
+    }));
+
+    setDiscussions(builtDiscussions);
+    setActionItems(builtActions);
+    finishGeneration();
+  };
+
+  const finishGeneration = async () => {
+    // Prefetch next MOM number 
+    try {
+      let nextNumber = 1;
+      const qn = query(collection(db, "moms"), limit(200));
+      const snap = await getDocs(qn);
+      snap.forEach((d) => {
+        const data = d.data() || {};
+        const existing = String(data.momNo || "");
+        const match = existing.match(/MOM_(\d+)/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num >= nextNumber) nextNumber = num + 1;
+        }
+      });
+      const prefetchedNo = `MOM_${String(nextNumber).padStart(3, "0")}`;
+      setMomNoState(prefetchedNo);
+    } catch (e) {
+      console.error("Failed to precompute MOM number", e);
+      setMomNoState("MOM_001");
+    }
+
+    setIsGenerated(true);
+    setEditSession(true);
+    toast.success("MOM generated");
+  };
+
   const generateMom = async () => {
     if (!projectId) return toast.error("Select a project");
     if (!meetingDate) return toast.error("Enter meeting date");
     if (!attendees.length) return toast.error("Select at least one attendee");
     if (!inputDiscussions.length)
       return toast.error("Add at least one discussion topic");
+
     // Ensure notes are present for all topics (mandatory)
     const invalid = inputDiscussions.find((d) => !d.notes?.trim());
     if (invalid) return toast.error(`Notes required for: "${invalid.topic}"`);
-    if (!inputActionItems.length)
-      return toast.error("Add at least one action item");
+
+    // Rate limit
+    const now = Date.now();
+    if (now - lastGenerateTime < 5000) {
+      return toast.error("Please wait before generating again.");
+    }
+    setLastGenerateTime(now);
+
+    const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!GEMINI_API_KEY) {
+      console.warn("No Gemini API key found, using offline mode.");
+      return generateOfflineMom();
+    }
 
     setLoading(true);
     try {
-      // Build structured "discussions" using rule-based generator
-      const builtDiscussions = inputDiscussions.map((d) => ({
+      // 1. Prepare prompt
+      const selectedProjName = projects.find(p => p.id === projectId)?.name || "N/A";
+      const attendeeNames = attendees
+        .map(id => users.find(u => u.id === id)?.name)
+        .filter(Boolean)
+        .join(", ");
+
+      const discussionsJson = JSON.stringify(inputDiscussions.map(d => ({
         topic: d.topic,
-        notes: generateStructuredNotes(d.topic, d.notes),
-      }));
+        rawNotes: d.notes
+      })));
 
-      // Lightly polish task wording (first letter uppercase + end without period normalization)
-      const polish = (task) => {
-        const t = task.trim();
-        const cap = t.charAt(0).toUpperCase() + t.slice(1);
-        return cap.replace(/\.+$/, "");
-      };
+      const prompt = `
+      You are an expert project manager. Transform the following meeting notes into a professional Minutes of Meeting (MoM) structure.
+      
+      **Context**:
+      - Project: ${selectedProjName}
+      - Internal Attendees: ${attendeeNames}
+      - External Attendees: ${externalAttendees || "None"}
+      - Date: ${meetingDate}
 
-      const builtActions = inputActionItems.map((a) => ({
-        task: polish(a.task),
-        responsiblePerson: a.responsiblePerson,
-        responsiblePersonId: a.responsiblePersonId,
-        deadline: a.deadline,
-      }));
+      **Raw Discussions**:
+      ${discussionsJson}
 
-      setDiscussions(builtDiscussions);
-      setActionItems(builtActions);
+      **Instructions**:
+      ${specialAgenda ? `**Special Meeting Agenda/Objectives**: ${specialAgenda}\n\n` : ""}
+      1. For each discussion topic, rewrite the raw notes into a professional, HTML-formatted summary using <b>Key Points</b>, <b>Decisions</b>, etc., similar to this format:
+         "<b>Summary:</b> ...<br/><br/><b>Key Points:</b> <ul><li>...</li></ul><br/><b>Decisions:</b> ..."
+         (Ensure valid HTML text, no markdown inside the HTML string).
+      2. Extract strictly actionable tasks from the discussions.
+      3. Return ONLY a valid JSON object with this structure:
+      {
+        "discussions": [
+          { "topic": "Original Topic", "notes": "HTML Content" }
+        ],
+        "actionItems": [
+          { "task": "Task description", "responsiblePerson": "Name inferred or TBD", "deadline": "YYYY-MM-DD or TBD" }
+        ]
+      }
+      `;
 
-      // Prefetch next MOM number for header display so user sees MOM_00X immediately
-      try {
-        let nextNumber = 1;
-        const qn = query(collection(db, "moms"), limit(200));
-        const snap = await getDocs(qn);
-        snap.forEach((d) => {
-          const data = d.data() || {};
-          const existing = String(data.momNo || "");
-          const match = existing.match(/MOM_(\d+)/i);
-          if (match) {
-            const num = parseInt(match[1], 10);
-            if (!isNaN(num) && num >= nextNumber) nextNumber = num + 1;
-          }
-        });
-        const prefetchedNo = `MOM_${String(nextNumber).padStart(3, "0")}`;
-        setMomNoState(prefetchedNo);
-      } catch (e) {
-        console.error("Failed to precompute MOM number", e);
-        setMomNoState("MOM_001");
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.3 }
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("Gemini API Error:", errorData);
+        throw new Error(errorData.error?.message || `API Error: ${res.status}`);
       }
 
-      setIsGenerated(true);
-      // After (re)generation, we are working with potentially changed content
-      // so mark this as an edit session; Save visibility is driven by snapshot diff.
-      setEditSession(true);
-      toast.success("MOM generated");
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error("No content from AI");
+
+      // 3. Parse JSON (strip markdown code fences if present)
+      let jsonText = text.trim();
+      if (jsonText.startsWith("```")) {
+        jsonText = jsonText.replace(/^```(?:json)?\s*/, "").replace(/```\s*$/, "");
+      }
+      const parsed = JSON.parse(jsonText);
+
+      // 4. Merge results
+      // Map back to expected state structure
+      setDiscussions(parsed.discussions || []);
+
+      // Combine AI actions with manually entered ones (simple concatenation)
+      const aiActions = (parsed.actionItems || []).map(a => ({
+        id: crypto.randomUUID(),
+        task: a.task,
+        responsiblePerson: a.responsiblePerson,
+        deadline: a.deadline === "TBD" ? "" : a.deadline,
+        responsiblePersonId: "" // AI won't know internal IDs easily without more context
+      }));
+
+      // Add inputActionItems to the list if they exist
+      const manualActions = inputActionItems.map(a => ({
+        ...a,
+        task: a.task, // Ensure consistency
+      }));
+
+      setActionItems([...manualActions, ...aiActions]);
+
+      finishGeneration();
+
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to generate MOM");
+      console.error("AI Generation failed:", err);
+      toast.error("AI generation failed, falling back to offline mode.");
+      generateOfflineMom();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const convertToTasks = () => {
+    if (!actionItems || actionItems.length === 0) {
+      return toast.error("No action items to convert");
+    }
+    // Initialize overrides with default values for each action item
+    const initialOverrides = {};
+    actionItems.forEach((item, idx) => {
+      // Try to find matching user
+      const matchedUser = users.find(u =>
+        u.name.toLowerCase() === item.responsiblePerson?.toLowerCase()
+      );
+      initialOverrides[idx] = {
+        assigneeId: matchedUser?.id || "",
+        assigneeName: item.responsiblePerson || "",
+        dueDate: item.deadline || "",
+        priority: "Medium",
+        assignedDate: meetingDate || new Date().toISOString().split("T")[0],
+        description: `Generated from MoM: ${item.task}`, // Editable description
+      };
+    });
+    setTaskOverrides(initialOverrides);
+    setShowTaskConversion(true);
+  };
+
+  // Update a single task override field
+  const updateTaskOverride = (idx, field, value) => {
+    setTaskOverrides(prev => ({
+      ...prev,
+      [idx]: {
+        ...prev[idx],
+        [field]: value,
+      },
+    }));
+  };
+
+  // Batch apply helpers
+  const applyBatchAssignee = (assigneeId, assigneeName) => {
+    setTaskOverrides(prev => {
+      const next = { ...prev };
+      selectedActionItems.forEach(idx => {
+        next[idx] = { ...next[idx], assigneeId, assigneeName };
+      });
+      return next;
+    });
+    toast.success(`Applied to ${selectedActionItems.size} tasks`);
+  };
+
+  const applyBatchPriority = (priority) => {
+    setTaskOverrides(prev => {
+      const next = { ...prev };
+      selectedActionItems.forEach(idx => {
+        next[idx] = { ...next[idx], priority };
+      });
+      return next;
+    });
+    toast.success(`Applied to ${selectedActionItems.size} tasks`);
+  };
+
+  const createTasksFromActions = async () => {
+    const selected = Array.from(selectedActionItems);
+    if (selected.length === 0)
+      return toast.error("Select at least one action item");
+
+    setLoading(true);
+    const toastId = toast.loading("Creating tasks...");
+
+    try {
+      let createdCount = 0;
+      for (const idx of selected) {
+        const item = actionItems[idx];
+        const override = taskOverrides[idx] || {};
+
+        const newTask = {
+          title: item.task,
+          description: override.description || `Generated from Admin MoM: ${item.task}`,
+          status: "To-Do",
+          priority: override.priority || "Medium",
+          projectId: projectId || "",
+          momId: momNoState,
+          source: "MoM_Admin",
+          createdAt: serverTimestamp(),
+          assigneeId: override.assigneeId || "",
+          assigneeName: override.assigneeName || item.responsiblePerson,
+          dueDate: override.dueDate && !isNaN(Date.parse(override.dueDate))
+            ? Timestamp.fromDate(new Date(override.dueDate))
+            : null,
+          assignedDate: override.assignedDate && !isNaN(Date.parse(override.assignedDate))
+            ? Timestamp.fromDate(new Date(override.assignedDate))
+            : Timestamp.fromDate(new Date()),
+          createdBy: "ADMIN",
+          senderId: auth.currentUser?.uid || "ADMIN"
+        };
+
+        await addDoc(collection(db, "tasks"), newTask);
+        createdCount++;
+      }
+
+      // Sync overrides back to actionItems state so they appear in PDF/Input list
+      const updatedActionItems = [...actionItems];
+      selected.forEach(idx => {
+        const override = taskOverrides[idx] || {};
+        const currentItem = updatedActionItems[idx];
+
+        // Update local state with chosen assignee/deadline
+        if (override.assigneeName) currentItem.responsiblePerson = override.assigneeName;
+        if (override.dueDate) currentItem.deadline = override.dueDate;
+
+        updatedActionItems[idx] = currentItem;
+      });
+      setActionItems(updatedActionItems);
+      // Update input state as well for consistency
+      setInputActionItems(updatedActionItems);
+
+      toast.success(`Successfully created ${createdCount} task(s)!`, { id: toastId });
+      setShowTaskConversion(false);
+      setSelectedActionItems(new Set());
+      setTaskOverrides({});
+    } catch (error) {
+      console.error("Error creating tasks:", error);
+      toast.error("Failed to create tasks", { id: toastId });
     } finally {
       setLoading(false);
     }
@@ -503,18 +880,58 @@ export default function MomGeneratorPro() {
         const storageRef = ref(storage, storagePath);
 
         // Render the current MoM DOM into a PDF using html2canvas + jsPDF
+        // Workaround: Clone element and strip styles to avoid oklch color parsing errors
         const element = momRef.current;
         if (!element) {
           throw new Error("MOM content not found for PDF generation");
         }
 
-        const canvas = await html2canvas(element, {
+        // Clone the element to avoid modifying the original
+        const clonedElement = element.cloneNode(true);
+
+        // Remove all style/class attributes to avoid oklch issues
+        const stripOklchStyles = (el) => {
+          el.removeAttribute("style");
+          el.removeAttribute("class");
+          el.querySelectorAll("*").forEach((child) => {
+            child.removeAttribute("style");
+            child.removeAttribute("class");
+          });
+        };
+        stripOklchStyles(clonedElement);
+
+        // Add basic safe CSS for PDF rendering
+        const styleTag = document.createElement("style");
+        styleTag.textContent = `
+          * { 
+            color: #000 !important; 
+            background-color: transparent !important;
+            font-family: Arial, sans-serif !important;
+          }
+          table { border-collapse: collapse; width: 100%; }
+          td, th { border: 1px solid #000; padding: 8px; text-align: left; }
+          th { background-color: #f0f0f0 !important; font-weight: bold; }
+          h1, h2 { margin: 10px 0; }
+          p { margin: 4px 0; line-height: 1.5; }
+        `;
+        clonedElement.insertBefore(styleTag, clonedElement.firstChild);
+
+        // Create temporary hidden container
+        const tempContainer = document.createElement("div");
+        tempContainer.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:210mm;background:#fff;";
+        tempContainer.appendChild(clonedElement);
+        document.body.appendChild(tempContainer);
+
+        const canvas = await html2canvas(clonedElement, {
           scale: 2,
           logging: false,
           useCORS: false,
           allowTaint: true,
           backgroundColor: "#ffffff",
         });
+
+        // Clean up
+        document.body.removeChild(tempContainer);
         const imgData = canvas.toDataURL("image/png");
         const pdfDoc = new jsPDF("p", "mm", "a4");
         const pdfWidth = pdfDoc.internal.pageSize.getWidth();
@@ -563,7 +980,36 @@ export default function MomGeneratorPro() {
           return u.displayName || u.email || "";
         })();
 
-        const knowledgeDocRef = await addDoc(collection(db, "knowldge", projectId, "Documents"), {
+        // 3. Save full data to Firestore
+        const momData = {
+          projectId,
+          momNo,
+          momVersion,
+          meetingDate,
+          meetingStartTime,
+          meetingEndTime,
+          meetingVenue,
+          attendees,
+          externalAttendees,
+          momPreparedBy,
+          inputDiscussions,
+          inputActionItems,
+          discussions: discussions || [], // AI Generated content
+          actionItems: actionItems || [], // Final action items
+          storagePath,
+          url: downloadURL,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          lastSavedSnapshot: JSON.stringify({ projectId, meetingDate, discussions, actionItems }), // Simplified snapshot
+          isDraft: false,
+          comments: comments || [],
+        };
+
+        // Create new MoM document with full data
+        momDocRef = await addDoc(collection(db, "moms"), momData);
+
+        // Create Knowledge Document entry (linking to PDF)
+        await addDoc(collection(db, "knowldge", projectId, "Documents"), {
           name: `${momNo} – ${selectedProject?.name || "Project"}`,
           shared: true,
           access: {
@@ -576,30 +1022,27 @@ export default function MomGeneratorPro() {
           url: downloadURL,
           storagePath,
           location: "—",
-          tags: [],
+          tags: ["MoM"],
           children: 0,
           projectId,
           momNo,
-          momId: "", // will be set after moms metadata doc is created
+          momId: momDocRef.id, // Link to the rich MoM doc
           createdByUid: currentUser?.uid || "",
           createdByName,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
 
-        // After knowledge doc and storage are created, write minimal metadata into moms node
-        momDocRef = await addDoc(collection(db, "moms"), {
-          projectId: projectId || "",
-          momNo,
-          storagePath,
-          url: downloadURL,
-          createdAt: Timestamp.now(),
-        });
+        toast.success(`${momNo} saved successfully!`);
+        setMomVersion((v) => v + 1);
+        setLastSavedSnapshot(currentSnapshot);
+        setEditSession(false);
       } catch (err) {
-        console.error("Failed to save MOM document into knowledge documents", err);
+        console.error("Failed to save MOM:", err);
+        throw err; // Re-throw to be caught by outer block
       }
 
-      toast.success(`${momNo} saved`);
+      toast.success(`${momNo} saved successfully!`);
       setMomVersion((v) => v + 1);
       setLastSavedSnapshot(currentSnapshot);
       setEditSession(false);
@@ -622,13 +1065,52 @@ export default function MomGeneratorPro() {
     const toastId = toast.loading("Generating PDF...");
 
     try {
-      const canvas = await html2canvas(element, {
+      // Clone element and strip styles to avoid oklch color parsing errors
+      const clonedElement = element.cloneNode(true);
+
+      const stripOklchStyles = (el) => {
+        el.removeAttribute("style");
+        el.removeAttribute("class");
+        el.querySelectorAll("*").forEach((child) => {
+          child.removeAttribute("style");
+          child.removeAttribute("class");
+        });
+      };
+      stripOklchStyles(clonedElement);
+
+      // Add basic safe CSS for PDF rendering
+      const styleTag = document.createElement("style");
+      styleTag.textContent = `
+        * { 
+          color: #000 !important; 
+          background-color: transparent !important;
+          font-family: Arial, sans-serif !important;
+        }
+        table { border-collapse: collapse; width: 100%; }
+        td, th { border: 1px solid #000; padding: 8px; text-align: left; }
+        th { background-color: #f0f0f0 !important; font-weight: bold; }
+        h1, h2 { margin: 10px 0; }
+        p { margin: 4px 0; line-height: 1.5; }
+      `;
+      clonedElement.insertBefore(styleTag, clonedElement.firstChild);
+
+      // Create temporary hidden container
+      const tempContainer = document.createElement("div");
+      tempContainer.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:210mm;background:#fff;";
+      tempContainer.appendChild(clonedElement);
+      document.body.appendChild(tempContainer);
+
+      const canvas = await html2canvas(clonedElement, {
         scale: 2,
         logging: false,
         useCORS: false,
         allowTaint: true,
         backgroundColor: "#ffffff",
       });
+
+      // Clean up
+      document.body.removeChild(tempContainer);
+
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -989,13 +1471,41 @@ export default function MomGeneratorPro() {
                     type="text"
                     value={externalAttendees}
                     onChange={(e) => setExternalAttendees(e.target.value)}
+                    onBlur={() => {
+                      // Save each external attendee to frequent list on blur
+                      externalAttendees.split(",").forEach((name) => saveExternalAttendee(name));
+                    }}
                     className="w-full rounded border border-gray-300 px-3 py-2"
                     placeholder="e.g., John Doe (Client), Jane Smith (Vendor)"
                     spellCheck="true"
+                    list="external-attendees-list"
                   />
+                  <datalist id="external-attendees-list">
+                    {frequentExternalAttendees.map((name, i) => (
+                      <option key={i} value={name} />
+                    ))}
+                  </datalist>
+                  {frequentExternalAttendees.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      <span className="text-xs text-gray-500">Recent:</span>
+                      {frequentExternalAttendees.slice(0, 5).map((name, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => {
+                            setExternalAttendees((prev) =>
+                              prev ? `${prev}, ${name}` : name
+                            );
+                          }}
+                          className="text-xs px-2 py-0.5 bg-gray-100 rounded hover:bg-indigo-100 transition-colors"
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <p className="text-xs text-gray-500 mt-1">
-                    Enter names of external attendees (clients, vendors,
-                    partners, etc.)
+                    Click recent names to add, or type new ones
                   </p>
                 </div>
 
@@ -1009,6 +1519,20 @@ export default function MomGeneratorPro() {
                     onChange={(e) => setMomPreparedBy(e.target.value)}
                     className="w-full rounded border border-subtle bg-surface text-content-primary px-3 py-2"
                     placeholder="Your name"
+                    spellCheck="true"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Meeting Agenda *
+                  </label>
+                  <input
+                    type="text"
+                    value={specialAgenda}
+                    onChange={(e) => setSpecialAgenda(e.target.value)}
+                    className="w-full rounded border border-subtle bg-surface text-content-primary px-3 py-2 "
+                    placeholder="Enter the meeting agenda items..."
                     spellCheck="true"
                   />
                 </div>
@@ -1094,22 +1618,46 @@ export default function MomGeneratorPro() {
                   placeholder="Discussion topic (required)..."
                   spellCheck="true"
                 />
-                <textarea
-                  value={newDiscussionNotes}
-                  onChange={(e) => setNewDiscussionNotes(e.target.value)}
-                  className="w-full rounded border border-gray-300 px-3 py-2 resize-vertical"
-                  rows="3"
-                  placeholder="Notes (required). One point per line (e.g., 'pending API', 'UI fix needed')"
-                  spellCheck="true"
-                />
-                <Button onClick={addDiscussion} variant="primary">
-                  <FaPlus /> Add Topic
-                </Button>
+                <div className="relative">
+                  <textarea
+                    value={newDiscussionNotes}
+                    onChange={(e) => setNewDiscussionNotes(e.target.value)}
+                    className="w-full rounded border border-gray-300 px-3 py-2 resize-vertical pr-12"
+                    rows="3"
+                    placeholder="Notes (required). One point per line. You can also use the microphone button →"
+                    spellCheck="true"
+                  />
+                  <button
+                    type="button"
+                    onClick={isListening ? stopVoiceInput : startVoiceInput}
+                    className={`absolute right-2 top-2 p-2 rounded-full transition-colors ${isListening
+                      ? "bg-red-500 text-white animate-pulse"
+                      : "bg-gray-100 text-gray-600 hover:bg-indigo-100 hover:text-indigo-600"
+                      }`}
+                    title={isListening ? "Stop listening" : "Start voice input"}
+                  >
+                    {isListening ? <FaStop /> : <FaMicrophone />}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button onClick={addDiscussion} variant="primary">
+                    <FaPlus /> Add Topic
+                  </Button>
+                  {isListening && (
+                    <span className="text-xs text-red-500 animate-pulse flex items-center gap-1">
+                      <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                      Listening...
+                    </span>
+                  )}
+                </div>
               </div>
             </Card>
 
-            {/* Action items with Drag & Drop */}
-            <Card title="Next Action Plan (Drag to Reorder)*">
+            {/* Action items with Drag & Drop - Optional (AI generates these) */}
+            <Card title="Next Action Plan (Optional - AI will generate)">
+              <p className="text-xs text-gray-500 mb-3">
+                You can skip this section. The AI will automatically extract action items from your discussion notes.
+              </p>
               <DragDropContext onDragEnd={onDragEnd}>
                 <Droppable droppableId="actions" type="ACTIONS">
                   {(provided) => (
@@ -1120,7 +1668,7 @@ export default function MomGeneratorPro() {
                     >
                       {inputActionItems.length === 0 && (
                         <div className="text-sm text-gray-500 italic">
-                          No action items added yet
+                          No manual action items added — AI will generate from discussions
                         </div>
                       )}
                       {inputActionItems.map((a, index) => (
@@ -1385,16 +1933,14 @@ export default function MomGeneratorPro() {
                     </tr>
                   </thead>
                   <tbody>
-                    {inputDiscussions.map((d, idx) => (
-                      <tr key={idx}>
-                        <td
-                          className="px-4 py-2 font-bold"
-                          style={{ border: "1px solid #000000" }}
-                        >
-                          {idx + 1}. {d.topic}
-                        </td>
-                      </tr>
-                    ))}
+                    <tr>
+                      <td
+                        className="px-4 py-2"
+                        style={{ border: "1px solid #000000", whiteSpace: "pre-line" }}
+                      >
+                        {specialAgenda || "N/A"}
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -1439,10 +1985,25 @@ export default function MomGeneratorPro() {
                         <td
                           className="px-4 py-2 align-top"
                           style={{ border: "1px solid #000000" }}
-                          dangerouslySetInnerHTML={{
-                            __html: (disc.notes || "").replace(/\n/g, "<br/>"),
-                          }}
-                        />
+                        >
+                          <div
+                            contentEditable
+                            suppressContentEditableWarning
+                            onBlur={(e) => {
+                              const newNotes = e.currentTarget.innerHTML;
+                              setDiscussions((prev) =>
+                                prev.map((d, idx) =>
+                                  idx === i ? { ...d, notes: newNotes } : d
+                                )
+                              );
+                            }}
+                            className="min-h-[60px] focus:outline-none focus:ring-2 focus:ring-indigo-300 rounded p-1"
+                            dangerouslySetInnerHTML={{
+                              __html: (disc.notes || "").replace(/\n/g, "<br/>"),
+                            }}
+                          />
+                          <p className="text-[10px] text-gray-400 mt-1 print:hidden">Click to edit</p>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1457,6 +2018,11 @@ export default function MomGeneratorPro() {
                 >
                   Next Action Plan:
                 </h2>
+                <div className="flex justify-end mb-2">
+                  <Button onClick={convertToTasks} variant="secondary" className="text-xs py-1">
+                    <FaTasks className="mr-1" /> Create Tasks ({actionItems.length})
+                  </Button>
+                </div>
                 <table
                   className="w-full border-collapse text-sm"
                   style={{ border: "1px solid #000000" }}
@@ -1487,30 +2053,73 @@ export default function MomGeneratorPro() {
                     {actionItems.map((a, i) => (
                       <tr key={i}>
                         <td
-                          className="px-4 py-2 font-bold"
+                          className="px-4 py-2"
                           style={{ border: "1px solid #000000" }}
                         >
-                          {a.task}
+                          <input
+                            type="text"
+                            value={a.task}
+                            onChange={(e) => {
+                              setActionItems((prev) =>
+                                prev.map((item, idx) =>
+                                  idx === i ? { ...item, task: e.target.value } : item
+                                )
+                              );
+                            }}
+                            className="w-full bg-transparent font-bold focus:outline-none focus:ring-1 focus:ring-indigo-300 rounded px-1"
+                          />
                         </td>
                         <td
                           className="px-4 py-2"
                           style={{ border: "1px solid #000000" }}
                         >
-                          {a.responsiblePerson}
+                          <input
+                            type="text"
+                            value={a.responsiblePerson}
+                            onChange={(e) => {
+                              setActionItems((prev) =>
+                                prev.map((item, idx) =>
+                                  idx === i ? { ...item, responsiblePerson: e.target.value } : item
+                                )
+                              );
+                            }}
+                            className="w-full bg-transparent focus:outline-none focus:ring-1 focus:ring-indigo-300 rounded px-1"
+                          />
                         </td>
                         <td
                           className="px-4 py-2"
                           style={{ border: "1px solid #000000" }}
                         >
-                          {new Date(a.deadline).toLocaleDateString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                          })}
+                          <input
+                            type="date"
+                            value={a.deadline || ""}
+                            onChange={(e) => {
+                              setActionItems((prev) =>
+                                prev.map((item, idx) =>
+                                  idx === i ? { ...item, deadline: e.target.value } : item
+                                )
+                              );
+                            }}
+                            className="w-full bg-transparent focus:outline-none focus:ring-1 focus:ring-indigo-300 rounded px-1 text-sm"
+                          />
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+
+
+              {/* Comments Section */}
+              <div className="mt-8 pt-4 border-t border-gray-200">
+                <h2 className="text-lg font-bold mb-3" style={{ color: "#000000" }}>Comments / Notes</h2>
+                {comments.length === 0 && <p className="text-xs text-gray-500 italic">No comments added.</p>}
+                {comments.map((c, i) => (
+                  <div key={i} className="mb-2 text-sm">
+                    <span className="font-bold">{c.author}</span> <span className="text-xs text-gray-500">({new Date(c.timestamp).toLocaleString()})</span>: {c.text}
+                  </div>
+                ))}
               </div>
 
               {/* Footer */}
@@ -1537,6 +2146,234 @@ export default function MomGeneratorPro() {
           .mom-document { position: absolute; left: 0; top: 0; width: 100%; }
         }
       `}</style>
-    </div>
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          .mom-document, .mom-document * { visibility: visible; }
+          .mom-document { position: absolute; left: 0; top: 0; width: 100%; }
+        }
+      `}</style>
+
+      {/* Task Conversion Modal */}
+      {
+        showTaskConversion && (
+          <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowTaskConversion(false)} />
+            <div className="z-10 w-full max-w-4xl bg-white dark:bg-gray-800 max-h-[90vh] rounded-lg shadow-xl overflow-hidden flex flex-col">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-xl font-semibold mb-2">Create Tasks from Action Items</h2>
+                <p className="text-sm text-gray-500 mb-3">
+                  Select items to convert and customize details.
+                </p>
+
+                {/* Batch Apply Controls */}
+                <div className="flex flex-wrap gap-2 items-center bg-gray-50 dark:bg-gray-700/50 p-2 rounded border border-gray-200 dark:border-gray-600">
+                  <span className="text-xs font-bold uppercase text-gray-500 tracking-wider mr-2">Batch Apply to Selected:</span>
+                  <select
+                    className="text-xs rounded border border-gray-300 px-2 py-1"
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const user = users.find(u => u.id === e.target.value);
+                        applyBatchAssignee(e.target.value, user?.name || "");
+                        e.target.value = ""; // Reset
+                      }
+                    }}
+                  >
+                    <option value="">Set Assignee...</option>
+                    {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+
+                  <select
+                    className="text-xs rounded border border-gray-300 px-2 py-1"
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        applyBatchPriority(e.target.value);
+                        e.target.value = ""; // Reset
+                      }
+                    }}
+                  >
+                    <option value="">Set Priority...</option>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Urgent">Urgent</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {actionItems.map((action, idx) => {
+                  const override = taskOverrides[idx] || {};
+                  const isSelected = selectedActionItems.has(idx);
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-4 rounded-lg border transition-colors ${isSelected
+                        ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
+                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                        }`}
+                    >
+                      {/* Header with checkbox and task title */}
+                      <div
+                        className="flex items-start gap-3 cursor-pointer mb-3"
+                        onClick={(e) => {
+                          const newSet = new Set(selectedActionItems);
+                          if (isSelected) newSet.delete(idx);
+                          else newSet.add(idx);
+                          setSelectedActionItems(newSet);
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          readOnly
+                          className="mt-1 w-4 h-4 pointer-events-none"
+                        />
+                        <div className="flex-1">
+                          <p className="font-semibold text-content-primary select-none">{action.task}</p>
+                          <p className="text-xs text-gray-500 select-none">Original: {action.responsiblePerson} | {action.deadline || "No deadline"}</p>
+                        </div>
+                      </div>
+
+                      {/* Editable fields (only visible when selected) */}
+                      {isSelected && (
+                        <div
+                          className="mt-3 pl-7 space-y-3"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {/* Description Field */}
+                          <div>
+                            <label className="text-xs font-medium text-gray-600 mb-1 block">Task Description</label>
+                            <textarea
+                              value={override.description || ""}
+                              onChange={(e) => updateTaskOverride(idx, "description", e.target.value)}
+                              className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm h-20 resize-y"
+                              placeholder="Task description..."
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            {/* Assignee */}
+                            <div>
+                              <label className="text-xs font-medium text-gray-600 mb-1 block">Assignee</label>
+                              <select
+                                value={override.assigneeId || ""}
+                                onChange={(e) => {
+                                  const selectedUser = users.find(u => u.id === e.target.value);
+                                  updateTaskOverride(idx, "assigneeId", e.target.value);
+                                  updateTaskOverride(idx, "assigneeName", selectedUser?.name || "");
+                                }}
+                                className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
+                              >
+                                <option value="">Select Assignee</option>
+                                {users.map((u) => (
+                                  <option key={u.id} value={u.id}>{u.name}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Due Date */}
+                            <div>
+                              <label className="text-xs font-medium text-gray-600 mb-1 block">Due Date</label>
+                              <input
+                                type="date"
+                                value={override.dueDate || ""}
+                                onChange={(e) => updateTaskOverride(idx, "dueDate", e.target.value)}
+                                className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
+                              />
+                            </div>
+
+                            {/* Priority */}
+                            <div>
+                              <label className="text-xs font-medium text-gray-600 mb-1 block">Priority</label>
+                              <select
+                                value={override.priority || "Medium"}
+                                onChange={(e) => updateTaskOverride(idx, "priority", e.target.value)}
+                                className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
+                              >
+                                <option value="Low">Low</option>
+                                <option value="Medium">Medium</option>
+                                <option value="High">High</option>
+                                <option value="Urgent">Urgent</option>
+                              </select>
+                            </div>
+
+                            {/* Assigned Date */}
+                            <div>
+                              <label className="text-xs font-medium text-gray-600 mb-1 block">Assigned Date</label>
+                              <input
+                                type="date"
+                                value={override.assignedDate || meetingDate}
+                                onChange={(e) => updateTaskOverride(idx, "assignedDate", e.target.value)}
+                                className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Footer with Select All and action buttons */}
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedActionItems.size === actionItems.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedActionItems(new Set(actionItems.map((_, i) => i)));
+                      } else {
+                        setSelectedActionItems(new Set());
+                      }
+                    }}
+                    className="w-4 h-4"
+                  />
+                  Select All ({actionItems.length})
+                </label>
+                <div className="flex gap-3">
+                  <Button onClick={() => setShowTaskConversion(false)} variant="secondary">Cancel</Button>
+                  <Button
+                    onClick={createTasksFromActions}
+                    variant="primary"
+                    disabled={selectedActionItems.size === 0 || loading}
+                  >
+                    {loading ? <FaSpinner className="animate-spin mr-1" /> : null}
+                    Create {selectedActionItems.size} Task(s)
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Comment Input (Visible when Generated) */}
+      {
+        isGenerated && (
+          <div className="fixed bottom-6 right-6 z-[90]">
+            <div className="bg-surface shadow-xl rounded-lg p-3 border border-subtle flex gap-2 w-80">
+              <input
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addComment()}
+                placeholder="Add a comment..."
+                className="flex-1 bg-transparent text-sm outline-none text-content-primary"
+              />
+              <button
+                onClick={addComment}
+                className="text-indigo-600 hover:text-indigo-700 px-2 font-medium text-sm"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        )
+      }
+
+    </div >
   );
 }
