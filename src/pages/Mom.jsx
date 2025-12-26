@@ -286,15 +286,16 @@ List follow-up plans, pending reviews, and upcoming tasks for the next meeting o
 Now generate the **final Minutes of Meeting (MoM)** below:
 `;
 
-      // Call Gemini API (using latest gemini-2.5-flash model for balanced performance)
+      // Call Gemini API (using gemini-2.5-flash model)
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [
               {
+                role: "user",
                 parts: [{ text: prompt }],
               },
             ],
@@ -308,7 +309,8 @@ Now generate the **final Minutes of Meeting (MoM)** below:
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error?.message || "Gemini API error");
+        console.error("Gemini API Error:", errorData);
+        throw new Error(errorData.error?.message || `API Error: ${res.status}`);
       }
 
       const data = await res.json();
