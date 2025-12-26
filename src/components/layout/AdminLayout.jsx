@@ -85,8 +85,8 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
         <>
           <span
             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${isActive
-                ? `${accent === 'black' ? 'bg-black/20 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-surface'} ${iconColor}`
-                : `${iconColor} bg-transparent ${accent === 'black' ? 'opacity-80 hover:opacity-100 hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : ''}`
+              ? `${accent === 'black' ? 'bg-black/20 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-surface'} ${iconColor}`
+              : `${iconColor} bg-transparent ${accent === 'black' ? 'opacity-80 hover:opacity-100 hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : ''}`
               }`}
           >
             {icon}

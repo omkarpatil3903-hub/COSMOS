@@ -108,33 +108,30 @@ const EmployeeDashboard = () => {
   useEffect(() => {
     if (!user?.uid) return;
     const q = query(collection(db, "notes"), where("userUid", "==", user.uid));
-    const load = async () => {
-      try {
-        const snap = await getDocs(q);
-        const items = snap.docs.map((d) => {
-          const data = d.data() || {};
-          return {
-            id: d.id,
-            text: data.bodyText || data.text || data.title || "",
-            isPinned: data.isPinned === true,
-            createdAt: data.createdAt || null,
-            updatedAt: data.updatedAt || null,
-          };
-        });
-        const sorted = [...items].sort((a, b) => {
-          if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-          const at = (a.updatedAt?.toMillis?.() || (a.updatedAt?.seconds ? a.updatedAt.seconds * 1000 : 0) || 0) ||
-            (a.createdAt?.toMillis?.() || (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0) || 0);
-          const bt = (b.updatedAt?.toMillis?.() || (b.updatedAt?.seconds ? b.updatedAt.seconds * 1000 : 0) || 0) ||
-            (b.createdAt?.toMillis?.() || (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0) || 0);
-          return bt - at;
-        });
-        setQuickNotes(sorted);
-      } catch (e) {
-        console.error("Failed to load quick notes", e);
-      }
-    };
-    load();
+    const unsub = onSnapshot(q, (snap) => {
+      const items = snap.docs.map((d) => {
+        const data = d.data() || {};
+        return {
+          id: d.id,
+          text: data.bodyText || data.text || data.title || "",
+          isPinned: data.isPinned === true,
+          createdAt: data.createdAt || null,
+          updatedAt: data.updatedAt || null,
+        };
+      });
+      const sorted = [...items].sort((a, b) => {
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+        const at = (a.updatedAt?.toMillis?.() || (a.updatedAt?.seconds ? a.updatedAt.seconds * 1000 : 0) || 0) ||
+          (a.createdAt?.toMillis?.() || (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0) || 0);
+        const bt = (b.updatedAt?.toMillis?.() || (b.updatedAt?.seconds ? b.updatedAt.seconds * 1000 : 0) || 0) ||
+          (b.createdAt?.toMillis?.() || (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0) || 0);
+        return bt - at;
+      });
+      setQuickNotes(sorted);
+    }, (e) => {
+      console.error("Failed to load quick notes", e);
+    });
+    return () => unsub();
   }, [user?.uid]);
 
   // Load quick reminders list for the popover preview
@@ -259,33 +256,61 @@ const EmployeeDashboard = () => {
     return () => unsubProjects();
   }, [user, tasks]);
 
-  // Listen for due reminders
+  // Listen for due reminders with interval checking
   useEffect(() => {
     if (!user?.uid) return;
 
-    // We fetch all pending reminders and filter client-side for "due" ones
-    // to avoid complex composite indexes for now, or we can just query by status
-    const q = query(
-      collection(db, "reminders"),
-      where("userId", "==", user.uid),
-      where("status", "==", "pending")
-    );
+    const allRemindersRef = { current: [] };
+    const shownToastsRef = { current: new Set() };
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    // Helper function to format date as dd/mm/yyyy hh:mm:ss
+    const formatDateTime = (date) => {
+      const d = new Date(date);
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      const seconds = String(d.getSeconds()).padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    };
+
+    // Function to check and show due reminders
+    const checkDueReminders = () => {
       const now = new Date();
-      const raw = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      const due = raw.filter((r) => {
+      console.log('=== Checking reminders at:', formatDateTime(now));
+      console.log('Total reminders loaded:', allRemindersRef.current.length);
+
+      const due = allRemindersRef.current.filter((r) => {
         const dueAt = r.dueAt?.toDate?.() || new Date(r.dueAt);
-        return dueAt <= now && !r.isRead;
+        const isDue = dueAt <= now;
+        const isNotRead = !r.isRead;
+        const notShown = !shownToastsRef.current.has(r.id);
+
+        console.log(`Reminder "${r.title}":`, {
+          dueTime: formatDateTime(dueAt),
+          currentTime: formatDateTime(now),
+          isDue: isDue,
+          isNotRead: isNotRead,
+          notShownYet: notShown,
+          willShow: isDue && isNotRead && notShown
+        });
+
+        return isDue && isNotRead && notShown;
       });
 
-      // Show snackbar for each due reminder (SuperAdmin-style)
-      const notificationsPayload = due.map((r) => {
+      console.log('Reminders to show:', due.length);
+
+      // Show toast for each newly due reminder
+      due.forEach((r) => {
         const toastId = `reminder-${r.id}`;
+        shownToastsRef.current.add(r.id);
         const when = r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt);
         const timeLabel = isNaN(when.getTime())
           ? ""
           : when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+        console.log('✅ Showing reminder toast:', r.title, 'at', timeLabel);
 
         toast.custom(
           (t) => (
@@ -322,6 +347,7 @@ const EmployeeDashboard = () => {
                     onClick={async () => {
                       try {
                         await deleteDoc(doc(db, "reminders", r.id));
+                        shownToastsRef.current.delete(r.id);
                       } catch (e) {
                         console.error("Failed to delete reminder", e);
                       }
@@ -348,22 +374,50 @@ const EmployeeDashboard = () => {
             position: "top-right",
           }
         );
-
-        return {
-          id: toastId,
-          type: "reminder",
-          title: "Reminder",
-          message: r.title,
-          reminderId: r.id,
-          redirectTo: null,
-        };
       });
 
-      setReminderNotifications(notificationsPayload);
+      // Update reminder notifications for the notification bell
+      const notificationsPayload = due.map((r) => ({
+        id: `reminder-${r.id}`,
+        type: "reminder",
+        title: "Reminder",
+        message: r.title,
+        reminderId: r.id,
+        redirectTo: null,
+      }));
+
+      if (notificationsPayload.length > 0) {
+        setReminderNotifications((prev) => [...prev, ...notificationsPayload]);
+      }
+    };
+
+    // Listen to Firestore for reminder changes
+    const q = query(
+      collection(db, "reminders"),
+      where("userId", "==", user.uid),
+      where("status", "==", "pending")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      allRemindersRef.current = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      console.log('📥 Loaded reminders from Firestore:', allRemindersRef.current.length);
+      allRemindersRef.current.forEach(r => {
+        const dueAt = r.dueAt?.toDate?.() || new Date(r.dueAt);
+        console.log(`  - "${r.title}" due at: ${formatDateTime(dueAt)}, isRead: ${r.isRead}`);
+      });
+      checkDueReminders();
     });
 
-    return () => unsubscribe();
+    // Check every 10 seconds for newly due reminders
+    const intervalId = setInterval(checkDueReminders, 10000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(intervalId);
+    };
   }, [user]);
+
+
 
   // Calculate stats
   const stats = {
