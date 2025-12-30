@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTheme } from "../../context/ThemeContext";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
@@ -55,6 +56,7 @@ const buildDefaultEventForm = (baseDate = new Date()) => ({
 });
 
 function Calendar() {
+  const { mode } = useTheme();
   const [events, setEvents] = useState([]);
   const [meetingRequests, setMeetingRequests] = useState([]);
   const [clients, setClients] = useState([]);
@@ -776,11 +778,11 @@ function Calendar() {
         >
           <div
             className={`text-sm font-bold mb-1 ${isPast && !isToday
-              ? "text-content-tertiary"
+              ? (mode === 'dark' ? "text-gray-500" : "text-gray-400")
               : isToday
-                ? "text-blue-700 dark:text-blue-400 text-base"
-                : "text-content-primary"
-              } ${isSelected && !isToday ? "text-indigo-700 dark:text-indigo-400 text-base" : ""}`}
+                ? (mode === 'dark' ? "text-blue-400 text-base" : "text-blue-700 text-base")
+                : (mode === 'dark' ? "text-white" : "text-gray-800")
+              } ${isSelected && !isToday ? (mode === 'dark' ? "text-indigo-400 text-base" : "text-indigo-700 text-base") : ""}`}
           >
             {day}
           </div>

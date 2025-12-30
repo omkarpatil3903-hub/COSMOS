@@ -20,6 +20,21 @@ import {
   FaFlag,
 } from "react-icons/fa";
 import { useTheme } from "../context/ThemeContext";
+import { useThemeStyles } from "../hooks/useThemeStyles";
+
+const ACCENT_COLORS = {
+  purple: "#9333ea",
+  blue: "#0284c7",
+  pink: "#db2777",
+  violet: "#7c3aed",
+  orange: "#d97706",
+  teal: "#0d9488",
+  bronze: "#d97706",
+  mint: "#059669",
+  black: "#2563eb",
+  indigo: "#4f46e5",
+};
+
 
 const statusIconMap = {
   "to-do": renderToStaticMarkup(
@@ -38,7 +53,9 @@ const priorityIconHtml = renderToStaticMarkup(
 );
 
 export default function GanttChart({ data }) {
-  const { mode } = useTheme();
+  const { mode, accent } = useTheme();
+  const { buttonClass, headerIconClass } = useThemeStyles();
+  const activeColor = ACCENT_COLORS[accent] || ACCENT_COLORS.indigo;
   const ganttRef = useRef(null);
   const containerRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -173,8 +190,8 @@ export default function GanttChart({ data }) {
           </div>
           <div class="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
             <div 
-              class="h-full rounded-full bg-indigo-500"
-              style="width:${task.progress * 100}%">
+              class="h-full rounded-full"
+              style="width:${task.progress * 100}%; background-color: ${activeColor};">
             </div>
           </div>
         </div>`
@@ -290,8 +307,8 @@ export default function GanttChart({ data }) {
             <button
               onClick={() => setZoom("day")}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${zoomLevel === "day"
-                ? "bg-indigo-600 text-white shadow-soft"
-                : "text-content-primary hover:bg-indigo-50 hover:text-indigo-700"
+                ? buttonClass
+                : "text-content-primary hover:bg-surface-subtle"
                 }`}
               title="Day View"
             >
@@ -301,8 +318,8 @@ export default function GanttChart({ data }) {
             <button
               onClick={() => setZoom("week")}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${zoomLevel === "week"
-                ? "bg-indigo-600 text-white shadow-soft"
-                : "text-content-primary hover:bg-indigo-50 hover:text-indigo-700"
+                ? buttonClass
+                : "text-content-primary hover:bg-surface-subtle"
                 }`}
               title="Week View"
             >
@@ -312,8 +329,8 @@ export default function GanttChart({ data }) {
             <button
               onClick={() => setZoom("month")}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 ${zoomLevel === "month"
-                ? "bg-indigo-600 text-white shadow-soft"
-                : "text-content-primary hover:bg-indigo-50 hover:text-indigo-700"
+                ? buttonClass
+                : "text-content-primary hover:bg-surface-subtle"
                 }`}
               title="Month View"
             >
@@ -345,7 +362,7 @@ export default function GanttChart({ data }) {
           {/* Today Button */}
           <button
             onClick={goToToday}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors duration-200 shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+            className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors duration-200 shadow-soft focus-visible:outline-none ${buttonClass}`}
             title="Jump to Today"
           >
             <FaMapMarkerAlt className="w-3.5 h-3.5" />
@@ -356,7 +373,7 @@ export default function GanttChart({ data }) {
           <button
             onClick={toggleFullscreen}
             className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-200 shadow-soft border ${isFullscreen
-              ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+              ? headerIconClass
               : "bg-surface border-subtle text-content-primary hover:bg-surface-subtle"
               }`}
             title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
@@ -497,21 +514,21 @@ export default function GanttChart({ data }) {
           /* TODAY MARKER - Enhanced visibility with project colors */
           .gantt-today-marker {
             width: 3px !important;
-            background: #4f46e5 !important;
-            box-shadow: 0 0 10px rgba(79, 70, 229, 0.5) !important;
+            background: ${activeColor} !important;
+            box-shadow: 0 0 10px ${activeColor}80 !important;
             z-index: 10 !important;
             position: relative !important;
             animation: gantt-pulse 1.8s ease-in-out infinite;
           }
 
           .gantt_marker_content {
-            background: #4f46e5 !important;
+            background: ${activeColor} !important;
             color: white !important;
             padding: 2px 8px !important;
             border-radius: 6px !important;
             font-size: 11px !important;
             font-weight: 600 !important;
-            box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3) !important;
+            box-shadow: 0 2px 6px ${activeColor}4D !important;
           }
 
           /* Gantt grid and timeline styling to match project */
@@ -645,13 +662,13 @@ export default function GanttChart({ data }) {
 
           @keyframes gantt-pulse {
             0% {
-              box-shadow: 0 0 6px rgba(79, 70, 229, 0.4);
+              box-shadow: 0 0 6px ${activeColor}66;
             }
             50% {
-              box-shadow: 0 0 14px rgba(79, 70, 229, 0.85);
+              box-shadow: 0 0 14px ${activeColor}D9;
             }
             100% {
-              box-shadow: 0 0 6px rgba(79, 70, 229, 0.4);
+              box-shadow: 0 0 6px ${activeColor}66;
             }
           }
 

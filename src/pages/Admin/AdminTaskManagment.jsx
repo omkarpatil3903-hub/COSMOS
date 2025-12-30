@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import toast from "react-hot-toast";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
@@ -83,6 +84,7 @@ const tsToISO = (v) => {
 
 function TasksManagement() {
   const { user } = useAuthContext();
+  const { iconColor, buttonClass } = useThemeStyles();
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
@@ -233,6 +235,22 @@ function TasksManagement() {
     );
     return unique;
   }, [statusOptions, tasks]);
+
+  // Create columns for KanbanBoard with dynamic statuses and theme colors
+  const kanbanColumns = useMemo(() => {
+    const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    return effectiveStatuses.map((statusName) => {
+      const normalizedKey = norm(statusName);
+      const color = statusColorMap[normalizedKey] || "#6b7280";
+
+      return {
+        key: statusName,
+        title: statusName,
+        color: color
+      };
+    });
+  }, [effectiveStatuses, statusColorMap]);
 
   const applyStatusQuickFilter = useCallback(
     (status) => {
@@ -2080,7 +2098,7 @@ function TasksManagement() {
                 <div className="flex items-center rounded-lg border border-subtle bg-surface p-0.5">
                   <button
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === ""
-                      ? "bg-indigo-600 text-white shadow-sm"
+                      ? `${buttonClass} text-white shadow-sm`
                       : "text-content-primary hover:bg-surface-subtle"
                       }`}
                     onClick={() => updateFilter("assigneeType", "")}
@@ -2090,7 +2108,7 @@ function TasksManagement() {
                   </button>
                   <button
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "user"
-                      ? "bg-indigo-600 text-white shadow-sm"
+                      ? `${buttonClass} text-white shadow-sm`
                       : "text-content-primary hover:bg-surface-subtle"
                       }`}
                     onClick={() => updateFilter("assigneeType", "user")}
@@ -2100,7 +2118,7 @@ function TasksManagement() {
                   </button>
                   <button
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${filters.assigneeType === "client"
-                      ? "bg-indigo-600 text-white shadow-sm"
+                      ? `${buttonClass} text-white shadow-sm`
                       : "text-content-primary hover:bg-surface-subtle"
                       }`}
                     onClick={() => updateFilter("assigneeType", "client")}
@@ -2112,12 +2130,12 @@ function TasksManagement() {
 
                 <div className="h-6 w-px bg-border-subtle mx-1"></div>
 
-                <div className="flex items-center gap-1 bg-surface-subtle rounded-lg p-1">
+                <div className="flex items-center gap-1 bg-gray-100 [.dark_&]:bg-white/5 rounded-lg p-1">
                   <button
                     onClick={() => setView("list")}
-                    className={`p-2 rounded transition-all ${view === "list"
-                      ? "bg-surface text-indigo-600 shadow-sm"
-                      : "text-content-secondary hover:text-content-primary hover:bg-surface"
+                    className={`p-2 rounded-md transition-all ${view === "list"
+                      ? `bg-white [.dark_&]:bg-[#181B2A] ${iconColor} shadow-md`
+                      : "text-gray-600 [.dark_&]:text-gray-400 hover:bg-white/50 [.dark_&]:hover:bg-white/5"
                       }`}
                     title="List View"
                   >
@@ -2125,9 +2143,9 @@ function TasksManagement() {
                   </button>
                   <button
                     onClick={() => setView("board")}
-                    className={`p-2 rounded transition-all ${view === "board"
-                      ? "bg-surface text-indigo-600 shadow-sm"
-                      : "text-content-secondary hover:text-content-primary hover:bg-surface"
+                    className={`p-2 rounded-md transition-all ${view === "board"
+                      ? `bg-white [.dark_&]:bg-[#181B2A] ${iconColor} shadow-md`
+                      : "text-gray-600 [.dark_&]:text-gray-400 hover:bg-white/50 [.dark_&]:hover:bg-white/5"
                       }`}
                     title="Kanban View"
                   >
@@ -2137,19 +2155,23 @@ function TasksManagement() {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                <Button variant="secondary" onClick={handleArchive} size="sm">
-                  Archive Selected
-                </Button>
-                <Button variant="secondary" onClick={handleUnarchive} size="sm">
-                  Unarchive Selected
-                </Button>
-                <Button variant="danger" onClick={() => setShowBulkDeleteModal(true)} size="sm">
-                  Delete Selected
-                </Button>
+                {selectedIds.size > 0 && (
+                  <>
+                    <Button variant="secondary" onClick={handleArchive} size="sm">
+                      Archive Selected
+                    </Button>
+                    <Button variant="secondary" onClick={handleUnarchive} size="sm">
+                      Unarchive Selected
+                    </Button>
+                    <Button variant="danger" onClick={() => setShowBulkDeleteModal(true)} size="sm">
+                      Delete Selected
+                    </Button>
+                  </>
+                )}
                 <Button
                   onClick={openCreate}
-                  variant="primary"
-                  className="font-semibold"
+                  variant="custom"
+                  className={`font-semibold ${buttonClass}`}
                 >
                   + Create Task
                 </Button>
@@ -2169,6 +2191,7 @@ function TasksManagement() {
               ) : (
                 <KanbanBoard
                   tasks={filtered}
+                  columns={kanbanColumns}
                   onMove={moveTask}
                   onEdit={handleEdit}
                   getProject={getProject}

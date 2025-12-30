@@ -1,4 +1,5 @@
-import { FaFlag, FaCalendarAlt, FaDownload } from "react-icons/fa";
+import { useState, useEffect, useRef } from "react";
+import { FaFlag, FaCalendarAlt, FaDownload, FaEllipsisV, FaPen, FaPalette, FaThumbtack, FaListUl } from "react-icons/fa";
 import { getPriorityBadge } from "../utils/colorMaps";
 import toast from "react-hot-toast";
 
@@ -17,6 +18,20 @@ export default function KanbanBoard({
   onReassign, // function(taskId, encodedValue)
   columns,
 }) {
+  const [activeMenu, setActiveMenu] = useState(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setActiveMenu(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Function to download all images for a task
   const handleDownloadImages = (task, e) => {
@@ -60,17 +75,35 @@ export default function KanbanBoard({
     return "#FFFFFF";
   };
 
+  // Helper to normalize status strings for comparison
+  const normalizeStatus = (status) => {
+    return String(status || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  };
+
+  // Create a map of normalized column keys to original keys for quick lookup
+  const columnKeyMap = new Map();
+  displayColumns.forEach((col) => {
+    columnKeyMap.set(normalizeStatus(col.key), col.key);
+  });
+
   tasks.forEach((t) => {
-    // Direct match
-    if (grouped[t.status]) {
-      grouped[t.status].push(t);
+    const taskStatus = t.status || "";
+
+    // Try direct match first (exact case)
+    if (grouped[taskStatus]) {
+      grouped[taskStatus].push(t);
     }
-    // Case insensitive match fallback
+    // Try normalized match
     else {
-      const lower = (t.status || "").toLowerCase();
-      const col = displayColumns.find(c => c.key.toLowerCase() === lower);
-      if (col && grouped[col.key]) {
-        grouped[col.key].push(t);
+      const normalizedTaskStatus = normalizeStatus(taskStatus);
+      const matchedKey = columnKeyMap.get(normalizedTaskStatus);
+
+      if (matchedKey && grouped[matchedKey]) {
+        grouped[matchedKey].push(t);
+      }
+      // If still no match, log for debugging
+      else {
+        console.warn(`Task "${t.title}" has unmatched status: "${taskStatus}" (normalized: "${normalizedTaskStatus}")`);
       }
     }
   });
@@ -150,13 +183,54 @@ export default function KanbanBoard({
                 )}
                 {col.title}
               </div>
-              <div className={`text-xs ${countClass}`}>
-                {hasLimit ? (
-                  <span>
-                    {count} / {limit}
-                  </span>
-                ) : (
-                  <span>{count}</span>
+              <div className="flex items-center gap-2 relative">
+                <div className={`text-xs ${countClass}`}>
+                  {hasLimit ? (
+                    <span>
+                      {count} / {limit}
+                    </span>
+                  ) : (
+                    <span>{count}</span>
+                  )}
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveMenu(activeMenu === col.key ? null : col.key);
+                  }}
+                  className="p-1 hover:bg-gray-200 [.dark_&]:hover:bg-white/10 rounded text-content-tertiary transition-colors"
+                >
+                  <FaEllipsisV className="w-3 h-3" />
+                </button>
+                {activeMenu === col.key && (
+                  <div
+                    ref={menuRef}
+                    className="absolute top-full right-0 mt-2 w-48 bg-white [.dark_&]:bg-[#1F2937] border border-gray-200 [.dark_&]:border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="p-2">
+                      <div className="text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 px-2 py-1 mb-1">
+                        Group options
+                      </div>
+                      {!["To-Do", "In Progress", "Done"].includes(col.key) && (
+                        <>
+                          <button className="w-full text-left px-2 py-1.5 text-sm text-gray-700 [.dark_&]:text-gray-200 hover:bg-gray-100 [.dark_&]:hover:bg-gray-700 rounded flex items-center gap-2 transition-colors">
+                            <FaPen className="w-3 h-3 text-indigo-500" /> Edit status
+                          </button>
+                          <button className="w-full text-left px-2 py-1.5 text-sm text-gray-700 [.dark_&]:text-gray-200 hover:bg-gray-100 [.dark_&]:hover:bg-gray-700 rounded flex items-center gap-2 transition-colors">
+                            <FaPalette className="w-3 h-3 text-purple-500" /> Change color
+                          </button>
+                        </>
+                      )}
+                      <button className="w-full text-left px-2 py-1.5 text-sm text-gray-700 [.dark_&]:text-gray-200 hover:bg-gray-100 [.dark_&]:hover:bg-gray-700 rounded flex items-center gap-2 transition-colors">
+                        <FaThumbtack className="w-3 h-3 text-amber-500" /> Pin status
+                      </button>
+                      <div className="h-px bg-gray-200 [.dark_&]:bg-gray-700 my-1"></div>
+                      <button className="w-full text-left px-2 py-1.5 text-sm text-gray-700 [.dark_&]:text-gray-200 hover:bg-gray-100 [.dark_&]:hover:bg-gray-700 rounded flex items-center gap-2 transition-colors">
+                        <FaListUl className="w-3 h-3 text-emerald-500" /> Select all
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

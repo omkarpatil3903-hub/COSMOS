@@ -891,7 +891,7 @@ function ManageProjects({ onlyMyManaged = false }) {
                   <button
                     onClick={() => setViewMode("table")}
                     className={`p-2 rounded transition-colors ${viewMode === "table"
-                      ? `bg-white shadow ${iconColor.replace('text-', 'text-')} [.dark_&]:bg-gray-700 [.dark_&]:text-white`
+                      ? `bg-white shadow ${iconColor} [.dark_&]:bg-gray-700`
                       : "text-gray-600 hover:text-gray-900 [.dark_&]:text-gray-400 [.dark_&]:hover:text-white"
                       }`}
                     title="List View"
@@ -901,7 +901,7 @@ function ManageProjects({ onlyMyManaged = false }) {
                   <button
                     onClick={() => setViewMode("kanban")}
                     className={`p-2 rounded transition-colors ${viewMode === "kanban"
-                      ? `bg-white shadow ${iconColor.replace('text-', 'text-')} [.dark_&]:bg-gray-700 [.dark_&]:text-white`
+                      ? `bg-white shadow ${iconColor} [.dark_&]:bg-gray-700`
                       : "text-gray-600 hover:text-gray-900 [.dark_&]:text-gray-400 [.dark_&]:hover:text-white"
                       }`}
                     title="Kanban View"

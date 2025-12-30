@@ -32,6 +32,7 @@ import ManageProjects from "./pages/SuperAdmin/ManageProjects.jsx";
 import MomGeneratorPro from "./pages/SuperAdmin/MomGeneratorPro.jsx";
 import Mom from "./pages/Mom";
 import TaskManagment from "./pages/SuperAdmin/TaskManagment.jsx";
+import LeadManagement from "./pages/SuperAdmin/LeadManagement.jsx";
 import Calendar from "./pages/SuperAdmin/Calendar.jsx";
 import Settings from "./pages/SuperAdmin/Settings.jsx";
 import AddHierarchy from "./pages/SuperAdmin/AddHierarchy.jsx";
@@ -74,6 +75,7 @@ import AdminStatusSettings from "./pages/Admin/AdminStatusSettings.jsx";
 import AdminManageProjects from "./pages/Admin/AdminManageProjects.jsx";
 import AdminManageDocument from "./pages/Admin/AdminManageDocument.jsx";
 import AdminTaskManagment from "./pages/Admin/AdminTaskManagment.jsx";
+import AdminLeadManagement from "./pages/Admin/AdminLeadManagement.jsx";
 import AdminCalendar from "./pages/Admin/AdminCalendar.jsx";
 import AdminMomGeneratorPro from "./pages/Admin/AdminMomGeneratorPro.jsx";
 import AdminDocuments from "./pages/Admin/AdminDocuments.jsx";
@@ -172,6 +174,7 @@ const router = createBrowserRouter([
       { path: "/admin/manage-knowledge", element: <AdminManageDocument /> },
       { path: "/admin/mom-pro", element: <AdminMomGeneratorPro /> },
       { path: "/admin/task-management", element: <AdminTaskManagment /> },
+      { path: "/admin/lead-management", element: <AdminLeadManagement /> },
       { path: "/admin/reports", element: <AdminReportsPage /> },
       { path: "/admin/expenses", element: <AdminExpenseManagement /> },
       { path: "/admin/calendar", element: <AdminCalendar /> },
@@ -240,6 +243,7 @@ const router = createBrowserRouter([
       { path: "/mom", element: <Mom /> },
       { path: "/mom-pro", element: <MomGeneratorPro /> },
       { path: "/task-management", element: <TaskManagment /> },
+      { path: "/lead-management", element: <LeadManagement /> },
       { path: "/reports", element: <ReportsPage /> },
       { path: "/expenses", element: <ExpenseManagement /> },
       { path: "/calendar", element: <Calendar /> },

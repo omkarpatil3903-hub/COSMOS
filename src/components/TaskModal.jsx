@@ -666,7 +666,7 @@ function TaskModal({
                           if (errors.assigneeId)
                             setErrors((p) => ({ ...p, assigneeId: "" }));
                         }}
-                        className="block w-full rounded-lg border-0 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm ring-1 ring-inset ring-gray-200 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                        className="block w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2.5 text-sm text-gray-900 [.dark_&]:text-white shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
                       >
                         <option value="">Select Client</option>
                         {clients.map((c) => (

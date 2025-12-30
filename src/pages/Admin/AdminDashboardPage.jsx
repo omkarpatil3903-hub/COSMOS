@@ -20,9 +20,11 @@ import Card from "../../components/Card";
 import StatCard from "../../components/StatCard";
 import DashboardSkeleton from "../../components/DashboardSkeleton";
 import toast from "react-hot-toast";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 function DashboardPage() {
   const navigate = useNavigate();
   const { user, userData } = useAuthContext(); // Get user data for personalization
+  const { iconColor, buttonClass } = useThemeStyles(); // Get theme icon color and button class
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -975,7 +977,7 @@ function DashboardPage() {
                 className="p-2 rounded-full hover:bg-gray-100 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-gray-200 shadow-sm"
                 title="Quick actions"
               >
-                <LuNotebookPen className="h-5 w-5" />
+                <LuNotebookPen className={`h-5 w-5 ${iconColor}`} />
               </button>
               {showQuickMenu && (
                 <div className="absolute right-0 top-9 z-30 w-44 rounded-lg bg-surface shadow-lg border border-subtle text-sm">
@@ -1030,7 +1032,7 @@ function DashboardPage() {
                         setRemDesc("");
                         setShowInlineReminderForm((v) => !v);
                       }}
-                      className="p-1.5 rounded-md hover:bg-gray-100 text-indigo-600"
+                      className={`p-1.5 rounded-md hover:bg-gray-100 ${iconColor}`}
                       title="Add reminder"
                     >
                       <FaPlus className="h-3.5 w-3.5" />
@@ -1127,7 +1129,7 @@ function DashboardPage() {
                         </button>
                         <button
                           type="submit"
-                          className="px-2 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                          className={`px-2 py-1 text-xs rounded-md text-white disabled:opacity-50 ${buttonClass}`}
                           disabled={savingReminder}
                         >
                           {savingReminder ? "Saving..." : editingReminderId ? "Update" : "Save"}
@@ -1281,7 +1283,7 @@ function DashboardPage() {
                             toast.error("Failed to save note");
                           }
                         }}
-                        className="px-2 py-1 rounded-md bg-indigo-600 text-white text-[10px] font-medium hover:bg-indigo-700 disabled:opacity-50"
+                        className={`px-2 py-1 rounded-md text-white text-[10px] font-medium disabled:opacity-50 ${buttonClass}`}
                         disabled={!noteInput.trim()}
                       >
                         {editingNoteId ? "Update" : "Save"}

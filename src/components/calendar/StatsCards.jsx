@@ -17,7 +17,7 @@ const StatsCards = ({ stats }) => {
       icon: FaCalendarAlt,
       color: "#4f46e5",
       darkBorderColor: "#818cf8", // indigo-400 - brighter for dark mode
-      darkBg: "rgba(79, 70, 229, 0.1)",
+      darkBg: "rgba(79, 70, 229, 0.05)",
       lightBg: "rgba(79, 70, 229, 0.05)",
       iconColor: "text-indigo-600",
       darkIconColor: "text-indigo-400",
@@ -28,7 +28,7 @@ const StatsCards = ({ stats }) => {
       icon: FaCheckCircle,
       color: "#10b981",
       darkBorderColor: "#4ade80", // green-400 - brighter for dark mode
-      darkBg: "rgba(16, 185, 129, 0.1)",
+      darkBg: "rgba(16, 185, 129, 0.05)",
       lightBg: "rgba(16, 185, 129, 0.05)",
       iconColor: "text-green-600",
       darkIconColor: "text-green-400",
@@ -39,7 +39,7 @@ const StatsCards = ({ stats }) => {
       icon: FaClock,
       color: "#f97316",
       darkBorderColor: "#fb923c", // orange-400 - brighter for dark mode
-      darkBg: "rgba(249, 115, 22, 0.1)",
+      darkBg: "rgba(249, 115, 22, 0.05)",
       lightBg: "rgba(249, 115, 22, 0.05)",
       iconColor: "text-orange-600",
       darkIconColor: "text-orange-400",
@@ -50,7 +50,7 @@ const StatsCards = ({ stats }) => {
       icon: FaHourglassHalf,
       color: "#ef4444",
       darkBorderColor: "#f87171", // red-400 - brighter for dark mode
-      darkBg: "rgba(239, 68, 68, 0.1)",
+      darkBg: "rgba(239, 68, 68, 0.05)",
       lightBg: "rgba(239, 68, 68, 0.05)",
       iconColor: "text-red-600",
       darkIconColor: "text-red-400",
