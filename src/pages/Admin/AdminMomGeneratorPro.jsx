@@ -18,6 +18,8 @@ import {
 } from "react-icons/fa";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
+import { pdf } from "@react-pdf/renderer";
+import MomPdfDocument from "../../components/MomPdfDocument";
 import toast from "react-hot-toast";
 import {
   collection,
@@ -554,12 +556,79 @@ export default function MomGeneratorPro() {
       return cap.replace(/\.+$/, "");
     };
 
+    // Start with manually entered action items
     const builtActions = inputActionItems.map((a) => ({
       task: polish(a.task),
       responsiblePerson: a.responsiblePerson,
-      responsiblePersonId: a.responsiblePersonId, // Keep strictly for manual entry if populated
+      responsiblePersonId: a.responsiblePersonId,
       deadline: a.deadline,
     }));
+
+    // Auto-extract action items from discussion notes if none were manually entered
+    if (builtActions.length === 0 && inputDiscussions.length > 0) {
+      const autoActions = [];
+
+      inputDiscussions.forEach((d) => {
+        const combined = `${d.topic} ${d.notes}`.toLowerCase();
+
+        // Extract action items based on keyword patterns
+        if (/api|endpoint|integration|backend/.test(combined)) {
+          autoActions.push({
+            task: `Complete API/Integration work for ${d.topic}`,
+            responsiblePerson: "TBD",
+            deadline: "",
+          });
+        }
+        if (/ui|ux|design|frontend|responsive/.test(combined)) {
+          autoActions.push({
+            task: `Implement UI changes for ${d.topic}`,
+            responsiblePerson: "TBD",
+            deadline: "",
+          });
+        }
+        if (/test|qa|bug|fix|defect/.test(combined)) {
+          autoActions.push({
+            task: `Complete testing and bug fixes for ${d.topic}`,
+            responsiblePerson: "TBD",
+            deadline: "",
+          });
+        }
+        if (/deploy|release|production/.test(combined)) {
+          autoActions.push({
+            task: `Prepare deployment for ${d.topic}`,
+            responsiblePerson: "TBD",
+            deadline: "",
+          });
+        }
+        if (/document|docs|spec/.test(combined)) {
+          autoActions.push({
+            task: `Update documentation for ${d.topic}`,
+            responsiblePerson: "TBD",
+            deadline: "",
+          });
+        }
+        if (/review|feedback|approve/.test(combined)) {
+          autoActions.push({
+            task: `Get review/approval for ${d.topic}`,
+            responsiblePerson: "TBD",
+            deadline: "",
+          });
+        }
+      });
+
+      // If still no actions, create a generic follow-up for each discussion
+      if (autoActions.length === 0) {
+        inputDiscussions.forEach((d) => {
+          autoActions.push({
+            task: `Follow up on ${d.topic}`,
+            responsiblePerson: "TBD",
+            deadline: "",
+          });
+        });
+      }
+
+      builtActions.push(...autoActions);
+    }
 
     setDiscussions(builtDiscussions);
     setActionItems(builtActions);
@@ -894,98 +963,32 @@ export default function MomGeneratorPro() {
         const storagePath = `documents/moms/${momNo}/${filename}`;
         const storageRef = ref(storage, storagePath);
 
-        // Render the current MoM DOM into a PDF using html2canvas + jsPDF
-        // Workaround: Clone element and strip styles to avoid oklch color parsing errors
-        const element = momRef.current;
-        if (!element) {
-          throw new Error("MOM content not found for PDF generation");
-        }
+        // Generate PDF using react-pdf (much cleaner than html2canvas)
+        // Convert attendee IDs to names for the PDF
+        const attendeeNames = attendees
+          .map(id => users.find(u => u.id === id)?.name)
+          .filter(Boolean);
+        // Normalize externalAttendees to array
+        const externalAttendeesArray = typeof externalAttendees === 'string' && externalAttendees.trim()
+          ? externalAttendees.split(',').map(s => s.trim()).filter(Boolean)
+          : (Array.isArray(externalAttendees) ? externalAttendees : []);
 
-        // Clone the element to avoid modifying the original
-        const clonedElement = element.cloneNode(true);
-
-        // Remove only class attributes (which may reference oklch via Tailwind/CSS vars)
-        // PRESERVE inline style attributes (which use safe hex colors in our MOM template)
-        const stripClasses = (el) => {
-          el.removeAttribute("class");
-          el.querySelectorAll("*").forEach((child) => {
-            child.removeAttribute("class");
-          });
+        const pdfData = {
+          momNo,
+          projectName: selectedProject?.name || "Project",
+          meetingDate,
+          meetingStartTime,
+          meetingEndTime,
+          meetingVenue,
+          attendees: attendeeNames,
+          externalAttendees: externalAttendeesArray,
+          momPreparedBy,
+          discussions,
+          actionItems,
+          comments,
         };
-        stripClasses(clonedElement);
 
-        // Add comprehensive CSS for PDF rendering that matches the on-screen preview
-        const styleTag = document.createElement("style");
-        styleTag.textContent = `
-          * { 
-            color: #000000 !important; 
-            font-family: Arial, sans-serif !important;
-            box-sizing: border-box;
-          }
-          body { margin: 0; padding: 0; }
-          div { display: block; }
-          table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-          td, th { 
-            border: 1px solid #000000; 
-            padding: 8px 16px; 
-            text-align: left; 
-            vertical-align: top;
-          }
-          th { background-color: #f0f0f0 !important; font-weight: bold; }
-          tr:nth-child(odd) td:first-child { background-color: #f3f4f6; }
-          h1 { font-size: 24px; font-weight: bold; text-transform: uppercase; margin: 10px 0; text-align: center; }
-          h2 { font-size: 18px; font-weight: bold; margin: 15px 0 10px 0; }
-          h3 { font-size: 14px; font-weight: bold; margin: 10px 0; }
-          p { margin: 4px 0; line-height: 1.6; }
-          b, strong { font-weight: bold; }
-          ul, ol { margin: 8px 0; padding-left: 24px; }
-          li { margin: 4px 0; }
-          input, textarea, select { 
-            border: none !important; 
-            background: transparent !important; 
-            font-family: inherit !important;
-            font-size: inherit !important;
-          }
-        `;
-        clonedElement.insertBefore(styleTag, clonedElement.firstChild);
-
-        // Create temporary hidden container
-        const tempContainer = document.createElement("div");
-        tempContainer.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:210mm;background:#fff;";
-        tempContainer.appendChild(clonedElement);
-        document.body.appendChild(tempContainer);
-
-        const canvas = await html2canvas(clonedElement, {
-          scale: 2,
-          logging: false,
-          useCORS: false,
-          allowTaint: true,
-          backgroundColor: "#ffffff",
-        });
-
-        // Clean up
-        document.body.removeChild(tempContainer);
-        const imgData = canvas.toDataURL("image/png");
-        const pdfDoc = new jsPDF("p", "mm", "a4");
-        const pdfWidth = pdfDoc.internal.pageSize.getWidth();
-        const pdfHeight = pdfDoc.internal.pageSize.getHeight();
-        const imgWidth = pdfWidth;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-        let heightLeft = imgHeight;
-        let position = 0;
-
-        pdfDoc.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-
-        while (heightLeft >= 0) {
-          position = heightLeft - imgHeight;
-          pdfDoc.addPage();
-          pdfDoc.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-          heightLeft -= pdfHeight;
-        }
-
-        const pdfBlob = pdfDoc.output("blob");
+        const pdfBlob = await pdf(<MomPdfDocument data={pdfData} />).toBlob();
 
         const currentUser = auth.currentUser;
         const meta = {
@@ -1081,101 +1084,51 @@ export default function MomGeneratorPro() {
 
   // TXT download function removed; MOM is now persisted as PDF only
 
-  // PDF export (html2pdf.js via CDN) - REPLACED with local jsPDF + html2canvas
+  // PDF export using react-pdf
   const handleExportPDF = async () => {
     if (!isGenerated) return toast.error("Generate MOM first");
-    const element = momRef.current;
-    if (!element) return toast.error("Document content not found");
 
     const toastId = toast.loading("Generating PDF...");
 
     try {
-      // Clone element and strip only class attributes to avoid oklch color parsing errors
-      // PRESERVE inline style attributes (which use safe hex colors in our MOM template)
-      const clonedElement = element.cloneNode(true);
+      // Convert attendee IDs to names for the PDF
+      const attendeeNames = attendees
+        .map(id => users.find(u => u.id === id)?.name)
+        .filter(Boolean);
+      // Normalize externalAttendees to array
+      const externalAttendeesArray = typeof externalAttendees === 'string' && externalAttendees.trim()
+        ? externalAttendees.split(',').map(s => s.trim()).filter(Boolean)
+        : (Array.isArray(externalAttendees) ? externalAttendees : []);
 
-      const stripClasses = (el) => {
-        el.removeAttribute("class");
-        el.querySelectorAll("*").forEach((child) => {
-          child.removeAttribute("class");
-        });
+      // Prepare data for PDF
+      const pdfData = {
+        momNo: momNoState,
+        projectName: selectedProject?.name || "Project",
+        meetingDate,
+        meetingStartTime,
+        meetingEndTime,
+        meetingVenue,
+        attendees: attendeeNames,
+        externalAttendees: externalAttendeesArray,
+        momPreparedBy,
+        discussions,
+        actionItems,
+        comments,
       };
-      stripClasses(clonedElement);
 
-      // Add comprehensive CSS for PDF rendering that matches the on-screen preview
-      const styleTag = document.createElement("style");
-      styleTag.textContent = `
-        * { 
-          color: #000000 !important; 
-          font-family: Arial, sans-serif !important;
-          box-sizing: border-box;
-        }
-        body { margin: 0; padding: 0; }
-        div { display: block; }
-        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-        td, th { 
-          border: 1px solid #000000; 
-          padding: 8px 16px; 
-          text-align: left; 
-          vertical-align: top;
-        }
-        th { background-color: #f0f0f0 !important; font-weight: bold; }
-        tr:nth-child(odd) td:first-child { background-color: #f3f4f6; }
-        h1 { font-size: 24px; font-weight: bold; text-transform: uppercase; margin: 10px 0; text-align: center; }
-        h2 { font-size: 18px; font-weight: bold; margin: 15px 0 10px 0; }
-        h3 { font-size: 14px; font-weight: bold; margin: 10px 0; }
-        p { margin: 4px 0; line-height: 1.6; }
-        b, strong { font-weight: bold; }
-        ul, ol { margin: 8px 0; padding-left: 24px; }
-        li { margin: 4px 0; }
-        input, textarea, select { 
-          border: none !important; 
-          background: transparent !important; 
-          font-family: inherit !important;
-          font-size: inherit !important;
-        }
-      `;
-      clonedElement.insertBefore(styleTag, clonedElement.firstChild);
+      // Generate PDF blob
+      const pdfBlob = await pdf(<MomPdfDocument data={pdfData} />).toBlob();
 
-      // Create temporary hidden container
-      const tempContainer = document.createElement("div");
-      tempContainer.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:210mm;background:#fff;";
-      tempContainer.appendChild(clonedElement);
-      document.body.appendChild(tempContainer);
+      // Create download link
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `MOM_${selectedProject?.name || "Project"}_${meetingDate}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
-      const canvas = await html2canvas(clonedElement, {
-        scale: 2,
-        logging: false,
-        useCORS: false,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-      });
-
-      // Clean up
-      document.body.removeChild(tempContainer);
-
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-
-      const filename = `MOM_${selectedProject?.name || "Project"}_${meetingDate}.pdf`;
-      pdf.save(filename);
       toast.success("PDF Exported!", { id: toastId });
     } catch (error) {
       console.error("PDF Export Error:", error);
@@ -2074,7 +2027,7 @@ export default function MomGeneratorPro() {
                     <tr style={{ backgroundColor: "#f0f0f0" }}>
                       <th
                         className="px-4 py-2 text-left font-bold"
-                        style={{ border: "1px solid #000000" }}
+                        style={{ border: "1px solid #000000", width: "50%" }}
                       >
                         Task
                       </th>
@@ -2157,12 +2110,29 @@ export default function MomGeneratorPro() {
               {/* Comments Section */}
               <div className="mt-8 pt-4 border-t border-gray-200">
                 <h2 className="text-lg font-bold mb-3" style={{ color: "#000000" }}>Comments / Notes</h2>
-                {comments.length === 0 && <p className="text-xs text-gray-500 italic">No comments added.</p>}
+                {comments.length === 0 && <p className="text-xs text-gray-500 italic mb-3">No comments added.</p>}
                 {comments.map((c, i) => (
                   <div key={i} className="mb-2 text-sm">
                     <span className="font-bold">{c.author}</span> <span className="text-xs text-gray-500">({new Date(c.timestamp).toLocaleString()})</span>: {c.text}
                   </div>
                 ))}
+                {/* Inline Comment Input */}
+                <div className="mt-4 flex gap-2 items-center print:hidden">
+                  <input
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addComment()}
+                    placeholder="Add a comment..."
+                    className="flex-1 rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    style={{ backgroundColor: "#ffffff", color: "#000000" }}
+                  />
+                  <button
+                    onClick={addComment}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-indigo-700 transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
               </div>
 
               {/* Footer */}
@@ -2394,28 +2364,6 @@ export default function MomGeneratorPro() {
         )
       }
 
-      {/* Comment Input (Visible when Generated) */}
-      {
-        isGenerated && (
-          <div className="fixed bottom-6 right-6 z-[90]">
-            <div className="bg-surface shadow-xl rounded-lg p-3 border border-subtle flex gap-2 w-80">
-              <input
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addComment()}
-                placeholder="Add a comment..."
-                className="flex-1 bg-transparent text-sm outline-none text-content-primary"
-              />
-              <button
-                onClick={addComment}
-                className="text-indigo-600 hover:text-indigo-700 px-2 font-medium text-sm"
-              >
-                Send
-              </button>
-            </div>
-          </div>
-        )
-      }
 
     </div >
   );

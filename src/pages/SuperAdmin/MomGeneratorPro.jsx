@@ -16,6 +16,8 @@ import VoiceInput from "../../components/Common/VoiceInput";
 
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
+import { pdf } from "@react-pdf/renderer";
+import MomPdfDocument from "../../components/MomPdfDocument";
 import toast from "react-hot-toast";
 import {
   collection,
@@ -515,40 +517,23 @@ export default function MomGeneratorPro() {
         const storagePath = `documents/moms/${momNo}/${filename}`;
         const storageRef = ref(storage, storagePath);
 
-        // Render the current MoM DOM into a PDF using html2canvas + jsPDF
-        const element = momRef.current;
-        if (!element) {
-          throw new Error("MOM content not found for PDF generation");
-        }
+        // Generate PDF using react-pdf
+        const pdfData = {
+          momNo,
+          projectName: selectedProject?.name || "Project",
+          meetingDate,
+          meetingStartTime,
+          meetingEndTime,
+          meetingVenue,
+          attendees,
+          externalAttendees,
+          momPreparedBy,
+          discussions,
+          actionItems,
+          comments: [],
+        };
 
-        const canvas = await html2canvas(element, {
-          scale: 2,
-          logging: false,
-          useCORS: false,
-          allowTaint: true,
-          backgroundColor: "#ffffff",
-        });
-        const imgData = canvas.toDataURL("image/png");
-        const pdfDoc = new jsPDF("p", "mm", "a4");
-        const pdfWidth = pdfDoc.internal.pageSize.getWidth();
-        const pdfHeight = pdfDoc.internal.pageSize.getHeight();
-        const imgWidth = pdfWidth;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-        let heightLeft = imgHeight;
-        let position = 0;
-
-        pdfDoc.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-
-        while (heightLeft >= 0) {
-          position = heightLeft - imgHeight;
-          pdfDoc.addPage();
-          pdfDoc.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-          heightLeft -= pdfHeight;
-        }
-
-        const pdfBlob = pdfDoc.output("blob");
+        const pdfBlob = await pdf(<MomPdfDocument data={pdfData} />).toBlob();
 
         const currentUser = auth.currentUser;
         const meta = {
@@ -640,44 +625,42 @@ export default function MomGeneratorPro() {
 
   // TXT download function removed; MOM is now persisted as PDF only
 
-  // PDF export (html2pdf.js via CDN) - REPLACED with local jsPDF + html2canvas
+  // PDF export using react-pdf
   const handleExportPDF = async () => {
     if (!isGenerated) return toast.error("Generate MOM first");
-    const element = momRef.current;
-    if (!element) return toast.error("Document content not found");
 
     const toastId = toast.loading("Generating PDF...");
 
     try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        logging: false,
-        useCORS: false,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-      });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      // Prepare data for PDF
+      const pdfData = {
+        momNo: currentMomNo,
+        projectName: selectedProject?.name || "Project",
+        meetingDate,
+        meetingStartTime,
+        meetingEndTime,
+        meetingVenue,
+        attendees,
+        externalAttendees,
+        momPreparedBy,
+        discussions,
+        actionItems,
+        comments: [],
+      };
 
-      let heightLeft = imgHeight;
-      let position = 0;
+      // Generate PDF blob
+      const pdfBlob = await pdf(<MomPdfDocument data={pdfData} />).toBlob();
 
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
+      // Create download link
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `MOM_${selectedProject?.name || "Project"}_${meetingDate}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-
-      const filename = `MOM_${selectedProject?.name || "Project"}_${meetingDate}.pdf`;
-      pdf.save(filename);
       toast.success("PDF Exported!", { id: toastId });
     } catch (error) {
       console.error("PDF Export Error:", error);
