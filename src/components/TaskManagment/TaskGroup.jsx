@@ -90,7 +90,7 @@ const TaskGroup = ({
                             {tasks.length}
                         </span>
                         {!hideHeaderActions && (
-                            <div className="relative flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" ref={menuRef} onClick={(e) => e.stopPropagation()}>
+                            <div className="relative flex items-center gap-1 transition-opacity" ref={menuRef} onClick={(e) => e.stopPropagation()}>
                                 <button
                                     type="button"
                                     title="More"
@@ -126,30 +126,34 @@ const TaskGroup = ({
                                         </div>
 
                                         {/* Edit statuses */}
-                                        <button
-                                            type="button"
-                                            className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 [.dark_&]:text-gray-200 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
-                                            onClick={() => {
-                                                setShowMenu(false);
-                                                onHeaderMenu?.({ action: "edit-statuses", title, tasks });
-                                            }}
-                                        >
-                                            <FaPen className="h-3 w-3 text-indigo-500" />
-                                            <span>Edit status</span>
-                                        </button>
+                                        {/* Edit statuses and Change color - Hidden for standard statuses */}
+                                        {!["To-Do", "In Progress", "Done"].includes(title) && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 [.dark_&]:text-gray-200 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
+                                                    onClick={() => {
+                                                        setShowMenu(false);
+                                                        onHeaderMenu?.({ action: "edit-statuses", title, tasks });
+                                                    }}
+                                                >
+                                                    <FaPen className="h-3 w-3 text-indigo-500" />
+                                                    <span>Edit status</span>
+                                                </button>
 
-                                        {/* Change color */}
-                                        <button
-                                            type="button"
-                                            className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 [.dark_&]:text-gray-200 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
-                                            onClick={() => {
-                                                setShowMenu(false);
-                                                onHeaderMenu?.({ action: "change-color", title, tasks });
-                                            }}
-                                        >
-                                            <FaPalette className="h-3 w-3 text-purple-500" />
-                                            <span>Change color</span>
-                                        </button>
+                                                <button
+                                                    type="button"
+                                                    className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-gray-800 [.dark_&]:text-gray-200 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
+                                                    onClick={() => {
+                                                        setShowMenu(false);
+                                                        onHeaderMenu?.({ action: "change-color", title, tasks });
+                                                    }}
+                                                >
+                                                    <FaPalette className="h-3 w-3 text-purple-500" />
+                                                    <span>Change color</span>
+                                                </button>
+                                            </>
+                                        )}
 
                                         {/* Pin status */}
                                         <button

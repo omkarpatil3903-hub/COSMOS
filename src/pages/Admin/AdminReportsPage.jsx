@@ -25,6 +25,7 @@ import Button from "../../components/Button";
 import SkeletonRow from "../../components/SkeletonRow";
 import { db } from "../../firebase";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 import {
   getPriorityBadge,
@@ -88,6 +89,8 @@ const normalizeStatus = (s) => {
 };
 
 export default function ReportsPage() {
+  // ---------------------------------------------------
+  const { buttonClass } = useThemeStyles();
   // ---------------------------------------------------
   // FILTER STATES
   // ---------------------------------------------------
@@ -650,7 +653,7 @@ export default function ReportsPage() {
       <PageHeader
         title="Analytics & Reports"
         actions={
-          <Button variant="secondary" onClick={exportReport}>
+          <Button variant="custom" className={buttonClass} onClick={exportReport}>
             <FaDownload /> Export Excel
           </Button>
         }
@@ -891,8 +894,8 @@ export default function ReportsPage() {
                 </div>
 
                 <Button
-                  variant="secondary"
-                  className="flex items-center gap-2 text-sm"
+                  variant="custom"
+                  className={`${buttonClass} flex items-center gap-2 text-sm`}
                   onClick={() => {
                     setSelectedProject("");
                     setSelectedEmployee("");
@@ -1217,7 +1220,7 @@ export default function ReportsPage() {
             title="Resource Performance"
             icon={<FaUsers />}
             actions={
-              <Button variant="secondary" onClick={exportResourceReport}>
+              <Button variant="custom" className={buttonClass} onClick={exportResourceReport}>
                 <FaDownload /> Export Excel
               </Button>
             }

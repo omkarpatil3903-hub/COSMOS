@@ -44,6 +44,7 @@ import Button from "../../components/Button";
 import SkeletonRow from "../../components/SkeletonRow";
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 import SevenStageProjectKanban from "../../components/SevenStageProjectKanban";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 // Removed placeholder data; now loading projects from Firestore
 
@@ -60,6 +61,7 @@ const tableHeaders = [
 // --- End Placeholder Data ---
 
 function ManageProjects({ onlyMyManaged = false }) {
+  const { buttonClass, iconColor } = useThemeStyles();
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [clients, setClients] = useState([]);
@@ -583,13 +585,13 @@ function ManageProjects({ onlyMyManaged = false }) {
     const getStatusColor = (status) => {
       switch (status) {
         case "Completed":
-          return "border-green-200 bg-green-50";
+          return "border-green-200 [.dark_&]:border-green-500/20 bg-green-50 [.dark_&]:bg-teal-900/40";
         case "In Progress":
-          return "border-blue-200 bg-blue-50";
+          return "border-blue-200 [.dark_&]:border-blue-500/20 bg-blue-50 [.dark_&]:bg-blue-900/30";
         case "Not Started":
-          return "border-yellow-200 bg-yellow-50";
+          return "border-yellow-200 [.dark_&]:border-yellow-500/20 bg-yellow-50 [.dark_&]:bg-amber-900/30";
         default:
-          return "border-gray-200 bg-gray-50";
+          return "border-gray-200 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-white/5";
       }
     };
 
@@ -610,35 +612,35 @@ function ManageProjects({ onlyMyManaged = false }) {
               status
             )} p-4 flex flex-col`}
           >
-            <h3 className="font-semibold text-content-primary mb-4 flex items-center justify-between flex-shrink-0">
+            <h3 className="font-semibold text-gray-800 [.dark_&]:text-white mb-4 flex items-center justify-between flex-shrink-0">
               {status}
-              <span className="text-sm bg-surface px-2 py-1 rounded-full">
+              <span className="text-sm bg-white [.dark_&]:bg-white/10 [.dark_&]:text-white px-2 py-1 rounded-full">
                 {projects.length}
               </span>
             </h3>
             <div
               className={`space-y-3 ${projects.length > 4
-                ? "max-h-[750px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+                ? "max-h-[750px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 [.dark_&]:scrollbar-thumb-white/20 [.dark_&]:scrollbar-track-white/5"
                 : ""
                 }`}
             >
               {projects.map((project) => (
                 <div
                   key={project.id}
-                  className="bg-surface rounded-lg p-4 shadow-sm border border-subtle hover:shadow-md transition-shadow flex-shrink-0"
+                  className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg p-4 shadow-sm border border-gray-200 [.dark_&]:border-white/10 hover:shadow-md transition-shadow flex-shrink-0"
                 >
-                  <h4 className="font-medium text-content-primary mb-2">
+                  <h4 className="font-medium text-gray-900 [.dark_&]:text-white mb-2">
                     {project.projectName}
                   </h4>
-                  <p className="text-sm text-content-secondary mb-2">
+                  <p className="text-sm text-gray-600 [.dark_&]:text-gray-400 mb-2">
                     Client: {project.clientName}
                   </p>
                   <div className="mb-3">
-                    <div className="flex items-center justify-between text-xs text-content-secondary mb-1">
+                    <div className="flex items-center justify-between text-xs text-gray-600 [.dark_&]:text-gray-400 mb-1">
                       <span>Progress</span>
                       <span className="font-medium">{project.progress}%</span>
                     </div>
-                    <div className="w-full bg-surface-subtle rounded-full h-3">
+                    <div className="w-full bg-gray-200 [.dark_&]:bg-white/10 rounded-full h-3">
                       <div
                         className={`h-3 rounded-full transition-all duration-300 ${getProgressColor(
                           project.progress
@@ -647,10 +649,10 @@ function ManageProjects({ onlyMyManaged = false }) {
                       ></div>
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500 mb-3">
+                  <div className="text-xs text-gray-500 [.dark_&]:text-gray-400 mb-3">
                     <div>Start: {formatDate(project.startDate)}</div>
                     <div>End: {formatDate(project.endDate)}</div>
-                    <div className="mt-1 text-gray-600 text-xs">
+                    <div className="mt-1 text-gray-600 [.dark_&]:text-gray-400 text-xs">
                       <strong>Obj:</strong>{" "}
                       {project.okrs?.[0]?.objective?.substring(0, 30) ||
                         "No objective"}
@@ -660,21 +662,21 @@ function ManageProjects({ onlyMyManaged = false }) {
                   <div className="flex justify-end space-x-2">
                     <button
                       onClick={() => handleView(project.id)}
-                      className="p-1 rounded text-indigo-600 hover:bg-indigo-100"
+                      className="p-1 rounded text-indigo-600 hover:bg-indigo-100 [.dark_&]:text-indigo-400 [.dark_&]:hover:bg-indigo-500/20"
                       title="View Details"
                     >
                       <FaEye className="h-3 w-3" />
                     </button>
                     <button
                       onClick={() => handleEdit(project.id)}
-                      className="p-1 rounded text-yellow-600 hover:bg-yellow-100"
+                      className="p-1 rounded text-yellow-600 hover:bg-yellow-100 [.dark_&]:text-yellow-400 [.dark_&]:hover:bg-yellow-500/20"
                       title="Edit Project"
                     >
                       <FaEdit className="h-3 w-3" />
                     </button>
                     <button
                       onClick={() => handleDeleteClick(project.id)}
-                      className="p-1 rounded text-red-600 hover:bg-red-100"
+                      className="p-1 rounded text-red-600 hover:bg-red-100 [.dark_&]:text-red-400 [.dark_&]:hover:bg-red-500/20"
                       title="Delete Project"
                     >
                       <FaTrash className="h-3 w-3" />
@@ -683,7 +685,7 @@ function ManageProjects({ onlyMyManaged = false }) {
                 </div>
               ))}
               {projects.length === 0 && (
-                <div className="text-center text-gray-500 py-8">
+                <div className="text-center text-gray-500 [.dark_&]:text-gray-400 py-8">
                   No projects in {status.toLowerCase()}
                 </div>
               )}
@@ -755,18 +757,18 @@ function ManageProjects({ onlyMyManaged = false }) {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-white [.dark_&]:bg-slate-800/60 [.dark_&]:backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-blue-500/30 border-l-4 border-l-blue-500 [.dark_&]:border-l-blue-400 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-blue-600">
+                    <p className="text-sm font-medium text-blue-600 [.dark_&]:text-blue-400">
                       Total Projects
                     </p>
-                    <p className="text-3xl font-bold text-content-primary mt-1">
+                    <p className="text-3xl font-bold text-blue-900 [.dark_&]:text-blue-100 mt-1">
                       {projects.length}
                     </p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-blue-200/50 flex items-center justify-center">
-                    <FaProjectDiagram className="text-blue-600 text-xl" />
+                  <div className="w-12 h-12 rounded-full bg-blue-100 [.dark_&]:bg-blue-500/20 flex items-center justify-center">
+                    <FaProjectDiagram className="text-blue-600 [.dark_&]:text-blue-400 text-xl" />
                   </div>
                 </div>
               </div>
@@ -781,18 +783,18 @@ function ManageProjects({ onlyMyManaged = false }) {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-white [.dark_&]:bg-slate-800/60 [.dark_&]:backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-green-500/30 border-l-4 border-l-green-500 [.dark_&]:border-l-green-400 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-green-600">
+                    <p className="text-sm font-medium text-green-600 [.dark_&]:text-green-400">
                       Completed
                     </p>
-                    <p className="text-3xl font-bold text-content-primary mt-1">
+                    <p className="text-3xl font-bold text-green-900 [.dark_&]:text-green-100 mt-1">
                       {completedProjectsCount}
                     </p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-green-200/50 flex items-center justify-center">
-                    <FaCheckCircle className="text-green-600 text-xl" />
+                  <div className="w-12 h-12 rounded-full bg-green-100 [.dark_&]:bg-green-500/20 flex items-center justify-center">
+                    <FaCheckCircle className="text-green-600 [.dark_&]:text-green-400 text-xl" />
                   </div>
                 </div>
               </div>
@@ -807,13 +809,13 @@ function ManageProjects({ onlyMyManaged = false }) {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-yellow-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-white [.dark_&]:bg-slate-800/60 [.dark_&]:backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-yellow-500/30 border-l-4 border-l-yellow-500 [.dark_&]:border-l-yellow-400 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-yellow-600">
+                    <p className="text-sm font-medium text-yellow-600 [.dark_&]:text-yellow-400">
                       In Progress
                     </p>
-                    <p className="text-3xl font-bold text-content-primary mt-1">
+                    <p className="text-3xl font-bold text-yellow-900 [.dark_&]:text-yellow-100 mt-1">
                       {
                         projects.filter(
                           (p) => p.progress > 0 && p.progress < 100
@@ -821,8 +823,8 @@ function ManageProjects({ onlyMyManaged = false }) {
                       }
                     </p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-yellow-200/50 flex items-center justify-center">
-                    <FaClock className="text-yellow-600 text-xl" />
+                  <div className="w-12 h-12 rounded-full bg-yellow-100 [.dark_&]:bg-yellow-500/20 flex items-center justify-center">
+                    <FaClock className="text-yellow-600 [.dark_&]:text-yellow-400 text-xl" />
                   </div>
                 </div>
               </div>
@@ -837,18 +839,18 @@ function ManageProjects({ onlyMyManaged = false }) {
               }}
               className="cursor-pointer"
             >
-              <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-red-500 p-4 hover:shadow-md transition-shadow">
+              <div className="bg-white [.dark_&]:bg-slate-800/60 [.dark_&]:backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-red-500/30 border-l-4 border-l-red-500 [.dark_&]:border-l-red-400 p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-red-600">
+                    <p className="text-sm font-medium text-red-600 [.dark_&]:text-red-400">
                       Not Started
                     </p>
-                    <p className="text-3xl font-bold text-content-primary mt-1">
+                    <p className="text-3xl font-bold text-red-900 [.dark_&]:text-red-100 mt-1">
                       {projects.filter((p) => p.progress === 0).length}
                     </p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-red-200/50 flex items-center justify-center">
-                    <FaFlag className="text-red-600 text-xl" />
+                  <div className="w-12 h-12 rounded-full bg-red-100 [.dark_&]:bg-red-500/20 flex items-center justify-center">
+                    <FaFlag className="text-red-600 [.dark_&]:text-red-400 text-xl" />
                   </div>
                 </div>
               </div>
@@ -887,7 +889,7 @@ function ManageProjects({ onlyMyManaged = false }) {
                   <button
                     onClick={() => setViewMode("table")}
                     className={`p-2 rounded transition-colors ${viewMode === "table"
-                      ? "bg-surface text-indigo-600 shadow"
+                      ? `bg-surface ${iconColor} shadow`
                       : "text-content-secondary hover:text-content-primary"
                       }`}
                     title="List View"
@@ -897,7 +899,7 @@ function ManageProjects({ onlyMyManaged = false }) {
                   <button
                     onClick={() => setViewMode("kanban")}
                     className={`p-2 rounded transition-colors ${viewMode === "kanban"
-                      ? "bg-surface text-indigo-600 shadow"
+                      ? `bg-surface ${iconColor} shadow`
                       : "text-content-secondary hover:text-content-primary"
                       }`}
                     title="Kanban View"
@@ -905,7 +907,7 @@ function ManageProjects({ onlyMyManaged = false }) {
                     <FaTh className="w-4 h-4" />
                   </button>
                 </div>
-                <Button onClick={() => setShowAddForm(true)}>
+                <Button onClick={() => setShowAddForm(true)} variant="custom" className={buttonClass}>
                   <FaPlus className="h-4 w-4" aria-hidden="true" />
                   Add Project
                 </Button>
@@ -913,7 +915,7 @@ function ManageProjects({ onlyMyManaged = false }) {
             }
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-1">
-              <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+              <label className="flex flex-col gap-2 text-sm font-medium text-gray-700 [.dark_&]:text-white">
                 Search by project name, client or status
                 <div className="relative">
                   <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-content-tertiary">
@@ -931,7 +933,7 @@ function ManageProjects({ onlyMyManaged = false }) {
               </label>
             </div>
             <div className="mt-4 flex gap-3 sm:hidden">
-              <Button onClick={() => setShowAddForm(true)} className="flex-1">
+              <Button onClick={() => setShowAddForm(true)} variant="custom" className={`flex-1 ${buttonClass}`}>
                 <FaPlus className="h-4 w-4" aria-hidden="true" />
                 Add
               </Button>
@@ -993,7 +995,7 @@ function ManageProjects({ onlyMyManaged = false }) {
                   <caption className="sr-only">
                     Filtered project records with search and pagination controls
                   </caption>
-                  <thead className="bg-surface-subtle">
+                  <thead className="bg-surface-subtle [.dark_&]:bg-slate-800/60">
                     <tr>
                       {tableHeaders.map((header) => {
                         const isActive = sortConfig.key === header.key;
@@ -1010,8 +1012,8 @@ function ManageProjects({ onlyMyManaged = false }) {
                             key={header.key}
                             scope="col"
                             aria-sort={ariaSort}
-                            className={`group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-content-secondary border-b border-subtle ${header.key === "actions"
-                              ? "sticky right-0 z-10 bg-surface-subtle"
+                            className={`group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 [.dark_&]:text-gray-300 border-b border-subtle ${header.key === "actions"
+                              ? "sticky right-0 z-10 bg-surface-subtle [.dark_&]:bg-slate-800/60"
                               : ""
                               }`}
                           >
@@ -1038,21 +1040,21 @@ function ManageProjects({ onlyMyManaged = false }) {
                     {currentRows.map((project, index) => (
                       <tr
                         key={project.id}
-                        className="bg-surface cursor-pointer hover:bg-surface-subtle transition-colors"
+                        className="bg-surface cursor-pointer hover:bg-surface-subtle [.dark_&]:hover:bg-slate-700/30 transition-colors"
                         onClick={() => handleView(project.id)}
                       >
-                        <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-content-tertiary">
+                        <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-700 [.dark_&]:text-white">
                           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-surface-subtle">
                             {indexOfFirstRow + index + 1}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm font-semibold text-content-primary">
+                        <td className="px-6 py-4 text-sm font-semibold text-gray-900 [.dark_&]:text-white">
                           <span>{project.projectName}</span>
                         </td>
-                        <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                        <td className="px-6 py-4 text-sm font-semibold text-gray-900 [.dark_&]:text-white">
                           <span>{project.clientName}</span>
                         </td>
-                        <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                        <td className="px-6 py-4 text-sm font-semibold text-gray-900 [.dark_&]:text-white">
                           <span
                             title={project.projectManagerName || "-"}
                             className="block max-w-[160px] truncate"
@@ -1062,7 +1064,7 @@ function ManageProjects({ onlyMyManaged = false }) {
                         </td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm">
                           <div className="flex items-center">
-                            <div className="flex-1 bg-surface-subtle rounded-full h-3 mr-3 min-w-[120px]">
+                            <div className="flex-1 bg-gray-200 [.dark_&]:bg-white/10 rounded-full h-3 mr-3 min-w-[120px]">
                               <div
                                 className={`h-3 rounded-full transition-all duration-300 ${project.progress === 0
                                   ? "bg-gray-400"
@@ -1082,26 +1084,26 @@ function ManageProjects({ onlyMyManaged = false }) {
                             </span>
                           </div>
                         </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-content-secondary">
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 [.dark_&]:text-gray-300">
                           <div className="flex items-center">
                             <div className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-2"></div>
                             {formatDate(project.startDate)}
                           </div>
                         </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-content-secondary">
-                          <div className="flex items-center bg-surface-subtle rounded-lg px-3 py-1">
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 [.dark_&]:text-gray-300">
+                          <div className="flex items-center bg-surface-subtle [.dark_&]:bg-slate-700/50 rounded-lg px-3 py-1">
                             <div className="w-1.5 h-1.5 rounded-full bg-red-400 mr-2"></div>
                             {formatDate(project.endDate)}
                           </div>
                         </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm sticky right-0 z-10 bg-surface">
+                        <td className="whitespace-nowrap px-6 py-4 text-sm sticky right-0 z-10 bg-surface [.dark_&]:bg-slate-900">
                           <div className="flex items-center space-x-3">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleEdit(project.id);
                               }}
-                              className="p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md"
+                              className="p-2 rounded-full text-yellow-600 [.dark_&]:text-yellow-400 hover:bg-yellow-100 [.dark_&]:hover:bg-yellow-500/20 shadow-md"
                               title="Edit Project"
                             >
                               <FaEdit className="h-4 w-4" />
@@ -1111,7 +1113,7 @@ function ManageProjects({ onlyMyManaged = false }) {
                                 e.stopPropagation();
                                 handleDeleteClick(project.id);
                               }}
-                              className="p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md"
+                              className="p-2 rounded-full text-red-600 [.dark_&]:text-red-400 hover:bg-red-100 [.dark_&]:hover:bg-red-500/20 shadow-md"
                               title="Delete Project"
                             >
                               <FaTrash className="h-4 w-4" />
@@ -1130,10 +1132,10 @@ function ManageProjects({ onlyMyManaged = false }) {
                             <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gray-100 to-gray-200 flex items-center justify-center mb-4 animate-pulse">
                               <FaSearch className="h-6 w-6 text-gray-400" />
                             </div>
-                            <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                            <h3 className="text-lg font-semibold text-gray-600 [.dark_&]:text-gray-300 mb-2">
                               No Projects Found
                             </h3>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-500 [.dark_&]:text-gray-400">
                               No projects match the selected filters. Adjust
                               your search or try resetting filters.
                             </p>

@@ -342,19 +342,26 @@ export default function AdminKnowledgePage() {
       )}
 
       {showDeleteModal && deleteTarget && (
-        <DeleteConfirmationModal
-          itemType="knowledge"
-          itemTitle={deleteTarget.title}
-          title="Delete Knowledge"
-          description="Are you sure you want to delete this knowledge entry? This will also delete all associated documents."
-          confirmLabel="Delete Knowledge"
-          isLoading={false}
-          onClose={() => {
-            setShowDeleteModal(false);
-            setDeleteTarget(null);
-          }}
-          onConfirm={handleConfirmDelete}
-        />
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowDeleteModal(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <DeleteConfirmationModal
+              itemType="knowledge"
+              itemTitle={deleteTarget.title}
+              title="Delete Knowledge"
+              description="Are you sure you want to delete this knowledge entry? This will also delete all associated documents."
+              confirmLabel="Delete Knowledge"
+              isLoading={false}
+              onClose={() => {
+                setShowDeleteModal(false);
+                setDeleteTarget(null);
+              }}
+              onConfirm={handleConfirmDelete}
+            />
+          </div>
+        </div>
       )}
     </>
   );

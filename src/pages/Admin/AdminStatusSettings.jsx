@@ -16,8 +16,11 @@ import {
 } from "firebase/firestore";
 import ColorSwatchPicker from "../../components/ColorSwatchPicker";
 import { FaTimes, FaEdit, FaTrash, FaPlus, FaSearch, FaSave } from "react-icons/fa";
+import VoiceInput from "../../components/Common/VoiceInput";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 export default function StatusSettings() {
+  const { buttonClass } = useThemeStyles();
   const location = useLocation();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
@@ -231,21 +234,22 @@ export default function StatusSettings() {
       <Card
         title="Search & Actions"
         tone="white"
+        className="[.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10"
         actions={
           <div className="flex items-center gap-3">
-            <span className="text-sm text-content-secondary">
+            <span className="text-sm text-content-secondary [.dark_&]:text-gray-400">
               Showing {filtered.length} records
             </span>
-            <Button variant="primary" onClick={openAdd} className="shrink-0">
+            <Button variant="custom" className={`shrink-0 ${buttonClass}`} onClick={openAdd}>
               <FaPlus /> Add Status
             </Button>
           </div>
         }
       >
-        <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
+        <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary [.dark_&]:text-gray-400">
           Search by status name
           <div className="relative">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary [.dark_&]:text-gray-500">
               <FaSearch />
             </span>
             <input
@@ -253,23 +257,23 @@ export default function StatusSettings() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by status name"
-              className="w-full rounded-lg border border-subtle bg-surface py-2 pl-9 pr-3 text-sm"
+              className="w-full rounded-lg border border-subtle bg-surface py-2 pl-9 pr-3 text-sm [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white [.dark_&]:placeholder-gray-500"
             />
           </div>
         </label>
       </Card>
 
       {/* Status table (single main section like Project Level) */}
-      <Card title="Status" tone="muted">
+      <Card title="Status" tone="muted" className="[.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-2">
-          <div className="text-sm text-content-secondary">
+          <div className="text-sm text-content-secondary [.dark_&]:text-gray-400">
             Page {Math.min(page, totalPages)} of {totalPages}
           </div>
           <div className="flex items-center gap-3">
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
-              className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+              className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100 [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white"
             >
               <option value={5}>5</option>
               <option value={10}>10</option>
@@ -297,27 +301,27 @@ export default function StatusSettings() {
           </div>
         </div>
 
-        <div className="w-full overflow-x-auto rounded-lg border border-subtle shadow-sm">
-          <table className="min-w-full divide-y divide-subtle bg-surface">
-            <thead className="bg-surface-subtle">
+        <div className="w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm [.dark_&]:border-white/10">
+          <table className="min-w-full divide-y divide-gray-200 bg-white [.dark_&]:bg-[#181B2A] [.dark_&]:divide-white/5">
+            <thead className="bg-gradient-to-r from-gray-50 to-gray-100 [.dark_&]:from-[#1F2234] [.dark_&]:to-[#1F2234]">
               <tr>
-                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-content-secondary border-b border-subtle">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 [.dark_&]:text-gray-400 [.dark_&]:border-white/10">
                   Sr. No.
                 </th>
-                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-content-secondary border-b border-subtle">
+                <th className="px-6 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 [.dark_&]:text-gray-400 [.dark_&]:border-white/10">
                   Status Name
                 </th>
-                <th className="px-6 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-content-secondary border-b border-subtle sticky right-0 z-10 bg-surface-subtle">
+                <th className="px-6 py-2.5 text-center text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200 sticky right-0 z-10 bg-gray-50 [.dark_&]:bg-[#1F2234] [.dark_&]:text-gray-400 [.dark_&]:border-white/10">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-subtle bg-surface">
+            <tbody className="divide-y divide-gray-100 bg-white [.dark_&]:bg-[#181B2A] [.dark_&]:divide-white/5">
               {pageItems.length === 0 ? (
                 <tr>
                   <td
                     colSpan={3}
-                    className="px-6 py-8 text-center text-sm text-content-tertiary"
+                    className="px-6 py-8 text-center text-sm text-content-tertiary [.dark_&]:text-gray-500"
                   >
                     No statuses found.
                   </td>
@@ -336,10 +340,10 @@ export default function StatusSettings() {
                     <tr
                       key={it.id}
                       onClick={() => setPreview(it)}
-                      className="cursor-pointer group odd:bg-surface even:bg-surface-subtle hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-colors duration-150"
+                      className="cursor-pointer group odd:bg-white even:bg-gray-50 hover:bg-indigo-50/50 transition-colors duration-150 [.dark_&]:odd:bg-[#181B2A] [.dark_&]:even:bg-[#1F2234]"
                     >
-                      <td className="whitespace-nowrap px-6 py-2.5 text-sm font-medium text-content-tertiary">
-                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-surface-subtle transition-colors">
+                      <td className="whitespace-nowrap px-6 py-2.5 text-sm font-medium text-gray-500 [.dark_&]:text-gray-400">
+                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 transition-colors [.dark_&]:bg-white/10 [.dark_&]:text-white">
                           {(page - 1) * pageSize + idx + 1}
                         </div>
                       </td>
@@ -352,18 +356,13 @@ export default function StatusSettings() {
                           >
                             {displayName}
                           </span>
-                          {isCore && (
-                            <span className="ml-2 text-[10px] uppercase tracking-wide text-content-tertiary">
-                              Default
-                            </span>
-                          )}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-2.5 text-sm sticky right-0 z-10 bg-transparent transition-colors">
+                      <td className="whitespace-nowrap px-6 py-2.5 text-sm sticky right-0 z-10 group-odd:bg-white group-even:bg-gray-50 [.dark_&]:group-odd:bg-[#181B2A] [.dark_&]:group-even:bg-[#1F2234] transition-colors">
                         <div className="flex items-center justify-center space-x-3">
                           {isCore ? (
-                            <span className="text-[11px] text-content-tertiary">
-                              Fixed status (cannot edit/delete)
+                            <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 [.dark_&]:bg-white/10 [.dark_&]:text-gray-300">
+                              DEFAULT
                             </span>
                           ) : (
                             <>
@@ -372,7 +371,7 @@ export default function StatusSettings() {
                                   e.stopPropagation();
                                   openEdit(it);
                                 }}
-                                className="flex items-center justify-center p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md transition-colors"
+                                className="flex items-center justify-center p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md transition-colors [.dark_&]:hover:bg-yellow-400/20"
                                 title="Edit"
                               >
                                 <FaEdit className="h-4 w-4" />
@@ -382,7 +381,7 @@ export default function StatusSettings() {
                                   e.stopPropagation();
                                   confirmDelete(it);
                                 }}
-                                className="flex items-center justify-center p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md transition-colors"
+                                className="flex items-center justify-center p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md transition-colors [.dark_&]:hover:bg-red-400/20"
                                 title="Delete"
                               >
                                 <FaTrash className="h-4 w-4" />
@@ -401,127 +400,128 @@ export default function StatusSettings() {
       </Card>
 
       {/* Add / Edit drawer */}
-      {open && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-md rounded-lg bg-surface p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-content-primary">
-                {editing ? "Edit Status" : "Add Status"}
-              </h2>
-              <button
-                className="rounded-full p-1 text-content-tertiary hover:bg-surface-subtle hover:text-content-primary"
-                onClick={close}
-              >
-                <FaTimes />
-              </button>
-            </div>
+      {
+        open && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl [.dark_&]:bg-[#181B2A] [.dark_&]:border [.dark_&]:border-white/10">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold [.dark_&]:text-white">
+                  {editing ? "Edit Status" : "Add Status"}
+                </h2>
+                <button
+                  className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  onClick={close}
+                >
+                  <FaTimes />
+                </button>
+              </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium">
-                  Status Name
-                </label>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => colorInputRef.current?.click()}
-                    className="h-7 w-7 rounded-full border border-subtle shadow-sm"
-                    style={{ backgroundColor: color || "#4F46E5" }}
-                    title="Pick color"
-                    aria-label="Pick color"
-                  />
-                  <input
-                    ref={colorInputRef}
-                    type="color"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="sr-only"
-                  />
-                  <input
-                    type="text"
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                    required
-                    className="flex-1 rounded-lg border border-subtle px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    placeholder="e.g. On Hold, Awaiting Client, In QA"
-                  />
-                </div>
-                <div className="mt-3">
-                  <div className="text-xs font-medium text-content-tertiary mb-1">Color</div>
-                  <ColorSwatchPicker
-                    value={color}
-                    onSelect={(hex) => setColor(hex)}
-                    onManualPick={() => setShowAdvancedColor(true)}
-                  />
-                  {showAdvancedColor && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={color}
-                        onChange={(e) => setColor(e.target.value)}
-                        className="h-8 w-10 p-0 border border-subtle rounded"
-                        aria-label="Pick custom color"
-                      />
-                      <input
-                        type="text"
-                        value={color}
-                        onChange={(e) => setColor(e.target.value)}
-                        className="flex-1 rounded border border-subtle bg-surface px-2 py-1 text-sm text-content-primary"
-                        placeholder="#4F46E5"
-                      />
-                    </div>
-                  )}
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium [.dark_&]:text-gray-300">
+                    Status Name
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => colorInputRef.current?.click()}
+                      className="h-7 w-7 rounded-full border border-gray-200 shadow-sm [.dark_&]:border-white/10"
+                      style={{ backgroundColor: color || "#4F46E5" }}
+                      title="Pick color"
+                      aria-label="Pick color"
+                    />
+                    <input
+                      ref={colorInputRef}
+                      type="color"
+                      value={color}
+                      onChange={(e) => setColor(e.target.value)}
+                      className="sr-only"
+                    />
+                    <VoiceInput
+                      value={value}
+                      onChange={(e) => setValue(e.target.value)}
+                      required
+                      className="flex-1 rounded-lg border border-subtle px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white"
+                      placeholder="e.g. On Hold, Awaiting Client, In QA"
+                    />
+                  </div>
+                  <div className="mt-3">
+                    <div className="text-xs font-medium text-gray-500 mb-1 [.dark_&]:text-gray-400">Color</div>
+                    <ColorSwatchPicker
+                      value={color}
+                      onSelect={(hex) => setColor(hex)}
+                      onManualPick={() => setShowAdvancedColor(true)}
+                    />
+                    {showAdvancedColor && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={color}
+                          onChange={(e) => setColor(e.target.value)}
+                          className="h-8 w-10 p-0 border border-subtle rounded"
+                          aria-label="Pick custom color"
+                        />
+                        <input
+                          type="text"
+                          value={color}
+                          onChange={(e) => setColor(e.target.value)}
+                          className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm [.dark_&]:bg-[#1F2234] [.dark_&]:border-white/10 [.dark_&]:text-white"
+                          placeholder="#4F46E5"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="secondary" onClick={close} disabled={saving}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={save}
-                disabled={saving || !value.trim() || !color}
-                className="flex items-center gap-2"
-              >
-                {saving ? <FaPlus className="animate-spin" /> : <FaSave />}
-                {saving ? "Saving..." : "Save"}
-              </Button>
+              <div className="mt-6 flex justify-end gap-3">
+                <Button variant="secondary" onClick={close} disabled={saving} className="[.dark_&]:text-gray-300 [.dark_&]:hover:bg-white/10">
+                  Cancel
+                </Button>
+                <Button
+                  variant="custom"
+                  className={`flex items-center gap-2 ${buttonClass}`}
+                  onClick={save}
+                  disabled={saving || !value.trim() || !color}
+                >
+                  {saving ? <FaPlus className="animate-spin" /> : <FaSave />}
+                  {saving ? (editing ? "Updating..." : "Saving...") : (editing ? "Update" : "Save")}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Delete confirmation modal */}
-      {deleteModal.open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={() => setDeleteModal({ open: false, item: null, loading: false })}
-        >
-          <div onClick={(e) => e.stopPropagation()}>
-            <DeleteConfirmationModal
-              title="Delete Status"
-              description={`Are you sure you want to delete status "${deleteModal.item?.name}"?`}
-              permanentMessage="This action cannot be undone."
-              cancelLabel="Cancel"
-              confirmLabel="Delete"
-              onClose={() => setDeleteModal({ open: false, item: null, loading: false })}
-              onConfirm={handleDelete}
-              isLoading={deleteModal.loading}
-            />
+      {
+        deleteModal.open && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setDeleteModal({ open: false, item: null, loading: false })}
+          >
+            <div onClick={(e) => e.stopPropagation()}>
+              <DeleteConfirmationModal
+                title="Delete Status"
+                description={`Are you sure you want to delete status "${deleteModal.item?.name}"?`}
+                permanentMessage="This action cannot be undone."
+                cancelLabel="Cancel"
+                confirmLabel="Delete"
+                onClose={() => setDeleteModal({ open: false, item: null, loading: false })}
+                onConfirm={handleDelete}
+                isLoading={deleteModal.loading}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Preview simple modal */}
       {preview && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-sm rounded-lg bg-surface p-6 shadow-xl">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl [.dark_&]:bg-[#181B2A] [.dark_&]:border [.dark_&]:border-white/10">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-content-primary">Status Preview</h2>
+              <h2 className="text-lg font-semibold [.dark_&]:text-white">Status Preview</h2>
               <button
-                className="rounded-full p-1 text-content-tertiary hover:bg-surface-subtle hover:text-content-primary"
+                className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                 onClick={() => setPreview(null)}
               >
                 <FaTimes />

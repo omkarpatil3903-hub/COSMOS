@@ -46,6 +46,7 @@ import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 import AddResourceModal from "../../components/AddResourceModal";
 import EditResourceModal from "../../components/EditResourceModal";
 import ViewResourceModal from "../../components/ViewResourceModal";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 const tableHeaders = [
   { key: "srNo", label: "Sr. No.", sortable: false },
@@ -60,6 +61,7 @@ const tableHeaders = [
 ];
 
 function ManageResources() {
+  const { buttonClass } = useThemeStyles();
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -635,18 +637,18 @@ function ManageResources() {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-blue-500 p-4 hover:shadow-md transition-shadow">
+          <div className="bg-white [.dark_&]:bg-slate-800/60 [.dark_&]:backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-blue-500/30 border-l-4 border-l-blue-500 [.dark_&]:border-l-blue-400 p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-600">
+                <p className="text-sm font-medium text-blue-600 [.dark_&]:text-blue-400">
                   Total Resources
                 </p>
-                <p className="text-3xl font-bold text-content-primary mt-1">
+                <p className="text-3xl font-bold text-blue-900 [.dark_&]:text-blue-100 mt-1">
                   {resources.length}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-blue-200/50 flex items-center justify-center">
-                <FaPlus className="text-blue-600 text-xl" />
+              <div className="w-12 h-12 rounded-full bg-blue-100 [.dark_&]:bg-blue-500/20 flex items-center justify-center">
+                <FaPlus className="text-blue-600 [.dark_&]:text-blue-400 text-xl" />
               </div>
             </div>
           </div>
@@ -663,16 +665,16 @@ function ManageResources() {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-green-500 p-4 hover:shadow-md transition-shadow">
+          <div className="bg-white [.dark_&]:bg-slate-800/60 [.dark_&]:backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-green-500/30 border-l-4 border-l-green-500 [.dark_&]:border-l-green-400 p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-600">Active</p>
-                <p className="text-3xl font-bold text-content-primary mt-1">
+                <p className="text-sm font-medium text-green-600 [.dark_&]:text-green-400">Active</p>
+                <p className="text-3xl font-bold text-green-900 [.dark_&]:text-green-100 mt-1">
                   {resources.filter((r) => r.status === "Active").length}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-green-200/50 flex items-center justify-center">
-                <FaCheckCircle className="text-green-600 text-xl" />
+              <div className="w-12 h-12 rounded-full bg-green-100 [.dark_&]:bg-green-500/20 flex items-center justify-center">
+                <FaCheckCircle className="text-green-600 [.dark_&]:text-green-400 text-xl" />
               </div>
             </div>
           </div>
@@ -689,19 +691,19 @@ function ManageResources() {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-purple-500 p-4 hover:shadow-md transition-shadow">
+          <div className="bg-white [.dark_&]:bg-slate-800/60 [.dark_&]:backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-purple-500/30 border-l-4 border-l-purple-500 [.dark_&]:border-l-purple-400 p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-600">In-house</p>
-                <p className="text-3xl font-bold text-content-primary mt-1">
+                <p className="text-sm font-medium text-purple-600 [.dark_&]:text-purple-400">In-house</p>
+                <p className="text-3xl font-bold text-purple-900 [.dark_&]:text-purple-100 mt-1">
                   {
                     resources.filter((r) => r.resourceType === "In-house")
                       .length
                   }
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-purple-200/50 flex items-center justify-center">
-                <FaUsers className="text-purple-600 text-xl" />
+              <div className="w-12 h-12 rounded-full bg-purple-100 [.dark_&]:bg-purple-500/20 flex items-center justify-center">
+                <FaUsers className="text-purple-600 [.dark_&]:text-purple-400 text-xl" />
               </div>
             </div>
           </div>
@@ -718,21 +720,21 @@ function ManageResources() {
           }}
           className="cursor-pointer"
         >
-          <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-orange-500 p-4 hover:shadow-md transition-shadow">
+          <div className="bg-white [.dark_&]:bg-slate-800/60 [.dark_&]:backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-orange-500/30 border-l-4 border-l-orange-500 [.dark_&]:border-l-orange-400 p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-orange-600">
+                <p className="text-sm font-medium text-orange-600 [.dark_&]:text-orange-400">
                   Outsourced
                 </p>
-                <p className="text-3xl font-bold text-content-primary mt-1">
+                <p className="text-3xl font-bold text-orange-900 [.dark_&]:text-orange-100 mt-1">
                   {
                     resources.filter((r) => r.resourceType === "Outsourced")
                       .length
                   }
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-orange-200/50 flex items-center justify-center">
-                <FaUserTie className="text-orange-600 text-xl" />
+              <div className="w-12 h-12 rounded-full bg-orange-100 [.dark_&]:bg-orange-500/20 flex items-center justify-center">
+                <FaUserTie className="text-orange-600 [.dark_&]:text-orange-400 text-xl" />
               </div>
             </div>
           </div>
@@ -748,6 +750,7 @@ function ManageResources() {
                 Showing {filteredResources.length} records
               </span>
               <Button
+                variant="custom"
                 onClick={() => {
                   setFormData({
                     fullName: "",
@@ -767,7 +770,7 @@ function ManageResources() {
                   setCreateFieldErrors({});
                   setShowAddForm(true);
                 }}
-                className="flex items-center justify-center gap-2"
+                className={`flex items-center justify-center gap-2 ${buttonClass}`}
               >
                 <FaPlus className="h-4 w-4" />
                 Add Resource
@@ -780,7 +783,7 @@ function ManageResources() {
           <div className="flex flex-col lg:flex-row lg:items-end gap-4">
             {/* Search Input */}
             <div className="flex-1">
-              <label className="block text-sm font-medium text-content-secondary mb-2">
+              <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-white mb-2">
                 Search by name or email
               </label>
               <div className="relative">
@@ -861,7 +864,7 @@ function ManageResources() {
         <Card title="Resource List">
           {/* Pagination Controls */}
           <div className="flex items-center justify-between mb-4">
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 [.dark_&]:text-gray-400">
               Page {currentPage} of {totalPages}
             </div>
             <div className="flex items-center gap-4">
@@ -905,7 +908,7 @@ function ManageResources() {
               <caption className="sr-only">
                 Filtered resource records with search and pagination controls
               </caption>
-              <thead className="bg-surface-subtle">
+              <thead className="bg-surface-subtle [.dark_&]:bg-slate-800/60">
                 <tr>
                   {tableHeaders.map((header) => {
                     const isActive = sortConfig.key === header.key;
@@ -922,8 +925,8 @@ function ManageResources() {
                         key={header.key}
                         scope="col"
                         aria-sort={ariaSort}
-                        className={`group px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-content-secondary border-b border-subtle whitespace-nowrap align-middle ${header.key === "actions"
-                          ? "sticky right-0 z-10 bg-surface-subtle"
+                        className={`group px-3 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 [.dark_&]:text-gray-300 border-b border-subtle whitespace-nowrap align-middle ${header.key === "actions"
+                          ? "sticky right-0 z-10 bg-surface-subtle [.dark_&]:bg-slate-800/60"
                           : ""
                           }`}
                       >
@@ -950,10 +953,10 @@ function ManageResources() {
                 {currentRows.map((resource, index) => (
                   <tr
                     key={resource.id}
-                    className="bg-surface hover:bg-surface-subtle cursor-pointer transition-colors"
+                    className="bg-surface hover:bg-surface-subtle [.dark_&]:hover:bg-slate-700/30 cursor-pointer transition-colors"
                     onClick={() => handleView(resource)}
                   >
-                    <td className="whitespace-nowrap px-3 py-3 text-sm font-medium text-content-tertiary">
+                    <td className="whitespace-nowrap px-3 py-3 text-sm font-medium text-gray-700 [.dark_&]:text-white">
                       <div className="flex items-center justify-center w-7 h-7 rounded-full bg-surface-subtle text-xs">
                         {indexOfFirstRow + index + 1}
                       </div>
@@ -971,7 +974,7 @@ function ManageResources() {
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-3 text-sm font-semibold text-gray-900 max-w-xs">
+                    <td className="px-3 py-3 text-sm font-semibold text-gray-900 [.dark_&]:text-white max-w-xs">
                       <span
                         className="block truncate"
                         title={resource.fullName || ""}
@@ -979,7 +982,7 @@ function ManageResources() {
                         {resource.fullName}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-sm text-gray-600 max-w-xs">
+                    <td className="px-3 py-3 text-sm text-gray-600 [.dark_&]:text-gray-300 max-w-xs">
                       <div className="flex items-center max-w-xs">
                         <div className="w-2 h-2 rounded-full bg-green-400 mr-2 animate-pulse"></div>
                         <span
@@ -990,8 +993,8 @@ function ManageResources() {
                         </span>
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-600">
-                      <div className="flex items-center bg-gray-50 rounded-lg px-3 py-1">
+                    <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-600 [.dark_&]:text-gray-300">
+                      <div className="flex items-center bg-gray-50 [.dark_&]:bg-slate-700/50 rounded-lg px-3 py-1">
                         {/* <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mr-2"></div> */}
                         {resource.mobile}
                       </div>
@@ -1012,7 +1015,7 @@ function ManageResources() {
                         {resource.resourceType}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-sm text-gray-700 max-w-xs">
+                    <td className="px-3 py-3 text-sm text-gray-700 [.dark_&]:text-gray-300 max-w-xs">
                       <span
                         className="block truncate"
                         title={resource.resourceRole || "-"}
@@ -1036,14 +1039,14 @@ function ManageResources() {
                         {resource.status}
                       </span>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2 text-sm sticky right-0 z-10 bg-white">
+                    <td className="whitespace-nowrap px-3 py-2 text-sm sticky right-0 z-10 bg-white [.dark_&]:bg-slate-900">
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleEdit(resource);
                           }}
-                          className="p-2 rounded-full text-yellow-600 hover:bg-yellow-100 shadow-md"
+                          className="p-2 rounded-full text-yellow-600 [.dark_&]:text-yellow-400 hover:bg-yellow-100 [.dark_&]:hover:bg-yellow-500/20 shadow-md"
                           title="Edit Resource"
                         >
                           <FaEdit className="h-4 w-4" />
@@ -1053,7 +1056,7 @@ function ManageResources() {
                             e.stopPropagation();
                             handleDeleteClick(resource);
                           }}
-                          className="p-2 rounded-full text-red-600 hover:bg-red-100 shadow-md"
+                          className="p-2 rounded-full text-red-600 [.dark_&]:text-red-400 hover:bg-red-100 [.dark_&]:hover:bg-red-500/20 shadow-md"
                           title="Delete Resource"
                         >
                           <FaTrash className="h-4 w-4" />
@@ -1072,10 +1075,10 @@ function ManageResources() {
                         <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gray-100 to-gray-200 flex items-center justify-center mb-4 animate-pulse">
                           <FaSearch className="h-6 w-6 text-gray-400" />
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-600 [.dark_&]:text-gray-300 mb-2">
                           No Resources Found
                         </h3>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 [.dark_&]:text-gray-400">
                           No resources match the selected filters. Adjust your
                           search or try resetting filters.
                         </p>

@@ -19,6 +19,7 @@ import {
   FaTimes,
   FaCog,
   FaFileAlt,
+  FaUserTie,
 } from "react-icons/fa";
 import { useTheme } from "../../context/ThemeContext";
 import PanelSwitcher from "../PanelSwitcher";
@@ -38,6 +39,7 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
       if (to.includes('reports')) return 'text-yellow-400';
       if (to.includes('settings')) return 'text-pink-400';
       if (to.includes('team')) return 'text-cyan-400';
+      if (to.includes('lead-management')) return 'text-orange-400';
       return 'text-indigo-400'; // Default color
     }
 
@@ -154,6 +156,11 @@ function AdminLayout() {
       to: "/admin/task-management",
       text: "Task Management",
       icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
+    },
+    {
+      to: "/admin/lead-management",
+      text: "Lead Management",
+      icon: <FaUserTie className="h-4 w-4" aria-hidden="true" />,
     },
     {
       to: "/admin/knowledge-management",

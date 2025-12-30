@@ -22,13 +22,19 @@ import {
     FaHourglassHalf,
     FaChevronLeft,
     FaChevronRight,
-    FaDownload,
+    FaUpload,
+    FaEdit,
+    FaTrash,
+    FaExternalLinkAlt,
 } from "react-icons/fa";
+import { useTheme } from "../../context/ThemeContext";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import {
     subscribeToAllExpenses,
     approveExpense,
     rejectExpense,
     markExpensePaid,
+    deleteExpense,
 } from "../../services/expenseService";
 import toast from "react-hot-toast";
 import { EXPENSE_CATEGORIES, getStatusColorClass } from "../../config/expenseConfig";
@@ -37,6 +43,8 @@ import ExpenseDetailModal from "./ExpenseDetailModal";
 
 
 export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = true }) {
+    const { buttonClass: themeButtonClass } = useThemeStyles();
+    const finalButtonClass = buttonClass || themeButtonClass;
     const { user, userData } = useAuthContext();
     const [expenses, setExpenses] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -164,6 +172,22 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
         }
     };
 
+    const handleDelete = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this expense?")) return;
+        try {
+            await deleteExpense(id);
+            toast.success("Expense deleted");
+            setExpenses((prev) => prev.filter((e) => e.id !== id));
+        } catch (err) {
+            console.error("Failed to delete expense", err);
+            toast.error("Failed to delete expense");
+        }
+    };
+
+    const handleEdit = (expense) => {
+        toast("Edit functionality coming soon", { icon: "✏️" });
+    };
+
     const handleSelectAll = (e) => {
         if (e.target.checked) {
             setSelectedIds(filtered.map((x) => x.id));
@@ -239,10 +263,10 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                     <Button
                         onClick={handleExportCSV}
                         variant={buttonClass ? "custom" : "secondary"}
-                        className={`flex items-center gap-2 ${buttonClass}`}
+                        className={`flex items-center gap-2 ${finalButtonClass}`}
                         disabled={filtered.length === 0}
                     >
-                        <FaDownload className="h-4 w-4" />
+                        <FaUpload className="h-3 w-3" />
                         Export Excel
                     </Button>
                 }
@@ -522,6 +546,9 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                 <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                     Status
                                 </th>
+                                <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-content-secondary uppercase tracking-wider">
+                                    Approval
+                                </th>
                                 <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                     Actions
                                 </th>
@@ -608,22 +635,14 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                             {e.status || "Unknown"}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <div className="flex justify-end gap-2">
-                                            <Button
-                                                size="xs"
-                                                variant="ghost"
-                                                onClick={() => setViewingExpense(e)}
-                                                className="text-gray-500 hover:text-indigo-600"
-                                            >
-                                                View
-                                            </Button>
+                                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                        <div className="flex justify-center gap-2">
                                             {e.status === "Submitted" && (
                                                 <>
                                                     <Button
                                                         size="xs"
                                                         onClick={() => handleApprove(e.id)}
-                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
+                                                        className="bg-green-600 hover:bg-green-700 text-white border-transparent"
                                                     >
                                                         Approve
                                                     </Button>
@@ -646,6 +665,31 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                                     Mark Paid
                                                 </Button>
                                             )}
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <div className="flex justify-end gap-2 items-center">
+                                            <button
+                                                onClick={() => setViewingExpense(e)}
+                                                className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
+                                                title="View Details"
+                                            >
+                                                <FaExternalLinkAlt />
+                                            </button>
+                                            <button
+                                                onClick={() => handleEdit(e)}
+                                                className="text-gray-400 hover:text-blue-600 transition-colors p-1"
+                                                title="Edit"
+                                            >
+                                                <FaEdit />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(e.id)}
+                                                className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                                                title="Delete"
+                                            >
+                                                <FaTrash />
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>

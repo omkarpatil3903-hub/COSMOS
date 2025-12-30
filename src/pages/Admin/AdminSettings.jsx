@@ -10,7 +10,7 @@ export default function Settings() {
       to: "add-hierarchy",
       label: "Hierarchy",
       icon: (
-        <span className="inline-flex items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-1.5 py-1 text-xs text-blue-600">
+        <span className="inline-flex items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-1.5 py-1 text-xs text-blue-600 [.dark_&]:border-blue-500/30 [.dark_&]:bg-blue-900/30 [.dark_&]:text-blue-400">
           <FaSitemap className="h-3.5 w-3.5" />
         </span>
       ),
@@ -19,7 +19,7 @@ export default function Settings() {
       to: "project-settings",
       label: "Project Level",
       icon: (
-        <span className="inline-flex items-center justify-center rounded-md border border-violet-200 bg-violet-50 px-1.5 py-1 text-xs text-violet-600">
+        <span className="inline-flex items-center justify-center rounded-md border border-violet-200 bg-violet-50 px-1.5 py-1 text-xs text-violet-600 [.dark_&]:border-violet-500/30 [.dark_&]:bg-violet-900/30 [.dark_&]:text-violet-400">
           <FaLayerGroup className="h-3.5 w-3.5" />
         </span>
       ),
@@ -28,7 +28,7 @@ export default function Settings() {
       to: "status-settings",
       label: "Status",
       icon: (
-        <span className="inline-flex items-center justify-center rounded-md border border-amber-200 bg-amber-50 px-1.5 py-1 text-xs text-amber-600">
+        <span className="inline-flex items-center justify-center rounded-md border border-amber-200 bg-amber-50 px-1.5 py-1 text-xs text-amber-600 [.dark_&]:border-amber-500/30 [.dark_&]:bg-amber-900/30 [.dark_&]:text-amber-400">
           <FaFlag className="h-3.5 w-3.5" />
         </span>
       ),
@@ -37,7 +37,7 @@ export default function Settings() {
       to: "theme",
       label: "Theme",
       icon: (
-        <span className="inline-flex items-center justify-center rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-1 text-xs text-indigo-600">
+        <span className="inline-flex items-center justify-center rounded-md border border-indigo-200 bg-indigo-50 px-1.5 py-1 text-xs text-indigo-600 [.dark_&]:border-indigo-500/30 [.dark_&]:bg-indigo-900/30 [.dark_&]:text-indigo-400">
           <FaPalette className="h-3.5 w-3.5" />
         </span>
       ),
@@ -46,7 +46,7 @@ export default function Settings() {
       to: "profile",
       label: "Profile",
       icon: (
-        <span className="inline-flex items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-1 text-xs text-emerald-600">
+        <span className="inline-flex items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 px-1.5 py-1 text-xs text-emerald-600 [.dark_&]:border-emerald-500/30 [.dark_&]:bg-emerald-900/30 [.dark_&]:text-emerald-400">
           <FaUserCircle className="h-3.5 w-3.5" />
         </span>
       ),
@@ -69,15 +69,15 @@ export default function Settings() {
   // Removed header-level add button; use per-page actions instead
 
   return (
-    <div className="font-sans text-gray-800">
+    <div className="font-sans text-gray-800 [.dark_&]:text-white">
       <PageHeader title="Settings">
         Configure hierarchy and project preferences in one place.
       </PageHeader>
 
       <div className="space-y-6">
-        <Card className="p-4" tone="white">
+        <Card className="p-4 [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10" tone="white">
 
-          <div className="border-b border-subtle">
+          <div className="border-b border-subtle [.dark_&]:border-white/10">
             <div className="flex items-center gap-2 -mb-px">
               <div className="flex flex-wrap items-center gap-2">
                 {tabs.map((t, idx) => (
@@ -87,8 +87,8 @@ export default function Settings() {
                       end
                       className={({ isActive }) =>
                         `flex items-center gap-2 px-4 pb-2 pt-2 text-sm font-medium transition-colors duration-150 border-b-2 ${isActive
-                          ? "text-gray-900 border-gray-900"
-                          : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                          ? "text-gray-900 border-gray-900 [.dark_&]:text-white [.dark_&]:border-white"
+                          : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300 [.dark_&]:text-gray-400 [.dark_&]:hover:text-gray-200 [.dark_&]:hover:border-white/20"
                         }`
                       }
                     >
@@ -96,7 +96,7 @@ export default function Settings() {
                       <span>{t.label}</span>
                     </NavLink>
                     {idx < tabs.length - 1 && (
-                      <span className="mx-1 h-5 w-px bg-subtle" aria-hidden="true" />
+                      <span className="mx-1 h-5 w-px bg-subtle [.dark_&]:bg-white/10" aria-hidden="true" />
                     )}
                   </React.Fragment>
                 ))}

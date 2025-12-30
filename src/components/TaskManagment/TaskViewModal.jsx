@@ -824,7 +824,7 @@ const TaskViewModal = ({
                       <input
                         type="text"
                         placeholder="Add a subtask..."
-                        className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500"
+                        className="flex-1 px-3 py-1.5 text-sm border border-gray-200 [.dark_&]:border-white/10 rounded-lg focus:outline-none focus:border-indigo-500 [.dark_&]:bg-[#181B2A] [.dark_&]:text-white"
                         value={newSubtaskTitle}
                         onChange={(e) => setNewSubtaskTitle(e.target.value)}
                         onKeyDown={async (e) => {
@@ -855,7 +855,7 @@ const TaskViewModal = ({
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-3">
                 <FaBullseye className="text-indigo-500" />
-                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">
+                <h3 className="text-sm font-bold text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wider">
                   Objectives & Key Results
                 </h3>
               </div>
@@ -941,7 +941,8 @@ const TaskViewModal = ({
             {/* Metadata Grid */}
             <div className="p-6 border-b border-gray-200 [.dark_&]:border-white/10 space-y-5 bg-white [.dark_&]:bg-[#181B2A]">
               {/* Status & Priority Row */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
+                {/* Status Section */}
                 <div className="group relative">
                   <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
                     Status
@@ -950,10 +951,11 @@ const TaskViewModal = ({
                     {/* Status dropdown trigger (without Done in menu) */}
                     <button
                       onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                      className={`flex-1 px-3 py-2 rounded-lg text-xs border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] flex items-center justify-between hover:border-indigo-300 transition-colors ${getStatusBadge(displayStatus)}`}
+                      className={`flex-1 px-3 py-2 rounded-lg text-xs border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] flex items-center justify-between hover:border-indigo-300 transition-colors min-w-0 ${getStatusBadge(displayStatus)}`}
+                      title={displayStatus}
                     >
-                      <span className="font-medium">{displayStatus}</span>
-                      <FaChevronDown className="text-[10px] opacity-50" />
+                      <span className="font-medium truncate [.dark_&]:text-white">{displayStatus}</span>
+                      <FaChevronDown className="text-[10px] opacity-50 ml-1 shrink-0" />
                     </button>
 
                     {/* Separate Done control */}
@@ -970,9 +972,9 @@ const TaskViewModal = ({
                             handleQuickUpdate("status", "Done");
                           }
                         }}
-                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors whitespace-nowrap ${String(displayStatus || "").toLowerCase().replace(/[^a-z0-9]/g, "") === "done"
+                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors whitespace-nowrap shrink-0 ${String(displayStatus || "").toLowerCase().replace(/[^a-z0-9]/g, "") === "done"
                           ? "bg-emerald-500 text-white border-emerald-500"
-                          : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                          : "bg-emerald-50 [.dark_&]:bg-emerald-500/20 text-emerald-700 [.dark_&]:text-emerald-400 border-emerald-200 [.dark_&]:border-emerald-500/30 hover:bg-emerald-100 [.dark_&]:hover:bg-emerald-500/30"
                           }`}
                       >
                         Done
@@ -997,14 +999,14 @@ const TaskViewModal = ({
                                 handleQuickUpdate("status", status);
                                 setShowStatusDropdown(false);
                               }}
-                              className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between ${String(displayStatus || "")
+                              className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 [.dark_&]:hover:bg-white/5 flex items-center justify-between ${String(displayStatus || "")
                                 .toLowerCase()
                                 .replace(/[^a-z0-9]/g, "") ===
                                 String(status || "")
                                   .toLowerCase()
                                   .replace(/[^a-z0-9]/g, "")
                                 ? "bg-indigo-50 text-indigo-700 font-medium"
-                                : "text-gray-700"
+                                : "text-gray-700 [.dark_&]:text-gray-200"
                                 }`}
                             >
                               {status}
@@ -1021,6 +1023,7 @@ const TaskViewModal = ({
                   )}
                 </div>
 
+                {/* Priority Section */}
                 <div className="relative">
                   <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
                     Priority
@@ -1028,9 +1031,10 @@ const TaskViewModal = ({
                   <button
                     onClick={() => setShowPriorityDropdown(!showPriorityDropdown)}
                     className={`w-full px-3 py-2 rounded-lg text-xs border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] flex items-center justify-between hover:border-indigo-300 transition-colors ${getPriorityBadge(task.priority)}`}
+                    title={task.priority || "Medium"}
                   >
-                    <span className="font-medium">{task.priority || "Medium"}</span>
-                    <FaChevronDown className="text-[10px] opacity-50" />
+                    <span className="font-medium truncate [.dark_&]:text-white">{task.priority || "Medium"}</span>
+                    <FaChevronDown className="text-[10px] opacity-50 ml-1 shrink-0" />
                   </button>
 
                   {showPriorityDropdown && (
@@ -1137,7 +1141,7 @@ const TaskViewModal = ({
                                 <button
                                   key={c.id}
                                   onClick={() => handleToggleAssignee(c, 'client')}
-                                  className={`w-full text-left px-2 py-1.5 text-xs rounded-md flex items-center justify-between group ${isSelected ? "bg-indigo-50 text-indigo-700" : "hover:bg-gray-50 text-gray-700"}`}
+                                  className={`w-full text-left px-2 py-1.5 text-xs rounded-md flex items-center justify-between group ${isSelected ? "bg-indigo-50 text-indigo-700" : "hover:bg-gray-50 [.dark_&]:hover:bg-white/5 text-gray-700 [.dark_&]:text-gray-200"}`}
                                 >
                                   <div className="flex items-center gap-2">
                                     <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isSelected ? "bg-indigo-200 text-indigo-700" : "bg-gray-100 text-gray-500"}`}>
@@ -1247,7 +1251,7 @@ const TaskViewModal = ({
             {/* Activity Stream Area */}
             <div className="flex-1 flex flex-col bg-gray-50 [.dark_&]:bg-[#1F2234]">
               <div className="px-4 py-3 border-b border-gray-200 [.dark_&]:border-white/10 bg-gray-50/80 [.dark_&]:bg-[#1F2234]/80 backdrop-blur sticky top-0">
-                <h3 className="text-xs font-bold text-gray-500 uppercase">
+                <h3 className="text-xs font-bold text-gray-500 [.dark_&]:text-gray-400 uppercase">
                   Activity
                 </h3>
               </div>
@@ -1299,7 +1303,7 @@ const TaskViewModal = ({
                         {isComment ? (
                           <p className="text-sm text-gray-700 [.dark_&]:text-gray-300 leading-relaxed whitespace-pre-wrap">{item.text}</p>
                         ) : (
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">
                             {item.details}
                           </p>
                         )}
@@ -1368,9 +1372,9 @@ const TaskViewModal = ({
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-xl">
-            <div className="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
-              <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Task?</h3>
-              <p className="text-sm text-gray-600 mb-4">
+            <div className="bg-white [.dark_&]:bg-[#1F2234] rounded-lg p-6 max-w-sm mx-4 shadow-xl">
+              <h3 className="text-lg font-bold text-gray-900 [.dark_&]:text-white mb-2">Delete Task?</h3>
+              <p className="text-sm text-gray-600 [.dark_&]:text-gray-300 mb-4">
                 Are you sure you want to delete "{task.title}"? This action cannot be undone.
               </p>
               <div className="flex gap-2 justify-end">
@@ -1399,9 +1403,9 @@ const TaskViewModal = ({
         {/* Archive Confirmation Modal */}
         {showArchiveConfirm && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-xl">
-            <div className="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
-              <h3 className="text-lg font-bold text-gray-900 mb-2">Archive Task?</h3>
-              <p className="text-sm text-gray-600 mb-4">
+            <div className="bg-white [.dark_&]:bg-[#1F2234] rounded-lg p-6 max-w-sm mx-4 shadow-xl">
+              <h3 className="text-lg font-bold text-gray-900 [.dark_&]:text-white mb-2">Archive Task?</h3>
+              <p className="text-sm text-gray-600 [.dark_&]:text-gray-300 mb-4">
                 Are you sure you want to archive "{task.title}"? You can unarchive it later from the archived tasks view.
               </p>
               <div className="flex gap-2 justify-end">

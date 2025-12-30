@@ -297,6 +297,22 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
     return unique;
   }, [statusOptions, tasks]);
 
+  // Create columns for KanbanBoard with dynamic statuses and theme colors
+  const kanbanColumns = useMemo(() => {
+    const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    return effectiveStatuses.map((statusName) => {
+      const normalizedKey = norm(statusName);
+      const color = statusColorMap[normalizedKey] || "#6b7280";
+
+      return {
+        key: statusName,
+        title: statusName,
+        color: color
+      };
+    });
+  }, [effectiveStatuses, statusColorMap]);
+
   const applyStatusQuickFilter = useCallback(
     (status) => {
       setFilters({
@@ -2191,9 +2207,9 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
                 <div className="flex items-center gap-1 bg-gray-100 [.dark_&]:bg-white/5 rounded-lg p-1">
                   <button
                     onClick={() => setView("list")}
-                    className={`p-2 rounded transition-all ${view === "list"
-                      ? `bg-white shadow-sm [.dark_&]:bg-gray-700 [.dark_&]:text-white ${iconColor}`
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200 [.dark_&]:text-gray-400 [.dark_&]:hover:text-white [.dark_&]:hover:bg-white/10"
+                    className={`p-2 rounded-md transition-all ${view === "list"
+                      ? `bg-white [.dark_&]:bg-[#181B2A] ${iconColor} shadow-md`
+                      : "text-gray-600 [.dark_&]:text-gray-400 hover:bg-white/50 [.dark_&]:hover:bg-white/5"
                       }`}
                     title="List View"
                   >
@@ -2201,9 +2217,9 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
                   </button>
                   <button
                     onClick={() => setView("board")}
-                    className={`p-2 rounded transition-all ${view === "board"
-                      ? `bg-white shadow-sm [.dark_&]:bg-gray-700 [.dark_&]:text-white ${iconColor}`
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200 [.dark_&]:text-gray-400 [.dark_&]:hover:text-white [.dark_&]:hover:bg-white/10"
+                    className={`p-2 rounded-md transition-all ${view === "board"
+                      ? `bg-white [.dark_&]:bg-[#181B2A] ${iconColor} shadow-md`
+                      : "text-gray-600 [.dark_&]:text-gray-400 hover:bg-white/50 [.dark_&]:hover:bg-white/5"
                       }`}
                     title="Kanban View"
                   >
@@ -2249,7 +2265,7 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
               ) : (
                 <KanbanBoard
                   tasks={filtered}
-                  columns={statusOptions.length > 0 ? statusOptions.map(s => ({ key: s, title: s, color: statusColorMap[s] })) : undefined}
+                  columns={kanbanColumns}
                   onMove={moveTask}
                   onEdit={handleEdit}
                   getProject={getProject}

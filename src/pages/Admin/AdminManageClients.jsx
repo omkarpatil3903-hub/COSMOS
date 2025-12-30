@@ -37,6 +37,7 @@ import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 import ClientTableRow from "../../components/ManageClients/ClientTableRow";
 import ClientFormModal from "../../components/ManageClients/ClientFormModal";
 import ClientViewModal from "../../components/ManageClients/ClientViewModal";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 const CLIENTS_COLLECTION = "clients";
 
@@ -53,6 +54,7 @@ const tableHeaders = [
 ];
 
 function ManageClients() {
+  const { buttonClass } = useThemeStyles();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -382,7 +384,7 @@ function ManageClients() {
               <span className="text-sm font-medium text-content-secondary">
                 Showing {filteredClients.length} records
               </span>
-              <Button onClick={() => setShowAddForm(true)}>
+              <Button onClick={() => setShowAddForm(true)} variant="custom" className={buttonClass}>
                 <FaPlus className="h-4 w-4" /> Add Client
               </Button>
             </div>
