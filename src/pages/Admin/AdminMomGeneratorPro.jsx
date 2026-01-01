@@ -58,7 +58,6 @@ const ACCENT_COLORS = {
   indigo: "#4f46e5",
 };
 
-
 // ---------- Utility: Rule-based notes generator (NO AI) ----------
 function toLines(text) {
   return text
@@ -160,15 +159,19 @@ export default function MomGeneratorPro() {
   const { accent, mode } = useTheme();
   const activeColor = ACCENT_COLORS[accent] || ACCENT_COLORS.indigo;
 
-  const inputClass = `w-full rounded px-4 py-2.5 text-sm transition-colors focus:ring-2 focus:ring-indigo-500 focus:outline-none border-none ${mode === "dark"
-    ? "bg-gray-900 text-white placeholder-gray-500"
-    : "bg-gray-50 text-gray-900 placeholder-gray-400"
-    }`;
+  const inputClass = `w-full rounded px-4 py-2.5 text-sm transition-colors focus:ring-2 focus:ring-indigo-500 focus:outline-none border-none ${
+    mode === "dark"
+      ? "bg-gray-900 text-white placeholder-gray-500"
+      : "bg-gray-50 text-gray-900 placeholder-gray-400"
+  }`;
 
   // Reference data
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
-  const [projectStaffNames, setProjectStaffNames] = useState({ admins: [], members: [] });
+  const [projectStaffNames, setProjectStaffNames] = useState({
+    admins: [],
+    members: [],
+  });
 
   // Meeting meta
   const [projectId, setProjectId] = useState("");
@@ -367,7 +370,9 @@ export default function MomGeneratorPro() {
             adminIds.push(data.managerId);
           }
           if (data.assignedTo) {
-            const arr = Array.isArray(data.assignedTo) ? data.assignedTo : [data.assignedTo];
+            const arr = Array.isArray(data.assignedTo)
+              ? data.assignedTo
+              : [data.assignedTo];
             teamMemberIds.push(...arr);
             memberIds.push(...arr);
           }
@@ -380,15 +385,21 @@ export default function MomGeneratorPro() {
           const uniqueTeam = [...new Set(teamMemberIds)].filter(Boolean);
           if (uniqueTeam.length > 0 && attendees.length === 0) {
             setAttendees(uniqueTeam);
-            toast.success(`Auto-selected ${uniqueTeam.length} team member(s) from project`);
+            toast.success(
+              `Auto-selected ${uniqueTeam.length} team member(s) from project`
+            );
           }
 
           // Derive Names for Access Control
-          const adminNames = adminIds.map(id => users.find(u => u.id === id)?.name).filter(Boolean);
-          const memberNames = memberIds.map(id => users.find(u => u.id === id)?.name).filter(Boolean);
+          const adminNames = adminIds
+            .map((id) => users.find((u) => u.id === id)?.name)
+            .filter(Boolean);
+          const memberNames = memberIds
+            .map((id) => users.find((u) => u.id === id)?.name)
+            .filter(Boolean);
           setProjectStaffNames({
             admins: [...new Set(adminNames)],
-            members: [...new Set(memberNames)]
+            members: [...new Set(memberNames)],
           });
         }
       } catch (err) {
@@ -399,13 +410,17 @@ export default function MomGeneratorPro() {
   }, [projectId, users]);
 
   // Load frequent external attendees from localStorage
-  const [frequentExternalAttendees, setFrequentExternalAttendees] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("frequentExternalAttendees") || "[]");
-    } catch {
-      return [];
+  const [frequentExternalAttendees, setFrequentExternalAttendees] = useState(
+    () => {
+      try {
+        return JSON.parse(
+          localStorage.getItem("frequentExternalAttendees") || "[]"
+        );
+      } catch {
+        return [];
+      }
     }
-  });
+  );
 
   // Save external attendees to localStorage when they change
   const saveExternalAttendee = (name) => {
@@ -474,7 +489,8 @@ export default function MomGeneratorPro() {
   const addComment = () => {
     if (!newComment.trim()) return;
     const currentUser = auth.currentUser;
-    const authorName = currentUser?.displayName || currentUser?.email || "Admin";
+    const authorName =
+      currentUser?.displayName || currentUser?.email || "Admin";
 
     const comment = {
       id: crypto.randomUUID(),
@@ -490,7 +506,8 @@ export default function MomGeneratorPro() {
 
   // Voice-to-text functions
   const startVoiceInput = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
       toast.error("Voice input not supported in this browser. Try Chrome.");
       return;
@@ -665,7 +682,11 @@ export default function MomGeneratorPro() {
     try {
       let nextNumber = 1;
       // Query documents collection for existing MOMs (scan recent docs to find last MOM no)
-      const qn = query(collection(db, "documents"), orderBy("createdAt", "desc"), limit(100));
+      const qn = query(
+        collection(db, "documents"),
+        orderBy("createdAt", "desc"),
+        limit(100)
+      );
       const snap = await getDocs(qn);
       snap.forEach((d) => {
         // Document ID itself is the momNo (e.g., MOM_001)
@@ -716,16 +737,19 @@ export default function MomGeneratorPro() {
     setLoading(true);
     try {
       // 1. Prepare prompt
-      const selectedProjName = projects.find(p => p.id === projectId)?.name || "N/A";
+      const selectedProjName =
+        projects.find((p) => p.id === projectId)?.name || "N/A";
       const attendeeNames = attendees
-        .map(id => users.find(u => u.id === id)?.name)
+        .map((id) => users.find((u) => u.id === id)?.name)
         .filter(Boolean)
         .join(", ");
 
-      const discussionsJson = JSON.stringify(inputDiscussions.map(d => ({
-        topic: d.topic,
-        rawNotes: d.notes
-      })));
+      const discussionsJson = JSON.stringify(
+        inputDiscussions.map((d) => ({
+          topic: d.topic,
+          rawNotes: d.notes,
+        }))
+      );
 
       const prompt = `
       You are an expert project manager. Transform the following meeting notes into a professional Minutes of Meeting (MoM) structure.
@@ -740,7 +764,11 @@ export default function MomGeneratorPro() {
       ${discussionsJson}
 
       **Instructions**:
-      ${specialAgenda ? `**Special Meeting Agenda/Objectives**: ${specialAgenda}\n\n` : ""}
+      ${
+        specialAgenda
+          ? `**Special Meeting Agenda/Objectives**: ${specialAgenda}\n\n`
+          : ""
+      }
       1. For each discussion topic, rewrite the raw notes into a professional, HTML-formatted summary using <b>Key Points</b>, <b>Decisions</b>, etc., similar to this format:
          "<b>Summary:</b> ...<br/><br/><b>Key Points:</b> <ul><li>...</li></ul><br/><b>Decisions:</b> ..."
          (Ensure valid HTML text, no markdown inside the HTML string).
@@ -763,7 +791,7 @@ export default function MomGeneratorPro() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.3 }
+            generationConfig: { temperature: 0.3 },
           }),
         }
       );
@@ -781,7 +809,9 @@ export default function MomGeneratorPro() {
       // 3. Parse JSON (strip markdown code fences if present)
       let jsonText = text.trim();
       if (jsonText.startsWith("```")) {
-        jsonText = jsonText.replace(/^```(?:json)?\s*/, "").replace(/```\s*$/, "");
+        jsonText = jsonText
+          .replace(/^```(?:json)?\s*/, "")
+          .replace(/```\s*$/, "");
       }
       const parsed = JSON.parse(jsonText);
 
@@ -790,16 +820,16 @@ export default function MomGeneratorPro() {
       setDiscussions(parsed.discussions || []);
 
       // Combine AI actions with manually entered ones (simple concatenation)
-      const aiActions = (parsed.actionItems || []).map(a => ({
+      const aiActions = (parsed.actionItems || []).map((a) => ({
         id: crypto.randomUUID(),
         task: a.task,
         responsiblePerson: a.responsiblePerson,
         deadline: a.deadline === "TBD" ? "" : a.deadline,
-        responsiblePersonId: "" // AI won't know internal IDs easily without more context
+        responsiblePersonId: "", // AI won't know internal IDs easily without more context
       }));
 
       // Add inputActionItems to the list if they exist
-      const manualActions = inputActionItems.map(a => ({
+      const manualActions = inputActionItems.map((a) => ({
         ...a,
         task: a.task, // Ensure consistency
       }));
@@ -807,7 +837,6 @@ export default function MomGeneratorPro() {
       setActionItems([...manualActions, ...aiActions]);
 
       finishGeneration();
-
     } catch (err) {
       console.error("AI Generation failed:", err);
       toast.error("AI generation failed, falling back to offline mode.");
@@ -825,8 +854,8 @@ export default function MomGeneratorPro() {
     const initialOverrides = {};
     actionItems.forEach((item, idx) => {
       // Try to find matching user
-      const matchedUser = users.find(u =>
-        u.name.toLowerCase() === item.responsiblePerson?.toLowerCase()
+      const matchedUser = users.find(
+        (u) => u.name.toLowerCase() === item.responsiblePerson?.toLowerCase()
       );
       initialOverrides[idx] = {
         assigneeId: matchedUser?.id || "",
@@ -843,7 +872,7 @@ export default function MomGeneratorPro() {
 
   // Update a single task override field
   const updateTaskOverride = (idx, field, value) => {
-    setTaskOverrides(prev => ({
+    setTaskOverrides((prev) => ({
       ...prev,
       [idx]: {
         ...prev[idx],
@@ -854,9 +883,9 @@ export default function MomGeneratorPro() {
 
   // Batch apply helpers
   const applyBatchAssignee = (assigneeId, assigneeName) => {
-    setTaskOverrides(prev => {
+    setTaskOverrides((prev) => {
       const next = { ...prev };
-      selectedActionItems.forEach(idx => {
+      selectedActionItems.forEach((idx) => {
         next[idx] = { ...next[idx], assigneeId, assigneeName };
       });
       return next;
@@ -865,9 +894,9 @@ export default function MomGeneratorPro() {
   };
 
   const applyBatchPriority = (priority) => {
-    setTaskOverrides(prev => {
+    setTaskOverrides((prev) => {
       const next = { ...prev };
-      selectedActionItems.forEach(idx => {
+      selectedActionItems.forEach((idx) => {
         next[idx] = { ...next[idx], priority };
       });
       return next;
@@ -891,7 +920,8 @@ export default function MomGeneratorPro() {
 
         const newTask = {
           title: item.task,
-          description: override.description || `Generated from Admin MoM: ${item.task}`,
+          description:
+            override.description || `Generated from Admin MoM: ${item.task}`,
           status: "To-Do",
           priority: override.priority || "Medium",
           projectId: projectId || "",
@@ -900,14 +930,16 @@ export default function MomGeneratorPro() {
           createdAt: serverTimestamp(),
           assigneeId: override.assigneeId || "",
           assigneeName: override.assigneeName || item.responsiblePerson,
-          dueDate: override.dueDate && !isNaN(Date.parse(override.dueDate))
-            ? Timestamp.fromDate(new Date(override.dueDate))
-            : null,
-          assignedDate: override.assignedDate && !isNaN(Date.parse(override.assignedDate))
-            ? Timestamp.fromDate(new Date(override.assignedDate))
-            : Timestamp.fromDate(new Date()),
+          dueDate:
+            override.dueDate && !isNaN(Date.parse(override.dueDate))
+              ? Timestamp.fromDate(new Date(override.dueDate))
+              : null,
+          assignedDate:
+            override.assignedDate && !isNaN(Date.parse(override.assignedDate))
+              ? Timestamp.fromDate(new Date(override.assignedDate))
+              : Timestamp.fromDate(new Date()),
           createdBy: "ADMIN",
-          senderId: auth.currentUser?.uid || "ADMIN"
+          senderId: auth.currentUser?.uid || "ADMIN",
         };
 
         await addDoc(collection(db, "tasks"), newTask);
@@ -916,12 +948,13 @@ export default function MomGeneratorPro() {
 
       // Sync overrides back to actionItems state so they appear in PDF/Input list
       const updatedActionItems = [...actionItems];
-      selected.forEach(idx => {
+      selected.forEach((idx) => {
         const override = taskOverrides[idx] || {};
         const currentItem = updatedActionItems[idx];
 
         // Update local state with chosen assignee/deadline
-        if (override.assigneeName) currentItem.responsiblePerson = override.assigneeName;
+        if (override.assigneeName)
+          currentItem.responsiblePerson = override.assigneeName;
         if (override.dueDate) currentItem.deadline = override.dueDate;
 
         updatedActionItems[idx] = currentItem;
@@ -930,7 +963,9 @@ export default function MomGeneratorPro() {
       // Update input state as well for consistency
       setInputActionItems(updatedActionItems);
 
-      toast.success(`Successfully created ${createdCount} task(s)!`, { id: toastId });
+      toast.success(`Successfully created ${createdCount} task(s)!`, {
+        id: toastId,
+      });
       setShowTaskConversion(false);
       setSelectedActionItems(new Set());
       setTaskOverrides({});
@@ -955,7 +990,11 @@ export default function MomGeneratorPro() {
         let nextNumber = 1;
         try {
           // Query documents collection for existing MOMs
-          const qn = query(collection(db, "documents"), orderBy("createdAt", "desc"), limit(100));
+          const qn = query(
+            collection(db, "documents"),
+            orderBy("createdAt", "desc"),
+            limit(100)
+          );
           const snap = await getDocs(qn);
           snap.forEach((d) => {
             // Document ID itself is the momNo (e.g., MOM_001)
@@ -991,12 +1030,18 @@ export default function MomGeneratorPro() {
         // Generate PDF using react-pdf (much cleaner than html2canvas)
         // Convert attendee IDs to names for the PDF
         const attendeeNames = attendees
-          .map(id => users.find(u => u.id === id)?.name)
+          .map((id) => users.find((u) => u.id === id)?.name)
           .filter(Boolean);
         // Normalize externalAttendees to array
-        const externalAttendeesArray = typeof externalAttendees === 'string' && externalAttendees.trim()
-          ? externalAttendees.split(',').map(s => s.trim()).filter(Boolean)
-          : (Array.isArray(externalAttendees) ? externalAttendees : []);
+        const externalAttendeesArray =
+          typeof externalAttendees === "string" && externalAttendees.trim()
+            ? externalAttendees
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : Array.isArray(externalAttendees)
+            ? externalAttendees
+            : [];
 
         const pdfData = {
           momNo,
@@ -1035,7 +1080,8 @@ export default function MomGeneratorPro() {
         const downloadURL = await getDownloadURL(storageRef);
 
         const createdByName = (() => {
-          if (momPreparedBy && momPreparedBy.trim()) return momPreparedBy.trim();
+          if (momPreparedBy && momPreparedBy.trim())
+            return momPreparedBy.trim();
           const u = currentUser;
           if (!u) return "";
           return u.displayName || u.email || "";
@@ -1061,7 +1107,12 @@ export default function MomGeneratorPro() {
           url: downloadURL,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-          lastSavedSnapshot: JSON.stringify({ projectId, meetingDate, discussions, actionItems }), // Simplified snapshot
+          lastSavedSnapshot: JSON.stringify({
+            projectId,
+            meetingDate,
+            discussions,
+            actionItems,
+          }), // Simplified snapshot
           isDraft: false,
           comments: comments || [],
         };
@@ -1097,8 +1148,6 @@ export default function MomGeneratorPro() {
         console.error("Failed to save MOM:", err);
         throw err; // Re-throw to be caught by outer block
       }
-
-
     } catch (e) {
       console.error(e);
       toast.error("Save failed");
@@ -1118,12 +1167,18 @@ export default function MomGeneratorPro() {
     try {
       // Convert attendee IDs to names for the PDF
       const attendeeNames = attendees
-        .map(id => users.find(u => u.id === id)?.name)
+        .map((id) => users.find((u) => u.id === id)?.name)
         .filter(Boolean);
       // Normalize externalAttendees to array
-      const externalAttendeesArray = typeof externalAttendees === 'string' && externalAttendees.trim()
-        ? externalAttendees.split(',').map(s => s.trim()).filter(Boolean)
-        : (Array.isArray(externalAttendees) ? externalAttendees : []);
+      const externalAttendeesArray =
+        typeof externalAttendees === "string" && externalAttendees.trim()
+          ? externalAttendees
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : Array.isArray(externalAttendees)
+          ? externalAttendees
+          : [];
 
       // Prepare data for PDF
       const pdfData = {
@@ -1148,7 +1203,9 @@ export default function MomGeneratorPro() {
       const url = URL.createObjectURL(pdfBlob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `MOM_${selectedProject?.name || "Project"}_${meetingDate}.pdf`;
+      link.download = `MOM_${
+        selectedProject?.name || "Project"
+      }_${meetingDate}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1192,9 +1249,11 @@ export default function MomGeneratorPro() {
       .join(", ");
 
     let text = `${title}\n\n`;
-    text += `Date & Time: ${meetingDate}${meetingStartTime ? ` ${meetingStartTime} to ${meetingEndTime}` : ""
-      }\nVenue: ${meetingVenue || "N/A"}\nInternal Attendees: ${internalAttendeeNames || "N/A"
-      }`;
+    text += `Date & Time: ${meetingDate}${
+      meetingStartTime ? ` ${meetingStartTime} to ${meetingEndTime}` : ""
+    }\nVenue: ${meetingVenue || "N/A"}\nInternal Attendees: ${
+      internalAttendeeNames || "N/A"
+    }`;
     if (externalAttendees.trim()) {
       text += `\nExternal Attendees: ${externalAttendees}`;
     }
@@ -1249,11 +1308,7 @@ export default function MomGeneratorPro() {
               disabled={loading}
               className={`flex items-center gap-2 whitespace-nowrap ${buttonClass}`}
             >
-              {loading ? (
-                <FaSpinner className="animate-spin" />
-              ) : (
-                <FaFileAlt />
-              )}
+              {loading ? <FaSpinner className="animate-spin" /> : <FaFileAlt />}
               {loading ? "Generating..." : "Generate MOM"}
             </Button>
           ) : (
@@ -1289,21 +1344,23 @@ export default function MomGeneratorPro() {
                             setShowSaveConfirm(true);
                           }}
                           disabled={disableSave}
-                          className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${disableSave
-                            ? "text-content-tertiary cursor-not-allowed"
-                            : "text-content-primary hover:bg-surface-subtle"
-                            }`}
+                          className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${
+                            disableSave
+                              ? "text-content-tertiary cursor-not-allowed"
+                              : "text-content-primary hover:bg-surface-subtle"
+                          }`}
                         >
                           <FaSave
-                            className={`flex-shrink-0 ${disableSave ? "text-content-tertiary" : iconColor
-                              }`} // Used iconColor
+                            className={`flex-shrink-0 ${
+                              disableSave ? "text-content-tertiary" : iconColor
+                            }`} // Used iconColor
                           />
                           <span>
                             {saveLoading
                               ? "Saving..."
                               : isChangedSinceSave
-                                ? "Save MOM"
-                                : "Saved"}
+                              ? "Save MOM"
+                              : "Saved"}
                           </span>
                         </button>
                       )}
@@ -1311,11 +1368,12 @@ export default function MomGeneratorPro() {
                       <button
                         onClick={() => {
                           setShowActionsMenu(false);
-                          // Handle PDF export
+                          handleExportPDF();
                         }}
                         className="w-full px-4 py-2.5 text-left text-sm hover:bg-surface-subtle flex items-center gap-3 text-content-primary transition-colors"
                       >
-                        <FaFilePdf className={`${iconColor} flex-shrink-0`} /> {/* Used iconColor */}
+                        <FaFilePdf className={`${iconColor} flex-shrink-0`} />{" "}
+                        {/* Used iconColor */}
                         <span>Export PDF</span>
                       </button>
 
@@ -1324,11 +1382,12 @@ export default function MomGeneratorPro() {
                       <button
                         onClick={() => {
                           setShowActionsMenu(false);
-                          // Handle share
+                          shareMom();
                         }}
                         className="w-full px-4 py-2.5 text-left text-sm hover:bg-surface-subtle flex items-center gap-3 text-content-primary transition-colors"
                       >
-                        <FaShareAlt className={`${iconColor} flex-shrink-0`} /> {/* Used iconColor */}
+                        <FaShareAlt className={`${iconColor} flex-shrink-0`} />{" "}
+                        {/* Used iconColor */}
                         <span>Share</span>
                       </button>
 
@@ -1339,7 +1398,8 @@ export default function MomGeneratorPro() {
                         }}
                         className="w-full px-4 py-2.5 text-left text-sm hover:bg-surface-subtle flex items-center gap-3 text-content-primary transition-colors"
                       >
-                        <FaPrint className={`${iconColor} flex-shrink-0`} /> {/* Used iconColor */}
+                        <FaPrint className={`${iconColor} flex-shrink-0`} />{" "}
+                        {/* Used iconColor */}
                         <span>Print</span>
                       </button>
                     </div>
@@ -1355,9 +1415,12 @@ export default function MomGeneratorPro() {
       {showSaveConfirm && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40">
           <div className="bg-surface rounded-lg shadow-xl max-w-md w-full p-6">
-            <h2 className="text-lg font-semibold text-content-primary mb-2">Save MOM?</h2>
+            <h2 className="text-lg font-semibold text-content-primary mb-2">
+              Save MOM?
+            </h2>
             <p className="text-sm text-content-secondary mb-4">
-              Do you want to save this Minutes of Meeting with the current details?
+              Do you want to save this Minutes of Meeting with the current
+              details?
             </p>
             <div className="flex justify-end gap-3">
               <Button
@@ -1467,11 +1530,19 @@ export default function MomGeneratorPro() {
                   <label className="block text-sm font-medium mb-1">
                     Internal Attendees * (Select multiple)
                   </label>
-                  <div className={`rounded p-3 max-h-44 overflow-y-auto space-y-1 ${mode === "dark" ? "bg-gray-900" : "bg-gray-50"}`}>
+                  <div
+                    className={`rounded p-3 max-h-44 overflow-y-auto space-y-1 ${
+                      mode === "dark" ? "bg-gray-900" : "bg-gray-50"
+                    }`}
+                  >
                     {users.map((u) => (
                       <label
                         key={u.id}
-                        className={`flex items-center gap-2 cursor-pointer p-1 rounded transition-colors ${mode === "dark" ? "hover:bg-gray-800" : "hover:bg-gray-200"}`}
+                        className={`flex items-center gap-2 cursor-pointer p-1 rounded transition-colors ${
+                          mode === "dark"
+                            ? "hover:bg-gray-800"
+                            : "hover:bg-gray-200"
+                        }`}
                       >
                         <input
                           type="checkbox"
@@ -1494,7 +1565,9 @@ export default function MomGeneratorPro() {
                     onChange={(e) => setExternalAttendees(e.target.value)}
                     onBlur={() => {
                       // Save each external attendee to frequent list on blur
-                      externalAttendees.split(",").forEach((name) => saveExternalAttendee(name));
+                      externalAttendees
+                        .split(",")
+                        .forEach((name) => saveExternalAttendee(name));
                     }}
                     className={inputClass}
                     placeholder="e.g., John Doe (Client), Jane Smith (Vendor)"
@@ -1518,7 +1591,11 @@ export default function MomGeneratorPro() {
                               prev ? `${prev}, ${name}` : name
                             );
                           }}
-                          className={`text-xs px-2 py-0.5 rounded transition-colors ${mode === "dark" ? "bg-gray-700 text-white hover:bg-gray-600" : "bg-gray-100 text-gray-800 hover:bg-gray-200"}`}
+                          className={`text-xs px-2 py-0.5 rounded transition-colors ${
+                            mode === "dark"
+                              ? "bg-gray-700 text-white hover:bg-gray-600"
+                              : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                          }`}
                         >
                           {name}
                         </button>
@@ -1651,17 +1728,22 @@ export default function MomGeneratorPro() {
                   <button
                     type="button"
                     onClick={isListening ? stopVoiceInput : startVoiceInput}
-                    className={`absolute right-2 top-2 p-2 rounded-full transition-colors ${isListening
-                      ? "bg-red-500 text-white animate-pulse"
-                      : `bg-gray-100 text-gray-600 hover:bg-surface-subtle hover:${iconColor}` // Used iconColor
-                      }`}
+                    className={`absolute right-2 top-2 p-2 rounded-full transition-colors ${
+                      isListening
+                        ? "bg-red-500 text-white animate-pulse"
+                        : `bg-gray-100 text-gray-600 hover:bg-surface-subtle hover:${iconColor}` // Used iconColor
+                    }`}
                     title={isListening ? "Stop listening" : "Start voice input"}
                   >
                     {isListening ? <FaStop /> : <FaMicrophone />}
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button onClick={addDiscussion} variant="custom" className={buttonClass}>
+                  <Button
+                    onClick={addDiscussion}
+                    variant="custom"
+                    className={buttonClass}
+                  >
                     <FaPlus /> Add Topic
                   </Button>
                   {isListening && (
@@ -1677,7 +1759,8 @@ export default function MomGeneratorPro() {
             {/* Action items with Drag & Drop - Optional (AI generates these) */}
             <Card title="Next Action Plan (Optional - AI will generate)">
               <p className="text-xs text-gray-500 mb-3">
-                You can skip this section. The AI will automatically extract action items from your discussion notes.
+                You can skip this section. The AI will automatically extract
+                action items from your discussion notes.
               </p>
               <DragDropContext onDragEnd={onDragEnd}>
                 <Droppable droppableId="actions" type="ACTIONS">
@@ -1689,7 +1772,8 @@ export default function MomGeneratorPro() {
                     >
                       {inputActionItems.length === 0 && (
                         <div className="text-sm text-gray-500 italic">
-                          No manual action items added — AI will generate from discussions
+                          No manual action items added — AI will generate from
+                          discussions
                         </div>
                       )}
                       {inputActionItems.map((a, index) => (
@@ -1793,15 +1877,15 @@ export default function MomGeneratorPro() {
               {/* Header */}
               <div
                 className="text-center mb-8"
-                style={{ borderBottom: "2px solid #000000", paddingBottom: "10px" }}
+                style={{
+                  borderBottom: "2px solid #000000",
+                  paddingBottom: "10px",
+                }}
               >
                 <h1 className="text-3xl font-bold uppercase tracking-wide">
                   Minutes of Meeting
                 </h1>
-                <div
-                  className="text-sm mt-2"
-                  style={{ color: "#6d7887ff" }}
-                >
+                <div className="text-sm mt-2" style={{ color: "#6d7887ff" }}>
                   {momNoState && <b>ID: {momNoState}</b>}
                 </div>
               </div>
@@ -1957,7 +2041,10 @@ export default function MomGeneratorPro() {
                     <tr>
                       <td
                         className="px-4 py-2"
-                        style={{ border: "1px solid #000000", whiteSpace: "pre-line" }}
+                        style={{
+                          border: "1px solid #000000",
+                          whiteSpace: "pre-line",
+                        }}
                       >
                         {specialAgenda || "N/A"}
                       </td>
@@ -2020,10 +2107,15 @@ export default function MomGeneratorPro() {
                             }}
                             className="min-h-[60px] focus:outline-none focus:ring-2 focus:ring-indigo-300 rounded p-1"
                             dangerouslySetInnerHTML={{
-                              __html: (disc.notes || "").replace(/\n/g, "<br/>"),
+                              __html: (disc.notes || "").replace(
+                                /\n/g,
+                                "<br/>"
+                              ),
                             }}
                           />
-                          <p className="text-[10px] text-gray-400 mt-1 print:hidden">Click to edit</p>
+                          <p className="text-[10px] text-gray-400 mt-1 print:hidden">
+                            Click to edit
+                          </p>
                         </td>
                       </tr>
                     ))}
@@ -2040,8 +2132,13 @@ export default function MomGeneratorPro() {
                   Next Action Plan:
                 </h2>
                 <div className="flex justify-end mb-2">
-                  <Button onClick={convertToTasks} variant="secondary" className="text-xs py-1">
-                    <FaTasks className="mr-1" /> Create Tasks ({actionItems.length})
+                  <Button
+                    onClick={convertToTasks}
+                    variant="secondary"
+                    className="text-xs py-1"
+                  >
+                    <FaTasks className="mr-1" /> Create Tasks (
+                    {actionItems.length})
                   </Button>
                 </div>
                 <table
@@ -2083,7 +2180,9 @@ export default function MomGeneratorPro() {
                             onChange={(e) => {
                               setActionItems((prev) =>
                                 prev.map((item, idx) =>
-                                  idx === i ? { ...item, task: e.target.value } : item
+                                  idx === i
+                                    ? { ...item, task: e.target.value }
+                                    : item
                                 )
                               );
                             }}
@@ -2100,7 +2199,12 @@ export default function MomGeneratorPro() {
                             onChange={(e) => {
                               setActionItems((prev) =>
                                 prev.map((item, idx) =>
-                                  idx === i ? { ...item, responsiblePerson: e.target.value } : item
+                                  idx === i
+                                    ? {
+                                        ...item,
+                                        responsiblePerson: e.target.value,
+                                      }
+                                    : item
                                 )
                               );
                             }}
@@ -2117,7 +2221,9 @@ export default function MomGeneratorPro() {
                             onChange={(e) => {
                               setActionItems((prev) =>
                                 prev.map((item, idx) =>
-                                  idx === i ? { ...item, deadline: e.target.value } : item
+                                  idx === i
+                                    ? { ...item, deadline: e.target.value }
+                                    : item
                                 )
                               );
                             }}
@@ -2130,15 +2236,26 @@ export default function MomGeneratorPro() {
                 </table>
               </div>
 
-
-
               {/* Comments Section */}
               <div className="mt-8 pt-4 border-t border-gray-200">
-                <h2 className="text-lg font-bold mb-3" style={{ color: "#000000" }}>Comments / Notes</h2>
-                {comments.length === 0 && <p className="text-xs text-gray-500 italic mb-3">No comments added.</p>}
+                <h2
+                  className="text-lg font-bold mb-3"
+                  style={{ color: "#000000" }}
+                >
+                  Comments / Notes
+                </h2>
+                {comments.length === 0 && (
+                  <p className="text-xs text-gray-500 italic mb-3">
+                    No comments added.
+                  </p>
+                )}
                 {comments.map((c, i) => (
                   <div key={i} className="mb-2 text-sm">
-                    <span className="font-bold">{c.author}</span> <span className="text-xs text-gray-500">({new Date(c.timestamp).toLocaleString()})</span>: {c.text}
+                    <span className="font-bold">{c.author}</span>{" "}
+                    <span className="text-xs text-gray-500">
+                      ({new Date(c.timestamp).toLocaleString()})
+                    </span>
+                    : {c.text}
                   </div>
                 ))}
                 {/* Inline Comment Input */}
@@ -2193,203 +2310,269 @@ export default function MomGeneratorPro() {
       `}</style>
 
       {/* Task Conversion Modal */}
-      {
-        showTaskConversion && (
-          <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/50" onClick={() => setShowTaskConversion(false)} />
-            <div className="z-10 w-full max-w-4xl bg-white dark:bg-gray-800 max-h-[90vh] rounded-lg shadow-xl overflow-hidden flex flex-col">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 className="text-xl font-semibold mb-2">Create Tasks from Action Items</h2>
-                <p className="text-sm text-gray-500 mb-3">
-                  Select items to convert and customize details.
-                </p>
+      {showTaskConversion && (
+        <div className="fixed inset-0 z-[250] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowTaskConversion(false)}
+          />
+          <div className="z-10 w-full max-w-4xl bg-white dark:bg-gray-800 max-h-[90vh] rounded-lg shadow-xl overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold mb-2">
+                Create Tasks from Action Items
+              </h2>
+              <p className="text-sm text-gray-500 mb-3">
+                Select items to convert and customize details.
+              </p>
 
-                {/* Batch Apply Controls */}
-                <div className="flex flex-wrap gap-2 items-center bg-gray-50 dark:bg-gray-700/50 p-2 rounded border border-gray-200 dark:border-gray-600">
-                  <span className="text-xs font-bold uppercase text-gray-500 tracking-wider mr-2">Batch Apply to Selected:</span>
-                  <select
-                    className={`${inputClass} !w-auto !text-xs !px-2 !py-1`}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        const user = users.find(u => u.id === e.target.value);
-                        applyBatchAssignee(e.target.value, user?.name || "");
-                        e.target.value = ""; // Reset
-                      }
-                    }}
-                  >
-                    <option value="">Set Assignee...</option>
-                    {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
+              {/* Batch Apply Controls */}
+              <div className="flex flex-wrap gap-2 items-center bg-gray-50 dark:bg-gray-700/50 p-2 rounded border border-gray-200 dark:border-gray-600">
+                <span className="text-xs font-bold uppercase text-gray-500 tracking-wider mr-2">
+                  Batch Apply to Selected:
+                </span>
+                <select
+                  className={`${inputClass} !w-auto !text-xs !px-2 !py-1`}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const user = users.find((u) => u.id === e.target.value);
+                      applyBatchAssignee(e.target.value, user?.name || "");
+                      e.target.value = ""; // Reset
+                    }
+                  }}
+                >
+                  <option value="">Set Assignee...</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
 
-                  <select
-                    className={`${inputClass} !w-auto !text-xs !px-2 !py-1`}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        applyBatchPriority(e.target.value);
-                        e.target.value = ""; // Reset
-                      }
-                    }}
-                  >
-                    <option value="">Set Priority...</option>
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Urgent">Urgent</option>
-                  </select>
-                </div>
+                <select
+                  className={`${inputClass} !w-auto !text-xs !px-2 !py-1`}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      applyBatchPriority(e.target.value);
+                      e.target.value = ""; // Reset
+                    }
+                  }}
+                >
+                  <option value="">Set Priority...</option>
+                  <option value="Low">Low</option>
+                  <option value="Medium">Medium</option>
+                  <option value="High">High</option>
+                  <option value="Urgent">Urgent</option>
+                </select>
               </div>
+            </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {actionItems.map((action, idx) => {
-                  const override = taskOverrides[idx] || {};
-                  const isSelected = selectedActionItems.has(idx);
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {actionItems.map((action, idx) => {
+                const override = taskOverrides[idx] || {};
+                const isSelected = selectedActionItems.has(idx);
 
-                  return (
-                    <div
-                      key={idx}
-                      className={`p-4 rounded-lg border transition-colors ${isSelected
+                return (
+                  <div
+                    key={idx}
+                    className={`p-4 rounded-lg border transition-colors ${
+                      isSelected
                         ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
                         : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
-                        }`}
+                    }`}
+                  >
+                    {/* Header with checkbox and task title */}
+                    <div
+                      className="flex items-start gap-3 cursor-pointer mb-3"
+                      onClick={(e) => {
+                        const newSet = new Set(selectedActionItems);
+                        if (isSelected) newSet.delete(idx);
+                        else newSet.add(idx);
+                        setSelectedActionItems(newSet);
+                      }}
                     >
-                      {/* Header with checkbox and task title */}
-                      <div
-                        className="flex items-start gap-3 cursor-pointer mb-3"
-                        onClick={(e) => {
-                          const newSet = new Set(selectedActionItems);
-                          if (isSelected) newSet.delete(idx);
-                          else newSet.add(idx);
-                          setSelectedActionItems(newSet);
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          readOnly
-                          className="mt-1 w-4 h-4 pointer-events-none"
-                        />
-                        <div className="flex-1">
-                          <p className="font-semibold text-content-primary select-none">{action.task}</p>
-                          <p className="text-xs text-gray-500 select-none">Original: {action.responsiblePerson} | {action.deadline || "No deadline"}</p>
-                        </div>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        readOnly
+                        className="mt-1 w-4 h-4 pointer-events-none"
+                      />
+                      <div className="flex-1">
+                        <p className="font-semibold text-content-primary select-none">
+                          {action.task}
+                        </p>
+                        <p className="text-xs text-gray-500 select-none">
+                          Original: {action.responsiblePerson} |{" "}
+                          {action.deadline || "No deadline"}
+                        </p>
                       </div>
+                    </div>
 
-                      {/* Editable fields (only visible when selected) */}
-                      {isSelected && (
-                        <div
-                          className="mt-3 pl-7 space-y-3"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {/* Description Field */}
+                    {/* Editable fields (only visible when selected) */}
+                    {isSelected && (
+                      <div
+                        className="mt-3 pl-7 space-y-3"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Description Field */}
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">
+                            Task Description
+                          </label>
+                          <textarea
+                            value={override.description || ""}
+                            onChange={(e) =>
+                              updateTaskOverride(
+                                idx,
+                                "description",
+                                e.target.value
+                              )
+                            }
+                            className={`${inputClass} !px-2 !py-1.5 h-20 resize-y`}
+                            placeholder="Task description..."
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                          {/* Assignee */}
                           <div>
-                            <label className="text-xs font-medium text-gray-600 mb-1 block">Task Description</label>
-                            <textarea
-                              value={override.description || ""}
-                              onChange={(e) => updateTaskOverride(idx, "description", e.target.value)}
-                              className={`${inputClass} !px-2 !py-1.5 h-20 resize-y`}
-                              placeholder="Task description..."
+                            <label className="text-xs font-medium text-gray-600 mb-1 block">
+                              Assignee
+                            </label>
+                            <select
+                              value={override.assigneeId || ""}
+                              onChange={(e) => {
+                                const selectedUser = users.find(
+                                  (u) => u.id === e.target.value
+                                );
+                                updateTaskOverride(
+                                  idx,
+                                  "assigneeId",
+                                  e.target.value
+                                );
+                                updateTaskOverride(
+                                  idx,
+                                  "assigneeName",
+                                  selectedUser?.name || ""
+                                );
+                              }}
+                              className={`${inputClass} !px-2 !py-1.5`}
+                            >
+                              <option value="">Select Assignee</option>
+                              {users.map((u) => (
+                                <option key={u.id} value={u.id}>
+                                  {u.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Due Date */}
+                          <div>
+                            <label className="text-xs font-medium text-gray-600 mb-1 block">
+                              Due Date
+                            </label>
+                            <input
+                              type="date"
+                              value={override.dueDate || ""}
+                              onChange={(e) =>
+                                updateTaskOverride(
+                                  idx,
+                                  "dueDate",
+                                  e.target.value
+                                )
+                              }
+                              className={`${inputClass} !px-2 !py-1.5`}
                             />
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                            {/* Assignee */}
-                            <div>
-                              <label className="text-xs font-medium text-gray-600 mb-1 block">Assignee</label>
-                              <select
-                                value={override.assigneeId || ""}
-                                onChange={(e) => {
-                                  const selectedUser = users.find(u => u.id === e.target.value);
-                                  updateTaskOverride(idx, "assigneeId", e.target.value);
-                                  updateTaskOverride(idx, "assigneeName", selectedUser?.name || "");
-                                }}
-                                className={`${inputClass} !px-2 !py-1.5`}
-                              >
-                                <option value="">Select Assignee</option>
-                                {users.map((u) => (
-                                  <option key={u.id} value={u.id}>{u.name}</option>
-                                ))}
-                              </select>
-                            </div>
+                          {/* Priority */}
+                          <div>
+                            <label className="text-xs font-medium text-gray-600 mb-1 block">
+                              Priority
+                            </label>
+                            <select
+                              value={override.priority || "Medium"}
+                              onChange={(e) =>
+                                updateTaskOverride(
+                                  idx,
+                                  "priority",
+                                  e.target.value
+                                )
+                              }
+                              className={`${inputClass} !px-2 !py-1.5`}
+                            >
+                              <option value="Low">Low</option>
+                              <option value="Medium">Medium</option>
+                              <option value="High">High</option>
+                              <option value="Urgent">Urgent</option>
+                            </select>
+                          </div>
 
-                            {/* Due Date */}
-                            <div>
-                              <label className="text-xs font-medium text-gray-600 mb-1 block">Due Date</label>
-                              <input
-                                type="date"
-                                value={override.dueDate || ""}
-                                onChange={(e) => updateTaskOverride(idx, "dueDate", e.target.value)}
-                                className={`${inputClass} !px-2 !py-1.5`}
-                              />
-                            </div>
-
-                            {/* Priority */}
-                            <div>
-                              <label className="text-xs font-medium text-gray-600 mb-1 block">Priority</label>
-                              <select
-                                value={override.priority || "Medium"}
-                                onChange={(e) => updateTaskOverride(idx, "priority", e.target.value)}
-                                className={`${inputClass} !px-2 !py-1.5`}
-                              >
-                                <option value="Low">Low</option>
-                                <option value="Medium">Medium</option>
-                                <option value="High">High</option>
-                                <option value="Urgent">Urgent</option>
-                              </select>
-                            </div>
-
-                            {/* Assigned Date */}
-                            <div>
-                              <label className="text-xs font-medium text-gray-600 mb-1 block">Assigned Date</label>
-                              <input
-                                type="date"
-                                value={override.assignedDate || meetingDate}
-                                onChange={(e) => updateTaskOverride(idx, "assignedDate", e.target.value)}
-                                className={`${inputClass} !px-2 !py-1.5`}
-                              />
-                            </div>
+                          {/* Assigned Date */}
+                          <div>
+                            <label className="text-xs font-medium text-gray-600 mb-1 block">
+                              Assigned Date
+                            </label>
+                            <input
+                              type="date"
+                              value={override.assignedDate || meetingDate}
+                              onChange={(e) =>
+                                updateTaskOverride(
+                                  idx,
+                                  "assignedDate",
+                                  e.target.value
+                                )
+                              }
+                              className={`${inputClass} !px-2 !py-1.5`}
+                            />
                           </div>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
 
-              {/* Footer with Select All and action buttons */}
-              <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedActionItems.size === actionItems.length}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedActionItems(new Set(actionItems.map((_, i) => i)));
-                      } else {
-                        setSelectedActionItems(new Set());
-                      }
-                    }}
-                    className="w-4 h-4"
-                  />
-                  Select All ({actionItems.length})
-                </label>
-                <div className="flex gap-3">
-                  <Button onClick={() => setShowTaskConversion(false)} variant="secondary">Cancel</Button>
-                  <Button
-                    onClick={createTasksFromActions}
-                    variant="primary"
-                    disabled={selectedActionItems.size === 0 || loading}
-                  >
-                    {loading ? <FaSpinner className="animate-spin mr-1" /> : null}
-                    Create {selectedActionItems.size} Task(s)
-                  </Button>
-                </div>
+            {/* Footer with Select All and action buttons */}
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between bg-white dark:bg-gray-800">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedActionItems.size === actionItems.length}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedActionItems(
+                        new Set(actionItems.map((_, i) => i))
+                      );
+                    } else {
+                      setSelectedActionItems(new Set());
+                    }
+                  }}
+                  className="w-4 h-4"
+                />
+                Select All ({actionItems.length})
+              </label>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setShowTaskConversion(false)}
+                  variant="secondary"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={createTasksFromActions}
+                  variant="primary"
+                  disabled={selectedActionItems.size === 0 || loading}
+                >
+                  {loading ? <FaSpinner className="animate-spin mr-1" /> : null}
+                  Create {selectedActionItems.size} Task(s)
+                </Button>
               </div>
             </div>
           </div>
-        )
-      }
-
-
-    </div >
+        </div>
+      )}
+    </div>
   );
 }
