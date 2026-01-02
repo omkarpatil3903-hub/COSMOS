@@ -137,7 +137,6 @@ function Calendar() {
               progress: data.progress || 0,
             };
           });
-          console.log("📅 Events loaded:", loadedEvents.length, loadedEvents);
           setEvents(loadedEvents);
         }
       );
@@ -334,15 +333,7 @@ function Calendar() {
       }
     });
 
-    console.log(
-      "📅 Combined events:",
-      eventList.length,
-      "total events (",
-      events.length,
-      "events +",
-      eventList.length - events.length,
-      "tasks)"
-    );
+
     return eventList;
   }, [events, tasks, clients, currentDate]);
 
@@ -583,7 +574,6 @@ function Calendar() {
     const request = meetingRequests.find((req) => req.id === requestId);
     if (!request) return;
 
-    console.log("🎯 Approving request:", request);
 
     try {
       // Create new event first
@@ -616,19 +606,16 @@ function Calendar() {
         ],
       };
 
-      console.log("📝 Creating event with data:", eventData);
       const newEventRef = await addDoc(collection(db, "events"), eventData);
-      console.log("✅ Event created with ID:", newEventRef.id);
 
       // Remove the request after successful event creation
       await deleteDoc(doc(db, "meetingRequests", requestId));
-      console.log("🗑️ Request deleted");
 
       toast.success(
         `Meeting with ${request.clientName} approved and scheduled!`
       );
     } catch (error) {
-      console.error("❌ Error approving request:", error);
+      console.error(" Error approving request:", error);
       toast.error("Failed to approve meeting request");
     }
   };

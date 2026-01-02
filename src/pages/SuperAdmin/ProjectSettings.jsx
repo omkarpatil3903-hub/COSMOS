@@ -88,17 +88,14 @@ export default function ProjectSettings() {
       setLevelError("Enter a level");
       return;
     }
-    const normalizeLevel = (s) => {
-      const t = String(s ?? "").trim();
-      const num = Number(t);
-      if (!Number.isNaN(num) && /^[-+]?\d*(?:\.\d+)?$/.test(t))
-        return String(num);
-      return t.toLowerCase();
-    };
-    const lv = normalizeLevel(lvInput);
+    if (!/^\d+$/.test(lvInput)) {
+      setLevelError("Level must be a number");
+      return;
+    }
+    const lv = lvInput;
     const exists = items.some(
       (it) =>
-        normalizeLevel(it.level) === lv && (!editing || it.id !== editing.id)
+        String(it.level) === lv && (!editing || it.id !== editing.id)
     );
     if (exists) {
       setLevelError("Level already exists");
@@ -403,11 +400,11 @@ export default function ProjectSettings() {
                 <label className="block text-sm font-medium [.dark_&]:text-gray-300">
                   Project Level
                   <input
-                    type="number"
-                    min="1"
+                    type="text"
                     value={level}
                     onChange={(e) => {
-                      setLevel(e.target.value);
+                      const val = e.target.value.replace(/[^0-9]/g, "");
+                      setLevel(val);
                       if (levelError) setLevelError("");
                     }}
                     className={`mt-1 w-full rounded border px-3 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none [.dark_&]:bg-[#1F2234] [.dark_&]:text-white ${levelError ? "border-red-500" : "border-gray-300 [.dark_&]:border-white/10"
