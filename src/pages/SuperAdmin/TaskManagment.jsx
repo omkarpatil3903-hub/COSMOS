@@ -567,11 +567,11 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
     const isString = typeof status === "string" && status.trim() !== "";
     if (isString) {
       // If invoked from a synthetic group like "Today's Tasks" or catch-all like "Other",
-      // default to first available status; otherwise use provided status.
+      // default to TO DO; otherwise use provided status.
       const synthetic = status === "TODAYS TASK" || status === "Today's Tasks" || status === "Other";
-      setEditing({ status: synthetic ? (effectiveStatuses[0] || "To-Do") : status });
+      setEditing({ status: synthetic ? "TO DO" : status });
     } else {
-      setEditing(null);
+      setEditing({ status: "TO DO" });
     }
     setShowModal(true);
   };

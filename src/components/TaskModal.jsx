@@ -7,6 +7,7 @@ import { validateTaskForm } from "../utils/formBuilders";
 import { MdReplayCircleFilled } from "react-icons/md";
 import { FaTimes, FaRegCalendarAlt, FaArrowRight } from "react-icons/fa";
 import { calculateNextDueDate } from "../utils/recurringTasks";
+import { useTheme } from "../context/ThemeContext";
 
 // Inline simple searchable multi-select component
 function SearchMultiSelect({ items, selected, onChange, placeholder }) {
@@ -67,6 +68,27 @@ function TaskModal({
   clients = [],
   statuses = [],
 }) {
+  const { accent } = useTheme();
+
+  // Helper to get theme-specific styles
+  const getThemeStyles = () => {
+    const styles = {
+      purple: { button: 'bg-purple-600 hover:bg-purple-700 focus-visible:ring-purple-500', iconBg: 'bg-purple-50', iconText: 'text-purple-600' },
+      blue: { button: 'bg-sky-600 hover:bg-sky-700 focus-visible:ring-sky-500', iconBg: 'bg-sky-50', iconText: 'text-sky-600' },
+      pink: { button: 'bg-pink-600 hover:bg-pink-700 focus-visible:ring-pink-500', iconBg: 'bg-pink-50', iconText: 'text-pink-600' },
+      violet: { button: 'bg-violet-600 hover:bg-violet-700 focus-visible:ring-violet-500', iconBg: 'bg-violet-50', iconText: 'text-violet-600' },
+      orange: { button: 'bg-amber-600 hover:bg-amber-700 focus-visible:ring-amber-500', iconBg: 'bg-amber-50', iconText: 'text-amber-600' },
+      teal: { button: 'bg-teal-600 hover:bg-teal-700 focus-visible:ring-teal-500', iconBg: 'bg-teal-50', iconText: 'text-teal-600' },
+      bronze: { button: 'bg-amber-700 hover:bg-amber-800 focus-visible:ring-amber-600', iconBg: 'bg-amber-50', iconText: 'text-amber-700' },
+      mint: { button: 'bg-emerald-600 hover:bg-emerald-700 focus-visible:ring-emerald-500', iconBg: 'bg-emerald-50', iconText: 'text-emerald-600' },
+      black: { button: 'bg-gray-800 hover:bg-gray-900 focus-visible:ring-gray-600', iconBg: 'bg-gray-100', iconText: 'text-gray-800' },
+      indigo: { button: 'bg-indigo-600 hover:bg-indigo-700 focus-visible:ring-indigo-500', iconBg: 'bg-indigo-50', iconText: 'text-indigo-600' },
+    };
+    return styles[accent] || styles.indigo;
+  };
+
+  const themeStyles = getThemeStyles();
+
   const isEdit = !!(taskToEdit && taskToEdit.id);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -426,7 +448,7 @@ function TaskModal({
           <div className="flex items-center gap-3">
             <div
               className={`p-2 rounded-lg ${isEdit
-                ? "bg-indigo-50 text-indigo-600"
+                ? `${themeStyles.iconBg} ${themeStyles.iconText}`
                 : "bg-gray-100 text-gray-500"
                 }`}
             >
@@ -575,9 +597,9 @@ function TaskModal({
                         <button
                           type="button"
                           onClick={() => setStatus("Done")}
-                          className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors whitespace-nowrap ${status === "Done"
-                            ? "bg-emerald-500 text-white border-emerald-500"
-                            : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                          className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 whitespace-nowrap ${status === "Done"
+                            ? "bg-emerald-500 text-white border-emerald-500 shadow-md"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 opacity-70 hover:opacity-100 cursor-pointer [.dark_&]:bg-emerald-900/30 [.dark_&]:text-emerald-400 [.dark_&]:border-emerald-700 [.dark_&]:hover:bg-emerald-900/50"
                             }`}
                         >
                           Done
@@ -1103,7 +1125,7 @@ function TaskModal({
                       />
                       <Button
                         type="button"
-                        variant="secondary"
+                        variant="custom"
                         onClick={() => {
                           if (newSubtask.trim()) {
                             setSubtasks([
@@ -1117,7 +1139,7 @@ function TaskModal({
                             setNewSubtask("");
                           }
                         }}
-                        className="whitespace-nowrap text-xs px-2 py-1.5"
+                        className={`whitespace-nowrap text-xs px-3 py-1.5 text-white rounded-lg transition-colors ${themeStyles.button}`}
                       >
                         Add
                       </Button>
@@ -1144,10 +1166,10 @@ function TaskModal({
               Cancel
             </Button>
             <Button
-              variant="primary"
+              variant="custom"
               onClick={handleSubmit}
               disabled={!!taskToEdit && !hasChanges}
-              className="px-8 shadow-lg shadow-indigo-200"
+              className={`px-8 text-white rounded-lg transition-colors ${themeStyles.button} ${!!taskToEdit && !hasChanges ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {taskToEdit ? "Save Changes" : "Create Task"}
             </Button>

@@ -63,13 +63,14 @@ export default function AddHierarchy() {
             id: `${(r.role || "r")}_${r.name}`,
             type: (r.role || "").toLowerCase(),
             name: r.name,
+            originalRole: r.role,
           }));
       } else {
         // Legacy fallback for existing data
         const sup = Array.isArray(d.superior) ? d.superior : [];
         const inf = Array.isArray(d.inferior) ? d.inferior : [];
-        const adminArr = Array.isArray(d.admin) ? d.admin : [];
         const memberArr = Array.isArray(d.member) ? d.member : [];
+        const adminArr = Array.isArray(d.admin) ? d.admin : [];
         const adminSet = new Set([...(adminArr || []), ...(sup || [])]);
         const memberSet = new Set([...(memberArr || []), ...(inf || [])]);
         list = [
@@ -77,11 +78,13 @@ export default function AddHierarchy() {
             id: `a_${v}`,
             type: "admin",
             name: v,
+            originalRole: "admin",
           })),
           ...Array.from(memberSet).map((v) => ({
             id: `m_${v}`,
             type: "member",
             name: v,
+            originalRole: "member",
           })),
         ];
       }
@@ -119,7 +122,7 @@ export default function AddHierarchy() {
       if (editing) {
         await setDoc(
           ref,
-          { roles: arrayRemove({ name: editing.name, role: editing.type }) },
+          { roles: arrayRemove({ name: editing.name, role: editing.originalRole || editing.type }) },
           { merge: true }
         );
       }
@@ -154,7 +157,7 @@ export default function AddHierarchy() {
       await setDoc(
         ref,
         {
-          roles: arrayRemove({ name: item.name, role: item.type }),
+          roles: arrayRemove({ name: item.name, role: item.originalRole || item.type }),
           updatedAt: serverTimestamp(),
         },
         { merge: true }

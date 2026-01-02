@@ -60,6 +60,7 @@ export default function AddHierarchy() {
             id: `${(r.role || "r")}_${r.name}`,
             type: (r.role || "").toLowerCase(),
             name: r.name,
+            originalRole: r.role,
           }));
       } else {
         // Legacy fallback for existing data
@@ -74,11 +75,13 @@ export default function AddHierarchy() {
             id: `a_${v}`,
             type: "admin",
             name: v,
+            originalRole: "admin",
           })),
           ...Array.from(memberSet).map((v) => ({
             id: `m_${v}`,
             type: "member",
             name: v,
+            originalRole: "member",
           })),
         ];
       }
@@ -116,7 +119,7 @@ export default function AddHierarchy() {
       if (editing) {
         await setDoc(
           ref,
-          { roles: arrayRemove({ name: editing.name, role: editing.type }) },
+          { roles: arrayRemove({ name: editing.name, role: editing.originalRole || editing.type }) },
           { merge: true }
         );
       }
@@ -151,7 +154,7 @@ export default function AddHierarchy() {
       await setDoc(
         ref,
         {
-          roles: arrayRemove({ name: item.name, role: item.type }),
+          roles: arrayRemove({ name: item.name, role: item.originalRole || item.type }),
           updatedAt: serverTimestamp(),
         },
         { merge: true }
@@ -336,12 +339,12 @@ export default function AddHierarchy() {
                     <td className="whitespace-nowrap px-6 py-2.5 text-sm">
                       <span
                         className={`inline-flex items-center justify-center rounded-xs px-3 py-1 text-xs font-semibold tracking-wide uppercase transition-colors ${item.type === "admin"
-                            ? "bg-blue-500 text-white"
-                            : item.type === "superadmin"
-                              ? "bg-purple-500 text-white"
-                              : item.type === "manager"
-                                ? "bg-green-500 text-white"
-                                : "bg-gray-600 text-white"
+                          ? "bg-blue-500 text-white"
+                          : item.type === "superadmin"
+                            ? "bg-purple-500 text-white"
+                            : item.type === "manager"
+                              ? "bg-green-500 text-white"
+                              : "bg-gray-600 text-white"
                           }`}
                       >
                         {item.type === "admin"
@@ -397,8 +400,8 @@ export default function AddHierarchy() {
                 <button
                   onClick={() => setType("superadmin")}
                   className={`rounded-full px-4 py-2 transition ${type === "superadmin"
-                      ? "bg-surface shadow-sm text-content-primary"
-                      : "text-content-tertiary"
+                    ? "bg-surface shadow-sm text-content-primary"
+                    : "text-content-tertiary"
                     }`}
                 >
                   Super Admin Role

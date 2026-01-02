@@ -972,9 +972,9 @@ const TaskViewModal = ({
                             handleQuickUpdate("status", "Done");
                           }
                         }}
-                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors whitespace-nowrap shrink-0 ${String(displayStatus || "").toLowerCase().replace(/[^a-z0-9]/g, "") === "done"
-                          ? "bg-emerald-500 text-white border-emerald-500"
-                          : "bg-emerald-50 [.dark_&]:bg-emerald-500/20 text-emerald-700 [.dark_&]:text-emerald-400 border-emerald-200 [.dark_&]:border-emerald-500/30 hover:bg-emerald-100 [.dark_&]:hover:bg-emerald-500/30"
+                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all duration-200 whitespace-nowrap shrink-0 ${String(displayStatus || "").toLowerCase().replace(/[^a-z0-9]/g, "") === "done"
+                            ? "bg-emerald-500 text-white border-emerald-500 shadow-md"
+                            : "bg-emerald-50 [.dark_&]:bg-emerald-900/30 text-emerald-700 [.dark_&]:text-emerald-400 border-emerald-200 [.dark_&]:border-emerald-700 hover:bg-emerald-100 [.dark_&]:hover:bg-emerald-900/50 hover:border-emerald-300 opacity-70 hover:opacity-100 cursor-pointer"
                           }`}
                       >
                         Done

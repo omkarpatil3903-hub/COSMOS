@@ -268,9 +268,9 @@ const EditSelfTaskModal = ({ isOpen, onClose, task, projects, user }) => {
                                                 <button
                                                     type="button"
                                                     onClick={() => setStatus("Done")}
-                                                    className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap transition-colors ${status === "Done"
-                                                            ? "bg-emerald-500 text-white border-emerald-500"
-                                                            : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                                    className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border whitespace-nowrap transition-all duration-200 ${status === "Done"
+                                                        ? "bg-emerald-500 text-white border-emerald-500 shadow-md"
+                                                        : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300 opacity-70 hover:opacity-100 cursor-pointer [.dark_&]:bg-emerald-900/30 [.dark_&]:text-emerald-400 [.dark_&]:border-emerald-700 [.dark_&]:hover:bg-emerald-900/50"
                                                         }`}
                                                 >
                                                     Done
