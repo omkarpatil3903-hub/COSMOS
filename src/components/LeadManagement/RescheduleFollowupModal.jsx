@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaClock } from 'react-icons/fa';
+import { FaClock, FaFlag } from 'react-icons/fa';
 import { HiXMark } from 'react-icons/hi2';
 
 const RescheduleFollowupModal = ({
@@ -10,7 +10,8 @@ const RescheduleFollowupModal = ({
     rescheduleForm,
     setRescheduleForm,
     onReschedule,
-    isRescheduling
+    isRescheduling,
+    priorities
 }) => {
     if (!isOpen || !lead) return null;
 
@@ -81,6 +82,29 @@ const RescheduleFollowupModal = ({
                                 onChange={(e) => setRescheduleForm({ ...rescheduleForm, time: e.target.value })}
                                 className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-3 px-4 text-sm text-gray-900 [.dark_&]:text-white"
                             />
+                        </div>
+
+                        {/* Priority */}
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">
+                                <FaFlag className="text-yellow-500" />
+                                Priority
+                            </label>
+                            <select
+                                value={rescheduleForm.priority}
+                                onChange={(e) => setRescheduleForm({ ...rescheduleForm, priority: e.target.value })}
+                                className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-3 px-4 text-sm text-gray-900 [.dark_&]:text-white capitalize"
+                            >
+                                {(priorities && priorities.length > 0 ? priorities : ["Low", "Medium", "High", "Urgent"]).map((priority) => {
+                                    const priorityValue = typeof priority === 'string' ? priority.toLowerCase() : priority.value;
+                                    const priorityLabel = typeof priority === 'string' ? priority : priority.label;
+                                    return (
+                                        <option key={priorityValue} value={priorityValue}>
+                                            {priorityLabel}
+                                        </option>
+                                    );
+                                })}
+                            </select>
                         </div>
 
                         {/* Reason (Optional) */}

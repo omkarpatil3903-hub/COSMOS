@@ -34,6 +34,7 @@ import {
   FaHome,
   FaGripVertical,
   FaCog,
+  FaListAlt,
 } from "react-icons/fa";
 import { HiXMark } from "react-icons/hi2";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -55,6 +56,10 @@ import {
   getDocs,
   getDoc,
   setDoc,
+  where,
+  runTransaction,
+  limit,
+  collectionGroup, // Added for efficient follow-up fetching
 } from "firebase/firestore";
 
 import PageHeader from "../../components/PageHeader";
@@ -264,7 +269,7 @@ function LeadManagement() {
 
   // Lead Assignment State
   const [users, setUsers] = useState([]);
-  const [showBulkAssignModal, setShowBulkAssignModal] = useState(false);
+
   const [bulkAssignee, setBulkAssignee] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState("");
 
@@ -363,17 +368,31 @@ function LeadManagement() {
   }, []);
 
   // --- Fetch All Follow-ups across all leads ---
+  // --- Fetch All Follow-ups across all leads ---
   useEffect(() => {
-    if (activeView !== "followups") return;
+    // REMOVED: if (activeView !== "followups") return;
+    // We now fetch follow-ups globally for this page to show notifications
 
     const fetchAllFollowups = async () => {
-      setLoadingAllFollowups(true);
+      // Only show top-level loading if we are actually in the follow-ups view
+      if (activeView === "followups") {
+        setLoadingAllFollowups(true);
+      }
+
       try {
+        // Efficient global fetch using collectionGroup
+        const followupsSnapshot = await getDocs(collectionGroup(db, 'followups'));
+
         const followupsList = [];
-        for (const lead of leads) {
-          const followupsRef = collection(db, "leads", lead.id, "followups");
-          const snapshot = await getDocs(followupsRef);
-          snapshot.docs.forEach(doc => {
+
+        followupsSnapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          // Find the parent lead from our already loaded 'leads' array
+          // doc.ref.parent.parent.id gives the lead ID
+          const leadId = doc.ref.parent.parent?.id;
+          const lead = leads.find(l => l.id === leadId);
+
+          if (lead) {
             followupsList.push({
               id: doc.id,
               leadId: lead.id,
@@ -382,16 +401,20 @@ function LeadManagement() {
               leadPriority: lead.priority,
               assignedTo: lead.assignedTo,
               assignedToName: lead.assignedToName,
-              ...doc.data(),
+              ...data,
             });
-          });
-        }
+          }
+        });
+
         // Sort by date (most recent first)
         followupsList.sort((a, b) => new Date(b.date) - new Date(a.date));
         setAllFollowups(followupsList);
       } catch (e) {
         console.error("Error fetching all follow-ups:", e);
-        toast.error("Failed to load follow-ups");
+        // Only toast error if we are looking at the view
+        if (activeView === "followups") {
+          toast.error("Failed to load follow-ups");
+        }
       } finally {
         setLoadingAllFollowups(false);
       }
@@ -400,7 +423,7 @@ function LeadManagement() {
     if (leads.length > 0) {
       fetchAllFollowups();
     }
-  }, [activeView, leads]);
+  }, [leads, activeView]); // Keep activeView dependency to toggle loader, but logic runs always
 
   // --- Helper: Get Follow-up Status ---
   const getFollowUpStatus = (followUpDate) => {
@@ -544,13 +567,21 @@ function LeadManagement() {
     try {
       await updateDoc(doc(db, "leads", followup.leadId, "followups", followup.id), {
         status: "completed",
+        outcome: completeForm.outcome,
+        completionNotes: completeForm.completionNotes,
         completedAt: serverTimestamp(),
       });
       toast.success("Follow-up marked as completed");
       // Refresh follow-ups
       setAllFollowups(prev => prev.map(f =>
-        f.id === followup.id ? { ...f, status: "completed" } : f
+        f.id === followup.id ? {
+          ...f,
+          status: "completed",
+          outcome: completeForm.outcome,
+          completionNotes: completeForm.completionNotes
+        } : f
       ));
+      setShowCompleteModal(false); // Close modal on success
     } catch (e) {
       console.error(e);
       toast.error("Failed to complete follow-up");
@@ -715,18 +746,13 @@ function LeadManagement() {
   const validateForm = (data) => {
     const errs = {};
     if (!data.date) errs.date = "Date is required";
-    if (!data.customerName.trim())
+    if (!data.customerName?.trim())
       errs.customerName = "Customer Name is required";
-    if (!data.contactNumber.trim())
+    if (!data.contactNumber?.trim())
       errs.contactNumber = "Contact Number is required";
-    if (!data.email.trim()) errs.email = "Email Address is required";
-    if (!data.companyName.trim()) errs.companyName = "Company Name is required";
-    if (!data.productOfInterest)
-      errs.productOfInterest = "Product of Interest is required";
-    if (!data.sector) errs.sector = "Sector is required";
+    if (!data.email?.trim()) errs.email = "Email Address is required";
+    if (!data.companyName?.trim()) errs.companyName = "Company Name is required";
     if (!data.sourceOfLead) errs.sourceOfLead = "Source of Lead is required";
-    if (!data.productCategory)
-      errs.productCategory = "Product Category is required";
     return errs;
   };
 
@@ -801,6 +827,19 @@ function LeadManagement() {
       toast.success("Lead deleted successfully");
     } catch (e) {
       toast.error("Failed to delete lead");
+    }
+  };
+
+  // Handle inline status change from table
+  const handleStatusChange = async (leadId, newStatus) => {
+    try {
+      await updateDoc(doc(db, "leads", leadId), {
+        status: newStatus,
+        updatedAt: serverTimestamp(),
+      });
+      toast.success(`Status updated to "${newStatus}"`);
+    } catch (e) {
+      toast.error("Failed to update status");
     }
   };
 
@@ -1580,9 +1619,24 @@ function LeadManagement() {
                             notif.status.type === 'today' ? 'text-yellow-700 [.dark_&]:text-yellow-300' :
                               'text-green-700 [.dark_&]:text-green-300'
                             }`}>
-                            {notif.status.type === 'overdue' && `⚠️ ${notif.status.days} day${notif.status.days > 1 ? 's' : ''} overdue`}
-                            {notif.status.type === 'today' && '🔔 Due today'}
-                            {notif.status.type === 'tomorrow' && '📅 Due tomorrow'}
+                            {notif.status.type === 'overdue' && (
+                              <span className="flex items-center gap-1">
+                                <FaExclamationTriangle className="text-xs" />
+                                {notif.status.days} day{notif.status.days > 1 ? 's' : ''} overdue
+                              </span>
+                            )}
+                            {notif.status.type === 'today' && (
+                              <span className="flex items-center gap-1">
+                                <FaBell className="text-xs" />
+                                Due today
+                              </span>
+                            )}
+                            {notif.status.type === 'tomorrow' && (
+                              <span className="flex items-center gap-1">
+                                <FaCalendarAlt className="text-xs" />
+                                Due tomorrow
+                              </span>
+                            )}
                           </p>
                           <span className="text-xs text-gray-500 [.dark_&]:text-gray-400">
                             • {notif.date} {notif.time && `at ${notif.time}`}
@@ -1737,6 +1791,16 @@ function LeadManagement() {
               >
                 <FaTh />
               </button>
+              <button
+                onClick={() => setViewMode("grouped")}
+                className={`p-2 rounded-md transition-all ${viewMode === "grouped"
+                  ? "bg-white [.dark_&]:bg-slate-600 shadow text-indigo-600 [.dark_&]:text-indigo-400"
+                  : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700"
+                  }`}
+                title="Grouped View"
+              >
+                <FaListAlt />
+              </button>
             </div>
 
             {/* Create Lead Button */}
@@ -1774,12 +1838,19 @@ function LeadManagement() {
             setScheduleFollowupForm={setScheduleFollowupForm}
             setSelectedLead={setSelectedLead}
             setShowDeleteModal={setShowDeleteModal}
-            setShowBulkAssignModal={setShowBulkAssignModal}
+
             setShowBulkStatusModal={setShowBulkStatusModal}
             setShowBulkDeleteModal={setShowBulkDeleteModal}
             getFollowUpStatus={getFollowUpStatus}
             getStatusColor={getStatusColor}
             getPriorityColor={getPriorityColor}
+            onStatusChange={handleStatusChange}
+            onAddLeadWithStatus={(status) => {
+              resetForm();
+              setFormData(prev => ({ ...prev, status: status.toLowerCase() }));
+              setSelectedLead(null);
+              setShowAddForm(true);
+            }}
           />
         </div>
       )}
@@ -1792,6 +1863,7 @@ function LeadManagement() {
             followupFilter={followupFilter}
             setFollowupFilter={setFollowupFilter}
             loadingAllFollowups={loadingAllFollowups}
+            allFollowups={allFollowups}
             filteredFollowups={filteredFollowups}
             setShowScheduleFollowup={setShowScheduleFollowup}
             getFollowupNotificationStatus={getFollowupNotificationStatus}
@@ -1815,7 +1887,8 @@ function LeadManagement() {
                 setRescheduleForm({
                   date: followup.date,
                   time: "10:00",
-                  reason: ""
+                  reason: "",
+                  priority: followup.priority || "medium"
                 });
                 setShowRescheduleModal(true);
               } else {
@@ -1876,26 +1949,7 @@ function LeadManagement() {
                     </span>
                   </div>
                 </button>
-                <button
-                  onClick={() => setActiveSettingsTab('product')}
-                  className={`px-6 py-3 font-medium text-sm transition-all border-b-2 ${activeSettingsTab === 'product'
-                    ? 'border-purple-600 text-purple-600 [.dark_&]:text-purple-400 bg-purple-50 [.dark_&]:bg-purple-900/20'
-                    : 'border-transparent text-gray-600 [.dark_&]:text-gray-400 hover:text-gray-900 [.dark_&]:hover:text-white hover:bg-gray-50 [.dark_&]:hover:bg-slate-700/50'
-                    }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <FaBoxOpen />
-                    Product Settings
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${(sectors.length + productCategories.length + products.length) === 0
-                      ? 'bg-red-100 text-red-700 [.dark_&]:bg-red-900/30 [.dark_&]:text-red-400'
-                      : (sectors.length + productCategories.length + products.length) < 10
-                        ? 'bg-yellow-100 text-yellow-700 [.dark_&]:bg-yellow-900/30 [.dark_&]:text-yellow-400'
-                        : 'bg-green-100 text-green-700 [.dark_&]:bg-green-900/30 [.dark_&]:text-green-400'
-                      }`}>
-                      {sectors.length + productCategories.length + products.length}
-                    </span>
-                  </div>
-                </button>
+
                 <button
                   onClick={() => setActiveSettingsTab('followup')}
                   className={`px-6 py-3 font-medium text-sm transition-all border-b-2 ${activeSettingsTab === 'followup'
@@ -2046,97 +2100,7 @@ function LeadManagement() {
                   </>
                 )}
 
-                {/* PRODUCT SETTINGS TAB */}
-                {activeSettingsTab === 'product' && (
-                  <>
-                    {/* Sectors */}
-                    <SettingsSection
-                      title="Sectors"
-                      icon={FaIndustry}
-                      iconColor="text-cyan-600 [.dark_&]:text-cyan-400"
-                      items={sectors}
-                      type="sector"
-                      description="Manage industry sectors for leads"
-                      emptyMessage="No sectors defined"
-                      emptySuggestions="Add sectors. Try: Manufacturing, Healthcare, Technology"
-                      onAdd={() => {
-                        setSettingType('sector');
-                        setShowAddSettingModal(true);
-                      }}
-                      onEdit={handleEditSetting}
-                      onDelete={handleDeleteSetting}
-                      onReorder={handleReorderSettings}
-                      editingItem={editingItem}
-                      editValue={editValue}
-                      setEditingItem={setEditingItem}
-                      setEditValue={setEditValue}
-                      colors={{
-                        ring: 'ring-cyan-500',
-                        inputBg: 'bg-cyan-50 [.dark_&]:bg-cyan-900/20',
-                        inputBorder: 'border-cyan-300 [.dark_&]:border-cyan-600'
-                      }}
-                      usageCounts={settingsUsageStats.sector}
-                    />
 
-                    {/* Product Categories */}
-                    <SettingsSection
-                      title="Product Categories"
-                      icon={FaTag}
-                      iconColor="text-pink-600 [.dark_&]:text-pink-400"
-                      items={productCategories}
-                      type="productCategory"
-                      description="Categorize products or services"
-                      emptyMessage="No categories defined"
-                      emptySuggestions="Add product categories. Try: Hardware, Software, Services"
-                      onAdd={() => {
-                        setSettingType('productCategory');
-                        setShowAddSettingModal(true);
-                      }}
-                      onEdit={handleEditSetting}
-                      onDelete={handleDeleteSetting}
-                      onReorder={handleReorderSettings}
-                      editingItem={editingItem}
-                      editValue={editValue}
-                      setEditingItem={setEditingItem}
-                      setEditValue={setEditValue}
-                      colors={{
-                        ring: 'ring-pink-500',
-                        inputBg: 'bg-pink-50 [.dark_&]:bg-pink-900/20',
-                        inputBorder: 'border-pink-300 [.dark_&]:border-pink-600'
-                      }}
-                      usageCounts={settingsUsageStats.productCategory}
-                    />
-
-                    {/* Products of Interest */}
-                    <SettingsSection
-                      title="Products of Interest"
-                      icon={FaBoxOpen}
-                      iconColor="text-purple-600 [.dark_&]:text-purple-400"
-                      items={products}
-                      type="product"
-                      description="Manage product offerings"
-                      emptyMessage="No products defined"
-                      emptySuggestions="Add products. Try: Hydraulic Lift, Scissor Lift, Conveyor"
-                      onAdd={() => {
-                        setSettingType('product');
-                        setShowAddSettingModal(true);
-                      }}
-                      onEdit={handleEditSetting}
-                      onDelete={handleDeleteSetting}
-                      onReorder={handleReorderSettings}
-                      editingItem={editingItem}
-                      editValue={editValue}
-                      setEditingItem={setEditingItem}
-                      setEditValue={setEditValue}
-                      colors={{
-                        ring: 'ring-purple-500',
-                        inputBg: 'bg-purple-50 [.dark_&]:bg-purple-900/20',
-                        inputBorder: 'border-purple-300 [.dark_&]:border-purple-600'
-                      }}
-                      usageCounts={settingsUsageStats.product}
-                    />
-                  </>
-                )}
               </div>
             </div>
           </div>
@@ -2163,6 +2127,7 @@ function LeadManagement() {
         isSubmitting={savingScheduleFollowup}
         leads={leads}
         followupTypes={followupTypes}
+        priorities={leadPriorities}
       />
 
       {/* Modals */}
@@ -2512,58 +2477,7 @@ function LeadManagement() {
         )
       }
 
-      {/* Bulk Assign Modal */}
-      {
-        showBulkAssignModal && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-            <div
-              className="bg-white [.dark_&]:bg-[#181B2A] rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-white/10">
-                <h2 className="text-lg font-bold text-gray-900 [.dark_&]:text-white">
-                  Assign Leads
-                </h2>
-                <button
-                  onClick={() => setShowBulkAssignModal(false)}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 rounded-full"
-                >
-                  <HiXMark className="h-5 w-5" />
-                </button>
-              </div>
-              <div className="p-6">
-                <p className="text-sm text-gray-600 [.dark_&]:text-gray-300 mb-4">
-                  Assign <strong>{selectedLeads.size}</strong> lead{selectedLeads.size > 1 ? "s" : ""} to a team member.
-                </p>
-                <select
-                  value={bulkAssignee}
-                  onChange={(e) => setBulkAssignee(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white"
-                >
-                  <option value="">Select team member</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} {u.role ? `(${u.role})` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 [.dark_&]:border-white/10">
-                <Button variant="secondary" onClick={() => setShowBulkAssignModal(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleBulkAssign}
-                  disabled={isBulkProcessing || !bulkAssignee}
-                  className={buttonClass}
-                >
-                  {isBulkProcessing ? "Assigning..." : "Assign Leads"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )
-      }
+
 
       {/* Lead Profile Modal */}
       <ViewLeadModal
@@ -2613,7 +2527,7 @@ function LeadManagement() {
         onClose={() => {
           setShowRescheduleModal(false);
           setRescheduleFollowup(null);
-          setRescheduleForm({ date: "", time: "", reason: "" });
+          setRescheduleForm({ date: "", time: "", reason: "", priority: "medium" });
         }}
         lead={selectedLead}
         rescheduleFollowup={rescheduleFollowup}
@@ -2621,6 +2535,7 @@ function LeadManagement() {
         setRescheduleForm={setRescheduleForm}
         onReschedule={handleRescheduleFollowupSubmit}
         isRescheduling={savingFollowup}
+        priorities={leadPriorities}
       />
 
       {/* Complete Follow-up Modal */}
