@@ -1,0 +1,49 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper to check for SuperAdmin role
+    // WARN: This requires the user document to exist and have role field
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+    }
+
+    // Leads Collection
+    match /leads/{leadId} {
+      // For now, allow all authenticated users to manage leads
+      // TODO: Restrict delete to SuperAdmin or Owner once roles are settled
+      allow read, write: if isAuthenticated();
+      
+      // Followups Subcollection
+      match /followups/{followupId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // Lead Settings Collection (Config)
+    match /leadSettings/{document} {
+      allow read: if isAuthenticated();
+      // Only SuperAdmin should change global settings
+      // Fallback: Allow all auth users if role not set up (commented out for security)
+      allow write: if isAuthenticated(); // Relaxed for now to prevent lockout, strict would be isSuperAdmin()
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
