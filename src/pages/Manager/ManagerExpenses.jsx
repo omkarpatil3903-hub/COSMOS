@@ -46,7 +46,7 @@ export default function ManagerExpenses() {
     const [rejectReason, setRejectReason] = useState("");
     const [viewingExpense, setViewingExpense] = useState(null);
     const [page, setPage] = useState(1);
-    const [pageSize] = useState(10);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
 
     // Get projects managed by current user
     useEffect(() => {
@@ -167,8 +167,7 @@ export default function ManagerExpenses() {
         }
     };
 
-    const totalPages = Math.ceil(filtered.length / pageSize);
-    const paginatedExpenses = filtered.slice((page - 1) * pageSize, page * pageSize);
+
 
     if (loading) {
         return (
@@ -372,161 +371,184 @@ export default function ManagerExpenses() {
                     </p>
                 </div>
             ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-200 [.dark_&]:border-white/10 shadow-sm">
-                    <table className="min-w-full divide-y divide-gray-200 [.dark_&]:divide-white/10">
-                        <thead className="bg-gray-50 [.dark_&]:bg-[#1F2234]">
-                            <tr>
-                                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Sr.</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Employee</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Expense</th>
-                                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Category</th>
-                                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Amount</th>
-                                <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Status</th>
-                                <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white [.dark_&]:bg-[#181B2A] divide-y divide-gray-200 [.dark_&]:divide-white/10">
-                            {paginatedExpenses.map((e, index) => (
-                                <tr key={e.id} className="hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors">
-                                    <td className="px-6 py-4 text-center text-sm text-gray-500 [.dark_&]:text-gray-400">
-                                        {(page - 1) * pageSize + index + 1}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center">
-                                            <div className="h-8 w-8 rounded-full bg-indigo-100 [.dark_&]:bg-indigo-500/20 flex items-center justify-center text-indigo-700 [.dark_&]:text-indigo-400 font-bold text-xs mr-3">
-                                                {e.employeeName ? e.employeeName.charAt(0).toUpperCase() : "?"}
-                                            </div>
-                                            <span className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
-                                                {e.employeeName || "Unknown"}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-semibold text-gray-900 [.dark_&]:text-white">{e.title}</span>
-                                            <span className="text-xs text-gray-500 [.dark_&]:text-gray-400 flex items-center gap-1">
-                                                <FaCalendarAlt className="text-gray-400" /> {e.date || "-"}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 [.dark_&]:bg-white/10 text-gray-700 [.dark_&]:text-gray-300">
-                                            <FaTag className="text-[10px] text-gray-500 [.dark_&]:text-gray-400" />
-                                            {e.category || "Other"}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <span className="text-sm font-bold text-gray-900 [.dark_&]:text-white">
-                                            ₹{e.amount?.toFixed ? e.amount.toFixed(2) : e.amount}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(e.status, false)}`}>
-                                            {e.status || "Unknown"}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <Button size="xs" variant="ghost" onClick={() => setViewingExpense(e)}>
-                                                View
-                                            </Button>
-                                            {e.status === "Submitted" && (
-                                                <>
-                                                    <Button
-                                                        size="xs"
-                                                        onClick={() => handleApprove(e.id)}
-                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
-                                                    >
-                                                        Approve
-                                                    </Button>
-                                                    <Button
-                                                        size="xs"
-                                                        variant="secondary"
-                                                        onClick={() => handleOpenReject(e.id)}
-                                                        className="text-red-600 hover:bg-red-50 border-red-200"
-                                                    >
-                                                        Reject
-                                                    </Button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </td>
+                <Card
+                    title="Expense List"
+                    tone="muted"
+                    actions={
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                Page {page} of {Math.ceil(filtered.length / rowsPerPage) || 1}
+                            </span>
+                            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                Rows per page
+                            </label>
+                            <select
+                                value={rowsPerPage}
+                                onChange={(e) => {
+                                    setRowsPerPage(Number(e.target.value));
+                                    setPage(1);
+                                }}
+                                className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#181B2A] px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                            >
+                                <option value={10}>10</option>
+                                <option value={25}>25</option>
+                                <option value={50}>50</option>
+                            </select>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                    variant="secondary"
+                                    className="px-3 py-1"
+                                    disabled={page === 1}
+                                >
+                                    Previous
+                                </Button>
+                                <Button
+                                    onClick={() => setPage((p) => Math.min(Math.ceil(filtered.length / rowsPerPage), p + 1))}
+                                    variant="secondary"
+                                    className="px-3 py-1"
+                                    disabled={page >= Math.ceil(filtered.length / rowsPerPage)}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
+                    }
+                >
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 [.dark_&]:border-white/10 shadow-sm">
+                        <table className="min-w-full divide-y divide-gray-200 [.dark_&]:divide-white/10">
+                            <thead className="bg-gray-50 [.dark_&]:bg-[#1F2234]">
+                                <tr>
+                                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Sr.</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Employee</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Expense</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Category</th>
+                                    <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Amount</th>
+                                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Status</th>
+                                    <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-
-            {/* Pagination */}
-            {filtered.length > pageSize && (
-                <div className="flex items-center justify-between border-t border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#1F2234] px-4 py-3 rounded-b-xl">
-                    <p className="text-sm text-gray-700 [.dark_&]:text-gray-300">
-                        Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, filtered.length)} of {filtered.length}
-                    </p>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setPage((p) => Math.max(1, p - 1))}
-                            disabled={page === 1}
-                            className="px-3 py-1 border border-gray-300 [.dark_&]:border-white/10 rounded-md disabled:opacity-50 text-gray-700 [.dark_&]:text-gray-300 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
-                        >
-                            <FaChevronLeft className="h-3 w-3" />
-                        </button>
-                        <span className="px-3 py-1 text-gray-700 [.dark_&]:text-gray-300">{page} / {totalPages}</span>
-                        <button
-                            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                            disabled={page >= totalPages}
-                            className="px-3 py-1 border border-gray-300 [.dark_&]:border-white/10 rounded-md disabled:opacity-50 text-gray-700 [.dark_&]:text-gray-300 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
-                        >
-                            <FaChevronRight className="h-3 w-3" />
-                        </button>
+                            </thead>
+                            <tbody className="bg-white [.dark_&]:bg-[#181B2A] divide-y divide-gray-200 [.dark_&]:divide-white/10">
+                                {filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((e, index) => (
+                                    <tr key={e.id} className="hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors">
+                                        <td className="px-6 py-4 text-center text-sm text-gray-500 [.dark_&]:text-gray-400">
+                                            {(page - 1) * rowsPerPage + index + 1}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center">
+                                                <div className="h-8 w-8 rounded-full bg-indigo-100 [.dark_&]:bg-indigo-500/20 flex items-center justify-center text-indigo-700 [.dark_&]:text-indigo-400 font-bold text-xs mr-3">
+                                                    {e.employeeName ? e.employeeName.charAt(0).toUpperCase() : "?"}
+                                                </div>
+                                                <span className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
+                                                    {e.employeeName || "Unknown"}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-semibold text-gray-900 [.dark_&]:text-white">{e.title}</span>
+                                                <span className="text-xs text-gray-500 [.dark_&]:text-gray-400 flex items-center gap-1">
+                                                    <FaCalendarAlt className="text-gray-400" /> {e.date || "-"}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 [.dark_&]:bg-white/10 text-gray-700 [.dark_&]:text-gray-300">
+                                                <FaTag className="text-[10px] text-gray-500 [.dark_&]:text-gray-400" />
+                                                {e.category || "Other"}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <span className="text-sm font-bold text-gray-900 [.dark_&]:text-white">
+                                                ₹{e.amount?.toFixed ? e.amount.toFixed(2) : e.amount}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(e.status, false)}`}>
+                                                {e.status || "Unknown"}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <Button size="xs" variant="ghost" onClick={() => setViewingExpense(e)}>
+                                                    View
+                                                </Button>
+                                                {e.status === "Submitted" && (
+                                                    <>
+                                                        <Button
+                                                            size="xs"
+                                                            onClick={() => handleApprove(e.id)}
+                                                            className="bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
+                                                        >
+                                                            Approve
+                                                        </Button>
+                                                        <Button
+                                                            size="xs"
+                                                            variant="secondary"
+                                                            onClick={() => handleOpenReject(e.id)}
+                                                            className="text-red-600 hover:bg-red-50 border-red-200"
+                                                        >
+                                                            Reject
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
-                </div>
+                </Card>
             )}
 
             {/* Reject Modal */}
-            {rejectingId && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                    <div className="w-full max-w-md rounded-2xl bg-white [.dark_&]:bg-[#1F2234] shadow-2xl overflow-hidden">
-                        <div className="flex items-center justify-between border-b border-gray-100 [.dark_&]:border-white/10 px-6 py-4">
-                            <h2 className="text-lg font-bold text-gray-800 [.dark_&]:text-white">Reject Expense</h2>
-                            <button onClick={() => setRejectingId(null)} className="p-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 rounded-full text-gray-500 [.dark_&]:text-gray-400">
-                                <FaTimes />
-                            </button>
-                        </div>
-                        <div className="px-6 py-6 space-y-4">
-                            <div className="bg-amber-50 [.dark_&]:bg-amber-500/10 border border-amber-100 [.dark_&]:border-amber-500/20 rounded-xl p-4 flex gap-3">
-                                <FaExclamationTriangle className="text-amber-500 mt-0.5 flex-shrink-0" />
-                                <p className="text-sm text-amber-800 [.dark_&]:text-amber-300">
-                                    The employee will be notified about this rejection.
-                                </p>
+            {
+                rejectingId && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                        <div className="w-full max-w-md rounded-2xl bg-white [.dark_&]:bg-[#1F2234] shadow-2xl overflow-hidden">
+                            <div className="flex items-center justify-between border-b border-gray-100 [.dark_&]:border-white/10 px-6 py-4">
+                                <h2 className="text-lg font-bold text-gray-800 [.dark_&]:text-white">Reject Expense</h2>
+                                <button onClick={() => setRejectingId(null)} className="p-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 rounded-full text-gray-500 [.dark_&]:text-gray-400">
+                                    <FaTimes />
+                                </button>
                             </div>
-                            <textarea
-                                rows={4}
-                                value={rejectReason}
-                                onChange={(e) => setRejectReason(e.target.value)}
-                                placeholder="Reason for rejection..."
-                                className="w-full rounded-xl border-0 bg-gray-50 [.dark_&]:bg-[#181B2A] py-3 px-4 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 ring-1 ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-red-500 resize-none"
-                                autoFocus
-                            />
-                        </div>
-                        <div className="flex justify-end gap-3 border-t border-gray-100 [.dark_&]:border-white/10 px-6 py-4 bg-gray-50/50 [.dark_&]:bg-white/5">
-                            <Button variant="ghost" onClick={() => setRejectingId(null)}>Cancel</Button>
-                            <Button onClick={handleConfirmReject} className="bg-red-600 hover:bg-red-700 text-white">
-                                Reject Expense
-                            </Button>
+                            <div className="px-6 py-6 space-y-4">
+                                <div className="bg-amber-50 [.dark_&]:bg-amber-500/10 border border-amber-100 [.dark_&]:border-amber-500/20 rounded-xl p-4 flex gap-3">
+                                    <FaExclamationTriangle className="text-amber-500 mt-0.5 flex-shrink-0" />
+                                    <p className="text-sm text-amber-800 [.dark_&]:text-amber-300">
+                                        The employee will be notified about this rejection.
+                                    </p>
+                                </div>
+                                <textarea
+                                    rows={4}
+                                    value={rejectReason}
+                                    onChange={(e) => setRejectReason(e.target.value)}
+                                    placeholder="Reason for rejection..."
+                                    className="w-full rounded-xl border-0 bg-gray-50 [.dark_&]:bg-[#181B2A] py-3 px-4 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 ring-1 ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-red-500 resize-none"
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 border-t border-gray-100 [.dark_&]:border-white/10 px-6 py-4 bg-gray-50/50 [.dark_&]:bg-white/5">
+                                <Button variant="ghost" onClick={() => setRejectingId(null)}>Cancel</Button>
+                                <Button onClick={handleConfirmReject} className="bg-red-600 hover:bg-red-700 text-white">
+                                    Reject Expense
+                                </Button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* View Modal */}
-            {viewingExpense && (
-                <ExpenseDetailModal
-                    expense={viewingExpense}
-                    onClose={() => setViewingExpense(null)}
-                />
-            )}
-        </div>
+            {
+                viewingExpense && (
+                    <ExpenseDetailModal
+                        expense={viewingExpense}
+                        onClose={() => setViewingExpense(null)}
+                    />
+                )
+            }
+        </div >
     );
 }

@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { useLocation, useNavigate } from "react-router-dom";
 import Button from "../../components/Button";
 import Card from "../../components/Card";
@@ -16,6 +17,7 @@ import {
 import { FaTimes, FaEdit, FaTrash, FaPlus, FaSearch } from "react-icons/fa";
 
 export default function ProjectSettings() {
+  const { buttonClass } = useThemeStyles();
   const location = useLocation();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
@@ -234,7 +236,7 @@ export default function ProjectSettings() {
             <span className="text-sm text-content-secondary">
               Showing {filtered.length} records
             </span>
-            <Button variant="primary" onClick={openCreate} className="shrink-0">
+            <Button variant="custom" onClick={openCreate} className={`shrink-0 ${buttonClass}`}>
               <FaPlus /> Add Project Level
             </Button>
           </div>
@@ -428,7 +430,7 @@ export default function ProjectSettings() {
               <Button variant="ghost" onClick={close}>
                 Cancel
               </Button>
-              <Button onClick={save} disabled={saving} variant="primary">
+              <Button onClick={save} disabled={saving} variant="custom" className={buttonClass}>
                 {saving ? "Saving..." : "Save"}
               </Button>
             </div>

@@ -4,8 +4,10 @@ import VoiceInput from "../Common/VoiceInput";
 import { addDoc, collection, serverTimestamp, onSnapshot, doc } from "firebase/firestore";
 import { db } from "../../firebase";
 import toast from "react-hot-toast";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
+    const { buttonClass, iconColor } = useThemeStyles();
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [priority, setPriority] = useState("Medium");
@@ -104,8 +106,8 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
                 {/* Header */}
                 <div className="bg-white [.dark_&]:bg-[#181B2A] px-6 py-4 border-b border-gray-200 [.dark_&]:border-white/10 flex items-center justify-between flex-shrink-0">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                            <FaTasks className="w-5 h-5 text-indigo-600" />
+                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                            <FaTasks className={`w-5 h-5 ${iconColor}`} />
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white">
@@ -272,7 +274,7 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
                                             type="date"
                                             value={assignedDate}
                                             onChange={(e) => setAssignedDate(e.target.value)}
-                                            className="w-full rounded-lg border border-gray-300 [.dark_&]:border-white/20 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white"
+                                            className="w-full rounded-lg border border-gray-300 [.dark_&]:border-white/10 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white"
                                         />
                                     </div>
 
@@ -285,7 +287,7 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
                                             type="date"
                                             value={dueDate}
                                             onChange={(e) => setDueDate(e.target.value)}
-                                            className="w-full rounded-lg border border-gray-300 [.dark_&]:border-white/20 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white"
+                                            className="w-full rounded-lg border border-gray-300 [.dark_&]:border-white/10 px-3.5 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white"
                                         />
                                     </div>
                                 </div>
@@ -306,7 +308,7 @@ const AddSelfTaskModal = ({ isOpen, onClose, projects, user }) => {
                         </button>
                         <button
                             onClick={handleSubmit}
-                            className="px-6 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm"
+                            className={`px-6 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm ${buttonClass}`}
                             disabled={isSubmitting}
                         >
                             {isSubmitting ? "Creating..." : "Create Task"}

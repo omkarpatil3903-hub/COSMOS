@@ -50,6 +50,7 @@ import {
   createNextRecurringInstance,
   shouldCreateNextInstance,
 } from "../../utils/recurringTasks";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 const TaskViewModal = ({
   task: initialTask,
@@ -70,6 +71,7 @@ const TaskViewModal = ({
   canEdit = true,
   statuses = [],
 }) => {
+  const { buttonClass, linkColor, iconColor } = useThemeStyles();
   const [task, setTask] = useState(initialTask);
 
   // Derive project from live task data to ensure consistency
@@ -689,7 +691,7 @@ const TaskViewModal = ({
                 {canEdit && (
                   <button
                     onClick={() => setIsEditingDesc(!isEditingDesc)}
-                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                    className={`text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity ${linkColor}`}
                   >
                     {isEditingDesc ? "Cancel" : "Edit"}
                   </button>
@@ -841,7 +843,8 @@ const TaskViewModal = ({
                             setNewSubtaskTitle("");
                           }
                         }}
-                        className="px-3 py-1.5 bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 text-gray-600 [.dark_&]:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100 [.dark_&]:hover:bg-white/10 hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 transition-colors"
+                        className={`px-3 py-1.5 bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 text-gray-600 [.dark_&]:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100 [.dark_&]:hover:bg-white/10 hover:text-[color:inherit] transition-colors`}
+                        style={{ ":hover": { color: linkColor } }}
                       >
                         Add
                       </button>
@@ -973,8 +976,8 @@ const TaskViewModal = ({
                           }
                         }}
                         className={`inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all duration-200 whitespace-nowrap shrink-0 ${String(displayStatus || "").toLowerCase().replace(/[^a-z0-9]/g, "") === "done"
-                            ? "bg-emerald-500 text-white border-emerald-500 shadow-md"
-                            : "bg-emerald-50 [.dark_&]:bg-emerald-900/30 text-emerald-700 [.dark_&]:text-emerald-400 border-emerald-200 [.dark_&]:border-emerald-700 hover:bg-emerald-100 [.dark_&]:hover:bg-emerald-900/50 hover:border-emerald-300 opacity-70 hover:opacity-100 cursor-pointer"
+                          ? "bg-emerald-500 text-white border-emerald-500 shadow-md"
+                          : "bg-emerald-50 [.dark_&]:bg-emerald-900/30 text-emerald-700 [.dark_&]:text-emerald-400 border-emerald-200 [.dark_&]:border-emerald-700 hover:bg-emerald-100 [.dark_&]:hover:bg-emerald-900/50 hover:border-emerald-300 opacity-70 hover:opacity-100 cursor-pointer"
                           }`}
                       >
                         Done
@@ -1359,7 +1362,7 @@ const TaskViewModal = ({
                       }
                     }}
                     disabled={!commentText.trim()}
-                    className="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                    className={`p-3 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm ${buttonClass}`}
                   >
                     <FaPaperPlane className="text-sm" />
                   </button>

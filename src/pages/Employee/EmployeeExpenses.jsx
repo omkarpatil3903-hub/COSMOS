@@ -49,7 +49,7 @@ const EmployeeExpenses = () => {
   const [editingId, setEditingId] = useState(null);
   const [errors, setErrors] = useState({});
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const [form, setForm] = useState({
     title: "",
@@ -389,38 +389,61 @@ const EmployeeExpenses = () => {
         </div>
       </Card>
 
-      <Card>
-        {loading ? (
-          <div className="py-12 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 mb-4 animate-pulse">
-              <FaMoneyBillWave className="text-xl" />
-            </div>
-            <p className="text-gray-500 dark:text-gray-400 font-medium">
-              Loading your expenses...
-            </p>
+
+      {loading ? (
+        <div className="py-12 text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 mb-4 animate-pulse">
+            <FaMoneyBillWave className="text-xl" />
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="py-16 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-50 dark:bg-gray-800 text-gray-400 mb-4">
-              <FaFileInvoice className="text-3xl" />
+          <p className="text-gray-500 dark:text-gray-400 font-medium">
+            Loading your expenses...
+          </p>
+        </div>
+      ) : (
+        <Card
+          title="Expense History"
+          tone="muted"
+          actions={
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Page {page} of {Math.ceil(filtered.length / rowsPerPage) || 1}
+              </span>
+              <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Rows per page
+              </label>
+              <select
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#181B2A] px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  variant="secondary"
+                  className="px-3 py-1"
+                  disabled={page === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  onClick={() => setPage((p) => Math.min(Math.ceil(filtered.length / rowsPerPage), p + 1))}
+                  variant="secondary"
+                  className="px-3 py-1"
+                  disabled={page >= Math.ceil(filtered.length / rowsPerPage)}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              No expenses found
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 mt-1 max-w-sm mx-auto">
-              You haven't submitted any expenses matching your filters yet.
-            </p>
-            <Button
-              onClick={() => {
-                resetForm();
-                setShowModal(true);
-              }}
-              className="mt-6 mx-auto"
-            >
-              <FaPlus className="mr-2" /> Create New Claim
-            </Button>
-          </div>
-        ) : (
+          }
+        >
           <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-[#1e1e2d]">
@@ -464,7 +487,7 @@ const EmployeeExpenses = () => {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-[#181b2a] divide-y divide-gray-200 dark:divide-gray-700">
-                {filtered.slice((page - 1) * pageSize, page * pageSize).map((e) => (
+                {filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((e) => (
                   <tr
                     key={e.id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
@@ -550,55 +573,7 @@ const EmployeeExpenses = () => {
               </tbody>
             </table>
           </div>
-        )}
-      </Card>
-
-      {/* Pagination */}
-      {!loading && filtered.length > 0 && (
-        <div className="flex items-center justify-between bg-white dark:bg-[#1e1e2d] px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg">
-          <div className="flex flex-1 justify-between sm:hidden">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="relative inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(Math.ceil(filtered.length / pageSize), p + 1))}
-              disabled={page >= Math.ceil(filtered.length / pageSize)}
-              className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-            <p className="text-sm text-gray-700 dark:text-gray-300">
-              Showing <span className="font-medium">{Math.min((page - 1) * pageSize + 1, filtered.length)}</span> to{" "}
-              <span className="font-medium">{Math.min(page * pageSize, filtered.length)}</span> of{" "}
-              <span className="font-medium">{filtered.length}</span> results
-            </p>
-            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-              >
-                <FaChevronLeft className="h-3 w-3" />
-              </button>
-              <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 dark:text-white ring-1 ring-inset ring-gray-300 dark:ring-gray-600">
-                {page} / {Math.ceil(filtered.length / pageSize) || 1}
-              </span>
-              <button
-                onClick={() => setPage((p) => Math.min(Math.ceil(filtered.length / pageSize), p + 1))}
-                disabled={page >= Math.ceil(filtered.length / pageSize)}
-                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-              >
-                <FaChevronRight className="h-3 w-3" />
-              </button>
-            </nav>
-          </div>
-        </div>
+        </Card>
       )}
 
       {showModal && (

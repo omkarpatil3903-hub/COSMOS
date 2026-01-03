@@ -37,52 +37,52 @@ const EmployeeProjects = () => {
   const projectColors = [
     {
       bg: "bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/40 dark:to-blue-800/40",
-      text: "text-blue-900 dark:text-blue-100",
+      text: "text-blue-900 dark:text-white",
       border: "border-blue-200 dark:border-blue-700",
     },
     {
       bg: "bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/40 dark:to-purple-800/40",
-      text: "text-purple-900 dark:text-purple-100",
+      text: "text-purple-900 dark:text-white",
       border: "border-purple-200 dark:border-purple-700",
     },
     {
       bg: "bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/40 dark:to-green-800/40",
-      text: "text-green-900 dark:text-green-100",
+      text: "text-green-900 dark:text-white",
       border: "border-green-200 dark:border-green-700",
     },
     {
       bg: "bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/40 dark:to-amber-800/40",
-      text: "text-amber-900 dark:text-amber-100",
+      text: "text-amber-900 dark:text-white",
       border: "border-amber-200 dark:border-amber-700",
     },
     {
       bg: "bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-900/40 dark:to-rose-800/40",
-      text: "text-rose-900 dark:text-rose-100",
+      text: "text-rose-900 dark:text-white",
       border: "border-rose-200 dark:border-rose-700",
     },
     {
       bg: "bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-900/40 dark:to-cyan-800/40",
-      text: "text-cyan-900 dark:text-cyan-100",
+      text: "text-cyan-900 dark:text-white",
       border: "border-cyan-200 dark:border-cyan-700",
     },
     {
       bg: "bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/40 dark:to-indigo-800/40",
-      text: "text-indigo-900 dark:text-indigo-100",
+      text: "text-indigo-900 dark:text-white",
       border: "border-indigo-200 dark:border-indigo-700",
     },
     {
       bg: "bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-900/40 dark:to-teal-800/40",
-      text: "text-teal-900 dark:text-teal-100",
+      text: "text-teal-900 dark:text-white",
       border: "border-teal-200 dark:border-teal-700",
     },
     {
       bg: "bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/40 dark:to-orange-800/40",
-      text: "text-orange-900 dark:text-orange-100",
+      text: "text-orange-900 dark:text-white",
       border: "border-orange-200 dark:border-orange-700",
     },
     {
       bg: "bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/40 dark:to-pink-800/40",
-      text: "text-pink-900 dark:text-pink-100",
+      text: "text-pink-900 dark:text-white",
       border: "border-pink-200 dark:border-pink-700",
     },
   ];
@@ -590,7 +590,7 @@ const EmployeeProjects = () => {
                                   .toUpperCase()}
                               </span>
                             </div>
-                            <span className="text-xs font-medium text-gray-700">
+                            <span className="text-xs font-medium text-gray-700 dark:text-white">
                               Manager: {project.projectManagerName}
                             </span>
                           </div>

@@ -11,6 +11,7 @@ import { auth, db } from "../../firebase";
 import { collection, onSnapshot, query, where, orderBy, addDoc, updateDoc, doc, deleteDoc, getDocs, serverTimestamp } from "firebase/firestore";
 import { useAuthContext } from "../../context/useAuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import {
     FaProjectDiagram,
     FaTasks,
@@ -36,6 +37,7 @@ export default function ManagerDashboard() {
     const navigate = useNavigate();
     const { userData } = useAuthContext();
     const { accent } = useTheme();
+    const { buttonClass, linkColor, iconColor } = useThemeStyles();
     const [projects, setProjects] = useState([]);
     const [tasks, setTasks] = useState([]);
     const [users, setUsers] = useState([]);
@@ -648,18 +650,7 @@ export default function ManagerDashboard() {
         toast.success("All notifications cleared");
     };
 
-    const getAccentColor = () => {
-        const colors = {
-            purple: "from-purple-500 to-purple-600",
-            blue: "from-sky-500 to-sky-600",
-            pink: "from-pink-500 to-pink-600",
-            violet: "from-violet-500 to-violet-600",
-            orange: "from-amber-500 to-amber-600",
-            teal: "from-teal-500 to-teal-600",
-            indigo: "from-indigo-500 to-indigo-600",
-        };
-        return colors[accent] || colors.indigo;
-    };
+
 
     if (loading) {
         return (
@@ -794,7 +785,7 @@ export default function ManagerDashboard() {
                                             setRemTime("");
                                             setRemDesc("");
                                         }}
-                                        className="text-indigo-600 hover:text-indigo-700 p-1"
+                                        className={`${linkColor} hover:opacity-80 p-1`}
                                         title="Add Reminder"
                                     >
                                         <FaPlus />
@@ -848,7 +839,7 @@ export default function ManagerDashboard() {
                                             </button>
                                             <button
                                                 type="submit"
-                                                className="px-2 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                                                className={`px-2 py-1 text-xs rounded-md text-white disabled:opacity-50 ${buttonClass}`}
                                                 disabled={savingReminder}
                                             >
                                                 {savingReminder ? "Saving..." : editingReminderId ? "Update" : "Save"}
@@ -924,7 +915,7 @@ export default function ManagerDashboard() {
                                         <button
                                             onClick={handleSaveQuickNote}
                                             disabled={!noteInput.trim()}
-                                            className="text-indigo-600 hover:text-indigo-700 disabled:opacity-50 text-xs font-medium"
+                                            className={`${linkColor} hover:opacity-80 disabled:opacity-50 text-xs font-medium`}
                                         >
                                             {editingNoteId ? "Update" : "Save"}
                                         </button>
@@ -1103,7 +1094,7 @@ export default function ManagerDashboard() {
                                 {stats.completedProjects} completed
                             </p>
                         </div>
-                        <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${getAccentColor()} flex items-center justify-center`}>
+                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
                             <FaProjectDiagram className="text-white text-xl" />
                         </div>
                     </div>

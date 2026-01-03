@@ -15,6 +15,7 @@ import {
   FaChartLine,
   FaClipboardList,
   FaSpinner,
+  FaUpload,
 } from "react-icons/fa";
 import { FaArrowsRotate } from "react-icons/fa6";
 import GanttChart from "../../components/GanttChart";
@@ -654,7 +655,7 @@ export default function ReportsPage() {
         title="Analytics & Reports"
         actions={
           <Button variant="custom" className={buttonClass} onClick={exportReport}>
-            <FaDownload /> Export Excel
+            <FaUpload /> Export Excel
           </Button>
         }
       >
@@ -1221,7 +1222,7 @@ export default function ReportsPage() {
             icon={<FaUsers />}
             actions={
               <Button variant="custom" className={buttonClass} onClick={exportResourceReport}>
-                <FaDownload /> Export Excel
+                <FaUpload /> Export Excel
               </Button>
             }
           >

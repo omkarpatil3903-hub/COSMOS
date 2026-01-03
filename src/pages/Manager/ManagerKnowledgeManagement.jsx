@@ -37,9 +37,9 @@ export default function ManagerKnowledgeManagement() {
         <button
           type="button"
           onClick={() => setActiveTab("knowledge")}
-          className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold shadow-sm border transition-colors ${activeTab === "knowledge"
-            ? "bg-indigo-600 text-white border-indigo-600"
-            : "bg-white [.dark_&]:bg-[#1F2234] text-gray-800 [.dark_&]:text-gray-200 border-gray-200 [.dark_&]:border-white/10 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
+          className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold border transition-colors ${activeTab === "knowledge"
+            ? "bg-surface-strong text-content-primary border-subtle shadow-soft"
+            : "bg-transparent text-content-secondary border-transparent hover:text-content-primary"
             }`}
         >
           <FaBookOpen className={`h-4 w-4 ${activeTab === "knowledge" ? activeIconColor : ""}`} />
@@ -48,9 +48,9 @@ export default function ManagerKnowledgeManagement() {
         <button
           type="button"
           onClick={() => setActiveTab("documents")}
-          className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold shadow-sm border transition-colors ${activeTab === "documents"
-            ? "bg-indigo-600 text-white border-indigo-600"
-            : "bg-white [.dark_&]:bg-[#1F2234] text-gray-800 [.dark_&]:text-gray-200 border-gray-200 [.dark_&]:border-white/10 hover:bg-gray-50 [.dark_&]:hover:bg-white/5"
+          className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold border transition-colors ${activeTab === "documents"
+            ? "bg-surface-strong text-content-primary border-subtle shadow-soft"
+            : "bg-transparent text-content-secondary border-transparent hover:text-content-primary"
             }`}
         >
           <FaFileAlt className={`h-4 w-4 ${activeTab === "documents" ? activeIconColor : ""}`} />

@@ -59,7 +59,7 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
     const [viewingExpense, setViewingExpense] = useState(null);
     const [activeStatFilter, setActiveStatFilter] = useState(null);
     const [page, setPage] = useState(1);
-    const [pageSize] = useState(10);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
 
     useEffect(() => {
         const unsub = subscribeToAllExpenses(
@@ -115,6 +115,20 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
         }
         setPage(1);
     }, [searchQuery, categoryFilter, fromDate, toDate]);
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
+
+    const handleNextPage = () => {
+        setPage((prev) => Math.min(prev + 1, totalPages));
+    };
+
+    const handlePrevPage = () => {
+        setPage((prev) => Math.max(prev - 1, 1));
+    };
+
+    useEffect(() => {
+        setPage(1);
+    }, [rowsPerPage, filtered.length]);
 
     const stats = useMemo(() => {
         const total = expenses.length;
@@ -262,7 +276,7 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                 actions={
                     <Button
                         onClick={handleExportCSV}
-                        variant={buttonClass ? "custom" : "secondary"}
+                        variant="custom"
                         className={`flex items-center gap-2 ${finalButtonClass}`}
                         disabled={filtered.length === 0}
                     >
@@ -513,244 +527,232 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                     </p>
                 </div>
             ) : (
-                <div className="overflow-x-auto rounded-xl border border-subtle shadow-sm">
-                    <table className="min-w-full divide-y divide-subtle">
-                        <thead className="bg-surface-subtle">
-                            <tr>
-                                <th scope="col" className="px-6 py-3 text-left w-10">
-                                    <input
-                                        type="checkbox"
-                                        onChange={handleSelectAll}
-                                        checked={filtered.length > 0 && selectedIds.length === filtered.length}
-                                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                                    />
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-content-secondary uppercase tracking-wider">
-                                    Sr. No.
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
-                                    Employee
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
-                                    Expense Details
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
-                                    Project
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
-                                    Category
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-content-secondary uppercase tracking-wider">
-                                    Amount
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-content-secondary uppercase tracking-wider">
-                                    Status
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-content-secondary uppercase tracking-wider">
-                                    Approval
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-content-secondary uppercase tracking-wider">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-surface divide-y divide-subtle">
-                            {filtered.slice((page - 1) * pageSize, page * pageSize).map((e, index) => (
-                                <tr
-                                    key={e.id}
-                                    className={`hover:bg-surface-subtle transition-colors group ${selectedIds.includes(e.id) ? "bg-indigo-50/50 dark:bg-indigo-900/20" : ""}`}
+                <Card
+                    title="Expense List"
+                    tone="muted"
+                    actions={
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-content-secondary">
+                                Page {page} of {totalPages}
+                            </span>
+                            <label className="text-sm font-medium text-content-secondary">
+                                Rows per page
+                            </label>
+                            <select
+                                value={rowsPerPage}
+                                onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                                className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                            >
+                                <option value={10}>10</option>
+                                <option value={25}>25</option>
+                                <option value={50}>50</option>
+                            </select>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    onClick={handlePrevPage}
+                                    variant="secondary"
+                                    className="px-3 py-1"
+                                    disabled={page === 1}
                                 >
-                                    <td className="px-6 py-4 whitespace-nowrap">
+                                    Previous
+                                </Button>
+                                <Button
+                                    onClick={handleNextPage}
+                                    variant="secondary"
+                                    className="px-3 py-1"
+                                    disabled={page === totalPages}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
+                    }
+                >
+                    <div className="overflow-x-auto rounded-xl border border-subtle shadow-sm">
+                        <table className="min-w-full divide-y divide-subtle">
+                            <thead className="bg-surface-subtle">
+                                <tr>
+                                    <th scope="col" className="px-6 py-3 text-left w-10">
                                         <input
                                             type="checkbox"
-                                            checked={selectedIds.includes(e.id)}
-                                            onChange={() => handleSelectOne(e.id)}
+                                            onChange={handleSelectAll}
+                                            checked={filtered.length > 0 && selectedIds.length === filtered.length}
                                             className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                         />
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-surface-subtle text-content-secondary text-xs font-medium">
-                                            {(page - 1) * pageSize + index + 1}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                            <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold text-xs mr-3">
-                                                {e.employeeName ? e.employeeName.charAt(0).toUpperCase() : "?"}
+                                    </th>
+                                    <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-content-secondary uppercase tracking-wider">
+                                        Sr. No.
+                                    </th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
+                                        Employee
+                                    </th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
+                                        Expense Details
+                                    </th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
+                                        Project
+                                    </th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
+                                        Category
+                                    </th>
+                                    <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-content-secondary uppercase tracking-wider">
+                                        Amount
+                                    </th>
+                                    <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-content-secondary uppercase tracking-wider">
+                                        Status
+                                    </th>
+                                    <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-content-secondary uppercase tracking-wider">
+                                        Approval
+                                    </th>
+                                    <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-content-secondary uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-surface divide-y divide-subtle">
+                                {filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((e, index) => (
+                                    <tr
+                                        key={e.id}
+                                        className={`hover:bg-surface-subtle transition-colors group ${selectedIds.includes(e.id) ? "bg-indigo-50/50 dark:bg-indigo-900/20" : ""}`}
+                                    >
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.includes(e.id)}
+                                                onChange={() => handleSelectOne(e.id)}
+                                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                            />
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-surface-subtle text-content-secondary text-xs font-medium">
+                                                {(page - 1) * rowsPerPage + index + 1}
                                             </div>
-                                            <div>
-                                                <div className="text-sm font-medium text-content-primary">
-                                                    {e.employeeName || "Unknown"}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold text-xs mr-3">
+                                                    {e.employeeName ? e.employeeName.charAt(0).toUpperCase() : "?"}
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-medium text-content-primary">
+                                                        {e.employeeName || "Unknown"}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col">
-                                            <div className="flex items-center gap-2 text-xs text-content-tertiary mb-0.5">
-                                                <FaCalendarAlt className="text-content-tertiary" />
-                                                {e.date || "-"}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col">
+                                                <div className="flex items-center gap-2 text-xs text-content-tertiary mb-0.5">
+                                                    <FaCalendarAlt className="text-content-tertiary" />
+                                                    {e.date || "-"}
+                                                </div>
+                                                <span className="text-sm font-semibold text-content-primary group-hover:text-indigo-600 transition-colors">
+                                                    {e.title}
+                                                </span>
+                                                {e.receiptUrl && (
+                                                    <a
+                                                        href={e.receiptUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1 text-[10px] font-medium text-indigo-600 hover:text-indigo-800 mt-1"
+                                                    >
+                                                        <FaFileInvoice /> Receipt
+                                                    </a>
+                                                )}
                                             </div>
-                                            <span className="text-sm font-semibold text-content-primary group-hover:text-indigo-600 transition-colors">
-                                                {e.title}
-                                            </span>
-                                            {e.receiptUrl && (
-                                                <a
-                                                    href={e.receiptUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-1 text-[10px] font-medium text-indigo-600 hover:text-indigo-800 mt-1"
-                                                >
-                                                    <FaFileInvoice /> Receipt
-                                                </a>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {e.projectName ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                                    <FaProjectDiagram className="text-[10px] text-indigo-500" />
+                                                    {e.projectName}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-gray-400 italic">No project</span>
                                             )}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        {e.projectName ? (
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                                <FaProjectDiagram className="text-[10px] text-indigo-500" />
-                                                {e.projectName}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                                                <FaTag className="text-[10px] text-gray-500" />
+                                                {e.category || "Other"}
                                             </span>
-                                        ) : (
-                                            <span className="text-xs text-gray-400 italic">No project</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-                                            <FaTag className="text-[10px] text-gray-500" />
-                                            {e.category || "Other"}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                                        <div className="text-sm font-bold text-content-primary">
-                                            {e.amount?.toFixed ? e.amount.toFixed(2) : e.amount}
-                                            <span className="text-xs font-medium text-content-tertiary ml-1">
-                                                {e.currency || "INR"}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                                            <div className="text-sm font-bold text-content-primary">
+                                                {e.amount?.toFixed ? e.amount.toFixed(2) : e.amount}
+                                                <span className="text-xs font-medium text-content-tertiary ml-1">
+                                                    {e.currency || "INR"}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(e.status, useDarkMode)}`}>
+                                                {e.status || "Unknown"}
                                             </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(e.status, useDarkMode)}`}>
-                                            {e.status || "Unknown"}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                        <div className="flex justify-center gap-2">
-                                            {e.status === "Submitted" && (
-                                                <>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                            <div className="flex justify-center gap-2">
+                                                {e.status === "Submitted" && (
+                                                    <>
+                                                        <Button
+                                                            size="xs"
+                                                            onClick={() => handleApprove(e.id)}
+                                                            className="bg-green-600 hover:bg-green-700 text-white border-transparent"
+                                                        >
+                                                            Approve
+                                                        </Button>
+                                                        <Button
+                                                            size="xs"
+                                                            variant="secondary"
+                                                            onClick={() => handleOpenReject(e.id)}
+                                                            className="text-red-600 hover:bg-red-50 border-red-200 hover:border-red-300"
+                                                        >
+                                                            Reject
+                                                        </Button>
+                                                    </>
+                                                )}
+                                                {e.status === "Approved" && (
                                                     <Button
                                                         size="xs"
-                                                        onClick={() => handleApprove(e.id)}
-                                                        className="bg-green-600 hover:bg-green-700 text-white border-transparent"
+                                                        onClick={() => handleMarkPaid(e.id)}
+                                                        className="bg-purple-600 hover:bg-purple-700 text-white border-transparent"
                                                     >
-                                                        Approve
+                                                        Mark Paid
                                                     </Button>
-                                                    <Button
-                                                        size="xs"
-                                                        variant="secondary"
-                                                        onClick={() => handleOpenReject(e.id)}
-                                                        className="text-red-600 hover:bg-red-50 border-red-200 hover:border-red-300"
-                                                    >
-                                                        Reject
-                                                    </Button>
-                                                </>
-                                            )}
-                                            {e.status === "Approved" && (
-                                                <Button
-                                                    size="xs"
-                                                    onClick={() => handleMarkPaid(e.id)}
-                                                    className="bg-purple-600 hover:bg-purple-700 text-white border-transparent"
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <div className="flex justify-end gap-2 items-center">
+                                                <button
+                                                    onClick={() => setViewingExpense(e)}
+                                                    className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
+                                                    title="View Details"
                                                 >
-                                                    Mark Paid
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <div className="flex justify-end gap-2 items-center">
-                                            <button
-                                                onClick={() => setViewingExpense(e)}
-                                                className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
-                                                title="View Details"
-                                            >
-                                                <FaExternalLinkAlt />
-                                            </button>
-                                            <button
-                                                onClick={() => handleEdit(e)}
-                                                className="text-gray-400 hover:text-blue-600 transition-colors p-1"
-                                                title="Edit"
-                                            >
-                                                <FaEdit />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(e.id)}
-                                                className="text-gray-400 hover:text-red-600 transition-colors p-1"
-                                                title="Delete"
-                                            >
-                                                <FaTrash />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-
-            {/* Pagination */}
-            {!loading && filtered.length > 0 && (
-                <div className="flex items-center justify-between border-t border-subtle bg-surface px-4 py-3 sm:px-6 rounded-b-xl">
-                    <div className="flex flex-1 justify-between sm:hidden">
-                        <button
-                            onClick={() => setPage((p) => Math.max(1, p - 1))}
-                            disabled={page === 1}
-                            className="relative inline-flex items-center rounded-md border border-subtle bg-surface px-4 py-2 text-sm font-medium text-content-primary hover:bg-surface-subtle disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            Previous
-                        </button>
-                        <button
-                            onClick={() => setPage((p) => Math.min(Math.ceil(filtered.length / pageSize), p + 1))}
-                            disabled={page >= Math.ceil(filtered.length / pageSize)}
-                            className="relative ml-3 inline-flex items-center rounded-md border border-subtle bg-surface px-4 py-2 text-sm font-medium text-content-primary hover:bg-surface-subtle disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            Next
-                        </button>
+                                                    <FaExternalLinkAlt />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleEdit(e)}
+                                                    className="text-gray-400 hover:text-blue-600 transition-colors p-1"
+                                                    title="Edit"
+                                                >
+                                                    <FaEdit />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(e.id)}
+                                                    className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                                                    title="Delete"
+                                                >
+                                                    <FaTrash />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
-                    <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-                        <div>
-                            <p className="text-sm text-content-secondary">
-                                Showing <span className="font-medium">{Math.min((page - 1) * pageSize + 1, filtered.length)}</span> to{" "}
-                                <span className="font-medium">{Math.min(page * pageSize, filtered.length)}</span> of{" "}
-                                <span className="font-medium">{filtered.length}</span> results
-                            </p>
-                        </div>
-                        <div>
-                            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                                <button
-                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                    className="relative inline-flex items-center rounded-l-md px-2 py-2 text-content-tertiary ring-1 ring-inset ring-subtle hover:bg-surface-subtle focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <span className="sr-only">Previous</span>
-                                    <FaChevronLeft className="h-3 w-3" />
-                                </button>
-                                <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-content-primary ring-1 ring-inset ring-subtle">
-                                    {page} / {Math.ceil(filtered.length / pageSize) || 1}
-                                </span>
-                                <button
-                                    onClick={() => setPage((p) => Math.min(Math.ceil(filtered.length / pageSize), p + 1))}
-                                    disabled={page >= Math.ceil(filtered.length / pageSize)}
-                                    className="relative inline-flex items-center rounded-r-md px-2 py-2 text-content-tertiary ring-1 ring-inset ring-subtle hover:bg-surface-subtle focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <span className="sr-only">Next</span>
-                                    <FaChevronRight className="h-3 w-3" />
-                                </button>
-                            </nav>
-                        </div>
-                    </div>
-                </div>
+                </Card>
             )}
 
             {/* Reject Modal */}

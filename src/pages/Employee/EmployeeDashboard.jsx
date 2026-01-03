@@ -14,6 +14,7 @@ import {
 import { db } from "../../firebase";
 import { useAuthContext } from "../../context/useAuthContext";
 import { useNavigate } from "react-router-dom";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
 import StatCard from "../../components/StatCard";
@@ -42,6 +43,7 @@ import toast from "react-hot-toast";
 const EmployeeDashboard = () => {
   const { user, userData } = useAuthContext();
   const navigate = useNavigate();
+  const { buttonClass, linkColor } = useThemeStyles();
 
   // Utility function to format dates in dd/mm/yyyy format
   const formatDateToDDMMYYYY = (date) => {
@@ -877,7 +879,7 @@ ${todayTasks.length > 0
                       setRemTitle("");
                       setRemDesc("");
                     }}
-                    className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-indigo-600 dark:text-indigo-400"
+                    className={`p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 ${linkColor}`}
                     title="Add reminder"
                   >
                     <FaPlus className="h-3.5 w-3.5" />
@@ -973,7 +975,7 @@ ${todayTasks.length > 0
                       </button>
                       <button
                         type="submit"
-                        className="px-2 py-1 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                        className={`px-2 py-1 text-xs rounded-md text-white disabled:opacity-50 ${buttonClass}`}
                         disabled={savingReminder}
                       >
                         {savingReminder ? "Saving..." : editingReminderId ? "Update" : "Save"}
@@ -1127,7 +1129,7 @@ ${todayTasks.length > 0
                           console.error("Failed to save quick note", e);
                         }
                       }}
-                      className="px-2 py-1 rounded-md bg-indigo-600 text-white text-[10px] font-medium hover:bg-indigo-700 disabled:opacity-50"
+                      className={`px-2 py-1 rounded-md text-white text-[10px] font-medium disabled:opacity-50 ${buttonClass}`}
                       disabled={!quickNoteDraft.trim()}
                     >
                       {editingQuickNoteId ? "Update" : "Save"}

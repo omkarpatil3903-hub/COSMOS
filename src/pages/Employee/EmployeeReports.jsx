@@ -16,6 +16,7 @@ import {
   FaEnvelope,
   FaShareAlt,
 } from "react-icons/fa";
+import { FaWandMagicSparkles } from "react-icons/fa6";
 import VoiceInput from "../../components/Common/VoiceInput";
 import toast from "react-hot-toast";
 import { jsPDF } from "jspdf";
@@ -662,17 +663,16 @@ Generated on: ${formatDateToDDMMYYYY(
         title="Reports & Analytics"
         description="Overview of your performance and task statistics"
         icon={<FaChartBar />}
+        actions={
+          <Button
+            onClick={handleGenerateReport}
+            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition-all duration-200"
+          >
+            <FaWandMagicSparkles />
+            Generate Report
+          </Button>
+        }
       />
-
-      <div className="flex justify-end gap-3">
-        <Button
-          onClick={handleGenerateReport}
-          className="flex items-center gap-2 bg-sky-600 hover:bg-sky-700"
-        >
-          <FaFileAlt />
-          Generate Report
-        </Button>
-      </div>
 
       {/* Overview Stats - Updated Card Style */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
