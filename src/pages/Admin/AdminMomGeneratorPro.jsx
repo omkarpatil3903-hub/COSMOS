@@ -16,6 +16,7 @@ import {
   FaMicrophone,
   FaStop,
 } from "react-icons/fa";
+import { FaWandMagicSparkles } from "react-icons/fa6";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { pdf } from "@react-pdf/renderer";
@@ -159,11 +160,10 @@ export default function MomGeneratorPro() {
   const { accent, mode } = useTheme();
   const activeColor = ACCENT_COLORS[accent] || ACCENT_COLORS.indigo;
 
-  const inputClass = `w-full rounded px-4 py-2.5 text-sm transition-colors focus:ring-2 focus:ring-indigo-500 focus:outline-none border-none ${
-    mode === "dark"
+  const inputClass = `w-full rounded px-4 py-2.5 text-sm transition-colors focus:ring-2 focus:ring-indigo-500 focus:outline-none border-none ${mode === "dark"
       ? "bg-gray-900 text-white placeholder-gray-500"
       : "bg-gray-50 text-gray-900 placeholder-gray-400"
-  }`;
+    }`;
 
   // Reference data
   const [projects, setProjects] = useState([]);
@@ -764,11 +764,10 @@ export default function MomGeneratorPro() {
       ${discussionsJson}
 
       **Instructions**:
-      ${
-        specialAgenda
+      ${specialAgenda
           ? `**Special Meeting Agenda/Objectives**: ${specialAgenda}\n\n`
           : ""
-      }
+        }
       1. For each discussion topic, rewrite the raw notes into a professional, HTML-formatted summary using <b>Key Points</b>, <b>Decisions</b>, etc., similar to this format:
          "<b>Summary:</b> ...<br/><br/><b>Key Points:</b> <ul><li>...</li></ul><br/><b>Decisions:</b> ..."
          (Ensure valid HTML text, no markdown inside the HTML string).
@@ -1036,12 +1035,12 @@ export default function MomGeneratorPro() {
         const externalAttendeesArray =
           typeof externalAttendees === "string" && externalAttendees.trim()
             ? externalAttendees
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean)
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
             : Array.isArray(externalAttendees)
-            ? externalAttendees
-            : [];
+              ? externalAttendees
+              : [];
 
         const pdfData = {
           momNo,
@@ -1173,12 +1172,12 @@ export default function MomGeneratorPro() {
       const externalAttendeesArray =
         typeof externalAttendees === "string" && externalAttendees.trim()
           ? externalAttendees
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean)
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
           : Array.isArray(externalAttendees)
-          ? externalAttendees
-          : [];
+            ? externalAttendees
+            : [];
 
       // Prepare data for PDF
       const pdfData = {
@@ -1203,9 +1202,8 @@ export default function MomGeneratorPro() {
       const url = URL.createObjectURL(pdfBlob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `MOM_${
-        selectedProject?.name || "Project"
-      }_${meetingDate}.pdf`;
+      link.download = `MOM_${selectedProject?.name || "Project"
+        }_${meetingDate}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1249,11 +1247,9 @@ export default function MomGeneratorPro() {
       .join(", ");
 
     let text = `${title}\n\n`;
-    text += `Date & Time: ${meetingDate}${
-      meetingStartTime ? ` ${meetingStartTime} to ${meetingEndTime}` : ""
-    }\nVenue: ${meetingVenue || "N/A"}\nInternal Attendees: ${
-      internalAttendeeNames || "N/A"
-    }`;
+    text += `Date & Time: ${meetingDate}${meetingStartTime ? ` ${meetingStartTime} to ${meetingEndTime}` : ""
+      }\nVenue: ${meetingVenue || "N/A"}\nInternal Attendees: ${internalAttendeeNames || "N/A"
+      }`;
     if (externalAttendees.trim()) {
       text += `\nExternal Attendees: ${externalAttendees}`;
     }
@@ -1308,7 +1304,7 @@ export default function MomGeneratorPro() {
               disabled={loading}
               className={`flex items-center gap-2 whitespace-nowrap ${buttonClass}`}
             >
-              {loading ? <FaSpinner className="animate-spin" /> : <FaFileAlt />}
+              {loading ? <FaSpinner className="animate-spin" /> : <FaWandMagicSparkles />}
               {loading ? "Generating..." : "Generate MOM"}
             </Button>
           ) : (
@@ -1344,23 +1340,21 @@ export default function MomGeneratorPro() {
                             setShowSaveConfirm(true);
                           }}
                           disabled={disableSave}
-                          className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${
-                            disableSave
+                          className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${disableSave
                               ? "text-content-tertiary cursor-not-allowed"
                               : "text-content-primary hover:bg-surface-subtle"
-                          }`}
+                            }`}
                         >
                           <FaSave
-                            className={`flex-shrink-0 ${
-                              disableSave ? "text-content-tertiary" : iconColor
-                            }`} // Used iconColor
+                            className={`flex-shrink-0 ${disableSave ? "text-content-tertiary" : iconColor
+                              }`} // Used iconColor
                           />
                           <span>
                             {saveLoading
                               ? "Saving..."
                               : isChangedSinceSave
-                              ? "Save MOM"
-                              : "Saved"}
+                                ? "Save MOM"
+                                : "Saved"}
                           </span>
                         </button>
                       )}
@@ -1531,18 +1525,16 @@ export default function MomGeneratorPro() {
                     Internal Attendees * (Select multiple)
                   </label>
                   <div
-                    className={`rounded p-3 max-h-44 overflow-y-auto space-y-1 ${
-                      mode === "dark" ? "bg-gray-900" : "bg-gray-50"
-                    }`}
+                    className={`rounded p-3 max-h-44 overflow-y-auto space-y-1 ${mode === "dark" ? "bg-gray-900" : "bg-gray-50"
+                      }`}
                   >
                     {users.map((u) => (
                       <label
                         key={u.id}
-                        className={`flex items-center gap-2 cursor-pointer p-1 rounded transition-colors ${
-                          mode === "dark"
+                        className={`flex items-center gap-2 cursor-pointer p-1 rounded transition-colors ${mode === "dark"
                             ? "hover:bg-gray-800"
                             : "hover:bg-gray-200"
-                        }`}
+                          }`}
                       >
                         <input
                           type="checkbox"
@@ -1591,11 +1583,10 @@ export default function MomGeneratorPro() {
                               prev ? `${prev}, ${name}` : name
                             );
                           }}
-                          className={`text-xs px-2 py-0.5 rounded transition-colors ${
-                            mode === "dark"
+                          className={`text-xs px-2 py-0.5 rounded transition-colors ${mode === "dark"
                               ? "bg-gray-700 text-white hover:bg-gray-600"
                               : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                          }`}
+                            }`}
                         >
                           {name}
                         </button>
@@ -1728,11 +1719,10 @@ export default function MomGeneratorPro() {
                   <button
                     type="button"
                     onClick={isListening ? stopVoiceInput : startVoiceInput}
-                    className={`absolute right-2 top-2 p-2 rounded-full transition-colors ${
-                      isListening
+                    className={`absolute right-2 top-2 p-2 rounded-full transition-colors ${isListening
                         ? "bg-red-500 text-white animate-pulse"
                         : `bg-gray-100 text-gray-600 hover:bg-surface-subtle hover:${iconColor}` // Used iconColor
-                    }`}
+                      }`}
                     title={isListening ? "Stop listening" : "Start voice input"}
                   >
                     {isListening ? <FaStop /> : <FaMicrophone />}
@@ -2201,9 +2191,9 @@ export default function MomGeneratorPro() {
                                 prev.map((item, idx) =>
                                   idx === i
                                     ? {
-                                        ...item,
-                                        responsiblePerson: e.target.value,
-                                      }
+                                      ...item,
+                                      responsiblePerson: e.target.value,
+                                    }
                                     : item
                                 )
                               );
@@ -2374,11 +2364,10 @@ export default function MomGeneratorPro() {
                 return (
                   <div
                     key={idx}
-                    className={`p-4 rounded-lg border transition-colors ${
-                      isSelected
+                    className={`p-4 rounded-lg border transition-colors ${isSelected
                         ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
                         : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
-                    }`}
+                      }`}
                   >
                     {/* Header with checkbox and task title */}
                     <div

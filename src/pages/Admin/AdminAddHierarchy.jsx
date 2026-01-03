@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { useLocation, useNavigate } from "react-router-dom";
 import Button from "../../components/Button";
 import Card from "../../components/Card";
@@ -24,6 +25,7 @@ import {
 } from "react-icons/fa";
 
 export default function AddHierarchy() {
+  const { buttonClass } = useThemeStyles();
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -233,7 +235,7 @@ export default function AddHierarchy() {
             <span className="text-sm text-content-secondary">
               Showing {filtered.length} records
             </span>
-            <Button variant="primary" onClick={openCreate} className="shrink-0">
+            <Button variant="custom" onClick={openCreate} className={`shrink-0 ${buttonClass}`}>
               <FaPlus /> Add Hierarchy
             </Button>
           </div>
@@ -461,7 +463,7 @@ export default function AddHierarchy() {
               <Button variant="ghost" onClick={close}>
                 Cancel
               </Button>
-              <Button onClick={save} disabled={saving} variant="primary">
+              <Button onClick={save} disabled={saving} variant="custom" className={buttonClass}>
                 {saving ? "Saving..." : "Save"}
               </Button>
             </div>
