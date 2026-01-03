@@ -2,7 +2,7 @@ import React from 'react';
 import {
     FaUser, FaTimes, FaBell, FaCalendarAlt, FaPhone,
     FaEnvelope, FaMapMarkerAlt, FaBoxOpen, FaIndustry,
-    FaBullhorn, FaPlus, FaClock, FaCheckCircle, FaTrash, FaEdit
+    FaBullhorn, FaPlus, FaClock, FaCheckCircle, FaTrash, FaEdit, FaStickyNote
 } from 'react-icons/fa';
 import { HiXMark } from 'react-icons/hi2';
 import Button from '../../components/Button';
@@ -130,20 +130,6 @@ const ViewLeadModal = ({
                                 </div>
                             </div>
                             <div className="space-y-4">
-                                <div>
-                                    <p className="text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 mb-1">Product of Interest</p>
-                                    <p className="text-sm text-gray-900 [.dark_&]:text-white flex items-center gap-2">
-                                        <FaBoxOpen className="text-gray-400" />
-                                        {lead.productOfInterest || "-"}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 mb-1">Sector</p>
-                                    <p className="text-sm text-gray-900 [.dark_&]:text-white flex items-center gap-2">
-                                        <FaIndustry className="text-gray-400" />
-                                        {lead.sector || "-"}
-                                    </p>
-                                </div>
                                 <div>
                                     <p className="text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 mb-1">Source of Lead</p>
                                     <p className="text-sm text-gray-900 [.dark_&]:text-white flex items-center gap-2">
@@ -304,8 +290,8 @@ const ViewLeadModal = ({
                                                 {/* Follow-up Notes */}
                                                 <div className="mb-3">
                                                     <p className="text-sm text-gray-700 [.dark_&]:text-gray-300 flex items-center gap-1">
-                                                        <span className="text-gray-400">📝</span>
-                                                        {followup.notes}
+                                                        <FaStickyNote className="text-gray-400" />
+                                                        {followup.notes || <span className="text-gray-400 italic">No notes added</span>}
                                                     </p>
                                                 </div>
 
@@ -328,6 +314,20 @@ const ViewLeadModal = ({
                                                                 </div>
                                                             ))}
                                                         </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Completion Details */}
+                                                {followup.status === 'completed' && followup.outcome && (
+                                                    <div className="mb-3 bg-green-50 [.dark_&]:bg-green-900/20 border border-green-200 [.dark_&]:border-green-500/30 rounded-lg p-3">
+                                                        <h6 className="text-xs font-bold text-green-800 [.dark_&]:text-green-400 mb-1 flex items-center gap-1">
+                                                            <FaCheckCircle /> Outcome: <span className="uppercase font-normal ml-1">{followup.outcome.replace('_', ' ')}</span>
+                                                        </h6>
+                                                        {followup.completionNotes && (
+                                                            <p className="text-xs text-green-700 [.dark_&]:text-green-300 italic">
+                                                                "{followup.completionNotes}"
+                                                            </p>
+                                                        )}
                                                     </div>
                                                 )}
 

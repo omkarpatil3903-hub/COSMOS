@@ -18,6 +18,7 @@ import {
 } from 'react-icons/fa';
 import Button from '../Button';
 import Card from '../Card';
+import LeadGroup from './LeadGroup';
 
 // Define table headers
 const TABLE_HEADERS = [
@@ -27,7 +28,7 @@ const TABLE_HEADERS = [
     { key: "customerName", label: "Customer Name", sortable: true },
     { key: "companyName", label: "Company", sortable: true },
     { key: "contact", label: "Contact Info", sortable: false }, // Combined email/phone
-    { key: "productOfInterest", label: "Product", sortable: true },
+    // { key: "productOfInterest", label: "Product", sortable: true },
     { key: "followUpDate", label: "Next Follow-up", sortable: true },
     { key: "status", label: "Status", sortable: true },
     { key: "priority", label: "Priority", sortable: true },
@@ -56,14 +57,15 @@ const LeadList = ({
     setScheduleFollowupForm,
     setSelectedLead,
     setShowDeleteModal,
-    setShowBulkAssignModal,
     setShowBulkStatusModal,
     setShowBulkDeleteModal,
 
     // Helpers
     getFollowUpStatus,
     getStatusColor,
-    getPriorityColor
+    getPriorityColor,
+    onStatusChange, // handler for inline status change
+    onAddLeadWithStatus // handler for adding lead with pre-set status
 }) => {
     // Helper to format followUpDate - handles Firestore Timestamp, Date object, or string
     const formatFollowUpDate = (date) => {
@@ -102,14 +104,6 @@ const LeadList = ({
                             </button>
                         </div>
                         <div className="flex gap-3">
-                            <Button
-                                onClick={() => setShowBulkAssignModal(true)}
-                                variant="secondary"
-                                className="flex items-center gap-2"
-                            >
-                                <FaUserPlus className="text-sm" />
-                                Assign
-                            </Button>
                             <Button
                                 onClick={() => setShowBulkStatusModal(true)}
                                 variant="secondary"
@@ -225,9 +219,9 @@ const LeadList = ({
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 text-sm text-gray-600 [.dark_&]:text-gray-300">
+                                            {/* <td className="px-4 py-3 text-sm text-gray-600 [.dark_&]:text-gray-300">
                                                 {lead.productOfInterest || "-"}
-                                            </td>
+                                            </td> */}
                                             <td className="px-4 py-3">
                                                 {lead.followUpDate ? (
                                                     <span
@@ -246,13 +240,26 @@ const LeadList = ({
                                                 )}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <span
-                                                    className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-                                                        lead.status
-                                                    )}`}
+                                                <select
+                                                    value={lead.status || ''}
+                                                    onChange={(e) => {
+                                                        e.stopPropagation();
+                                                        if (onStatusChange) {
+                                                            onStatusChange(lead.id, e.target.value);
+                                                        }
+                                                    }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className={`px-2 py-1 rounded-lg text-xs font-medium border cursor-pointer transition-all focus:ring-2 focus:ring-indigo-500 focus:outline-none capitalize ${getStatusColor(lead.status)}`}
                                                 >
-                                                    {lead.status}
-                                                </span>
+                                                    {(LEAD_STATUSES && LEAD_STATUSES.length > 0
+                                                        ? LEAD_STATUSES
+                                                        : ['remaining', 'contacted', 'qualified', 'proposal', 'negotiation', 'converted', 'lost']
+                                                    ).map((s) => (
+                                                        <option key={s} value={s.toLowerCase()} className="capitalize">
+                                                            {s}
+                                                        </option>
+                                                    ))}
+                                                </select>
                                             </td>
                                             <td className="px-4 py-3">
                                                 <span
@@ -322,13 +329,19 @@ const LeadList = ({
                 </Card>
             </>
         );
-    } else {
+    } else if (viewMode === "kanban") {
         // KANBAN VIEW
+        // Default statuses if none are configured
+        const DEFAULT_STATUSES = ['remaining', 'contacted', 'qualified', 'proposal', 'negotiation', 'converted', 'lost'];
+        const kanbanStatuses = LEAD_STATUSES && LEAD_STATUSES.length > 0
+            ? LEAD_STATUSES.map(s => s.toLowerCase())
+            : DEFAULT_STATUSES;
+
         return (
             <DragDropContext onDragEnd={handleDragEnd}>
                 <div className="flex gap-4 overflow-x-auto pb-4 items-start h-[calc(100vh-250px)]">
-                    {LEAD_STATUSES.map((status) => {
-                        const statusLeads = filteredLeads.filter((l) => l.status === status);
+                    {kanbanStatuses.map((status) => {
+                        const statusLeads = filteredLeads.filter((l) => l.status?.toLowerCase() === status.toLowerCase());
                         // Calculate Total Value
                         const statusValue = statusLeads.reduce((acc, l) => acc + (parseFloat(l.potentialValue) || 0), 0);
 
@@ -403,7 +416,8 @@ const LeadList = ({
                                                                     <h4 className="font-semibold text-gray-900 [.dark_&]:text-white text-sm truncate">
                                                                         {lead.customerName}
                                                                     </h4>
-                                                                    <p className="text-xs text-gray-500 [.dark_&]:text-gray-400 truncate mt-0.5">
+                                                                    <p className="text-xs text-gray-500 [.dark_&]:text-gray-400 truncate mt-0.5 flex items-center gap-1">
+                                                                        <FaBuilding className="text-[10px]" />
                                                                         {lead.companyName || 'No company'}
                                                                     </p>
                                                                 </div>
@@ -412,12 +426,12 @@ const LeadList = ({
                                                                 </span>
                                                             </div>
 
-                                                            {/* Product & Date */}
-                                                            <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                                                                {lead.productOfInterest && (
-                                                                    <span className="rounded-md px-2 py-1 bg-indigo-50 [.dark_&]:bg-indigo-500/10 text-indigo-600 [.dark_&]:text-indigo-400 flex items-center gap-1 font-medium">
-                                                                        <FaBoxOpen className="text-[10px]" />
-                                                                        <span className="truncate max-w-[120px]">{lead.productOfInterest}</span>
+                                                            {/* Contact Info */}
+                                                            <div className="flex flex-wrap items-center gap-2 text-[11px] mb-2">
+                                                                {lead.contactNumber && (
+                                                                    <span className="rounded-md px-2 py-1 bg-gray-50 [.dark_&]:bg-gray-700/50 text-gray-600 [.dark_&]:text-gray-300 flex items-center gap-1 font-medium">
+                                                                        <FaPhone className="text-[10px]" />
+                                                                        <span className="truncate max-w-[100px]">{lead.contactNumber}</span>
                                                                     </span>
                                                                 )}
                                                                 <span className="rounded-md px-2 py-1 bg-blue-50 [.dark_&]:bg-blue-500/10 text-blue-600 [.dark_&]:text-blue-400 flex items-center gap-1 font-medium ml-auto">
@@ -426,14 +440,59 @@ const LeadList = ({
                                                                 </span>
                                                             </div>
 
-                                                            {/* Potential Value (if exists) */}
-                                                            {lead.potentialValue && parseFloat(lead.potentialValue) > 0 && (
-                                                                <div className="mt-2 pt-2 border-t border-gray-100 [.dark_&]:border-white/5">
+                                                            {/* Next Follow-up Date */}
+                                                            {lead.followUpDate && (
+                                                                <div className={`flex items-center gap-1 text-[11px] rounded-md px-2 py-1 mb-2 ${getFollowUpStatus(lead.followUpDate) === 'overdue'
+                                                                    ? 'bg-red-50 [.dark_&]:bg-red-500/10 text-red-600 [.dark_&]:text-red-400'
+                                                                    : getFollowUpStatus(lead.followUpDate) === 'today'
+                                                                        ? 'bg-amber-50 [.dark_&]:bg-amber-500/10 text-amber-600 [.dark_&]:text-amber-400'
+                                                                        : 'bg-green-50 [.dark_&]:bg-green-500/10 text-green-600 [.dark_&]:text-green-400'
+                                                                    }`}>
+                                                                    <FaBell className="text-[10px]" />
+                                                                    <span className="font-medium">Follow-up: {formatFollowUpDate(lead.followUpDate)}</span>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Potential Value & Quick Actions */}
+                                                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 [.dark_&]:border-white/5">
+                                                                {lead.potentialValue && parseFloat(lead.potentialValue) > 0 ? (
                                                                     <span className="text-xs font-bold text-green-600 [.dark_&]:text-green-400">
                                                                         ₹{parseFloat(lead.potentialValue).toLocaleString()}
                                                                     </span>
+                                                                ) : (
+                                                                    <span></span>
+                                                                )}
+
+                                                                {/* Quick Actions - show on hover */}
+                                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); openView(lead); }}
+                                                                        className="p-1.5 rounded-md text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 [.dark_&]:hover:bg-indigo-500/10 transition-colors"
+                                                                        title="View Details"
+                                                                    >
+                                                                        <FaEye className="text-xs" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={(e) => { e.stopPropagation(); openEdit(lead); }}
+                                                                        className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-50 [.dark_&]:hover:bg-blue-500/10 transition-colors"
+                                                                        title="Edit Lead"
+                                                                    >
+                                                                        <FaEdit className="text-xs" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setSelectedLead(lead);
+                                                                            setScheduleFollowupForm({ leadId: lead.id });
+                                                                            setShowScheduleFollowup(true);
+                                                                        }}
+                                                                        className="p-1.5 rounded-md text-gray-500 hover:text-amber-600 hover:bg-amber-50 [.dark_&]:hover:bg-amber-500/10 transition-colors"
+                                                                        title="Schedule Follow-up"
+                                                                    >
+                                                                        <FaBell className="text-xs" />
+                                                                    </button>
                                                                 </div>
-                                                            )}
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </Draggable>
@@ -452,6 +511,98 @@ const LeadList = ({
                     })}
                 </div>
             </DragDropContext>
+        );
+    } else if (viewMode === "grouped") {
+        // GROUPED VIEW
+        // Default statuses if none are configured
+        const DEFAULT_STATUSES = ['remaining', 'contacted', 'qualified', 'proposal', 'negotiation', 'converted', 'lost'];
+        const groupedStatuses = LEAD_STATUSES && LEAD_STATUSES.length > 0
+            ? LEAD_STATUSES.map(s => s.toLowerCase())
+            : DEFAULT_STATUSES;
+
+        // Helper function to handle schedule follow-up for grouped view
+        const handleScheduleFollowup = (lead) => {
+            setSelectedLead(lead);
+            setScheduleFollowupForm({ leadId: lead.id });
+            setShowScheduleFollowup(true);
+        };
+
+        const handleDeleteLead = (lead) => {
+            setSelectedLead(lead);
+            setShowDeleteModal(true);
+        };
+
+        return (
+            <div className="space-y-4">
+                {/* Bulk Actions Toolbar */}
+                {selectedLeads.size > 0 && (
+                    <div className="bg-indigo-50 [.dark_&]:bg-indigo-900/30 border border-indigo-200 [.dark_&]:border-indigo-500/30 rounded-xl p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <span className="text-indigo-700 [.dark_&]:text-indigo-300 font-medium">
+                                {selectedLeads.size} lead{selectedLeads.size > 1 ? "s" : ""} selected
+                            </span>
+                            <button
+                                onClick={() => setSelectedLeads(new Set())}
+                                className="text-indigo-600 [.dark_&]:text-indigo-400 hover:underline text-sm"
+                            >
+                                Clear selection
+                            </button>
+                        </div>
+                        <div className="flex gap-3">
+                            <Button
+                                onClick={() => setShowBulkStatusModal(true)}
+                                variant="secondary"
+                                className="flex items-center gap-2"
+                            >
+                                <FaEdit className="text-sm" />
+                                Change Status
+                            </Button>
+                            <Button
+                                onClick={() => setShowBulkDeleteModal(true)}
+                                variant="secondary"
+                                className="flex items-center gap-2 text-red-600 [.dark_&]:text-red-400 border-red-200 [.dark_&]:border-red-500/30 hover:bg-red-50 [.dark_&]:hover:bg-red-900/20"
+                            >
+                                <FaTrash className="text-sm" />
+                                Delete Selected
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Grouped Lead Lists */}
+                {groupedStatuses.map((status) => {
+                    const statusLeads = filteredLeads.filter((l) => l.status?.toLowerCase() === status.toLowerCase());
+
+                    return (
+                        <LeadGroup
+                            key={status}
+                            status={status}
+                            leads={statusLeads}
+                            selectedLeads={selectedLeads}
+                            onToggleSelect={(id) => {
+                                const newSelected = new Set(selectedLeads);
+                                if (newSelected.has(id)) {
+                                    newSelected.delete(id);
+                                } else {
+                                    newSelected.add(id);
+                                }
+                                setSelectedLeads(newSelected);
+                            }}
+                            onView={openView}
+                            onEdit={openEdit}
+                            onScheduleFollowup={handleScheduleFollowup}
+                            onAddLead={onAddLeadWithStatus}
+                            onStatusChange={onStatusChange}
+                            onDelete={handleDeleteLead}
+                            getFollowUpStatus={getFollowUpStatus}
+                            getPriorityColor={getPriorityColor}
+                            formatFollowUpDate={formatFollowUpDate}
+                            leadStatuses={LEAD_STATUSES}
+                            showActions={true}
+                        />
+                    );
+                })}
+            </div>
         );
     }
 };

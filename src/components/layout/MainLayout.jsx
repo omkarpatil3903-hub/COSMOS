@@ -4,6 +4,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { auth } from "../../firebase";
 import { Toaster } from "react-hot-toast";
+import useGlobalLeadReminders from "../../hooks/useGlobalLeadReminders.jsx";
 import {
   FaTachometerAlt,
   FaSearch,
@@ -134,6 +135,9 @@ function MainLayout() {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  // Global lead follow-up reminders
+  useGlobalLeadReminders();
 
   // Dynamic page title based on route
   useEffect(() => {

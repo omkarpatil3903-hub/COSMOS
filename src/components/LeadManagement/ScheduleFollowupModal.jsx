@@ -9,7 +9,8 @@ const ScheduleFollowupModal = ({
     onSubmit,
     isSubmitting,
     leads,
-    followupTypes
+    followupTypes,
+    priorities
 }) => {
     if (!isOpen) return null;
 
@@ -131,26 +132,21 @@ const ScheduleFollowupModal = ({
                                 <FaFlag className="text-yellow-500" />
                                 Priority
                             </label>
-                            <div className="flex gap-2">
-                                {[
-                                    { value: "low", label: "Low", color: "bg-green-500", flagColor: "text-green-500" },
-                                    { value: "medium", label: "Medium", color: "bg-yellow-500", flagColor: "text-yellow-500" },
-                                    { value: "high", label: "High", color: "bg-red-500", flagColor: "text-red-500" },
-                                ].map((priority) => (
-                                    <button
-                                        key={priority.value}
-                                        type="button"
-                                        onClick={() => setForm({ ...form, priority: priority.value })}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all flex-1 justify-center ${form.priority === priority.value
-                                            ? `${priority.color} text-white shadow-md`
-                                            : "bg-gray-100 [.dark_&]:bg-slate-700 text-gray-700 [.dark_&]:text-gray-300 hover:bg-gray-200 [.dark_&]:hover:bg-slate-600"
-                                            }`}
-                                    >
-                                        <FaFlag className={form.priority === priority.value ? "text-white" : priority.flagColor} />
-                                        {priority.label}
-                                    </button>
-                                ))}
-                            </div>
+                            <select
+                                value={form.priority}
+                                onChange={(e) => setForm({ ...form, priority: e.target.value })}
+                                className="w-full rounded-lg border border-gray-200 [.dark_&]:border-gray-600 bg-gray-50 [.dark_&]:bg-slate-700/50 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none transition-all capitalize"
+                            >
+                                {(priorities && priorities.length > 0 ? priorities : ["Low", "Medium", "High", "Urgent"]).map((priority) => {
+                                    const priorityValue = typeof priority === 'string' ? priority.toLowerCase() : priority.value;
+                                    const priorityLabel = typeof priority === 'string' ? priority : priority.label;
+                                    return (
+                                        <option key={priorityValue} value={priorityValue}>
+                                            {priorityLabel}
+                                        </option>
+                                    );
+                                })}
+                            </select>
                         </div>
 
                         {/* Notes */}

@@ -91,7 +91,8 @@ const LeadFormModal = ({
                 });
             }
         }
-    }, [isOpen, mode, initialData, isEditMode, settings.leadStatuses, settings.leadPriorities]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, mode, initialData?.id, isEditMode]);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -125,8 +126,8 @@ const LeadFormModal = ({
                     <div className="flex items-center gap-3">
                         <div
                             className={`p-2 rounded-lg ${isEditMode
-                                    ? "bg-yellow-50 [.dark_&]:bg-yellow-500/20 text-yellow-600 [.dark_&]:text-yellow-400"
-                                    : "bg-indigo-50 [.dark_&]:bg-indigo-500/20 text-indigo-600 [.dark_&]:text-indigo-400"
+                                ? "bg-yellow-50 [.dark_&]:bg-yellow-500/20 text-yellow-600 [.dark_&]:text-yellow-400"
+                                : "bg-indigo-50 [.dark_&]:bg-indigo-500/20 text-indigo-600 [.dark_&]:text-indigo-400"
                                 }`}
                         >
                             {isEditMode ? (
@@ -166,8 +167,8 @@ const LeadFormModal = ({
                                     value={formData.date}
                                     onChange={(e) => handleChange("date", e.target.value)}
                                     className={`w-full rounded-lg border ${errors.date
-                                            ? "border-red-500"
-                                            : "border-gray-200 [.dark_&]:border-white/10"
+                                        ? "border-red-500"
+                                        : "border-gray-200 [.dark_&]:border-white/10"
                                         } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:border-indigo-500 transition-all`}
                                 />
                                 {errors.date && <p className="text-xs text-red-500">{errors.date}</p>}
@@ -182,8 +183,8 @@ const LeadFormModal = ({
                                     value={formData.customerName}
                                     onChange={(e) => handleChange("customerName", e.target.value)}
                                     className={`w-full rounded-lg border ${errors.customerName
-                                            ? "border-red-500"
-                                            : "border-gray-200 [.dark_&]:border-white/10"
+                                        ? "border-red-500"
+                                        : "border-gray-200 [.dark_&]:border-white/10"
                                         } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:border-indigo-500 transition-all`}
                                 />
                                 {errors.customerName && (
@@ -200,8 +201,8 @@ const LeadFormModal = ({
                                     value={formData.contactNumber}
                                     onChange={(e) => handleChange("contactNumber", e.target.value)}
                                     className={`w-full rounded-lg border ${errors.contactNumber
-                                            ? "border-red-500"
-                                            : "border-gray-200 [.dark_&]:border-white/10"
+                                        ? "border-red-500"
+                                        : "border-gray-200 [.dark_&]:border-white/10"
                                         } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:border-indigo-500 transition-all`}
                                 />
                                 {errors.contactNumber && (
@@ -218,8 +219,8 @@ const LeadFormModal = ({
                                     value={formData.email}
                                     onChange={(e) => handleChange("email", e.target.value)}
                                     className={`w-full rounded-lg border ${errors.email
-                                            ? "border-red-500"
-                                            : "border-gray-200 [.dark_&]:border-white/10"
+                                        ? "border-red-500"
+                                        : "border-gray-200 [.dark_&]:border-white/10"
                                         } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:border-indigo-500 transition-all`}
                                 />
                                 {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
@@ -238,8 +239,8 @@ const LeadFormModal = ({
                                     value={formData.companyName}
                                     onChange={(e) => handleChange("companyName", e.target.value)}
                                     className={`w-full rounded-lg border ${errors.companyName
-                                            ? "border-red-500"
-                                            : "border-gray-200 [.dark_&]:border-white/10"
+                                        ? "border-red-500"
+                                        : "border-gray-200 [.dark_&]:border-white/10"
                                         } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:border-indigo-500 transition-all`}
                                 />
                                 {errors.companyName && (
@@ -272,52 +273,8 @@ const LeadFormModal = ({
                             </div>
                         </div>
 
-                        {/* Row 3: Product of Interest, Sector, Source of Lead, Product Category */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">
-                                    Product of Interest <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    value={formData.productOfInterest}
-                                    onChange={(e) => handleChange("productOfInterest", e.target.value)}
-                                    className={`w-full rounded-lg border ${errors.productOfInterest
-                                            ? "border-red-500"
-                                            : "border-gray-200 [.dark_&]:border-white/10"
-                                        } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:border-indigo-500 transition-all`}
-                                >
-                                    <option value="">Select product</option>
-                                    {products.map((p) => (
-                                        <option key={p} value={p}>
-                                            {p}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.productOfInterest && (
-                                    <p className="text-xs text-red-500">{errors.productOfInterest}</p>
-                                )}
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">
-                                    Sector <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    value={formData.sector}
-                                    onChange={(e) => handleChange("sector", e.target.value)}
-                                    className={`w-full rounded-lg border ${errors.sector
-                                            ? "border-red-500"
-                                            : "border-gray-200 [.dark_&]:border-white/10"
-                                        } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:border-indigo-500 transition-all`}
-                                >
-                                    <option value="">Select sector</option>
-                                    {sectors.map((s) => (
-                                        <option key={s} value={s}>
-                                            {s}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.sector && <p className="text-xs text-red-500">{errors.sector}</p>}
-                            </div>
+                        {/* Row 3: Source of Lead */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">
                                     Source of Lead <span className="text-red-500">*</span>
@@ -326,8 +283,8 @@ const LeadFormModal = ({
                                     value={formData.sourceOfLead}
                                     onChange={(e) => handleChange("sourceOfLead", e.target.value)}
                                     className={`w-full rounded-lg border ${errors.sourceOfLead
-                                            ? "border-red-500"
-                                            : "border-gray-200 [.dark_&]:border-white/10"
+                                        ? "border-red-500"
+                                        : "border-gray-200 [.dark_&]:border-white/10"
                                         } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:border-indigo-500 transition-all`}
                                 >
                                     <option value="">Select source</option>
@@ -341,33 +298,10 @@ const LeadFormModal = ({
                                     <p className="text-xs text-red-500">{errors.sourceOfLead}</p>
                                 )}
                             </div>
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">
-                                    Product Category <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    value={formData.productCategory}
-                                    onChange={(e) => handleChange("productCategory", e.target.value)}
-                                    className={`w-full rounded-lg border ${errors.productCategory
-                                            ? "border-red-500"
-                                            : "border-gray-200 [.dark_&]:border-white/10"
-                                        } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:border-indigo-500 transition-all`}
-                                >
-                                    <option value="">Select category</option>
-                                    {productCategories.map((c) => (
-                                        <option key={c} value={c}>
-                                            {c}
-                                        </option>
-                                    ))}
-                                </select>
-                                {errors.productCategory && (
-                                    <p className="text-xs text-red-500">{errors.productCategory}</p>
-                                )}
-                            </div>
                         </div>
 
-                        {/* Row 4: Status, Priority, Follow-up, Notes */}
-                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-5">
+                        {/* Row 4: Status, Priority, Notes */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">
                                     Status
@@ -399,17 +333,6 @@ const LeadFormModal = ({
                                         </option>
                                     ))}
                                 </select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300 flex items-center gap-1">
-                                    <FaBell className="text-xs" /> Follow-up Date
-                                </label>
-                                <input
-                                    type="date"
-                                    value={formData.followUpDate}
-                                    onChange={(e) => handleChange("followUpDate", e.target.value)}
-                                    className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                                />
                             </div>
                             <div className="space-y-1 md:col-span-2">
                                 <label className="text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">

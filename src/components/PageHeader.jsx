@@ -12,9 +12,9 @@ function PageHeader({ title, description, children, actions, subtext, className 
           {title}
         </h1>
         {content && (
-          <p className="text-sm text-content-secondary sm:text-base">
+          <div className="text-sm text-content-secondary sm:text-base">
             {content}
-          </p>
+          </div>
         )}
         {subtext && (
           <p className="text-sm text-content-secondary sm:text-base">
