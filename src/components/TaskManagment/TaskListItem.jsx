@@ -9,11 +9,14 @@ import {
 import { IoIosWarning } from "react-icons/io";
 import { MdReplayCircleFilled } from "react-icons/md";
 import { getPriorityBadge, getStatusBadge } from "../../utils/colorMaps";
+import UserAvatar from "./UserAvatar";
+
+import { useAuthContext } from "../../context/AuthContext";
 
 const statusIcons = {
   "To-Do": <FaClipboardList />,
   "In Progress": <FaSpinner className="animate-spin" />,
-  Done: <FaCheckCircle />,
+  "Done": <FaCheckCircle />,
 };
 
 const TaskListItem = ({
@@ -28,9 +31,21 @@ const TaskListItem = ({
   onReassign,
   activeUsers,
 }) => {
+  const { user: currentUser } = useAuthContext();
+
+  // Calculate personalized status
+  const displayStatus = (() => {
+    if (!currentUser?.uid) return task.status;
+    const isAssignee = task.assigneeIds?.includes(currentUser.uid);
+    if (isAssignee && task.assigneeStatus?.[currentUser.uid]) {
+      return task.assigneeStatus[currentUser.uid].status || "To-Do";
+    }
+    return task.status;
+  })();
+
   const isOverdue =
     task.dueDate &&
-    task.status !== "Done" &&
+    displayStatus !== "Done" &&
     task.dueDate < new Date().toISOString().slice(0, 10);
 
   // Helper to check if current assignee is active
@@ -71,7 +86,7 @@ const TaskListItem = ({
                   {task.description}
                 </p>
               )}
-              {task.status === "Done" && task.completionComment && (
+              {displayStatus === "Done" && task.completionComment && (
                 <p
                   className="mt-1 text-xs italic text-indigo-700 line-clamp-1"
                   title={task.completionComment}
@@ -84,31 +99,31 @@ const TaskListItem = ({
               {(task.okrObjective ||
                 (task.okrObjectiveIndex !== undefined &&
                   task.okrObjectiveIndex !== null)) && (
-                <div className="mt-2 flex flex-wrap items-center gap-1">
-                  {task.okrObjective && (
-                    <span
-                      className="inline-flex items-center gap-1.5 rounded-md bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-700"
-                      title={`Objective: ${task.okrObjective}`}
-                    >
-                      🎯{" "}
-                      <span className="truncate max-w-[220px]">
-                        {task.okrObjective}
-                      </span>
-                    </span>
-                  )}
-                  {Array.isArray(task.okrKeyResults) &&
-                    task.okrKeyResults.length > 0 &&
-                    task.okrKeyResults.map((kr, idx) => (
+                  <div className="mt-2 flex flex-wrap items-center gap-1">
+                    {task.okrObjective && (
                       <span
-                        key={idx}
-                        className="inline-flex items-center gap-1.5 rounded-md bg-teal-100 px-2 py-1 text-[10px] font-semibold text-teal-700"
-                        title={`KR: ${kr}`}
+                        className="inline-flex items-center gap-1.5 rounded-md bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-700"
+                        title={`Objective: ${task.okrObjective}`}
                       >
-                        ✅ <span className="truncate max-w-[200px]">{kr}</span>
+                        🎯{" "}
+                        <span className="truncate max-w-[220px]">
+                          {task.okrObjective}
+                        </span>
                       </span>
-                    ))}
-                </div>
-              )}
+                    )}
+                    {Array.isArray(task.okrKeyResults) &&
+                      task.okrKeyResults.length > 0 &&
+                      task.okrKeyResults.map((kr, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1.5 rounded-md bg-teal-100 px-2 py-1 text-[10px] font-semibold text-teal-700"
+                          title={`KR: ${kr}`}
+                        >
+                          ✅ <span className="truncate max-w-[200px]">{kr}</span>
+                        </span>
+                      ))}
+                  </div>
+                )}
             </div>
 
             {/* Right Side Badges */}
@@ -126,11 +141,11 @@ const TaskListItem = ({
                 )}
                 <span
                   className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${getStatusBadge(
-                    task.status
+                    displayStatus
                   )}`}
                 >
-                  {statusIcons[task.status]}
-                  <span>{task.status}</span>
+                  {statusIcons[displayStatus]}
+                  <span>{displayStatus}</span>
                 </span>
               </div>
 
@@ -147,11 +162,10 @@ const TaskListItem = ({
                 )}
 
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold ${
-                    task.dueDate && task.status !== "Done" && isOverdue
-                      ? "bg-red-100 text-red-700"
-                      : "bg-blue-100 text-blue-700"
-                  }`}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold ${task.dueDate && displayStatus !== "Done" && isOverdue
+                    ? "bg-red-100 text-red-700"
+                    : "bg-blue-100 text-blue-700"
+                    }`}
                 >
                   <FaCalendarAlt className="text-current" />
                   <span className="font-bold">Due:</span>
@@ -199,18 +213,17 @@ const TaskListItem = ({
             <div className="min-w-0">
               <span className="font-medium">Assigned to:</span>{" "}
               {Array.isArray(task.assignees) && task.assignees.length > 0 ? (
-                <span className="inline-flex flex-wrap gap-1 align-bottom">
+                <span className="inline-flex flex-wrap gap-2 align-bottom">
                   {(assigneesResolved || task.assignees).map((a, idx) => {
                     const label = a?.name || a?.id || "Unknown";
                     const meta = a?.company
                       ? ` (${a.company})`
                       : a?.role
-                      ? ` (${a.role})`
-                      : "";
+                        ? ` (${a.role})`
+                        : "";
                     const titleText = a?.name
-                      ? `${a.name}${a.company ? ` • ${a.company}` : ""}${
-                          a.role ? ` • ${a.role}` : ""
-                        }`
+                      ? `${a.name}${a.company ? ` • ${a.company}` : ""}${a.role ? ` • ${a.role}` : ""
+                      }`
                       : `${a?.type || "user"}:${a?.id || "unknown"}`;
                     return (
                       <span
@@ -218,7 +231,8 @@ const TaskListItem = ({
                         className="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-700"
                         title={titleText}
                       >
-                        👤 {label}
+                        <UserAvatar user={a} size="xs" />
+                        {label}
                         {meta}
                       </span>
                     );
@@ -236,8 +250,8 @@ const TaskListItem = ({
                   {assignee?.role
                     ? ` (${assignee.role})`
                     : assignee?.clientName
-                    ? " (Client)"
-                    : ""}
+                      ? " (Client)"
+                      : ""}
                 </span>
               )}
             </div>
