@@ -38,6 +38,7 @@ export default function KnowledgeProjectDetail() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [roleType, setRoleType] = useState("");
   const [currentUserName, setCurrentUserName] = useState("");
+  const [currentUserImage, setCurrentUserImage] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -188,10 +189,12 @@ export default function KnowledgeProjectDetail() {
         setCurrentUserName(
           data.name || data.fullName || data.displayName || u.displayName || u.email || ""
         );
+        setCurrentUserImage(data.imageUrl || data.photoURL || null);
       } catch {
         setIsAdmin(false);
         setRoleType("");
         setCurrentUserName("");
+        setCurrentUserImage(null);
       }
     };
     load();
@@ -373,33 +376,59 @@ export default function KnowledgeProjectDetail() {
   const handleAddKnowledge = async (form) => {
     if (!resolvedProjectId) return;
     try {
+      const currentUser = auth.currentUser;
+      let knowledgeDocId;
+
+      // Prepare activity entry
+      const activityEntry = {
+        action: editingKn ? 'update' : 'create',
+        changes: form.activityChanges || (editingKn ? ['Updated knowledge entry'] : ['Created knowledge entry']),
+        timestamp: new Date().toISOString(),
+        performedBy: currentUser?.uid || "",
+        performedByName: currentUser?.displayName || currentUserName || "Unknown User",
+        performedByImage: currentUserImage || currentUser?.photoURL || null,
+      };
+
       if (editingKn && editingKn.id) {
+        knowledgeDocId = editingKn.id;
         const refDoc = doc(db, "knowledge", editingKn.id);
         const payload = {
           title: form.title,
           description: form.description,
+          link: form.link || "",
+          links: form.links || [],
           access: form.access || { admin: [], member: [] },
+          documents: form.documents || [],
           updatedAt: serverTimestamp(),
-          updatedByUid: auth.currentUser?.uid || "",
-          updatedByName: currentUserName,
+          updatedByUid: currentUser?.uid || "",
+          updatedByName: currentUser?.displayName || currentUserName || "",
           projectId: resolvedProjectId,
         };
         await updateDoc(refDoc, payload);
         setEditingKn(null);
         setOpenAddKn(false);
       } else {
-        await addDoc(collection(db, "knowledge"), {
+        const docRef = await addDoc(collection(db, "knowledge"), {
           title: form.title,
           description: form.description,
+          link: form.link || "",
+          links: form.links || [],
           access: form.access || { admin: [], member: [] },
+          documents: form.documents || [],
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-          createdByUid: auth.currentUser?.uid || "",
-          createdByName: currentUserName,
+          createdByUid: currentUser?.uid || "",
+          createdByName: currentUser?.displayName || currentUserName || "",
           projectId: resolvedProjectId,
         });
+        knowledgeDocId = docRef.id;
         setOpenAddKn(false);
       }
+
+      // Save activity to subcollection
+      const activitiesRef = collection(db, "knowledge", knowledgeDocId, "activities");
+      await addDoc(activitiesRef, activityEntry);
+
     } catch (e) {
       console.error("Failed to add knowledge", e);
     }

@@ -14,28 +14,24 @@ import {
     FaExternalLinkAlt,
     FaClock,
     FaCheckCircle,
+
     FaTimesCircle,
+    FaAlignLeft,
 } from "react-icons/fa";
 import Button from "../Button";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { getStatusColorClass } from "../../config/expenseConfig";
 
-export default function ExpenseDetailModal({ expense, onClose, useDarkMode = true }) {
+export default function ExpenseDetailModal({ expense, onClose, onViewReceipt, useDarkMode = true }) {
     const { headerIconClass, badgeClass } = useThemeStyles();
 
     if (!expense) return null;
 
     const formatDate = (dateValue) => {
         if (!dateValue) return "-";
-        if (typeof dateValue === "string") return dateValue;
+        if (typeof dateValue === "string") return new Date(dateValue).toLocaleDateString("en-GB");
         if (dateValue.toDate) {
-            return dateValue.toDate().toLocaleDateString("en-IN", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-            });
+            return dateValue.toDate().toLocaleDateString("en-GB");
         }
         return "-";
     };
@@ -82,11 +78,6 @@ export default function ExpenseDetailModal({ expense, onClose, useDarkMode = tru
                             >
                                 {expense.status}
                             </span>
-                            {expense.description && (
-                                <p className="text-sm text-content-secondary max-w-md">
-                                    {expense.description}
-                                </p>
-                            )}
                         </div>
 
                         {/* Top Section: Key Metrics */}
@@ -120,7 +111,7 @@ export default function ExpenseDetailModal({ expense, onClose, useDarkMode = tru
                                     </span>
                                 </div>
                                 <p className="text-content-primary font-semibold text-base">
-                                    {expense.date || "-"}
+                                    {expense.date ? new Date(expense.date).toLocaleDateString("en-GB") : "-"}
                                 </p>
                             </div>
 
@@ -164,6 +155,19 @@ export default function ExpenseDetailModal({ expense, onClose, useDarkMode = tru
                             </div>
                         </div>
 
+                        {/* Description Section */}
+                        {expense.description && (
+                            <div className="bg-surface border border-subtle rounded-xl p-4 shadow-sm">
+                                <div className="text-xs text-content-tertiary font-semibold mb-2 flex items-center gap-2">
+                                    <FaAlignLeft className="h-3.5 w-3.5" />
+                                    DESCRIPTION
+                                </div>
+                                <p className="text-sm text-content-primary whitespace-pre-wrap">
+                                    {expense.description}
+                                </p>
+                            </div>
+                        )}
+
                         {/* Receipt Section */}
                         {expense.receiptUrl && (
                             <div className="bg-surface border border-subtle rounded-xl p-4 shadow-sm">
@@ -176,14 +180,23 @@ export default function ExpenseDetailModal({ expense, onClose, useDarkMode = tru
                                             RECEIPT
                                         </span>
                                     </div>
-                                    <a
-                                        href={expense.receiptUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (onViewReceipt) {
+                                                onViewReceipt({
+                                                    url: expense.receiptUrl,
+                                                    name: `Receipt - ${expense.title}`,
+                                                    fileType: expense.receiptUrl.includes(".pdf") ? "application/pdf" : "image/jpeg",
+                                                    id: expense.id
+                                                });
+                                                onClose();
+                                            }
+                                        }}
                                         className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800"
                                     >
-                                        Open in new tab <FaExternalLinkAlt className="text-[10px]" />
-                                    </a>
+                                        Open in viewer <FaExternalLinkAlt className="text-[10px]" />
+                                    </button>
                                 </div>
                                 {expense.receiptUrl.startsWith("data:image") ||
                                     expense.receiptUrl.includes(".jpg") ||
@@ -280,5 +293,6 @@ export default function ExpenseDetailModal({ expense, onClose, useDarkMode = tru
                 </div>
             </div>
         </div>
+
     );
 }

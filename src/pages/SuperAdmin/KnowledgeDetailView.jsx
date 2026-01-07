@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "../../firebase";
 import { FaArrowLeft, FaDownload, FaFileAlt, FaChevronDown, FaChevronUp, FaInfoCircle, FaUser, FaExclamationTriangle } from "react-icons/fa";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
@@ -13,11 +13,32 @@ function KnowledgeDetailView() {
     const { buttonClass } = useThemeStyles();
 
     const [knowledge, setKnowledge] = useState(null);
+    const [activities, setActivities] = useState([]);
+    const [creatorImage, setCreatorImage] = useState(null);
     const [loading, setLoading] = useState(true);
     const [sortBy, setSortBy] = useState("newest"); // newest, oldest
     const [uploadedBy, setUploadedBy] = useState("all"); // all or specific uploader name
     const [showMetadata, setShowMetadata] = useState(false); // metadata modal visibility
     const [docErrors, setDocErrors] = useState({}); // Track errors for each document by index
+
+    const [usersMap, setUsersMap] = useState({}); // Map of userId -> user data with imageUrl
+
+    // Live listener for users collection to get profile images
+    useEffect(() => {
+        const usersRef = collection(db, "users");
+        const unsubUsers = onSnapshot(usersRef, (snap) => {
+            const map = {};
+            snap.docs.forEach(d => {
+                const data = d.data();
+                map[d.id] = {
+                    name: data.name || data.displayName || "",
+                    imageUrl: data.imageUrl || data.photoURL || null,
+                };
+            });
+            setUsersMap(map);
+        });
+        return () => unsubUsers();
+    }, []);
 
     useEffect(() => {
         const fetchKnowledge = async () => {
@@ -26,7 +47,32 @@ function KnowledgeDetailView() {
                 const knowledgeSnap = await getDoc(knowledgeRef);
 
                 if (knowledgeSnap.exists()) {
-                    setKnowledge({ id: knowledgeSnap.id, ...knowledgeSnap.data() });
+                    const knowledgeData = { id: knowledgeSnap.id, ...knowledgeSnap.data() };
+                    setKnowledge(knowledgeData);
+
+                    // Fetch creator's profile image
+                    if (knowledgeData.createdByUid) {
+                        try {
+                            const userRef = doc(db, "users", knowledgeData.createdByUid);
+                            const userSnap = await getDoc(userRef);
+                            if (userSnap.exists()) {
+                                const userData = userSnap.data();
+                                setCreatorImage(userData.imageUrl || userData.photoURL || null);
+                            }
+                        } catch (err) {
+                            console.warn("Could not fetch creator image:", err);
+                        }
+                    }
+
+                    // Fetch activities from subcollection
+                    const activitiesRef = collection(db, "knowledge", id, "activities");
+                    const activitiesQuery = query(activitiesRef, orderBy("timestamp", "desc"));
+                    const activitiesSnap = await getDocs(activitiesQuery);
+                    const activitiesList = activitiesSnap.docs.map(d => ({
+                        id: d.id,
+                        ...d.data()
+                    }));
+                    setActivities(activitiesList);
                 } else {
                     console.error("Knowledge not found");
                 }
@@ -327,97 +373,192 @@ function KnowledgeDetailView() {
                     onClick={() => setShowMetadata(false)}
                 >
                     <div
-                        className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-2xl w-full max-w-md p-6 relative"
+                        className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-2xl w-full max-w-3xl p-6 relative"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Close Button */}
                         <button
                             onClick={() => setShowMetadata(false)}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 [.dark_&]:hover:text-gray-300"
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 [.dark_&]:hover:text-gray-300 z-10"
                         >
                             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
 
-                        {/* Profile Icon */}
-                        <div className="flex flex-col items-center mb-6">
-                            <div className="w-20 h-20 rounded-full bg-indigo-100 [.dark_&]:bg-indigo-900/30 flex items-center justify-center mb-3">
-                                <FaUser className="h-10 w-10 text-indigo-600 [.dark_&]:text-indigo-400" />
+                        {/* Two Column Layout */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Left Column - Metadata */}
+                            <div>
+                                {/* Profile Image/Icon */}
+                                <div className="flex flex-col items-center mb-6">
+                                    {(() => {
+                                        // Get live user image from usersMap, fallback to fetched creatorImage
+                                        const liveCreatorImage = knowledge.createdByUid
+                                            ? usersMap[knowledge.createdByUid]?.imageUrl
+                                            : null;
+                                        const displayImage = liveCreatorImage || creatorImage;
+
+                                        return displayImage ? (
+                                            <img
+                                                src={displayImage}
+                                                alt={knowledge.createdByName || "Creator"}
+                                                className="w-20 h-20 rounded-full object-cover mb-3 border-2 border-indigo-200 [.dark_&]:border-indigo-900/50"
+                                            />
+                                        ) : (
+                                            <div className="w-20 h-20 rounded-full bg-indigo-100 [.dark_&]:bg-indigo-900/30 flex items-center justify-center mb-3">
+                                                <FaUser className="h-10 w-10 text-indigo-600 [.dark_&]:text-indigo-400" />
+                                            </div>
+                                        );
+                                    })()}
+                                    <h3 className="text-xl font-semibold text-gray-900 [.dark_&]:text-white">
+                                        {knowledge.createdByName || "Unknown User"}
+                                    </h3>
+                                    <p className="text-sm text-gray-500 [.dark_&]:text-gray-400">Creator</p>
+                                </div>
+
+                                {/* Metadata Details */}
+                                <div className="space-y-4">
+                                    {/* Created On */}
+                                    {knowledge.createdAt && (
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-200 [.dark_&]:border-white/10">
+                                            <span className="text-sm text-gray-600 [.dark_&]:text-gray-400">Created On</span>
+                                            <span className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
+                                                {new Date(knowledge.createdAt.seconds * 1000).toLocaleDateString('en-US', {
+                                                    year: 'numeric',
+                                                    month: 'long',
+                                                    day: 'numeric'
+                                                })}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Updated On */}
+                                    {knowledge.updatedAt && (
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-200 [.dark_&]:border-white/10">
+                                            <span className="text-sm text-gray-600 [.dark_&]:text-gray-400">Updated On</span>
+                                            <span className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
+                                                {new Date(knowledge.updatedAt.seconds * 1000).toLocaleDateString('en-US', {
+                                                    year: 'numeric',
+                                                    month: 'long',
+                                                    day: 'numeric'
+                                                })}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Updated By */}
+                                    {knowledge.updatedByName && (
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-200 [.dark_&]:border-white/10">
+                                            <span className="text-sm text-gray-600 [.dark_&]:text-gray-400">Updated By</span>
+                                            <span className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
+                                                {knowledge.updatedByName}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Total Documents */}
+                                    <div className="flex justify-between items-center py-2 border-b border-gray-200 [.dark_&]:border-white/10">
+                                        <span className="text-sm text-gray-600 [.dark_&]:text-gray-400">Total Documents</span>
+                                        <span className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
+                                            {knowledge.documents?.length || 0}
+                                        </span>
+                                    </div>
+
+                                    {/* Access - Admin */}
+                                    {knowledge.access?.admin && knowledge.access.admin.length > 0 && (
+                                        <div className="flex justify-between items-center py-2 border-b border-gray-200 [.dark_&]:border-white/10">
+                                            <span className="text-sm text-gray-600 [.dark_&]:text-gray-400">Admin Access</span>
+                                            <span className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
+                                                {knowledge.access.admin.length} admin(s)
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Access - Members */}
+                                    {knowledge.access?.member && knowledge.access.member.length > 0 && (
+                                        <div className="flex justify-between items-center py-2">
+                                            <span className="text-sm text-gray-600 [.dark_&]:text-gray-400">Member Access</span>
+                                            <span className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
+                                                {knowledge.access.member.length} member(s)
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            <h3 className="text-xl font-semibold text-gray-900 [.dark_&]:text-white">
-                                {knowledge.createdByName || "Unknown User"}
-                            </h3>
-                            <p className="text-sm text-gray-500 [.dark_&]:text-gray-400">Creator</p>
-                        </div>
 
-                        {/* Metadata Details */}
-                        <div className="space-y-4">
-                            {/* Created On */}
-                            {knowledge.createdAt && (
-                                <div className="flex justify-between items-center py-2 border-b border-gray-200 [.dark_&]:border-white/10">
-                                    <span className="text-sm text-gray-600 [.dark_&]:text-gray-400">Created On</span>
-                                    <span className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
-                                        {new Date(knowledge.createdAt.seconds * 1000).toLocaleDateString('en-US', {
-                                            year: 'numeric',
-                                            month: 'long',
-                                            day: 'numeric'
-                                        })}
-                                    </span>
-                                </div>
-                            )}
+                            {/* Right Column - Activities */}
+                            <div className="lg:border-l border-gray-200 [.dark_&]:border-white/10 lg:pl-6">
+                                <h4 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white mb-4">Activities</h4>
+                                {activities && activities.length > 0 ? (
+                                    <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                                        {/* Timeline */}
+                                        <div className="relative">
+                                            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200 [.dark_&]:bg-gray-700"></div>
+                                            <div className="space-y-4">
+                                                {activities.map((entry, idx) => {
+                                                    const dateObj = entry.timestamp ? new Date(entry.timestamp) : null;
+                                                    const dateStr = dateObj ? dateObj.toLocaleDateString('en-GB') : "N/A";
+                                                    const timeStr = dateObj ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--:--";
 
-                            {/* Updated On */}
-                            {knowledge.updatedAt && (
-                                <div className="flex justify-between items-center py-2 border-b border-gray-200 [.dark_&]:border-white/10">
-                                    <span className="text-sm text-gray-600 [.dark_&]:text-gray-400">Updated On</span>
-                                    <span className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
-                                        {new Date(knowledge.updatedAt.seconds * 1000).toLocaleDateString('en-US', {
-                                            year: 'numeric',
-                                            month: 'long',
-                                            day: 'numeric'
-                                        })}
-                                    </span>
-                                </div>
-                            )}
+                                                    // Get live user image from usersMap, fallback to stored image
+                                                    const userImage = usersMap[entry.performedBy]?.imageUrl || entry.performedByImage;
 
-                            {/* Updated By */}
-                            {knowledge.updatedByName && (
-                                <div className="flex justify-between items-center py-2 border-b border-gray-200 [.dark_&]:border-white/10">
-                                    <span className="text-sm text-gray-600 [.dark_&]:text-gray-400">Updated By</span>
-                                    <span className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
-                                        {knowledge.updatedByName}
-                                    </span>
-                                </div>
-                            )}
-
-                            {/* Total Documents */}
-                            <div className="flex justify-between items-center py-2 border-b border-gray-200 [.dark_&]:border-white/10">
-                                <span className="text-sm text-gray-600 [.dark_&]:text-gray-400">Total Documents</span>
-                                <span className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
-                                    {knowledge.documents?.length || 0}
-                                </span>
+                                                    return (
+                                                        <div key={entry.id || idx} className="flex gap-3 relative">
+                                                            <div className="flex-shrink-0 z-10">
+                                                                {userImage ? (
+                                                                    <img
+                                                                        src={userImage}
+                                                                        alt={entry.performedByName || "User"}
+                                                                        className="h-8 w-8 rounded-full object-cover border-2 border-white [.dark_&]:border-[#181B2A]"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="h-8 w-8 rounded-full bg-indigo-100 [.dark_&]:bg-indigo-900/30 flex items-center justify-center text-indigo-600 [.dark_&]:text-indigo-400 font-bold text-xs border-2 border-white [.dark_&]:border-[#181B2A]">
+                                                                        {entry.performedByName?.charAt(0) || "U"}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0 bg-gray-50 [.dark_&]:bg-white/5 rounded-lg p-3 border border-gray-100 [.dark_&]:border-white/10">
+                                                                <div className="flex justify-between items-start mb-2">
+                                                                    <span className="text-sm font-semibold text-gray-900 [.dark_&]:text-white truncate">
+                                                                        {entry.performedByName || "Unknown User"}
+                                                                    </span>
+                                                                    <div className="text-right flex-shrink-0 ml-2">
+                                                                        <div className="text-xs font-medium text-gray-500 [.dark_&]:text-gray-400">{dateStr}</div>
+                                                                        <div className="text-xs text-gray-400">{timeStr}</div>
+                                                                    </div>
+                                                                </div>
+                                                                <ul className="space-y-1">
+                                                                    {entry.changes && entry.changes.length > 0 ? (
+                                                                        entry.changes.map((change, cIdx) => (
+                                                                            <li key={cIdx} className="text-xs text-gray-600 [.dark_&]:text-gray-400 flex items-start gap-1.5">
+                                                                                <span className="mt-1.5 h-1 w-1 rounded-full bg-gray-400 flex-shrink-0"></span>
+                                                                                <span className="leading-relaxed">{change}</span>
+                                                                            </li>
+                                                                        ))
+                                                                    ) : (
+                                                                        <li className="text-xs text-gray-500 italic">Performed an update</li>
+                                                                    )}
+                                                                </ul>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                                        <div className="w-12 h-12 rounded-full bg-gray-100 [.dark_&]:bg-gray-800 flex items-center justify-center mb-3">
+                                            <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <p className="text-sm text-gray-500 [.dark_&]:text-gray-400">No activity recorded yet</p>
+                                    </div>
+                                )}
                             </div>
-
-                            {/* Access - Admin */}
-                            {knowledge.access?.admin && knowledge.access.admin.length > 0 && (
-                                <div className="flex justify-between items-center py-2 border-b border-gray-200 [.dark_&]:border-white/10">
-                                    <span className="text-sm text-gray-600 [.dark_&]:text-gray-400">Admin Access</span>
-                                    <span className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
-                                        {knowledge.access.admin.length} admin(s)
-                                    </span>
-                                </div>
-                            )}
-
-                            {/* Access - Members */}
-                            {knowledge.access?.member && knowledge.access.member.length > 0 && (
-                                <div className="flex justify-between items-center py-2">
-                                    <span className="text-sm text-gray-600 [.dark_&]:text-gray-400">Member Access</span>
-                                    <span className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
-                                        {knowledge.access.member.length} member(s)
-                                    </span>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>

@@ -6,7 +6,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
-import { collection, onSnapshot, query, where, addDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore";
+import { collection, onSnapshot, query, where, addDoc, updateDoc, doc, serverTimestamp, getDoc } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import Card from "../../components/Card";
 import SearchActions from "../../components/SearchActions";
@@ -19,6 +19,7 @@ export default function ManagerKnowledgePage() {
   const { buttonClass } = useThemeStyles();
   const [knowledge, setKnowledge] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState("");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState({ key: "createdAt", dir: "desc" });
@@ -26,6 +27,29 @@ export default function ManagerKnowledgePage() {
   const [rowsPerPage, setRowsPerPage] = useState(6);
   const [openModal, setOpenModal] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [currentUserImage, setCurrentUserImage] = useState(null);
+  const [currentUserName, setCurrentUserName] = useState("");
+
+  // Fetch current user's profile image and name from users collection
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        try {
+          const userRef = doc(db, "users", currentUser.uid);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            setCurrentUserImage(userData.imageUrl || userData.photoURL || null);
+            setCurrentUserName(userData.name || userData.fullName || userData.displayName || currentUser.displayName || "Unknown User");
+          }
+        } catch (err) {
+          console.warn("Could not fetch user data:", err);
+        }
+      }
+    };
+    fetchUserData();
+  }, []);
 
   // Get projects managed by current user
   useEffect(() => {
@@ -75,6 +99,7 @@ export default function ManagerKnowledgePage() {
           documents: data.documents || [],
           access: data.access || { admin: [], member: [] },
           projectId: data.projectId || null,
+          link: data.link || "",
         };
       });
       setKnowledge(list);
@@ -111,9 +136,18 @@ export default function ManagerKnowledgePage() {
         return true;
       }
 
+      if (hasAdminAccess || hasMemberAccess) {
+        return true;
+      }
+
       return false;
     });
-  }, [knowledge, projects]);
+
+    if (selectedProject) {
+      return result.filter(k => k.projectId === selectedProject);
+    }
+    return result;
+  }, [knowledge, projects, selectedProject]);
 
   // Get project name for a knowledge item
   const getProjectName = (projectId) => {
@@ -173,29 +207,55 @@ export default function ManagerKnowledgePage() {
 
   const handleSubmit = async (form) => {
     try {
+      const currentUser = auth.currentUser;
+      let knowledgeDocId;
+
+      // Prepare activity entry
+      const activityEntry = {
+        action: editing ? 'update' : 'create',
+        changes: form.activityChanges || (editing ? ['Updated knowledge entry'] : ['Created knowledge entry']),
+        timestamp: new Date().toISOString(),
+        performedBy: currentUser?.uid || "",
+        performedByName: currentUserName || currentUser?.displayName || "Unknown User",
+        performedByImage: currentUserImage || currentUser?.photoURL || null,
+      };
+
       if (editing && editing.id) {
-        const ref = doc(db, "knowledge", editing.id);
-        await updateDoc(ref, {
+        knowledgeDocId = editing.id;
+        const knowledgeRef = doc(db, "knowledge", editing.id);
+        await updateDoc(knowledgeRef, {
           title: form.title,
           description: form.description,
+          link: form.link || "",
+          links: form.links || [],
           access: form.access || { admin: [], member: [] },
           documents: form.documents || [],
           updatedAt: serverTimestamp(),
-          updatedByUid: auth.currentUser?.uid || "",
-          updatedByName: editing.updatedByName || editing.createdByName || "",
+          updatedByUid: currentUser?.uid || "",
+          updatedByName: currentUser?.displayName || "",
+          projectId: editing.projectId || selectedProject || null,
         });
       } else {
-        await addDoc(collection(db, "knowledge"), {
+        const docRef = await addDoc(collection(db, "knowledge"), {
           title: form.title,
           description: form.description,
+          link: form.link || "",
+          links: form.links || [],
           access: form.access || { admin: [], member: [] },
           documents: form.documents || [],
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-          createdByUid: auth.currentUser?.uid || "",
-          createdByName: auth.currentUser?.displayName || "",
+          createdByUid: currentUser?.uid || "",
+          createdByName: currentUser?.displayName || "",
+          projectId: selectedProject || null,
         });
+        knowledgeDocId = docRef.id;
       }
+
+      // Save activity to subcollection
+      const activitiesRef = collection(db, "knowledge", knowledgeDocId, "activities");
+      await addDoc(activitiesRef, activityEntry);
+
     } catch (e) {
       console.error("Failed to save knowledge", e);
     }
@@ -257,6 +317,16 @@ export default function ManagerKnowledgePage() {
                   <option value="title:desc">Title Z→A</option>
                 </select>
               </label>
+              <select
+                className="rounded-md border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#1F2234] px-2 py-1.5 text-sm [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[150px]"
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+              >
+                <option value="">All Projects</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.projectName}</option>
+                ))}
+              </select>
               <Button variant="custom" onClick={handleAdd} className={buttonClass}>+ Add Knowledge</Button>
             </div>
           }
@@ -352,6 +422,13 @@ export default function ManagerKnowledgePage() {
                 <p className="mt-1 mb-3 text-sm md:text-[0.95rem] leading-relaxed text-content-secondary line-clamp-4 whitespace-pre-wrap">
                   {k.description}
                 </p>
+                {k.link && (
+                  <div className="mb-3">
+                    <a href={k.link} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 hover:text-indigo-500 underline truncate block" onClick={e => e.stopPropagation()}>
+                      {k.link}
+                    </a>
+                  </div>
+                )}
                 <hr className="my-3 border-t border-subtle" />
                 <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-content-secondary">
                   {k.created && (
@@ -404,7 +481,7 @@ export default function ManagerKnowledgePage() {
           }}
           onSubmit={handleSubmit}
           initialItem={editing}
-          projectId={null}
+          projectId={editing?.projectId || selectedProject || null}
           canEditAccess={false}
         />
       )}

@@ -16,6 +16,7 @@ import {
   FaUserEdit,
   FaExclamationTriangle,
 } from "react-icons/fa";
+import toast from "react-hot-toast";
 
 function DocumentPreviewModal({
   open = true,
@@ -25,6 +26,7 @@ function DocumentPreviewModal({
   docs = [],
   onNavigate,
   variant = "default",
+  showMetadata = true,
 }) {
   const { buttonClass } = useThemeStyles();
   const [imageError, setImageError] = useState(false);
@@ -72,14 +74,100 @@ function DocumentPreviewModal({
   const enableNext = canNavigate && currentIndex < docs.length - 1;
   const displayName = typeof doc.name === "string" ? (doc.name.length > 30 ? doc.name.slice(0, 30) + ".." : doc.name) : "";
 
+  const handleDownload = async () => {
+    const href = doc?.url || doc?.fileDataUrl || previewUrl;
+    if (!href) return;
+
+    const toastId = toast.loading("Downloading...");
+    try {
+      const response = await fetch(href);
+      if (!response.ok) throw new Error("Download failed");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+
+      const resolveName = () => {
+        if (doc?.filename) return doc.filename;
+        if (doc?.storagePath) {
+          const seg = doc.storagePath.split("/");
+          const name = seg[seg.length - 1];
+          if (name) return name;
+        }
+        if (doc?.url) {
+          try {
+            const u = new URL(doc.url);
+            const path = decodeURIComponent(u.pathname);
+            const idx = path.lastIndexOf("/o/");
+            if (idx !== -1) {
+              const encoded = path.slice(idx + 3); // after /o/
+              const decoded = decodeURIComponent(encoded);
+              const parts = decoded.split("/");
+              const last = parts[parts.length - 1];
+              if (last) return last;
+            }
+          } catch { }
+        }
+        const map = {
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+          "application/vnd.ms-excel": "xls",
+          "text/csv": "csv",
+          "application/pdf": "pdf",
+          "image/jpeg": "jpg",
+          "image/png": "png",
+          "image/gif": "gif",
+          "image/webp": "webp",
+        };
+        const ext = map[doc?.fileType] || "";
+        const base = doc?.name || "document";
+        return ext ? `${base}.${ext}` : base;
+      };
+
+      const safeName = resolveName().replace(/[^a-zA-Z0-9._-]/g, "_");
+      a.download = safeName;
+      a.target = "_self"; // Explicitly prevent new tab
+
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Download complete!", { id: toastId });
+    } catch (error) {
+      console.error("Download error:", error);
+
+      // Fallback
+      const link = document.createElement("a");
+      let downloadHref = href;
+
+      // Sanitize backup filename
+      const safeName = (doc.filename || doc.name || "download").replace(/[^a-zA-Z0-9._-]/g, "_");
+
+      // For Firebase Storage, append content-disposition to force download
+      if (downloadHref && downloadHref.includes("firebasestorage.googleapis.com")) {
+        const separator = downloadHref.includes("?") ? "&" : "?";
+        downloadHref = `${downloadHref}${separator}response-content-disposition=attachment%3B%20filename%3D%22${encodeURIComponent(safeName)}%22`;
+      }
+
+      link.href = downloadHref;
+      link.download = safeName;
+      link.target = "_self";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      toast.dismiss(toastId);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
-        className={`bg-white [.dark_&]:bg-[#181B2A] rounded-xl shadow-2xl w-full ${variant === "compact" ? "max-w-5xl max-h-[90vh]" : "max-w-7xl max-h-[94vh]"} flex flex-col overflow-hidden`}
-        style={{ maxWidth: variant === "compact" ? "95vw" : "98vw" }}
+        className={`bg-white [.dark_&]:bg-[#181B2A] rounded-xl shadow-2xl w-full ${!showMetadata ? "max-w-4xl max-h-[90vh]" : variant === "compact" ? "max-w-5xl max-h-[90vh]" : "max-w-7xl max-h-[94vh]"} flex flex-col overflow-hidden`}
+        style={{ maxWidth: !showMetadata ? "800px" : variant === "compact" ? "95vw" : "98vw" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -117,13 +205,27 @@ function DocumentPreviewModal({
             </div>
           </div>
 
-          <button
-            className="p-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 rounded-lg text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-white transition-colors"
-            onClick={onClose}
-            title="Close"
-          >
-            <FaTimes className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {(hasPreview || doc.filename) && (
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 [.dark_&]:bg-indigo-900/20 hover:bg-indigo-100 [.dark_&]:hover:bg-indigo-900/40 text-indigo-700 [.dark_&]:text-indigo-300 rounded-lg font-medium text-xs transition-colors border border-indigo-200 [.dark_&]:border-indigo-500/20 mr-2"
+                title="Download"
+              >
+                <FaDownload className="w-3 h-3" />
+                Download
+              </button>
+            )}
+
+            <button
+              className="p-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 rounded-lg text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-white transition-colors"
+              onClick={onClose}
+              title="Close"
+            >
+              <FaTimes className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -243,192 +345,183 @@ function DocumentPreviewModal({
               )}
             </div>
 
-            {(hasPreview || doc.filename) && (
-              <div className="flex justify-end mt-4">
-                {hasPreview && (
-                  <a
-                    href={previewUrl}
-                    download={doc.filename || `${doc.name}`}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-medium text-sm transition-colors border border-indigo-200"
-                  >
-                    <FaDownload className="w-3.5 h-3.5" />
-                    Download File
-                  </a>
-                )}
-              </div>
-            )}
+
           </div>
 
           {/* Sidebar */}
-          <div className="w-full lg:w-80 bg-gray-50 [.dark_&]:bg-[#1F2234] border-t lg:border-t-0 lg:border-l border-gray-200 [.dark_&]:border-white/10 flex flex-col shrink-0">
-            <div className="p-6 space-y-6 overflow-y-auto">
-              {/* Metadata */}
-              <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg p-4 shadow-sm border border-gray-200 [.dark_&]:border-white/10">
-                <h3 className="text-xs font-bold text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wider mb-3">
-                  Document Info
-                </h3>
+          {showMetadata && (
+            <div className="w-full lg:w-80 bg-gray-50 [.dark_&]:bg-[#1F2234] border-t lg:border-t-0 lg:border-l border-gray-200 [.dark_&]:border-white/10 flex flex-col shrink-0">
+              <div className="p-6 space-y-6 overflow-y-auto">
+                {/* Metadata */}
+                <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg p-4 shadow-sm border border-gray-200 [.dark_&]:border-white/10">
+                  <h3 className="text-xs font-bold text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wider mb-3">
+                    Document Info
+                  </h3>
 
-                {(doc.createdByRole || doc.createdByName) && (
-                  <div className="flex items-center gap-3 mb-3">
-                    <FaUser className="w-4 h-4 text-gray-400" />
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">Uploaded By</p>
-                      <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
-                        {(() => {
-                          const role = doc.createdByRole || "";
-                          const name = doc.createdByName || "";
+                  {(doc.createdByRole || doc.createdByName) && (
+                    <div className="flex items-center gap-3 mb-3">
+                      <FaUser className="w-4 h-4 text-gray-400" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">Uploaded By</p>
+                        <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
+                          {(() => {
+                            const role = doc.createdByRole || "";
+                            const name = doc.createdByName || "";
 
-                          // If role exists and is valid, show it with proper capitalization
-                          if (role && role.length > 2) {
-                            return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
-                          }
+                            // If role exists and is valid, show it with proper capitalization
+                            if (role && role.length > 2) {
+                              return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
+                            }
 
-                          // Otherwise, show the name
-                          return name || "—";
-                        })()}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {doc.created && (
-                  <div className="flex items-center gap-3 mb-3">
-                    <FaCalendarAlt className="w-4 h-4 text-gray-400" />
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">Uploaded On</p>
-                      <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">{doc.created}</p>
-                    </div>
-                  </div>
-                )}
-
-                {doc.updatedByName && (
-                  <div className="flex items-center gap-3 mb-3">
-                    <FaUserEdit className="w-4 h-4 text-gray-400" />
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">Last Edited By</p>
-                      <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">{doc.updatedByName}</p>
-                    </div>
-                  </div>
-                )}
-
-                {doc.updated && (
-                  <div className="flex items-center gap-3 mb-3">
-                    <FaCalendarAlt className="w-4 h-4 text-gray-400" />
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">Last Updated</p>
-                      <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
-                        {doc.updated}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {doc.filename && (
-                  <div className="flex items-start gap-3">
-                    <FaFile className="w-4 h-4 text-gray-400 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-500 [.dark_&]:text-gray-400 mb-0.5">Filename</p>
-                      <p
-                        className="text-sm font-medium text-gray-900 [.dark_&]:text-white break-all line-clamp-2"
-                        title={doc.filename}
-                      >
-                        {doc.filename}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Access Control */}
-              <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg p-4 shadow-sm border border-gray-200 [.dark_&]:border-white/10">
-                <h3 className="text-xs font-bold text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wider mb-3">
-                  Access Control
-                </h3>
-
-                {admin.length === 0 && member.length === 0 ? (
-                  <div className="text-center py-4">
-                    <FaUserShield className="w-8 h-8 text-gray-300 [.dark_&]:text-gray-600 mx-auto mb-2" />
-                    <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">
-                      No access restrictions set
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {admin.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <FaUserShield className="w-3.5 h-3.5 text-indigo-600 [.dark_&]:text-indigo-400" />
-                          <span className="text-xs font-semibold text-gray-700 [.dark_&]:text-gray-300">
-                            Administrators
-                          </span>
-                          <span className="ml-auto text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 bg-gray-100 [.dark_&]:bg-white/10 px-2 py-0.5 rounded-full">
-                            {admin.length}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {admin.map((n) => (
-                            <span
-                              key={`a_${n}`}
-                              className="px-2.5 py-1 rounded-md bg-indigo-50 [.dark_&]:bg-indigo-900/20 border border-indigo-200 [.dark_&]:border-indigo-500/20 text-xs text-indigo-700 [.dark_&]:text-indigo-300 font-medium truncate max-w-[150px]"
-                              title={n}
-                            >
-                              {n}
-                            </span>
-                          ))}
-                        </div>
+                            // Otherwise, show the name
+                            return name || "—";
+                          })()}
+                        </p>
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {member.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <FaUsers className="w-3.5 h-3.5 text-blue-600 [.dark_&]:text-blue-400" />
-                          <span className="text-xs font-semibold text-gray-700 [.dark_&]:text-gray-300">
-                            Members
-                          </span>
-                          <span className="ml-auto text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 bg-gray-100 [.dark_&]:bg-white/10 px-2 py-0.5 rounded-full">
-                            {member.length}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {member.map((n) => (
-                            <span
-                              key={`m_${n}`}
-                              className="px-2.5 py-1 rounded-md bg-blue-50 [.dark_&]:bg-blue-900/20 border border-blue-200 [.dark_&]:border-blue-500/20 text-xs text-blue-700 [.dark_&]:text-blue-300 font-medium truncate max-w-[150px]"
-                              title={n}
-                            >
-                              {n}
-                            </span>
-                          ))}
-                        </div>
+                  {doc.created && (
+                    <div className="flex items-center gap-3 mb-3">
+                      <FaCalendarAlt className="w-4 h-4 text-gray-400" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">Uploaded On</p>
+                        <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">{doc.created}</p>
                       </div>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )}
+
+                  {doc.updatedByName && (
+                    <div className="flex items-center gap-3 mb-3">
+                      <FaUserEdit className="w-4 h-4 text-gray-400" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">Last Edited By</p>
+                        <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">{doc.updatedByName}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {doc.updated && (
+                    <div className="flex items-center gap-3 mb-3">
+                      <FaCalendarAlt className="w-4 h-4 text-gray-400" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">Last Updated</p>
+                        <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
+                          {doc.updated}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {doc.filename && (
+                    <div className="flex items-start gap-3">
+                      <FaFile className="w-4 h-4 text-gray-400 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-gray-500 [.dark_&]:text-gray-400 mb-0.5">Filename</p>
+                        <p
+                          className="text-sm font-medium text-gray-900 [.dark_&]:text-white break-all line-clamp-2"
+                          title={doc.filename}
+                        >
+                          {doc.filename}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Access Control */}
+                <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg p-4 shadow-sm border border-gray-200 [.dark_&]:border-white/10">
+                  <h3 className="text-xs font-bold text-gray-500 [.dark_&]:text-gray-400 uppercase tracking-wider mb-3">
+                    Access Control
+                  </h3>
+
+                  {admin.length === 0 && member.length === 0 ? (
+                    <div className="text-center py-4">
+                      <FaUserShield className="w-8 h-8 text-gray-300 [.dark_&]:text-gray-600 mx-auto mb-2" />
+                      <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">
+                        No access restrictions set
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {admin.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <FaUserShield className="w-3.5 h-3.5 text-indigo-600 [.dark_&]:text-indigo-400" />
+                            <span className="text-xs font-semibold text-gray-700 [.dark_&]:text-gray-300">
+                              Administrators
+                            </span>
+                            <span className="ml-auto text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 bg-gray-100 [.dark_&]:bg-white/10 px-2 py-0.5 rounded-full">
+                              {admin.length}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {admin.map((n) => (
+                              <span
+                                key={`a_${n}`}
+                                className="px-2.5 py-1 rounded-md bg-indigo-50 [.dark_&]:bg-indigo-900/20 border border-indigo-200 [.dark_&]:border-indigo-500/20 text-xs text-indigo-700 [.dark_&]:text-indigo-300 font-medium truncate max-w-[150px]"
+                                title={n}
+                              >
+                                {n}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {member.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <FaUsers className="w-3.5 h-3.5 text-blue-600 [.dark_&]:text-blue-400" />
+                            <span className="text-xs font-semibold text-gray-700 [.dark_&]:text-gray-300">
+                              Members
+                            </span>
+                            <span className="ml-auto text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 bg-gray-100 [.dark_&]:bg-white/10 px-2 py-0.5 rounded-full">
+                              {member.length}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {member.map((n) => (
+                              <span
+                                key={`m_${n}`}
+                                className="px-2.5 py-1 rounded-md bg-blue-50 [.dark_&]:bg-blue-900/20 border border-blue-200 [.dark_&]:border-blue-500/20 text-xs text-blue-700 [.dark_&]:text-blue-300 font-medium truncate max-w-[150px]"
+                                title={n}
+                              >
+                                {n}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-[#1F2234] flex justify-end gap-3 shrink-0">
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="custom"
-            className={buttonClass}
-            onClick={() => {
-              if (typeof onSave === "function") {
-                onSave(doc);
-              } else {
-                onClose();
-              }
-            }}
-          >
-            Save Changes
-          </Button>
-        </div>
+        {showMetadata && (
+          <div className="px-6 py-4 border-t border-gray-200 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-[#1F2234] flex justify-end gap-3 shrink-0">
+            <Button variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              variant="custom"
+              className={buttonClass}
+              onClick={() => {
+                if (typeof onSave === "function") {
+                  onSave(doc);
+                } else {
+                  onClose();
+                }
+              }}
+            >
+              Save Changes
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

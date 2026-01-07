@@ -45,6 +45,19 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Live Users Map
+  const [usersMap, setUsersMap] = useState({});
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "users"), (snap) => {
+      const map = {};
+      snap.forEach(d => {
+        map[d.id] = d.data();
+      });
+      setUsersMap(map);
+    });
+    return () => unsub();
+  }, []);
   const [sortConfig, setSortConfig] = useState({
     key: "projectName",
     direction: "asc",
@@ -429,17 +442,17 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
                   </td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm">
                     <div className="flex items-center">
-                      <div className="flex-1 bg-surface-subtle rounded-full h-3 mr-3 min-w-[120px]">
+                      <div className="flex-1 bg-surface-subtle [.dark_&]:bg-gray-700 rounded-full h-3 mr-3 min-w-[120px]">
                         <div
                           className={`h-3 rounded-full transition-all duration-300 ${project.progress === 0
-                              ? "bg-gray-400"
-                              : project.progress < 30
-                                ? "bg-red-500"
-                                : project.progress < 70
-                                  ? "bg-yellow-500"
-                                  : project.progress < 100
-                                    ? "bg-blue-500"
-                                    : "bg-green-500"
+                            ? "bg-gray-400"
+                            : project.progress < 30
+                              ? "bg-red-500"
+                              : project.progress < 70
+                                ? "bg-yellow-500"
+                                : project.progress < 100
+                                  ? "bg-blue-500"
+                                  : "bg-green-500"
                             }`}
                           style={{ width: `${project.progress}%` }}
                         ></div>

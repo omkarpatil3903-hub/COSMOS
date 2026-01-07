@@ -19,6 +19,8 @@ import {
   FaProjectDiagram,
   FaChevronLeft,
   FaChevronRight,
+  FaEdit,
+  FaTrash,
 } from "react-icons/fa";
 import {
   subscribeToEmployeeExpenses,
@@ -32,9 +34,14 @@ import { db } from "../../firebase";
 import toast from "react-hot-toast";
 import VoiceInput from "../../components/Common/VoiceInput";
 import { EXPENSE_CATEGORIES, getStatusColorClass } from "../../config/expenseConfig";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
+import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
+import ExpenseDetailModal from "../../components/expenses/ExpenseDetailModal";
+import DocumentPreviewModal from "../../components/documents/DocumentPreviewModal";
 
 const EmployeeExpenses = () => {
   const { user } = useAuthContext();
+  const { buttonClass } = useThemeStyles();
   const [expenses, setExpenses] = useState([]);
   const [projects, setProjects] = useState([]);
   const [assignedProjects, setAssignedProjects] = useState([]);
@@ -50,6 +57,12 @@ const EmployeeExpenses = () => {
   const [errors, setErrors] = useState({});
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
+
+  const [deletingExpense, setDeletingExpense] = useState(null);
+  const [viewingExpense, setViewingExpense] = useState(null);
+  const [viewingReceipt, setViewingReceipt] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -202,14 +215,22 @@ const EmployeeExpenses = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this draft?")) return;
+  const handleDeleteClick = (expense) => {
+    setDeletingExpense(expense);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingExpense) return;
+    setIsDeleting(true);
     try {
-      await deleteExpense(id);
-      toast.success("Draft deleted");
+      await deleteExpense(deletingExpense.id);
+      toast.success("Expense deleted");
+      setDeletingExpense(null);
     } catch (err) {
       console.error("Failed to delete expense", err);
       toast.error("Failed to delete draft");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -318,39 +339,58 @@ const EmployeeExpenses = () => {
         />
       </div>
 
-      <Card>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[200px]">
-            <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-content-tertiary" />
+      <div className="bg-[#1e1e2d] p-4 rounded-2xl border border-gray-800 shadow-lg">
+        {/* Row 1: Search + Add Expense Button */}
+        <div className="flex items-center gap-4 mb-4">
+          <div className="relative flex-1">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FaSearch className="text-gray-500 text-sm" />
+            </div>
             <input
               type="text"
-              placeholder="Search expenses..."
+              placeholder="Search expenses by title or description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-subtle bg-surface py-2 pl-8 pr-3 text-sm text-content-primary placeholder:text-content-tertiary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+              className="w-full rounded-lg border border-gray-700 bg-[#2b2b40] py-2.5 pl-10 pr-3 text-sm text-gray-300 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all"
             />
           </div>
 
+          <Button
+            onClick={() => {
+              resetForm();
+              setShowModal(true);
+            }}
+            variant="custom"
+            className={`flex items-center gap-2 ${buttonClass} px-4 py-2.5 rounded-lg font-medium transition-colors shadow-md border-none`}
+          >
+            <FaPlus className="text-sm" /> Add Expense
+          </Button>
+        </div>
+
+        {/* Row 2: Filters */}
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <FaFilter className="text-content-tertiary" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
-            >
-              <option value="all">All Statuses</option>
-              <option value="Draft">Draft</option>
-              <option value="Submitted">Submitted</option>
-              <option value="Approved">Approved</option>
-              <option value="Rejected">Rejected</option>
-              <option value="Paid">Paid</option>
-            </select>
+            <FaFilter className="text-gray-500" />
+            <span className="font-medium text-gray-300">Filters:</span>
           </div>
+
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border border-gray-700 bg-[#2b2b40] py-2 px-3 text-sm text-gray-300 focus:border-indigo-500 focus:outline-none"
+          >
+            <option value="all">All Statuses</option>
+            <option value="Draft">Draft</option>
+            <option value="Submitted">Submitted</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Paid">Paid</option>
+          </select>
 
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="rounded-lg border border-subtle bg-surface py-2 px-3 text-sm text-content-primary"
+            className="rounded-lg border border-gray-700 bg-[#2b2b40] py-2 px-3 text-sm text-gray-300 focus:border-indigo-500 focus:outline-none"
           >
             <option value="all">All Categories</option>
             <option value="Travel">Travel</option>
@@ -360,34 +400,28 @@ const EmployeeExpenses = () => {
             <option value="Other">Other</option>
           </select>
 
-          <div className="flex items-center gap-2 text-xs text-content-secondary">
-            <span>Date:</span>
+          <div className="flex items-center gap-2 bg-[#2b2b40] rounded-lg border border-gray-700 px-3 py-2">
+            <span className="text-sm text-gray-500">Date:</span>
             <input
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="rounded-lg border border-subtle bg-surface py-1 px-2 text-xs text-content-primary"
+              className="bg-transparent text-sm text-gray-300 border-none p-0 focus:ring-0 w-28"
             />
-            <span>-</span>
+            <span className="text-gray-500">-</span>
             <input
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="rounded-lg border border-subtle bg-surface py-1 px-2 text-xs text-content-primary"
+              className="bg-transparent text-sm text-gray-300 border-none p-0 focus:ring-0 w-28"
             />
           </div>
 
-          <Button
-            onClick={() => {
-              resetForm();
-              setShowModal(true);
-            }}
-            className="ml-auto flex items-center gap-2"
-          >
-            <FaPlus /> New Expense
-          </Button>
+          <div className="ml-auto text-sm font-medium text-gray-400">
+            Showing {filtered.length} of {expenses.length} expenses
+          </div>
         </div>
-      </Card>
+      </div>
 
 
       {loading ? (
@@ -448,66 +482,32 @@ const EmployeeExpenses = () => {
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-[#1e1e2d]">
                 <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                  >
-                    Date
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                  >
-                    Expense Details
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                  >
-                    Project
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                  >
-                    Category
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                  >
-                    Amount
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                  >
-                    Status
-                  </th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sr No</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Title</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Project</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Document</th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-[#181b2a] divide-y divide-gray-200 dark:divide-gray-700">
-                {filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((e) => (
+                {filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((e, index) => (
                   <tr
                     key={e.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                    onClick={() => setViewingExpense(e)}
+                    className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group cursor-pointer"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      <div className="flex items-center gap-2">
-                        <FaCalendarAlt className="text-gray-400" />
-                        {e.date || "-"}
-                      </div>
+                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-400">
+                      {(page - 1) * rowsPerPage + index + 1}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
                         <span className="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                           {e.title}
                         </span>
-                        {e.description && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
-                            {e.description}
-                          </span>
-                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -517,10 +517,14 @@ const EmployeeExpenses = () => {
                           {e.projectName}
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-400 italic">
-                          No project
-                        </span>
+                        <span className="text-xs text-gray-400 italic">No project</span>
                       )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center gap-2">
+                        <FaCalendarAlt className="text-gray-400" />
+                        {e.date ? new Date(e.date).toLocaleDateString("en-GB") : "-"}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
@@ -537,34 +541,62 @@ const EmployeeExpenses = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(e.status, false)}`}
+                      {e.receiptUrl ? (
+                        <button
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            setViewingReceipt({
+                              url: e.receiptUrl,
+                              name: `Receipt - ${e.title}`,
+                              fileType: "image/jpeg", // Defaulting to image, modal handles detection
+                              id: e.id
+                            });
+                          }}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
                         >
-                          {e.status || "Unknown"}
-                        </span>
-
-                        {(e.status === "Draft" || e.status === "Rejected") && (
-                          <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => handleEdit(e)}
-                              className="text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+                          <FaFileInvoice /> Receipt
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(e.status, false)}`}
+                      >
+                        {e.status || "Unknown"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <div className="flex justify-end items-center gap-2">
+                        {(e.status === "Draft" || e.status === "Rejected" || e.status === "Submitted") && (
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(ev) => ev.stopPropagation()}>
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              onClick={(ev) => { ev.stopPropagation(); handleEdit(e); }}
+                              title={e.status === "Rejected" ? "Edit & Resubmit" : "Edit"}
                             >
-                              {e.status === "Rejected" ? "Edit & Resubmit" : "Edit"}
-                            </button>
-                            <span className="text-gray-300">|</span>
-                            <button
-                              onClick={() => handleDelete(e.id)}
-                              className="text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 hover:underline"
+                              <FaEdit />
+                            </Button>
+                            <Button
+                              size="xs"
+                              variant="ghost"
+                              className="text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                              onClick={(ev) => { ev.stopPropagation(); handleDeleteClick(e); }}
+                              title="Delete"
                             >
-                              Delete
-                            </button>
+                              <FaTrash />
+                            </Button>
                           </div>
                         )}
                         {e.status === "Rejected" && e.rejectionReason && (
-                          <p className="text-xs text-red-500 dark:text-red-400 mt-1 max-w-[150px] truncate" title={e.rejectionReason}>
-                            Reason: {e.rejectionReason}
-                          </p>
+                          <span className="group relative" onClick={(ev) => ev.stopPropagation()}>
+                            <FaTimes className="text-red-500 cursor-help" />
+                            <span className="absolute right-0 top-full mt-1 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg z-50 invisible group-hover:visible">
+                              {e.rejectionReason}
+                            </span>
+                          </span>
                         )}
                       </div>
                     </td>
@@ -814,7 +846,8 @@ const EmployeeExpenses = () => {
                 <Button
                   onClick={() => handleSubmit("Submitted")}
                   disabled={saving}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200 dark:shadow-none"
+                  variant="custom"
+                  className={buttonClass}
                 >
                   {saving ? "Saving..." : "Submit Expense"}
                 </Button>
@@ -823,6 +856,37 @@ const EmployeeExpenses = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingExpense && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <DeleteConfirmationModal
+            onClose={() => setDeletingExpense(null)}
+            onConfirm={handleConfirmDelete}
+            itemType="Expense"
+            itemTitle={deletingExpense.title}
+            title="Delete Expense"
+            description={`Are you sure you want to delete this ${deletingExpense.status.toLowerCase()} expense?`}
+            isLoading={isDeleting}
+            confirmLabel="Delete Expense"
+          />
+        </div>
+      )}
+      {viewingExpense && (
+        <ExpenseDetailModal
+          expense={viewingExpense}
+          onClose={() => setViewingExpense(null)}
+          onViewReceipt={setViewingReceipt}
+          useDarkMode={true}
+        />
+      )}
+
+      <DocumentPreviewModal
+        open={!!viewingReceipt}
+        onClose={() => setViewingReceipt(null)}
+        doc={viewingReceipt}
+        showMetadata={false}
+      />
     </div>
   );
 };

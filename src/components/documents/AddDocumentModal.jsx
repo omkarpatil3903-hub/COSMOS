@@ -3,8 +3,10 @@ import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";
 import { FaPlus, FaCheck, FaTrash } from "react-icons/fa";
 import Button from "../Button";
-import { db } from "../../firebase";
+import { db, auth } from "../../firebase";
 import { collection, onSnapshot, orderBy, query, where, doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
+
+import AssigneeSelector from "../AssigneeSelector";
 
 function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projectId, canEditAccess = true, userRole = "" }) {
   const { buttonClass } = useThemeStyles();
@@ -19,6 +21,9 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
   const [selectedMember, setSelectedMember] = useState([]);
   const [allowedIds, setAllowedIds] = useState([]);
   const [entered, setEntered] = useState(false);
+  const [allUsersMap, setAllUsersMap] = useState({});
+
+
 
   useEffect(() => {
     if (!isOpen) {
@@ -46,10 +51,29 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     if (isOpen && initialDoc) {
       setName(initialDoc.name || "");
       setFolder(initialDoc.folder || "");
-      setSelectedAdmin(Array.isArray(initialDoc.access?.admin) ? initialDoc.access.admin : []);
-      setSelectedMember(Array.isArray(initialDoc.access?.member) ? initialDoc.access.member : []);
+
+      // Helper to convert names to IDs if legacy data used names
+      const mapToIds = (list) => {
+        if (!Array.isArray(list)) return [];
+        return list.map(item => {
+          // If it looks like a UID (no spaces, >20 chars usually, but just check existence)
+          if (allUsersMap[item]) return item;
+          // Else try to find by name
+          const found = Object.values(allUsersMap).find(u => (u.name === item || u.fullName === item));
+          return found ? found.id : null;
+        }).filter(Boolean);
+      };
+
+      // Wait for allUsersMap to be populated? 
+      // This effect runs when isOpen/initialDoc changes. 
+      // We might need to run this when allUsersMap changes too if it's not ready yet.
+      // But usually users load fast. Let's rely on re-renders or add dependency.
+      if (Object.keys(allUsersMap).length > 0) {
+        setSelectedAdmin(mapToIds(initialDoc.access?.admin));
+        setSelectedMember(mapToIds(initialDoc.access?.member));
+      }
     }
-  }, [isOpen, initialDoc]);
+  }, [isOpen, initialDoc, allUsersMap]);
 
   // Determine allowed user IDs for the selected project (project manager + assignees on tasks)
   useEffect(() => {
@@ -103,12 +127,21 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     const q = query(collection(db, "users"), orderBy("name", "asc"));
     const unsub = onSnapshot(q, (snap) => {
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+      // Create a map for easy lookup
+      const map = {};
+      list.forEach(u => { map[u.id] = u; });
+      setAllUsersMap(map);
+
+
+
       const allowed = new Set(allowedIds);
       const mapped = list
         .filter((u) => (projectId ? allowed.has(u.id) : true))
         .map((u) => ({
           id: u.id,
           name: u.name || u.fullName || "",
+          imageUrl: u.imageUrl,
           type: String(u.resourceRoleType || "").toLowerCase(),
         }));
       setAdmins(mapped.filter((x) => x.type === "admin"));
@@ -116,6 +149,17 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     });
     return () => unsub();
   }, [allowedIds, projectId]);
+
+  const getUserImage = (uid, name) => {
+    if (uid && allUsersMap[uid]?.imageUrl) return allUsersMap[uid].imageUrl;
+    // Fallback: look up by name
+    if (name) {
+      const lowerName = name.toLowerCase();
+      const found = Object.values(allUsersMap).find(u => (u.name || u.fullName || "").toLowerCase() === lowerName);
+      if (found?.imageUrl) return found.imageUrl;
+    }
+    return null;
+  };
 
   // Load available folders from Firestore and filter based on user role
   useEffect(() => {
@@ -191,6 +235,13 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
       children: 0,
       _file: file,
       _fileDataUrl: fileDataUrl,
+      // Metadata for Activity
+      createdAt: initialDoc?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdByUid: initialDoc?.createdByUid || auth.currentUser?.uid || "",
+      createdByName: initialDoc?.createdByName || auth.currentUser?.displayName || "",
+      updatedByUid: auth.currentUser?.uid || "",
+      updatedByName: auth.currentUser?.displayName || "",
     };
     onSubmit && onSubmit(doc);
     onClose && onClose();
@@ -210,7 +261,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
       tabIndex={-1}
     >
       <div
-        className={`bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto relative z-[10000] transform transition-all duration-300 ease-out ${entered ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+        className={`bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto relative z-[10000] transform transition-all duration-300 ease-out ${entered ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
@@ -222,7 +273,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className={`grid grid-cols-1 gap-6 ${canEditAccess ? "md:grid-cols-2" : ""}`}>
+            <div className={`grid grid-cols-1 gap-6 ${canEditAccess ? "lg:grid-cols-3" : ""}`}>
               <div className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#1F2234] p-4 shadow-sm">
                 <div className="mb-3 flex items-center gap-2">
                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-indigo-50 [.dark_&]:bg-indigo-900/20 text-indigo-600 [.dark_&]:text-indigo-400">
@@ -290,76 +341,130 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
 
               {canEditAccess && (
                 <div className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#1F2234] p-4 shadow-sm">
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-emerald-50 [.dark_&]:bg-emerald-900/20 text-emerald-600 [.dark_&]:text-emerald-400">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-                        <path d="M12 1.5a4.5 4.5 0 0 1 4.5 4.5v1.5h.75A2.25 2.25 0 0 1 19.5 9.75v9A2.25 2.25 0 0 1 17.25 21H6.75A2.25 2.25 0 0 1 4.5 18.75v-9A2.25 2.25 0 0 1 6.75 6H7.5A4.5 4.5 0 0 1 12 1.5zm0 3A1.5 1.5 0 0 0 10.5 6v1.5h3V6A1.5 1.5 0 0 0 12 4.5z" />
-                      </svg>
-                    </span>
-                    <h3 className="text-sm font-semibold text-content-secondary [.dark_&]:text-gray-400">Access</h3>
-                  </div>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <div className="mb-2 text-xs font-bold uppercase tracking-wide text-content-tertiary [.dark_&]:text-gray-500">Admin Users</div>
-                      <div className="max-h-40 overflow-y-auto rounded-md border border-subtle [.dark_&]:border-white/10 p-2">
-                        {admins.length === 0 ? (
-                          <div className="text-xs text-content-tertiary">No admin users</div>
-                        ) : (
-                          admins.map((u) => {
-                            const checked = selectedAdmin.includes(u.name);
-                            return (
-                              <label key={`admin_${u.id}`} className="flex items-center gap-2 py-1 text-sm [.dark_&]:text-gray-300">
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 rounded border-subtle [.dark_&]:border-white/10"
-                                  checked={checked}
-                                  onChange={(e) => {
-                                    setSelectedAdmin((prev) =>
-                                      e.target.checked
-                                        ? Array.from(new Set([...prev, u.name]))
-                                        : prev.filter((n) => n !== u.name)
-                                    );
-                                  }}
-                                />
-                                <span>{u.name}</span>
-                              </label>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="mb-2 text-xs font-bold uppercase tracking-wide text-content-tertiary [.dark_&]:text-gray-500">Member Users</div>
-                      <div className="max-h-40 overflow-y-auto rounded-md border border-subtle [.dark_&]:border-white/10 p-2">
-                        {members.length === 0 ? (
-                          <div className="text-xs text-content-tertiary [.dark_&]:text-gray-500">No member users</div>
-                        ) : (
-                          members.map((u) => {
-                            const checked = selectedMember.includes(u.name);
-                            return (
-                              <label key={`member_${u.id}`} className="flex items-center gap-2 py-1 text-sm [.dark_&]:text-gray-300">
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 rounded border-subtle [.dark_&]:border-white/10"
-                                  checked={checked}
-                                  onChange={(e) => {
-                                    setSelectedMember((prev) =>
-                                      e.target.checked
-                                        ? Array.from(new Set([...prev, u.name]))
-                                        : prev.filter((n) => n !== u.name)
-                                    );
-                                  }}
-                                />
-                                <span>{u.name}</span>
-                              </label>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
+                  <div>
+                    <AssigneeSelector
+                      label="Assignees"
+                      users={[...admins, ...members]}
+                      selectedIds={[...selectedAdmin, ...selectedMember]}
+                      onChange={(newIds) => {
+                        const newAdmins = [];
+                        const newMembers = [];
+                        newIds.forEach(id => {
+                          const user = allUsersMap[id];
+                          if (user) {
+                            const type = String(user.resourceRoleType || "").toLowerCase();
+                            if (['superadmin', 'admin', 'manager'].includes(type) || type === 'super admin') {
+                              newAdmins.push(id);
+                            } else {
+                              newMembers.push(id);
+                            }
+                          }
+                        });
+                        setSelectedAdmin(newAdmins);
+                        setSelectedMember(newMembers);
+                      }}
+                    />
                   </div>
                 </div>
               )}
+
+
+              {/* Activity Column */}
+              <div>
+                <div className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-slate-800/40 backdrop-blur-sm p-4 shadow-sm h-full">
+                  <h3 className="mb-4 text-sm font-semibold text-content-secondary [.dark_&]:text-gray-300">Activity & Comments</h3>
+                  <div className="space-y-6 relative">
+                    {/* Timeline Line */}
+                    <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-200 [.dark_&]:bg-gray-700 -z-10"></div>
+
+                    {/* Created Activity */}
+                    {initialDoc?.createdAt && (
+                      <div className="flex gap-3">
+                        <div className="flex-shrink-0">
+                          {getUserImage(initialDoc.createdByUid, initialDoc.createdByName) ? (
+                            <img
+                              src={getUserImage(initialDoc.createdByUid, initialDoc.createdByName)}
+                              alt={initialDoc.createdByName || "User"}
+                              className="h-8 w-8 rounded-full object-cover border border-subtle [.dark_&]:border-white/10"
+                            />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-blue-100 [.dark_&]:bg-blue-900/30 flex items-center justify-center text-blue-600 [.dark_&]:text-blue-400 font-semibold text-xs border border-blue-200 [.dark_&]:border-blue-800">
+                              {initialDoc.createdByName?.charAt(0) || "U"}
+                            </div>
+                          )}
+                        </div>
+                        <div className="bg-gray-50 [.dark_&]:bg-white/5 rounded-lg p-3 text-sm flex-1 border border-subtle [.dark_&]:border-white/10">
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="font-medium text-gray-900 [.dark_&]:text-gray-200">{initialDoc.createdByName || "Unknown User"}</span>
+                            <span className="text-xs text-gray-400">
+                              {initialDoc.createdAt && new Date(initialDoc.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-gray-600 [.dark_&]:text-gray-400 text-xs">Created this document</p>
+                          <div className="mt-1 text-[10px] text-gray-400 text-right">
+                            {initialDoc.createdAt && new Date(initialDoc.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Updated Activity */}
+                    {initialDoc?.updatedAt && initialDoc?.updatedAt !== initialDoc?.createdAt && (
+                      <div className="flex gap-3">
+                        <div className="flex-shrink-0">
+                          {getUserImage(initialDoc.updatedByUid, initialDoc.updatedByName) ? (
+                            <img
+                              src={getUserImage(initialDoc.updatedByUid, initialDoc.updatedByName)}
+                              alt={initialDoc.updatedByName || "User"}
+                              className="h-8 w-8 rounded-full object-cover border border-subtle [.dark_&]:border-white/10"
+                            />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-purple-100 [.dark_&]:bg-purple-900/30 flex items-center justify-center text-purple-600 [.dark_&]:text-purple-400 font-semibold text-xs border border-purple-200 [.dark_&]:border-purple-800">
+                              {initialDoc.updatedByName?.charAt(0) || "U"}
+                            </div>
+                          )}
+                        </div>
+                        <div className="bg-gray-50 [.dark_&]:bg-white/5 rounded-lg p-3 text-sm flex-1 border border-subtle [.dark_&]:border-white/10">
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="font-medium text-gray-900 [.dark_&]:text-gray-200">{initialDoc.updatedByName || "Unknown User"}</span>
+                            <span className="text-xs text-gray-400">
+                              {initialDoc.updatedAt && new Date(initialDoc.updatedAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-gray-600 [.dark_&]:text-gray-400 text-xs">Updated this document</p>
+                          <div className="mt-1 text-[10px] text-gray-400 text-right">
+                            {initialDoc.updatedAt && new Date(initialDoc.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!initialDoc && (
+                      <div className="flex gap-3 opacity-50">
+                        <div className="flex-shrink-0">
+                          {getUserImage(auth.currentUser?.uid, auth.currentUser?.displayName) ? (
+                            <img
+                              src={getUserImage(auth.currentUser?.uid, auth.currentUser?.displayName)}
+                              alt="Me"
+                              className="h-8 w-8 rounded-full object-cover border border-subtle [.dark_&]:border-white/10"
+                            />
+                          ) : (
+                            <div className="h-8 w-8 rounded-full bg-gray-100 [.dark_&]:bg-gray-800 flex items-center justify-center text-gray-400 font-semibold text-xs border border-gray-200 [.dark_&]:border-gray-700">
+                              Now
+                            </div>
+                          )}
+                        </div>
+                        <div className="bg-gray-50 [.dark_&]:bg-white/5 rounded-lg p-3 text-sm flex-1 border border-dashed border-subtle [.dark_&]:border-white/10">
+                          <div className="flex justify-between items-start mb-1">
+                            <span className="font-medium text-gray-900 [.dark_&]:text-gray-200">You</span>
+                          </div>
+                          <p className="text-gray-500 [.dark_&]:text-gray-400 text-xs">Creating document...</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-2">

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
-import { collection, doc, onSnapshot, query, addDoc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, addDoc, updateDoc, deleteDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { db, auth, storage } from "../../firebase";
 import { ref, deleteObject } from "firebase/storage";
 import Card from "../../components/Card";
@@ -23,6 +23,41 @@ export default function SuperAdminKnowledgePage() {
   const [editing, setEditing] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [currentUserImage, setCurrentUserImage] = useState(null);
+
+  // Project Filter
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState("");
+  const [currentUserName, setCurrentUserName] = useState("");
+
+  // Fetch current user's profile image and name from users collection
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        try {
+          const userRef = doc(db, "users", currentUser.uid);
+          const userSnap = await getDoc(userRef);
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            setCurrentUserImage(userData.imageUrl || userData.photoURL || null);
+            setCurrentUserName(userData.name || userData.fullName || userData.displayName || currentUser.displayName || "Unknown User");
+          }
+        } catch (err) {
+          console.warn("Could not fetch user data:", err);
+        }
+      }
+    };
+    fetchUserData();
+  }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, "projects"));
+    const unsub = onSnapshot(q, (snap) => {
+      setProjects(snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) })));
+    });
+    return () => unsub();
+  }, []);
 
   const handleKnowledgeClick = (knowledgeId) => {
     navigate(`/knowledge/${knowledgeId}`);
@@ -55,6 +90,8 @@ export default function SuperAdminKnowledgePage() {
           updatedByName: data.updatedByName || "",
           documents: data.documents || [],
           access: data.access || { admin: [], member: [] },
+          projectId: data.projectId || null,
+          link: data.link || "",
         };
       });
       setKnowledge(list);
@@ -71,6 +108,9 @@ export default function SuperAdminKnowledgePage() {
           String(v || "").toLowerCase().includes(q)
         )
       );
+    }
+    if (selectedProject) {
+      list = list.filter(k => k.projectId === selectedProject);
     }
     const { key, dir } = sort || { key: "createdAt", dir: "desc" };
     const mult = dir === "asc" ? 1 : -1;
@@ -119,29 +159,55 @@ export default function SuperAdminKnowledgePage() {
 
   const handleSubmit = async (form) => {
     try {
+      const currentUser = auth.currentUser;
+      let knowledgeDocId;
+
+      // Prepare activity entry
+      const activityEntry = {
+        action: editing ? 'update' : 'create',
+        changes: form.activityChanges || (editing ? ['Updated knowledge entry'] : ['Created knowledge entry']),
+        timestamp: new Date().toISOString(),
+        performedBy: currentUser?.uid || "",
+        performedByName: currentUserName || currentUser?.displayName || "Unknown User",
+        performedByImage: currentUserImage || currentUser?.photoURL || null,
+      };
+
       if (editing && editing.id) {
-        const ref = doc(db, "knowledge", editing.id);
-        await updateDoc(ref, {
+        knowledgeDocId = editing.id;
+        const knowledgeRef = doc(db, "knowledge", editing.id);
+        await updateDoc(knowledgeRef, {
           title: form.title,
           description: form.description,
+          link: form.link || "",
+          links: form.links || [],
           access: form.access || { admin: [], member: [] },
           documents: form.documents || [],
           updatedAt: serverTimestamp(),
-          updatedByUid: auth.currentUser?.uid || "",
-          updatedByName: editing.updatedByName || editing.createdByName || "",
+          updatedByUid: currentUser?.uid || "",
+          updatedByName: currentUser?.displayName || "",
+          projectId: editing.projectId || selectedProject || null,
         });
       } else {
-        await addDoc(collection(db, "knowledge"), {
+        const docRef = await addDoc(collection(db, "knowledge"), {
           title: form.title,
           description: form.description,
+          link: form.link || "",
+          links: form.links || [],
           access: form.access || { admin: [], member: [] },
           documents: form.documents || [],
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-          createdByUid: auth.currentUser?.uid || "",
-          createdByName: auth.currentUser?.displayName || "",
+          createdByUid: currentUser?.uid || "",
+          createdByName: currentUser?.displayName || "",
+          projectId: selectedProject || null,
         });
+        knowledgeDocId = docRef.id;
       }
+
+      // Save activity to subcollection
+      const activitiesRef = collection(db, "knowledge", knowledgeDocId, "activities");
+      await addDoc(activitiesRef, activityEntry);
+
     } catch (e) {
       console.error("Failed to save knowledge", e);
     }
@@ -189,6 +255,16 @@ export default function SuperAdminKnowledgePage() {
           placeholder="Search by title or description"
           rightActions={
             <div className="flex items-center gap-2">
+              <select
+                className="rounded-md border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#1F2234] px-2 py-1.5 text-sm [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[150px]"
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+              >
+                <option value="">All Projects</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.projectName}</option>
+                ))}
+              </select>
               <label className="flex items-center gap-2">
                 <span className="text-sm font-medium text-gray-600 [.dark_&]:text-gray-400">Sort by</span>
                 <select
@@ -297,6 +373,13 @@ export default function SuperAdminKnowledgePage() {
               <p className="mt-1 mb-3 text-sm md:text-[0.95rem] leading-relaxed text-content-secondary line-clamp-4 whitespace-pre-wrap">
                 {k.description}
               </p>
+              {k.link && (
+                <div className="mb-3">
+                  <a href={k.link} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 hover:text-indigo-500 underline truncate block" onClick={e => e.stopPropagation()}>
+                    {k.link}
+                  </a>
+                </div>
+              )}
               <hr className="my-3 border-t border-subtle" />
               <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-content-secondary">
                 {k.created && (
@@ -340,7 +423,7 @@ export default function SuperAdminKnowledgePage() {
           }}
           onSubmit={handleSubmit}
           initialItem={editing}
-          projectId={null}
+          projectId={editing?.projectId || selectedProject || null}
           canEditAccess={true}
         />
       )}

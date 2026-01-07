@@ -24,15 +24,25 @@ import {
     FaSearch,
     FaChevronLeft,
     FaChevronRight,
+    FaEdit,
+    FaTrash,
+    FaUpload
 } from "react-icons/fa";
 import {
     subscribeToAllExpenses,
     approveExpense,
     rejectExpense,
+    updateExpense,
+    deleteExpense,
+    uploadReceipt,
+    createExpense
 } from "../../services/expenseService";
 import toast from "react-hot-toast";
 import { EXPENSE_CATEGORIES, getStatusColorClass } from "../../config/expenseConfig";
 import ExpenseDetailModal from "../../components/expenses/ExpenseDetailModal";
+import ExpenseFormModal from "../../components/expenses/ExpenseFormModal";
+import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
+import DocumentPreviewModal from "../../components/documents/DocumentPreviewModal";
 
 export default function ManagerExpenses() {
     const { user, userData } = useAuthContext();
@@ -45,8 +55,15 @@ export default function ManagerExpenses() {
     const [rejectingId, setRejectingId] = useState(null);
     const [rejectReason, setRejectReason] = useState("");
     const [viewingExpense, setViewingExpense] = useState(null);
+    const [viewingReceipt, setViewingReceipt] = useState(null);
     const [page, setPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
+
+    // Edit/Delete State
+    const [editingExpense, setEditingExpense] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [deletingExpense, setDeletingExpense] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Get projects managed by current user
     useEffect(() => {
@@ -150,20 +167,68 @@ export default function ManagerExpenses() {
         setRejectReason("");
     };
 
-    const handleConfirmReject = async () => {
-        if (!rejectingId) return;
+
+
+    const handleEdit = (expense) => {
+        setEditingExpense(expense);
+    };
+
+    const handleSave = async (formData) => {
+        if (!user?.uid) return;
+        setIsSaving(true);
         try {
-            await rejectExpense(
-                rejectingId,
-                { uid: user?.uid, name: userData?.name, email: user?.email },
-                rejectReason || "Rejected by manager"
-            );
-            toast.success("Expense rejected");
-            setRejectingId(null);
-            setRejectReason("");
+            let receiptUrl = null;
+            if (formData.receipt) {
+                receiptUrl = await uploadReceipt(formData.receipt, user.uid);
+            }
+
+            const payload = {
+                ...formData,
+                amount: Number(formData.amount),
+            };
+            // Remove complex objects or file objects from payload
+            delete payload.receipt;
+
+            if (receiptUrl) {
+                payload.receiptUrl = receiptUrl;
+            }
+
+            // For manager, we are likely just updating details, not creating new ones usually?
+            // But if we reuse this for creation later, we can check editingExpense.
+
+            if (editingExpense) {
+                await updateExpense(editingExpense.id, payload);
+                toast.success("Expense updated");
+            } else {
+                // Fallback if we ever use this for creation
+                // await createExpense({ ...payload, employeeId: user.uid, ... });
+            }
+
+            setEditingExpense(null);
         } catch (err) {
-            console.error("Failed to reject expense", err);
-            toast.error("Failed to reject expense");
+            console.error("Failed to save expense", err);
+            toast.error("Failed to save expense");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDeleteClick = (expense) => {
+        setDeletingExpense(expense);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deletingExpense) return;
+        setIsDeleting(true);
+        try {
+            await deleteExpense(deletingExpense.id);
+            toast.success("Expense deleted");
+            setDeletingExpense(null);
+        } catch (err) {
+            console.error("Failed to delete expense", err);
+            toast.error("Failed to delete expense");
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -419,18 +484,26 @@ export default function ManagerExpenses() {
                         <table className="min-w-full divide-y divide-gray-200 [.dark_&]:divide-white/10">
                             <thead className="bg-gray-50 [.dark_&]:bg-[#1F2234]">
                                 <tr>
-                                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Sr.</th>
+                                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Sr No</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Employee</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Expense</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Title</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Project</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Date</th>
                                     <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Category</th>
                                     <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Amount</th>
+                                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Document</th>
                                     <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Status</th>
+                                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Approval</th>
                                     <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white [.dark_&]:bg-[#181B2A] divide-y divide-gray-200 [.dark_&]:divide-white/10">
                                 {filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((e, index) => (
-                                    <tr key={e.id} className="hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors">
+                                    <tr
+                                        key={e.id}
+                                        onClick={() => setViewingExpense(e)}
+                                        className="hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors cursor-pointer"
+                                    >
                                         <td className="px-6 py-4 text-center text-sm text-gray-500 [.dark_&]:text-gray-400">
                                             {(page - 1) * rowsPerPage + index + 1}
                                         </td>
@@ -445,12 +518,22 @@ export default function ManagerExpenses() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-semibold text-gray-900 [.dark_&]:text-white">{e.title}</span>
-                                                <span className="text-xs text-gray-500 [.dark_&]:text-gray-400 flex items-center gap-1">
-                                                    <FaCalendarAlt className="text-gray-400" /> {e.date || "-"}
+                                            <span className="text-sm font-semibold text-gray-900 [.dark_&]:text-white">{e.title}</span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {e.projectName ? (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 [.dark_&]:bg-indigo-500/10 text-indigo-700 [.dark_&]:text-indigo-300 border border-indigo-200 [.dark_&]:border-indigo-500/20">
+                                                    <FaProjectDiagram className="text-[10px] text-indigo-500 [.dark_&]:text-indigo-400" />
+                                                    {e.projectName}
                                                 </span>
-                                            </div>
+                                            ) : (
+                                                <span className="text-xs text-gray-400 italic">No project</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="text-xs text-gray-500 [.dark_&]:text-gray-400 flex items-center gap-1">
+                                                <FaCalendarAlt className="text-gray-400" /> {e.date ? new Date(e.date).toLocaleDateString("en-GB") : "-"}
+                                            </span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 [.dark_&]:bg-white/10 text-gray-700 [.dark_&]:text-gray-300">
@@ -464,34 +547,59 @@ export default function ManagerExpenses() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-center">
+                                            {e.receiptUrl ? (
+                                                <button
+                                                    onClick={(ev) => {
+                                                        ev.stopPropagation();
+                                                        setViewingReceipt({
+                                                            url: e.receiptUrl,
+                                                            name: `Receipt - ${e.title}`,
+                                                            fileType: "image/jpeg", // Assuming image/jpeg, adjust if needed
+                                                            id: e.id
+                                                        });
+                                                    }}
+                                                    className="text-indigo-600 hover:text-indigo-800 text-xs font-medium inline-flex items-center gap-1"
+                                                >
+                                                    <FaFileInvoice /> Receipt
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-400 text-xs">-</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(e.status, false)}`}>
                                                 {e.status || "Unknown"}
                                             </span>
                                         </td>
+                                        <td className="px-6 py-4 text-center">
+                                            {e.status === "Submitted" && (
+                                                <div className="flex justify-center gap-2">
+                                                    <Button
+                                                        size="xs"
+                                                        onClick={(ev) => { ev.stopPropagation(); handleApprove(e.id); }}
+                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
+                                                    >
+                                                        Approve
+                                                    </Button>
+                                                    <Button
+                                                        size="xs"
+                                                        variant="secondary"
+                                                        onClick={(ev) => { ev.stopPropagation(); handleOpenReject(e.id); }}
+                                                        className="text-red-600 hover:bg-red-50 border-red-200"
+                                                    >
+                                                        Reject
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-2">
-                                                <Button size="xs" variant="ghost" onClick={() => setViewingExpense(e)}>
-                                                    View
+                                                <Button size="xs" variant="ghost" onClick={(ev) => { ev.stopPropagation(); handleEdit(e); }} title="Edit">
+                                                    <FaEdit />
                                                 </Button>
-                                                {e.status === "Submitted" && (
-                                                    <>
-                                                        <Button
-                                                            size="xs"
-                                                            onClick={() => handleApprove(e.id)}
-                                                            className="bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
-                                                        >
-                                                            Approve
-                                                        </Button>
-                                                        <Button
-                                                            size="xs"
-                                                            variant="secondary"
-                                                            onClick={() => handleOpenReject(e.id)}
-                                                            className="text-red-600 hover:bg-red-50 border-red-200"
-                                                        >
-                                                            Reject
-                                                        </Button>
-                                                    </>
-                                                )}
+                                                <Button size="xs" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={(ev) => { ev.stopPropagation(); handleDeleteClick(e); }} title="Delete">
+                                                    <FaTrash />
+                                                </Button>
                                             </div>
                                         </td>
                                     </tr>
@@ -546,9 +654,44 @@ export default function ManagerExpenses() {
                     <ExpenseDetailModal
                         expense={viewingExpense}
                         onClose={() => setViewingExpense(null)}
+                        onViewReceipt={setViewingReceipt}
                     />
                 )
             }
+
+            {/* Edit Modal */}
+            <ExpenseFormModal
+                isOpen={!!editingExpense}
+                onClose={() => setEditingExpense(null)}
+                onSubmit={handleSave}
+                initialData={editingExpense}
+                projects={projects}
+                isSubmitting={isSaving}
+                title="Edit Expense"
+            />
+
+            {/* Delete Confirmation Modal */}
+            {deletingExpense && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <DeleteConfirmationModal
+                        onClose={() => setDeletingExpense(null)}
+                        onConfirm={handleConfirmDelete}
+                        itemType="Expense"
+                        itemTitle={deletingExpense.title}
+                        title="Delete Expense"
+                        message="Are you sure you want to delete this expense? This action cannot be undone."
+                        confirmText="Delete Expense"
+                        isDeleting={isDeleting}
+                    />
+                </div>
+            )}
+
+            <DocumentPreviewModal
+                open={!!viewingReceipt}
+                onClose={() => setViewingReceipt(null)}
+                doc={viewingReceipt}
+                showMetadata={false}
+            />
         </div >
     );
 }
