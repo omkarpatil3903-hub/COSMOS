@@ -7,6 +7,8 @@ import { useAuthContext } from "../../context/useAuthContext";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
+import { db } from "../../firebase";
+import { collection, onSnapshot, query, orderBy, getDocs } from "firebase/firestore";
 import {
     FaMoneyCheckAlt,
     FaCheckCircle,
@@ -35,10 +37,16 @@ import {
     rejectExpense,
     markExpensePaid,
     deleteExpense,
+    updateExpense,
+    uploadReceipt,
+    createExpense
 } from "../../services/expenseService";
 import toast from "react-hot-toast";
 import { EXPENSE_CATEGORIES, getStatusColorClass } from "../../config/expenseConfig";
 import ExpenseDetailModal from "./ExpenseDetailModal";
+import ExpenseFormModal from "./ExpenseFormModal";
+import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
+import DocumentPreviewModal from "../../components/documents/DocumentPreviewModal";
 
 
 
@@ -53,13 +61,52 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
+    const [usersMap, setUsersMap] = useState({});
     const [rejectingId, setRejectingId] = useState(null);
     const [rejectReason, setRejectReason] = useState("");
     const [selectedIds, setSelectedIds] = useState([]);
     const [viewingExpense, setViewingExpense] = useState(null);
+    const [viewingReceipt, setViewingReceipt] = useState(null);
     const [activeStatFilter, setActiveStatFilter] = useState(null);
     const [page, setPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
+
+    const [projects, setProjects] = useState([]);
+
+    // Edit/Delete State
+    const [editingExpense, setEditingExpense] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [deletingExpense, setDeletingExpense] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Fetch all projects for the dropdown
+    useEffect(() => {
+        const q = query(collection(db, "projects"), orderBy("createdAt", "desc"));
+        const unsub = onSnapshot(q, (snapshot) => {
+            const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setProjects(list);
+        });
+        return () => unsub();
+    }, []);
+
+    // Fetch users for name mapping
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const q = query(collection(db, "users"));
+                const snapshot = await getDocs(q);
+                const map = {};
+                snapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    map[doc.id] = data.name || data.displayName || data.email;
+                });
+                setUsersMap(map);
+            } catch (err) {
+                console.error("Failed to fetch users", err);
+            }
+        };
+        fetchUsers();
+    }, []);
 
     useEffect(() => {
         const unsub = subscribeToAllExpenses(
@@ -186,20 +233,64 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this expense?")) return;
+
+    const handleDeleteClick = (expense) => {
+        setDeletingExpense(expense);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deletingExpense) return;
+        setIsDeleting(true);
         try {
-            await deleteExpense(id);
+            await deleteExpense(deletingExpense.id);
             toast.success("Expense deleted");
-            setExpenses((prev) => prev.filter((e) => e.id !== id));
+            setDeletingExpense(null);
+            // Local state update handled by subscription usually, but if needed:
+            // setExpenses((prev) => prev.filter((e) => e.id !== deletingExpense.id));
         } catch (err) {
             console.error("Failed to delete expense", err);
             toast.error("Failed to delete expense");
+        } finally {
+            setIsDeleting(false);
         }
     };
 
     const handleEdit = (expense) => {
-        toast("Edit functionality coming soon", { icon: "✏️" });
+        setEditingExpense(expense);
+    };
+
+    const handleSave = async (formData) => {
+        if (!user?.uid) return;
+        setIsSaving(true);
+        try {
+            let receiptUrl = null;
+            if (formData.receipt) {
+                receiptUrl = await uploadReceipt(formData.receipt, user.uid);
+            }
+
+            const payload = {
+                ...formData,
+                amount: Number(formData.amount),
+            };
+            delete payload.receipt;
+
+            if (receiptUrl) {
+                payload.receiptUrl = receiptUrl;
+            }
+
+            if (editingExpense) {
+                await updateExpense(editingExpense.id, payload);
+                toast.success("Expense updated");
+            }
+            // Else create logic if we ever add 'Create' button here
+
+            setEditingExpense(null);
+        } catch (err) {
+            console.error("Failed to save expense", err);
+            toast.error("Failed to save expense");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleSelectAll = (e) => {
@@ -587,16 +678,22 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                         Employee
                                     </th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
-                                        Expense Details
+                                        Title
                                     </th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                         Project
+                                    </th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
+                                        Date
                                     </th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                         Category
                                     </th>
                                     <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                         Amount
+                                    </th>
+                                    <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-content-secondary uppercase tracking-wider">
+                                        Document
                                     </th>
                                     <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                         Status
@@ -613,13 +710,14 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                 {filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((e, index) => (
                                     <tr
                                         key={e.id}
-                                        className={`hover:bg-surface-subtle transition-colors group ${selectedIds.includes(e.id) ? "bg-indigo-50/50 dark:bg-indigo-900/20" : ""}`}
+                                        onClick={() => setViewingExpense(e)}
+                                        className={`hover:bg-surface-subtle transition-colors group cursor-pointer ${selectedIds.includes(e.id) ? "bg-indigo-50/50 dark:bg-indigo-900/20" : ""}`}
                                     >
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <input
                                                 type="checkbox"
                                                 checked={selectedIds.includes(e.id)}
-                                                onChange={() => handleSelectOne(e.id)}
+                                                onChange={(e) => { e.stopPropagation(); handleSelectOne(e.id); }}
                                                 className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                                             />
                                         </td>
@@ -631,40 +729,24 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
                                                 <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold text-xs mr-3">
-                                                    {e.employeeName ? e.employeeName.charAt(0).toUpperCase() : "?"}
+                                                    {(usersMap[e.employeeId] || e.employeeName) ? (usersMap[e.employeeId] || e.employeeName).charAt(0).toUpperCase() : "?"}
                                                 </div>
                                                 <div>
                                                     <div className="text-sm font-medium text-content-primary">
-                                                        {e.employeeName || "Unknown"}
+                                                        {usersMap[e.employeeId] || e.employeeName || "Unknown"}
                                                     </div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                <div className="flex items-center gap-2 text-xs text-content-tertiary mb-0.5">
-                                                    <FaCalendarAlt className="text-content-tertiary" />
-                                                    {e.date || "-"}
-                                                </div>
-                                                <span className="text-sm font-semibold text-content-primary group-hover:text-indigo-600 transition-colors">
-                                                    {e.title}
-                                                </span>
-                                                {e.receiptUrl && (
-                                                    <a
-                                                        href={e.receiptUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex items-center gap-1 text-[10px] font-medium text-indigo-600 hover:text-indigo-800 mt-1"
-                                                    >
-                                                        <FaFileInvoice /> Receipt
-                                                    </a>
-                                                )}
-                                            </div>
+                                            <span className="text-sm font-semibold text-content-primary group-hover:text-indigo-600 transition-colors">
+                                                {e.title}
+                                            </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {e.projectName ? (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                                    <FaProjectDiagram className="text-[10px] text-indigo-500" />
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20">
+                                                    <FaProjectDiagram className="text-[10px] text-indigo-500 dark:text-indigo-400" />
                                                     {e.projectName}
                                                 </span>
                                             ) : (
@@ -672,8 +754,14 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                             )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-                                                <FaTag className="text-[10px] text-gray-500" />
+                                            <div className="flex items-center gap-2 text-xs text-content-tertiary mb-0.5">
+                                                <FaCalendarAlt className="text-content-tertiary" />
+                                                {e.date ? new Date(e.date).toLocaleDateString("en-GB") : "-"}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+                                                <FaTag className="text-[10px] text-gray-500 dark:text-gray-400" />
                                                 {e.category || "Other"}
                                             </span>
                                         </td>
@@ -686,6 +774,26 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            {e.receiptUrl ? (
+                                                <button
+                                                    onClick={(ev) => {
+                                                        ev.stopPropagation();
+                                                        setViewingReceipt({
+                                                            url: e.receiptUrl,
+                                                            name: `Receipt - ${e.title}`,
+                                                            fileType: "image/jpeg",
+                                                            id: e.id
+                                                        });
+                                                    }}
+                                                    className={`inline-flex items-center gap-1 text-xs font-medium ${useDarkMode ? "text-indigo-400 hover:text-indigo-300" : "text-indigo-600 hover:text-indigo-800"}`}
+                                                >
+                                                    <FaFileInvoice /> Receipt
+                                                </button>
+                                            ) : (
+                                                <span className={`text-xs ${useDarkMode ? "text-gray-500" : "text-gray-400"}`}>-</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(e.status, useDarkMode)}`}>
                                                 {e.status || "Unknown"}
                                             </span>
@@ -696,7 +804,7 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                                     <>
                                                         <Button
                                                             size="xs"
-                                                            onClick={() => handleApprove(e.id)}
+                                                            onClick={(ev) => { ev.stopPropagation(); handleApprove(e.id); }}
                                                             className="bg-green-600 hover:bg-green-700 text-white border-transparent"
                                                         >
                                                             Approve
@@ -704,7 +812,7 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                                         <Button
                                                             size="xs"
                                                             variant="secondary"
-                                                            onClick={() => handleOpenReject(e.id)}
+                                                            onClick={(ev) => { ev.stopPropagation(); handleOpenReject(e.id); }}
                                                             className="text-red-600 hover:bg-red-50 border-red-200 hover:border-red-300"
                                                         >
                                                             Reject
@@ -714,7 +822,7 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                                 {e.status === "Approved" && (
                                                     <Button
                                                         size="xs"
-                                                        onClick={() => handleMarkPaid(e.id)}
+                                                        onClick={(ev) => { ev.stopPropagation(); handleMarkPaid(e.id); }}
                                                         className="bg-purple-600 hover:bg-purple-700 text-white border-transparent"
                                                     >
                                                         Mark Paid
@@ -725,21 +833,14 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex justify-end gap-2 items-center">
                                                 <button
-                                                    onClick={() => setViewingExpense(e)}
-                                                    className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
-                                                    title="View Details"
-                                                >
-                                                    <FaExternalLinkAlt />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleEdit(e)}
+                                                    onClick={(ev) => { ev.stopPropagation(); handleEdit(e); }}
                                                     className="text-gray-400 hover:text-blue-600 transition-colors p-1"
                                                     title="Edit"
                                                 >
                                                     <FaEdit />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(e.id)}
+                                                    onClick={(ev) => { ev.stopPropagation(); handleDeleteClick(e); }}
                                                     className="text-gray-400 hover:text-red-600 transition-colors p-1"
                                                     title="Delete"
                                                 >
@@ -823,9 +924,44 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                 <ExpenseDetailModal
                     expense={viewingExpense}
                     onClose={() => setViewingExpense(null)}
+                    onViewReceipt={setViewingReceipt}
                     useDarkMode={useDarkMode}
                 />
             )}
+            {/* Edit Modal */}
+            <ExpenseFormModal
+                isOpen={!!editingExpense}
+                onClose={() => setEditingExpense(null)}
+                onSubmit={handleSave}
+                initialData={editingExpense}
+                projects={projects}
+                isSubmitting={isSaving}
+                title="Edit Expense"
+            />
+
+            {/* Delete Confirmation Modal */}
+            {deletingExpense && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <DeleteConfirmationModal
+                        onClose={() => setDeletingExpense(null)}
+                        onConfirm={handleConfirmDelete}
+                        itemType="Expense"
+                        itemTitle={deletingExpense.title}
+                        title="Delete Expense"
+                        description="Are you sure you want to delete this expense record?"
+                        isLoading={isDeleting}
+                        confirmLabel="Delete Expense"
+                    />
+                </div>
+            )}
+
+            <DocumentPreviewModal
+                open={!!viewingReceipt}
+                onClose={() => setViewingReceipt(null)}
+                doc={viewingReceipt}
+                showMetadata={false}
+            />
         </div>
     );
 }
+

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { FaBookOpen, FaFileAlt } from "react-icons/fa";
 import PageHeader from "../../components/PageHeader";
 import AdminKnowledgePage from "./AdminKnowledgePage";
@@ -6,8 +7,16 @@ import AdminDocumentsPage from "./AdminDocumentsPage";
 import { useTheme } from "../../context/ThemeContext";
 
 export default function AdminKnowledgeManagement() {
-  const [activeTab, setActiveTab] = useState("knowledge");
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || "knowledge");
   const { accent, mode } = useTheme();
+
+  // Reset tab if navigation happens without state update (optional, but keeps sync)
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
 
   const getIconColor = () => {
     const colorMap = {

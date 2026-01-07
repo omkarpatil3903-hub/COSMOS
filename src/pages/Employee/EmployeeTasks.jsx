@@ -54,12 +54,32 @@ import AddSelfTaskModal from "../../components/TaskManagment/AddSelfTaskModal";
 import EditSelfTaskModal from "../../components/TaskManagment/EditSelfTaskModal";
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
+import { useTheme } from "../../context/ThemeContext";
 
 const EmployeeTasks = () => {
   const { user } = useAuthContext();
   const { buttonClass, linkColor } = useThemeStyles();
+  const { accent, mode } = useTheme();
   const [searchParams] = useSearchParams();
   const location = useLocation();
+
+  const getIconColor = () => {
+    const colorMap = {
+      purple: mode === 'light' ? 'text-purple-500' : 'text-purple-400',
+      blue: mode === 'light' ? 'text-sky-500' : 'text-sky-400',
+      pink: mode === 'light' ? 'text-pink-500' : 'text-pink-400',
+      violet: mode === 'light' ? 'text-violet-500' : 'text-violet-400',
+      orange: mode === 'light' ? 'text-amber-500' : 'text-amber-400',
+      teal: mode === 'light' ? 'text-teal-500' : 'text-teal-400',
+      bronze: mode === 'light' ? 'text-amber-600' : 'text-amber-500',
+      mint: mode === 'light' ? 'text-emerald-500' : 'text-emerald-400',
+      black: mode === 'light' ? 'text-gray-600' : 'text-indigo-400',
+      indigo: mode === 'light' ? 'text-indigo-500' : 'text-indigo-400',
+    };
+    return colorMap[accent] || colorMap.indigo;
+  };
+
+  const activeIconColor = getIconColor();
 
   // Utility function to format dates in dd/mm/yyyy format
   const formatDateToDDMMYYYY = (date) => {
@@ -1051,23 +1071,27 @@ const EmployeeTasks = () => {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             {/* Source Toggle */}
-            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg mr-4">
+            <div className="flex items-center gap-3 px-1">
               <button
+                type="button"
                 onClick={() => setTaskSource("admin")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${taskSource === "admin"
-                  ? `bg-white dark:bg-[#1e1e2d] ${linkColor} shadow-sm`
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold border transition-colors ${taskSource === "admin"
+                  ? "bg-surface-strong text-content-primary border-subtle shadow-soft"
+                  : "bg-transparent text-content-secondary border-transparent hover:text-content-primary hover:bg-gray-200 dark:hover:bg-gray-700"
                   }`}
               >
+                <FaClipboardList className={`h-4 w-4 ${taskSource === "admin" ? activeIconColor : ""}`} />
                 Assigned Tasks
               </button>
               <button
+                type="button"
                 onClick={() => setTaskSource("self")}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${taskSource === "self"
-                  ? `bg-white dark:bg-[#1e1e2d] ${linkColor} shadow-sm`
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold border transition-colors ${taskSource === "self"
+                  ? "bg-surface-strong text-content-primary border-subtle shadow-soft"
+                  : "bg-transparent text-content-secondary border-transparent hover:text-content-primary hover:bg-gray-200 dark:hover:bg-gray-700"
                   }`}
               >
+                <FaTasks className={`h-4 w-4 ${taskSource === "self" ? activeIconColor : ""}`} />
                 My Tasks
               </button>
             </div>
@@ -1156,33 +1180,35 @@ const EmployeeTasks = () => {
                   Delete Selected
                 </button>
               )}
-              <button
-                onClick={() => setShowAddSelfTaskModal(true)}
-                className={`inline-flex items-center gap-2 px-3 py-2 rounded-md ${buttonClass} text-sm`}
-              >
-                <FaPlus className="w-4 h-4" />
-                Add Self Task
-              </button>
             </div>
           </div>
           {/* Search Bar */}
-          <div className="relative">
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search tasks by title or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <FaTimes />
-              </button>
-            )}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search tasks by title or description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <FaTimes />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setShowAddSelfTaskModal(true)}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-md ${buttonClass} text-sm font-medium whitespace-nowrap`}
+            >
+              <FaPlus className="w-4 h-4" />
+              Add Self Task
+            </button>
           </div>
 
           {/* Filter Row */}
