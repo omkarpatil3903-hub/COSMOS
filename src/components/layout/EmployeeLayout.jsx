@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { signOut } from "firebase/auth";
 import { auth } from "../../firebase";
 import { Toaster } from "react-hot-toast";
@@ -43,27 +44,26 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
     return accent === "purple"
       ? "text-purple-400"
       : accent === "blue"
-      ? "text-sky-400"
-      : accent === "pink"
-      ? "text-pink-400"
-      : accent === "violet"
-      ? "text-violet-400"
-      : accent === "orange"
-      ? "text-amber-400"
-      : accent === "teal"
-      ? "text-teal-400"
-      : accent === "bronze"
-      ? "text-amber-500"
-      : accent === "mint"
-      ? "text-emerald-400"
-      : "text-indigo-400";
+        ? "text-sky-400"
+        : accent === "pink"
+          ? "text-pink-400"
+          : accent === "violet"
+            ? "text-violet-400"
+            : accent === "orange"
+              ? "text-amber-400"
+              : accent === "teal"
+                ? "text-teal-400"
+                : accent === "bronze"
+                  ? "text-amber-500"
+                  : accent === "mint"
+                    ? "text-emerald-400"
+                    : "text-indigo-400";
   };
 
   const iconColor = getIconColor(to);
 
-  const baseClasses = `group flex items-center ${
-    isCollapsed ? "justify-center px-2" : "gap-3 px-3"
-  } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
+  const baseClasses = `group flex items-center ${isCollapsed ? "justify-center px-2" : "gap-3 px-3"
+    } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
   const activeClasses =
     "border-indigo-500/50 bg-indigo-500/10 dark:bg-indigo-500/20 text-content-primary shadow-soft dark:border-indigo-400/50";
   const inactiveClasses =
@@ -82,19 +82,16 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
       {({ isActive }) => (
         <>
           <span
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${
-              isActive
-                ? `${
-                    accent === "black"
-                      ? "bg-black/20 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.3)]"
-                      : "bg-surface"
-                  } ${iconColor}`
-                : `${iconColor} bg-transparent ${
-                    accent === "black"
-                      ? "opacity-80 hover:opacity-100 hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]"
-                      : ""
-                  }`
-            }`}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${isActive
+                ? `${accent === "black"
+                  ? "bg-black/20 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                  : "bg-surface"
+                } ${iconColor}`
+                : `${iconColor} bg-transparent ${accent === "black"
+                  ? "opacity-80 hover:opacity-100 hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]"
+                  : ""
+                }`
+              }`}
           >
             {icon}
           </span>
@@ -104,6 +101,51 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
     </NavLink>
   );
 };
+
+const DEFAULT_NAV_ITEMS = [
+  {
+    to: "/employee",
+    text: "Dashboard",
+    icon: <FaTachometerAlt className="h-4 w-4" aria-hidden="true" />,
+  },
+  {
+    to: "/employee/tasks",
+    text: "My Tasks",
+    icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
+  },
+  {
+    to: "/employee/projects",
+    text: "Projects",
+    icon: <FaProjectDiagram className="h-4 w-4" aria-hidden="true" />,
+  },
+  {
+    to: "/employee/reports",
+    text: "Reports",
+    icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
+  },
+  {
+    to: "/employee/knowledge-management",
+    text: "Knowledge",
+    icon: <FaFileAlt className="h-4 w-4" aria-hidden="true" />,
+  },
+  {
+    to: "/employee/calendar",
+    text: "Calendar",
+    icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
+  },
+  // Expenses will let employees submit and track reimbursements
+  // Icon kept consistent with finance-related pages
+  {
+    to: "/employee/expenses",
+    text: "My Expenses",
+    icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
+  },
+  {
+    to: "/employee/settings",
+    text: "Settings",
+    icon: <FaCog className="h-4 w-4" aria-hidden="true" />,
+  },
+];
 
 function EmployeeLayout() {
   const navigate = useNavigate();
@@ -129,50 +171,39 @@ function EmployeeLayout() {
     document.title = title;
   }, [location.pathname]);
 
-  const navigationItems = [
-    {
-      to: "/employee",
-      text: "Dashboard",
-      icon: <FaTachometerAlt className="h-4 w-4" aria-hidden="true" />,
-    },
-    {
-      to: "/employee/tasks",
-      text: "My Tasks",
-      icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
-    },
-    {
-      to: "/employee/projects",
-      text: "Projects",
-      icon: <FaProjectDiagram className="h-4 w-4" aria-hidden="true" />,
-    },
-    {
-      to: "/employee/reports",
-      text: "Reports",
-      icon: <FaChartBar className="h-4 w-4" aria-hidden="true" />,
-    },
-    {
-      to: "/employee/knowledge-management",
-      text: "Knowledge",
-      icon: <FaFileAlt className="h-4 w-4" aria-hidden="true" />,
-    },
-    {
-      to: "/employee/calendar",
-      text: "Calendar",
-      icon: <FaCalendarAlt className="h-4 w-4" aria-hidden="true" />,
-    },
-    // Expenses will let employees submit and track reimbursements
-    // Icon kept consistent with finance-related pages
-    {
-      to: "/employee/expenses",
-      text: "My Expenses",
-      icon: <FaTasks className="h-4 w-4" aria-hidden="true" />,
-    },
-    {
-      to: "/employee/settings",
-      text: "Settings",
-      icon: <FaCog className="h-4 w-4" aria-hidden="true" />,
-    },
-  ];
+  // Initialize nav items from localStorage or default
+  const [navItems, setNavItems] = useState(() => {
+    try {
+      const savedOrder = localStorage.getItem("navOrder_employee");
+      if (savedOrder) {
+        const order = JSON.parse(savedOrder);
+        const itemMap = new Map(DEFAULT_NAV_ITEMS.map((item) => [item.to, item]));
+        const orderedItems = order
+          .map((path) => itemMap.get(path))
+          .filter((item) => item !== undefined);
+        const savedPaths = new Set(order);
+        const newItems = DEFAULT_NAV_ITEMS.filter((item) => !savedPaths.has(item.to));
+        return [...orderedItems, ...newItems];
+      }
+    } catch (error) {
+      console.error("Failed to load nav order", error);
+    }
+    return DEFAULT_NAV_ITEMS;
+  });
+
+  const handleDragEnd = (result) => {
+    if (!result.destination) return;
+
+    const items = Array.from(navItems);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    setNavItems(items);
+
+    // Save order to localStorage
+    const order = items.map((item) => item.to);
+    localStorage.setItem("navOrder_employee", JSON.stringify(order));
+  };
 
   useEffect(() => {
     setIsMobileNavOpen(false);
@@ -205,9 +236,8 @@ function EmployeeLayout() {
       </a>
       <Toaster position="top-right" />
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${
-          isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
-        } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"}`}
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
+          } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"}`}
         aria-label="Primary"
       >
         <div className="flex items-center justify-between gap-4">
@@ -242,9 +272,8 @@ function EmployeeLayout() {
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <FaChevronLeft
-              className={`h-4 w-4 transition-transform duration-300 ${
-                isCollapsed ? "rotate-180" : ""
-              }`}
+              className={`h-4 w-4 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""
+                }`}
               aria-hidden="true"
             />
           </button>
@@ -265,16 +294,46 @@ function EmployeeLayout() {
         </div>
 
         <nav className="mt-4 flex flex-1 flex-col gap-1">
-          {navigationItems.map((item) => (
-            <SidebarLink
-              key={item.to}
-              to={item.to}
-              text={item.text}
-              icon={item.icon}
-              isCollapsed={isCollapsed}
-              onNavigate={() => setIsMobileNavOpen(false)}
-            />
-          ))}
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="employee-sidebar-nav">
+              {(provided) => (
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="flex flex-col gap-1"
+                >
+                  {navItems.map((item, index) => (
+                    <Draggable
+                      key={item.to}
+                      draggableId={item.to}
+                      index={index}
+                    >
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          style={{
+                            ...provided.draggableProps.style,
+                            opacity: snapshot.isDragging ? 0.8 : 1,
+                          }}
+                        >
+                          <SidebarLink
+                            to={item.to}
+                            text={item.text}
+                            icon={item.icon}
+                            isCollapsed={isCollapsed}
+                            onNavigate={() => setIsMobileNavOpen(false)}
+                          />
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
         </nav>
 
         <div className="mt-auto pt-8">

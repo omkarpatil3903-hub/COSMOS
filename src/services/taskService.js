@@ -17,6 +17,7 @@ import {
   arrayUnion,
   limit,
   getDocs,
+  runTransaction,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { tsToDate } from "../utils/dateUtils";
@@ -102,14 +103,22 @@ export const addSubtask = async (taskId, title, collectionName = "tasks") => {
  */
 export const toggleSubtask = async (taskId, subtaskId, completed, collectionName = "tasks") => {
   const ref = doc(db, collectionName, taskId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return;
-  const data = snap.data();
-  const list = Array.isArray(data.subtasks) ? data.subtasks : [];
-  const next = list.map((s) =>
-    s.id === subtaskId ? { ...s, completed: completed } : s
-  );
-  await updateDoc(ref, { subtasks: next });
+
+  // Use transaction to prevent race conditions
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if (!snap.exists()) {
+      throw new Error("Task does not exist!");
+    }
+
+    const data = snap.data();
+    const list = Array.isArray(data.subtasks) ? data.subtasks : [];
+    const next = list.map((s) =>
+      s.id === subtaskId ? { ...s, completed: completed } : s
+    );
+
+    transaction.update(ref, { subtasks: next });
+  });
 };
 
 /**
@@ -119,12 +128,20 @@ export const toggleSubtask = async (taskId, subtaskId, completed, collectionName
  */
 export const deleteSubtask = async (taskId, subtaskId, collectionName = "tasks") => {
   const ref = doc(db, collectionName, taskId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return;
-  const data = snap.data();
-  const list = Array.isArray(data.subtasks) ? data.subtasks : [];
-  const next = list.filter((s) => s.id !== subtaskId);
-  await updateDoc(ref, { subtasks: next });
+
+  // Use transaction to prevent race conditions
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if (!snap.exists()) {
+      throw new Error("Task does not exist!");
+    }
+
+    const data = snap.data();
+    const list = Array.isArray(data.subtasks) ? data.subtasks : [];
+    const next = list.filter((s) => s.id !== subtaskId);
+
+    transaction.update(ref, { subtasks: next });
+  });
 };
 
 /**
@@ -243,4 +260,71 @@ export const subscribeToTaskActivities = (taskId, callback, limitCount = 20, col
     const items = snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
     callback(items);
   });
+};
+
+/**
+ * Start time tracking for a user
+ * @param {string} taskId
+ * @param {string} userId
+ * @param {string} collectionName
+ */
+export const startTimeTracking = async (taskId, userId, collectionName = "tasks") => {
+  const key = `assigneeStatus.${userId}`;
+  await updateDoc(doc(db, collectionName, taskId), {
+    [`${key}.isTracking`]: true,
+    [`${key}.trackingStartTime`]: serverTimestamp(),
+  });
+};
+
+/**
+ * Stop time tracking for a user
+ * @param {string} taskId
+ * @param {string} userId
+ * @param {number} currentTotalSeconds
+ * @param {Date} startTime
+ * @param {object} userDetails
+ * @param {string} collectionName
+ */
+export const stopTimeTracking = async (taskId, userId, currentTotalSeconds, startTime, userDetails, collectionName = "tasks") => {
+  // Validate startTime exists
+  if (!startTime) {
+    console.error("No start time found for time tracking");
+    throw new Error("Cannot stop time tracking: no start time found");
+  }
+
+  const now = new Date();
+  const start = startTime?.toDate ? startTime.toDate() : new Date(startTime);
+
+  // Validate start time is a valid date
+  if (isNaN(start.getTime())) {
+    console.error("Invalid start time:", startTime);
+    throw new Error("Invalid start time for time tracking");
+  }
+
+  let diffSeconds = Math.floor((now - start) / 1000);
+
+  // Validate time difference
+  if (diffSeconds < 0) {
+    console.error("Negative time difference detected (clock skew?). Start:", start, "Now:", now);
+    diffSeconds = 0; // Set to 0 instead of throwing error
+  }
+
+  // Cap at 24 hours to prevent unrealistic values
+  const MAX_TRACKING_SECONDS = 86400; // 24 hours
+  if (diffSeconds > MAX_TRACKING_SECONDS) {
+    console.warn(`Time tracking exceeded 24 hours (${Math.floor(diffSeconds / 3600)}h), capping at 24h`);
+    diffSeconds = MAX_TRACKING_SECONDS;
+  }
+
+  const newTotal = Math.max(0, (currentTotalSeconds || 0) + diffSeconds);
+
+  const key = `assigneeStatus.${userId}`;
+
+  await updateDoc(doc(db, collectionName, taskId), {
+    [`${key}.isTracking`]: false,
+    [`${key}.trackingStartTime`]: null,
+    [`${key}.timeSpent`]: newTotal,
+  });
+
+  // Activity logging disabled (Option 2)
 };

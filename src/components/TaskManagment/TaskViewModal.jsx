@@ -27,6 +27,7 @@ import {
 } from "react-icons/fa";
 import { MdReplayCircleFilled } from "react-icons/md";
 import Button from "../Button"; // Adjust path if needed
+import UserAvatar from "./UserAvatar";
 import {
   updateTask,
   addSubtask,
@@ -37,10 +38,17 @@ import {
   subscribeToTaskActivities,
   deleteTask,
   archiveTask,
+
   logTaskActivity,
+  startTimeTracking,
+  stopTimeTracking,
 } from "../../services/taskService";
+import {
+  FaPlay,
+  FaStop
+} from "react-icons/fa";
 import { getStatusBadge, getPriorityBadge } from "../../utils/colorMaps"; // Adjust path
-import { doc, getDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, serverTimestamp, runTransaction, deleteField } from "firebase/firestore";
 import { db } from "../../firebase";
 import TagInput from "./TagInput";
 import TimeEstimateInput from "./TimeEstimateInput";
@@ -50,7 +58,24 @@ import {
   createNextRecurringInstance,
   shouldCreateNextInstance,
 } from "../../utils/recurringTasks";
+import { formatDate } from "../../utils/formatDate"; // Import utility
 import { useThemeStyles } from "../../hooks/useThemeStyles";
+
+const getRelativeDateLabel = (date) => {
+  const now = new Date();
+  const d = new Date(date);
+  const diff = now - d;
+  const oneDay = 24 * 60 * 60 * 1000;
+
+  // Reset times for date comparison
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+  if (target.getTime() === today.getTime()) return "Today";
+  if (target.getTime() === today.getTime() - oneDay) return "Yesterday";
+
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+};
 
 const TaskViewModal = ({
   task: initialTask,
@@ -98,6 +123,121 @@ const TaskViewModal = ({
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [showAllAssignees, setShowAllAssignees] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Mention State
+  const [mentionQuery, setMentionQuery] = useState("");
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionIndex, setMentionIndex] = useState(0);
+
+  const [cursorPosition, setCursorPosition] = useState(0);
+
+  // Time Tracking State
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [isTracking, setIsTracking] = useState(false); // Local Derived State
+  const [globalTotalTime, setGlobalTotalTime] = useState(0);
+
+
+  // Handle close with unsaved changes check
+  const handleClose = () => {
+    if (hasUnsavedChanges) {
+      if (window.confirm("You have unsaved changes to the description. Close anyway?")) {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  };
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        handleClose();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        // If comment focused, submit is handled in textarea. 
+        // If general context, maybe save description?
+        if (isEditingDesc) {
+          handleQuickUpdate("description", descValue);
+          setIsEditingDesc(false);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleClose, isEditingDesc, descValue]);
+
+  useEffect(() => {
+    if (!task) return;
+
+    // Calculate global total time
+    let total = 0;
+    if (task.assigneeStatus) {
+      Object.values(task.assigneeStatus).forEach(status => {
+        if (status.timeSpent) total += status.timeSpent;
+      });
+    }
+    setGlobalTotalTime(total);
+
+    if (!currentUser) return;
+    const userStatus = task.assigneeStatus?.[currentUser.uid];
+    const tracking = userStatus?.isTracking || false;
+    setIsTracking(tracking);
+
+    const baseTime = userStatus?.timeSpent || 0;
+
+    if (tracking && userStatus?.trackingStartTime) {
+      const start = userStatus.trackingStartTime.toDate ? userStatus.trackingStartTime.toDate() : new Date(userStatus.trackingStartTime);
+      // Initial calc
+      const now = new Date();
+      const diff = Math.floor((now - start) / 1000);
+      setElapsedTime(baseTime + diff);
+
+      const interval = setInterval(() => {
+        const now = new Date();
+        const diff = Math.floor((now - start) / 1000);
+        setElapsedTime(baseTime + diff);
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setElapsedTime(baseTime);
+    }
+  }, [task, currentUser]);
+
+  const handleToggleTimer = async () => {
+    if (!currentUser) return;
+    const userStatus = task.assigneeStatus?.[currentUser.uid];
+    const tracking = userStatus?.isTracking || false;
+
+    try {
+      if (tracking) {
+        await stopTimeTracking(
+          task.id,
+          currentUser.uid,
+          userStatus?.timeSpent || 0,
+          userStatus?.trackingStartTime,
+          currentUser,
+          task.collectionName
+        );
+        toast.success("Timer stopped");
+      } else {
+        await startTimeTracking(task.id, currentUser.uid, task.collectionName);
+        toast.success("Timer started");
+      }
+    } catch (err) {
+      console.error("Timer toggle failed", err);
+      toast.error("Failed to toggle timer");
+    }
+  };
+
+  const formatDuration = (seconds) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   const statusOptions = useMemo(() => {
     if (Array.isArray(statuses) && statuses.length) return statuses;
@@ -143,25 +283,36 @@ const TaskViewModal = ({
     }
 
     const existsIndex = current.findIndex(a => a.id === item.id);
+    let removedUserId = null;
 
     if (existsIndex >= 0) {
       current.splice(existsIndex, 1);
+      removedUserId = item.id; // Track removed user for cleanup
     } else {
       current.push({ id: item.id, type });
     }
 
     // Update task
-    // We also update legacy fields for backward compatibility if needed, 
-    // but primarily we rely on 'assignees' array now.
-    // For single assignee view compatibility, we might set the first one as primary.
     const primary = current[0] || {};
-
-    await updateTask(task.id, {
+    const updates = {
       assignees: current,
       assigneeId: primary.id || "",
-      assigneeType: primary.type || "user"
-    }, task.collectionName);
+      assigneeType: primary.type || "user",
+      assigneeIds: current.map(a => a.id)
+    };
+
+    // Clean up assigneeStatus for removed user
+    if (removedUserId) {
+      updates[`assigneeStatus.${removedUserId}`] = deleteField();
+    }
+
+    await updateTask(task.id, updates, task.collectionName);
   };
+
+  // Track unsaved changes
+  useEffect(() => {
+    setHasUnsavedChanges(descValue !== (task?.description || ""));
+  }, [descValue, task?.description]);
 
   useEffect(() => {
     if (!initialTask?.id) return;
@@ -197,7 +348,12 @@ const TaskViewModal = ({
     const acts = activities.map((a) => ({ ...a, type: "activity" }));
 
     // Add Creation Event
-    if (task.createdAt) {
+    const hasCreationActivity = activities.some(a =>
+      a.action === "created" ||
+      (a.details && a.details.toLowerCase().includes("task created"))
+    );
+
+    if (task.createdAt && !hasCreationActivity) {
       acts.push({
         id: `created-${task.id}`,
         type: "created",
@@ -229,6 +385,17 @@ const TaskViewModal = ({
       return db - da; // Descending
     });
   }, [comments, activities, task.createdAt, task.completedAt, task.status, task.completionComment, task.createdBy, task.completedBy]);
+
+  const groupedTimeline = useMemo(() => {
+    const groups = {};
+    timeline.forEach(item => {
+      const date = item.createdAt?.toDate ? item.createdAt.toDate() : new Date(item.createdAt || 0);
+      const label = getRelativeDateLabel(date);
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(item);
+    });
+    return groups;
+  }, [timeline]);
 
 
 
@@ -282,9 +449,43 @@ const TaskViewModal = ({
                 .catch(err => console.error("Recurrence error:", err));
             }
           }
+        } else {
+          // Not everyone is done, so global status is "In Progress"
+          updates.status = "In Progress";
+          updates.completedAt = null; // Clear completion if logic reverts
+          // We don't touch progressPercent/completedBy globally here
         }
 
+        // IMPORTANT: Wait for update to complete FIRST
         await updateTask(task.id, updates, col);
+
+        // THEN create recurring instance (if all assignees are done)
+        if (allOthersDone && task.isRecurring) {
+          console.log("All assignees done. Triggering recurrence for:", task.id);
+
+          // Fetch fresh data from database to ensure accuracy
+          const freshTaskDoc = await getDoc(doc(db, col, task.id));
+          if (freshTaskDoc.exists()) {
+            const freshData = freshTaskDoc.data();
+            const dueDate = freshData.dueDate?.toDate ? freshData.dueDate.toDate() : new Date(freshData.dueDate);
+            const completedTaskState = {
+              ...freshData,
+              id: task.id,
+              dueDate: dueDate,
+              status: "Done",
+              completedAt: new Date(),
+            };
+
+            if (shouldCreateNextInstance(completedTaskState)) {
+              try {
+                const newId = await createNextRecurringInstance(completedTaskState);
+                if (newId) toast.success("Next recurring task created!");
+              } catch (err) {
+                console.error("Recurrence error:", err);
+              }
+            }
+          }
+        }
       } else {
         // Update global status (Admin or Self Task)
         const updates = {
@@ -309,42 +510,48 @@ const TaskViewModal = ({
           });
         }
 
+        // IMPORTANT: Wait for update to complete FIRST
         await updateTask(task.id, updates, col);
       }
 
-      // Handle Recurring Task Creation
+      // Handle Recurring Task Creation AFTER update completes
       if (task.isRecurring) {
         console.log("Attempting to create next recurring instance for:", task.id);
 
-        // Ensure dates are valid JS Dates or strings, not Firestore Timestamps
-        const dueDate = task.dueDate?.toDate
-          ? task.dueDate.toDate()
-          : (task.dueDate?.seconds ? new Date(task.dueDate.seconds * 1000) : new Date(task.dueDate));
+        // Fetch fresh data from database
+        const freshTaskDoc = await getDoc(doc(db, col || "tasks", task.id));
+        if (freshTaskDoc.exists()) {
+          const freshData = freshTaskDoc.data();
+          const dueDate = freshData.dueDate?.toDate
+            ? freshData.dueDate.toDate()
+            : (freshData.dueDate?.seconds ? new Date(freshData.dueDate.seconds * 1000) : new Date(freshData.dueDate));
 
-        const completedTaskState = {
-          ...task,
-          dueDate: dueDate, // Pass converted date
-          status: "Done",
-          completedAt: new Date(), // Use JS Date
-        };
+          const completedTaskState = {
+            ...freshData,
+            id: task.id,
+            dueDate: dueDate,
+            status: "Done",
+            completedAt: new Date(),
+          };
 
-        console.log("Completed Task State for Recurrence:", completedTaskState);
+          console.log("Completed Task State for Recurrence:", completedTaskState);
 
-        if (shouldCreateNextInstance(completedTaskState)) {
-          try {
-            const newId = await createNextRecurringInstance(completedTaskState);
-            if (newId) {
-              toast.success("Next recurring task created!");
-              console.log("Created new recurring task:", newId);
-            } else {
-              console.warn("createNextRecurringInstance returned null (duplicate or error)");
+          if (shouldCreateNextInstance(completedTaskState)) {
+            try {
+              const newId = await createNextRecurringInstance(completedTaskState);
+              if (newId) {
+                toast.success("Next recurring task created!");
+                console.log("Created new recurring task:", newId);
+              } else {
+                console.warn("createNextRecurringInstance returned null (duplicate or error)");
+              }
+            } catch (recError) {
+              console.error("Failed to create recurring instance:", recError);
+              toast.error("Failed to create next recurring task");
             }
-          } catch (recError) {
-            console.error("Failed to create recurring instance:", recError);
-            toast.error("Failed to create next recurring task");
+          } else {
+            console.warn("shouldCreateNextInstance returned false");
           }
-        } else {
-          console.warn("shouldCreateNextInstance returned false");
         }
       }
 
@@ -375,33 +582,80 @@ const TaskViewModal = ({
       const col = task.collectionName || "tasks";
 
       if (col === "tasks" && isAssignee && (field === "status" || field === "progressPercent")) {
-        // Update individual status/progress
-        const updateKey = `assigneeStatus.${currentUser.uid}`;
-        const updates = {};
+        // Use transaction to prevent race conditions
+        const taskRef = doc(db, col, task.id);
 
-        if (field === "status") {
-          updates[`${updateKey}.status`] = value;
-          if (value === "Done") {
-            updates[`${updateKey}.completedAt`] = serverTimestamp();
-            updates[`${updateKey}.progressPercent`] = 100;
-            updates[`${updateKey}.completedBy`] = currentUser?.uid;
-          } else if (value === "In Progress") {
-            updates[`${updateKey}.progressPercent`] = 0;
-            updates[`${updateKey}.completedAt`] = null;
-          } else {
-            updates[`${updateKey}.completedAt`] = null;
-            updates[`${updateKey}.progressPercent`] = 0;
+        await runTransaction(db, async (transaction) => {
+          const taskDoc = await transaction.get(taskRef);
+          if (!taskDoc.exists()) {
+            throw new Error("Task does not exist!");
           }
-        } else if (field === "progressPercent") {
-          updates[`${updateKey}.progressPercent`] = value;
-          if (value === 100) {
-            updates[`${updateKey}.status`] = "Done";
-            updates[`${updateKey}.completedAt`] = serverTimestamp();
-            updates[`${updateKey}.completedBy`] = currentUser?.uid;
-          }
-        }
 
-        await updateTask(task.id, updates, col);
+          const currentData = taskDoc.data();
+          const nextAssigneeStatus = { ...(currentData.assigneeStatus || {}) };
+          const nextUserStatus = { ...(nextAssigneeStatus[currentUser.uid] || {}) };
+
+          // Update user's individual status
+          if (field === "status") {
+            nextUserStatus.status = value;
+            if (value === "Done") {
+              nextUserStatus.completedAt = serverTimestamp();
+              nextUserStatus.progressPercent = 100;
+              nextUserStatus.completedBy = currentUser?.uid;
+            } else if (value === "In Progress") {
+              nextUserStatus.progressPercent = nextUserStatus.progressPercent || 0;
+              nextUserStatus.completedAt = null;
+            } else {
+              nextUserStatus.completedAt = null;
+              nextUserStatus.progressPercent = 0;
+            }
+          } else if (field === "progressPercent") {
+            nextUserStatus.progressPercent = value;
+            if (value === 100) {
+              nextUserStatus.status = "Done";
+              nextUserStatus.completedAt = serverTimestamp();
+              nextUserStatus.completedBy = currentUser?.uid;
+            } else if (value > 0 && value < 100) {
+              // Fix: Revert status if progress is reduced
+              nextUserStatus.status = "In Progress";
+            } else {
+              nextUserStatus.status = "To-Do";
+            }
+          }
+
+          // Apply back to map
+          nextAssigneeStatus[currentUser.uid] = nextUserStatus;
+
+          // Calculate Global Status based on ALL assignees (fresh data)
+          const currentAssignees = currentData.assigneeIds || [];
+          const updates = {
+            [`assigneeStatus.${currentUser.uid}`]: nextUserStatus
+          };
+
+          if (currentAssignees.length > 0) {
+            const userStatValues = currentAssignees.map(uid => nextAssigneeStatus[uid] || {});
+            const allDone = userStatValues.every(s => s.status === "Done");
+            const anyInProgress = userStatValues.some(s =>
+              s.status === "In Progress" || s.status === "In Review" || s.status === "Done"
+            );
+
+            if (allDone) {
+              updates.status = "Done";
+              updates.completedAt = serverTimestamp();
+              updates.progressPercent = 100;
+            } else if (anyInProgress) {
+              updates.status = "In Progress";
+              updates.completedAt = null;
+            } else {
+              updates.status = "To-Do";
+              updates.completedAt = null;
+            }
+          }
+
+          transaction.update(taskRef, updates);
+        });
+
+        console.log("Transaction completed successfully");
       } else {
         // Global update (Admin or Self Task)
         const updates = { [field]: value };
@@ -492,6 +746,35 @@ const TaskViewModal = ({
     }
   };
 
+  // Simple Markdown Renderer Helper
+  const renderMarkdown = (text) => {
+    if (!text) return null;
+
+    // Split by newlines first to handle blocks
+    return text.split('\n').map((line, i) => {
+      // Headers
+      if (line.startsWith('# ')) return <h3 key={i} className="text-lg font-bold mt-4 mb-2">{line.slice(2)}</h3>;
+      if (line.startsWith('## ')) return <h4 key={i} className="text-md font-bold mt-3 mb-1">{line.slice(3)}</h4>;
+
+      // List items
+      if (line.trim().startsWith('- ')) return <li key={i} className="ml-4 list-disc">{renderInlineStyles(line.trim().slice(2))}</li>;
+
+      // Regular paragraphs
+      return <p key={i} className="mb-2 min-h-[1.2em]">{renderInlineStyles(line)}</p>;
+    });
+  };
+
+  const renderInlineStyles = (text) => {
+    // Bold: **text**
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={index}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
   const handleDeleteTask = async () => {
     if (!task?.id) return;
     try {
@@ -547,14 +830,7 @@ const TaskViewModal = ({
   };
 
   // Helpers
-  const formatDate = (dateString) => {
-    if (!dateString) return "Empty";
-    const d = dateString?.toDate ? dateString.toDate() : new Date(dateString);
-    return d.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    });
-  };
+
 
   const formatDateTime = (val) => {
     if (!val) return "";
@@ -568,19 +844,47 @@ const TaskViewModal = ({
   };
 
   const getUserDisplayName = (item) => {
-    if (!item?.userId || item.userId === "system") return "System";
-
-    // Check users prop
-    const user = users.find(u => u.id === item.userId);
-    if (user) return user.name || user.displayName || "Unknown User";
-
-    // Check clients prop
-    const client = clients.find(c => c.id === item.userId);
-    if (client) return client.clientName || "Unknown Client";
-
-    // Fallback to existing name or ID
     return item.userName || "Unknown";
   };
+
+  const getUserDetails = (userId) => {
+    if (!userId || userId === "system") return { name: "System", avatar: null };
+    const user = users.find(u => u.id === userId);
+    if (user) return user;
+    const client = clients.find(c => c.id === userId);
+    if (client) return { ...client, name: client.clientName };
+    return { name: "Unknown" };
+  };
+
+  const renderCommentText = (text) => {
+    if (!text) return "";
+
+    // Split by mention pattern @Name
+    const parts = text.split(/(@[\w\s]+)/g);
+
+    return parts.map((part, index) => {
+      // Check if this part matches our mention format (heuristic)
+      if (part.startsWith("@")) {
+        const nameToCheck = part.substring(1).trim();
+        const userExists = users.some(u =>
+          (u.name && u.name.toLowerCase() === nameToCheck.toLowerCase()) ||
+          (u.displayName && u.displayName.toLowerCase() === nameToCheck.toLowerCase())
+        ) || clients.some(c => c.clientName && c.clientName.toLowerCase() === nameToCheck.toLowerCase());
+
+        if (userExists) {
+          return (
+            <span key={index} className="text-indigo-600 font-semibold bg-indigo-50 rounded px-1">
+              {part}
+            </span>
+          );
+        }
+      }
+      return part;
+    });
+  };
+
+
+
 
   // Determine the status to display for the current user
   const displayStatus = useMemo(() => {
@@ -612,10 +916,11 @@ const TaskViewModal = ({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
-        className="bg-white/95 [.dark_&]:bg-[#181B2A]/95 backdrop-blur-sm rounded-2xl shadow-2xl shadow-indigo-500/20 w-full max-w-[1100px] h-[90vh] flex flex-col overflow-hidden border border-white/20 [.dark_&]:border-white/10"
+
+        className="bg-white/95 [.dark_&]:bg-[#181B2A]/95 backdrop-blur-sm rounded-2xl shadow-2xl shadow-indigo-500/20 w-[95vw] max-w-[95vw] h-[90vh] flex flex-col overflow-hidden border border-white/20 [.dark_&]:border-white/10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* --- Header --- */}
@@ -665,7 +970,7 @@ const TaskViewModal = ({
               </button>
             )}
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 rounded-full text-gray-400 transition-colors ml-2"
             >
               <FaTimes className="text-lg" />
@@ -676,11 +981,252 @@ const TaskViewModal = ({
         {/* --- Main Body (Responsive Split View) --- */}
         <div className="flex flex-col lg:flex-row flex-1 overflow-y-auto lg:overflow-hidden">
           {/* LEFT PANEL: Content */}
-          <div className="flex-1 p-6 lg:p-8 lg:overflow-y-auto border-b lg:border-b-0 lg:border-r border-gray-100/50 order-2 lg:order-1">
+          <div className="flex-1 p-6 lg:p-8 lg:overflow-y-auto border-b lg:border-b-0 lg:border-r border-gray-100/50">
             {/* Title */}
             <h1 className="text-3xl font-bold text-gray-900 [.dark_&]:text-white mb-6 leading-tight">
               {task.title}
             </h1>
+
+            {/* Relocated Metadata Grid (Left Panel) */}
+            <div className="bg-white/50 [.dark_&]:bg-white/5 backdrop-blur-sm rounded-xl p-5 mb-8 border border-gray-100/50 [.dark_&]:border-white/10 shadow-sm">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                {/* Status */}
+                <div className="group relative">
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Status</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+                      className={`flex-1 px-3 py-2 rounded-lg text-xs border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] flex items-center justify-between hover:border-indigo-300 transition-colors min-w-0 ${getStatusBadge(displayStatus)}`}
+                    >
+                      <span className="font-medium truncate [.dark_&]:text-white">{displayStatus}</span>
+                      <FaChevronDown className="text-[10px] opacity-50 ml-1 shrink-0" />
+                    </button>
+                    {statusOptions.includes("Done") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                          if (norm("Done") === "done") { setShowCompletionModal(true); }
+                          else { handleQuickUpdate("status", "Done"); }
+                        }}
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-200 shrink-0 ${String(displayStatus || "").toLowerCase().includes("done") ? "bg-emerald-500 text-white border-emerald-500" : "bg-white border-gray-200 text-gray-400 hover:border-emerald-400 hover:text-emerald-500"}`}
+                        title="Mark as Done"
+                      >
+                        <FaCheck className="text-xs" />
+                      </button>
+                    )}
+                  </div>
+                  {showStatusDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowStatusDropdown(false)}></div>
+                      <div className="absolute top-full left-0 w-48 mt-1 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-100 [.dark_&]:border-white/10 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                        {/* Ensure Done is always an option */}
+                        {Array.from(new Set([...statusOptions, "Done"])).map(status => (
+                          <button
+                            key={status}
+                            onClick={() => { handleQuickUpdate("status", status); setShowStatusDropdown(false); }}
+                            className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 [.dark_&]:hover:bg-white/5 flex items-center justify-between text-gray-700 [.dark_&]:text-gray-200"
+                          >
+                            {status}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Priority */}
+                <div className="relative">
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Priority</label>
+                  <button
+                    onClick={() => setShowPriorityDropdown(!showPriorityDropdown)}
+                    className={`w-full px-3 py-2 rounded-lg text-xs border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] flex items-center justify-between hover:border-indigo-300 transition-colors ${getPriorityBadge(task.priority)}`}
+                  >
+                    <span className="font-medium truncate [.dark_&]:text-white">{task.priority || "Medium"}</span>
+                    <FaChevronDown className="text-[10px] opacity-50 ml-1 shrink-0" />
+                  </button>
+                  {showPriorityDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowPriorityDropdown(false)}></div>
+                      <div className="absolute top-full left-0 w-32 mt-1 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-100 [.dark_&]:border-white/10 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                        {["Low", "Medium", "High"].map(p => (
+                          <button key={p} onClick={() => { handleQuickUpdate("priority", p); setShowPriorityDropdown(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 [.dark_&]:hover:bg-white/5 text-gray-700 [.dark_&]:text-gray-200">{p}</button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Dates */}
+                <div className="relative">
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Dates</label>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2 text-xs text-gray-600 [.dark_&]:text-gray-400">
+                      <span className="w-8 text-[10px] uppercase tracking-wider opacity-70">Start</span>
+                      <div className="relative cursor-pointer hover:text-indigo-600">
+                        {formatDate(task.assignedDate)}
+                        {canEdit && <input type="date" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleQuickUpdate("assignedDate", e.target.value)} />}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-600 [.dark_&]:text-gray-400">
+                      <span className="w-8 text-[10px] uppercase tracking-wider opacity-70">Due</span>
+                      <div className={`relative cursor-pointer hover:text-indigo-600 ${task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "Done" ? "text-red-500 font-bold" : ""}`}>
+                        {formatDate(task.dueDate)}
+                        {canEdit && <input type="date" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleQuickUpdate("dueDate", e.target.value)} />}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Assignees */}
+                <div className="relative col-span-1 md:col-span-2 lg:col-span-1">
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Assignees</label>
+                  <div className="flex flex-col gap-2">
+                    {/* Avatar Stack for Read-Only View */}
+                    <div
+                      className={`flex items-center -space-x-2 cursor-pointer p-1 rounded-full hover:bg-gray-100 [.dark_&]:hover:bg-white/5 transition-colors w-fit ${localAssigneesResolved.length === 0 ? "pl-2" : ""}`}
+                      onClick={() => setShowAssigneePopover(!showAssigneePopover)}
+                      title="Manage Assignees"
+                    >
+                      {localAssigneesResolved.length > 0 ? (
+                        <>
+                          {localAssigneesResolved.slice(0, 4).map((u, i) => (
+                            <UserAvatar
+                              key={i}
+                              user={u}
+                              size="sm"
+                              showStatusDot={true}
+                              status={u.status}
+                              className="border-2 border-white [.dark_&]:border-[#181B2A]"
+                            />
+                          ))}
+                          {localAssigneesResolved.length > 4 && (
+                            <div className="w-8 h-8 rounded-full border-2 border-white [.dark_&]:border-[#181B2A] bg-gray-100 [.dark_&]:bg-gray-700 flex items-center justify-center text-[10px] font-bold text-gray-500 [.dark_&]:text-gray-300">
+                              +{localAssigneesResolved.length - 4}
+                            </div>
+                          )}
+                          <div className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 [.dark_&]:border-gray-600 bg-transparent flex items-center justify-center text-gray-400 ml-2 hover:border-indigo-400 hover:text-indigo-500 transition-colors z-0">
+                            <FaPlus className="text-xs" />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                          <div className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 [.dark_&]:border-gray-600 flex items-center justify-center bg-transparent"><FaPlus className="text-xs" /></div>
+                          <span>Add Assignee</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {showAssigneePopover && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowAssigneePopover(false)}></div>
+                      <div className="absolute top-full left-0 mt-2 w-72 bg-white [.dark_&]:bg-[#1e212b] rounded-xl shadow-2xl border border-gray-200 [.dark_&]:border-white/10 z-50 p-0 overflow-hidden animate-in fade-in zoom-in-95 duration-100 ring-1 ring-black/5">
+                        {/* Search Header */}
+                        <div className="p-3 border-b border-gray-200 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-white/5">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="Search users..."
+                              className="w-full bg-white [.dark_&]:bg-[#15171e] text-gray-900 [.dark_&]:text-gray-200 text-xs px-8 py-2 rounded-lg border border-gray-200 [.dark_&]:border-transparent focus:border-indigo-500 outline-none transition-all placeholder:text-gray-400 [.dark_&]:placeholder:text-gray-500"
+                              autoFocus
+                            />
+                            <svg className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-gray-400 [.dark_&]:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                          </div>
+                        </div>
+
+                        {/* Current Assignees Section */}
+                        {localAssigneesResolved.length > 0 && (
+                          <div className="p-2">
+                            <div className="px-2 py-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Assigned</div>
+                            {localAssigneesResolved.map((u, i) => (
+                              <div key={u.id} className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-50 [.dark_&]:hover:bg-white/5 group transition-colors cursor-pointer" onClick={() => handleToggleAssignee(u, 'user')}>
+                                <div className="flex items-center gap-3">
+                                  <UserAvatar
+                                    user={u}
+                                    size="sm"
+                                    showStatusDot={true}
+                                    status={u.status}
+                                  />
+                                  <div className="flex flex-col">
+                                    <span className="text-sm text-gray-900 [.dark_&]:text-gray-200 font-medium leading-tight">{u.name}</span>
+                                    {u.status && <span className={`text-[10px] font-medium ${u.status === "Done" ? "text-green-600 [.dark_&]:text-green-500" : u.status === "In Progress" ? "text-amber-600 [.dark_&]:text-amber-500" : "text-gray-500"}`}>{u.status}</span>}
+                                  </div>
+                                </div>
+                                <FaCheck className="text-indigo-600 [.dark_&]:text-indigo-400 text-xs" />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Divider */}
+                        {localAssigneesResolved.length > 0 && <div className="h-px bg-gray-200 [.dark_&]:bg-white/10 mx-2 my-1"></div>}
+
+                        {/* All Users List */}
+                        <div className="p-2 max-h-[200px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-200 [.dark_&]:scrollbar-thumb-white/10">
+                          <div className="px-2 py-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Suggestions</div>
+                          {users.filter(u => !localAssigneesResolved.some(a => a.id === u.id)).map(u => (
+                            <div key={u.id} className="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-gray-50 [.dark_&]:hover:bg-white/5 cursor-pointer transition-colors" onClick={() => handleToggleAssignee(u, 'user')}>
+                              <UserAvatar user={u} size="sm" />
+                              <span className="text-sm text-gray-900 [.dark_&]:text-gray-300">{u.name}</span>
+                            </div>
+                          ))}
+                        </div>
+
+
+                      </div>
+                    </>
+                  )}
+
+                </div>
+
+                {/* Time Tracker */}
+                <div className="relative">
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">My Time</label>
+                  <div className="min-h-[34px] flex items-center gap-2">
+                    <button
+                      onClick={handleToggleTimer}
+                      disabled={!canEdit}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isTracking ? "bg-red-50 text-red-600 animate-pulse-red border border-red-200" : "bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100"}`}
+                      title={isTracking ? "Stop Timer" : "Start Timer"}
+                    >
+                      {isTracking ? <FaStop className="text-xs" /> : <FaPlay className="text-[10px]" />}
+                    </button>
+                    <div className="flex flex-col">
+                      <span className={`text-xs font-mono font-medium leading-none ${isTracking ? "text-indigo-600" : "text-gray-600 [.dark_&]:text-gray-400"}`}>
+                        {formatDuration(elapsedTime)}
+                      </span>
+                      {globalTotalTime > 0 && (
+                        <span className="text-[10px] text-gray-400 font-mono leading-none mt-1" title="Total accumulated time by everyone">
+                          Total: {formatDuration(globalTotalTime)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Time Estimate */}
+                <div className="relative">
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Est. Time</label>
+                  <div className="min-h-[34px]">
+                    <TimeEstimateInput
+                      value={task.timeEstimate || 0}
+                      onChange={handleUpdateTimeEstimate}
+                      readOnly={!canEdit}
+                    />
+                  </div>
+                </div>
+
+                {/* Tags */}
+                <div className="relative">
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Tags</label>
+                  <div className="min-h-[34px]">
+                    <TagInput tags={task.tags || []} onAdd={handleAddTag} onRemove={handleRemoveTag} readOnly={!canEdit} simple />
+                  </div>
+                </div>
+
+              </div>
+            </div>
 
             {/* Description Section */}
             <div className="mb-8 group">
@@ -733,7 +1279,7 @@ const TaskViewModal = ({
                   onClick={() => canEdit && setIsEditingDesc(true)}
                 >
                   {task.description ? (
-                    <p className="whitespace-pre-wrap break-words">{task.description}</p>
+                    <div className="whitespace-pre-wrap break-words">{renderMarkdown(task.description)}</div>
                   ) : (
                     <span className="text-gray-400 italic">
                       No description provided. Click to add one.
@@ -754,12 +1300,26 @@ const TaskViewModal = ({
                   {(task.subtasks || []).length} completed
                 </span>
               </div>
-              {/* Progress Bar */}
-              <div className="h-1.5 w-full bg-gray-100 [.dark_&]:bg-white/10 rounded-full mb-4 overflow-hidden">
-                <div
-                  className="h-full bg-green-500 transition-all duration-500 ease-out"
-                  style={{ width: `${(task.subtasks || []).length > 0 ? ((task.subtasks || []).filter((s) => s.completed).length / (task.subtasks || []).length) * 100 : 0}%` }}
-                />
+              {/* Circular Progress Ring */}
+              <div className="flex items-center gap-4 mb-4">
+                <div className="relative w-12 h-12 flex items-center justify-center">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-gray-200 [.dark_&]:text-white/10" />
+                    <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="transparent"
+                      strokeDasharray={2 * Math.PI * 20}
+                      strokeDashoffset={2 * Math.PI * 20 - ((((task.subtasks || []).filter(s => s.completed).length) / ((task.subtasks || []).length || 1)) * 2 * Math.PI * 20)}
+                      className="text-green-500 transition-all duration-500 ease-out" />
+                  </svg>
+                  <span className="absolute text-[10px] font-bold text-gray-600 [.dark_&]:text-white">
+                    {Math.round(((task.subtasks || []).filter(s => s.completed).length / ((task.subtasks || []).length || 1)) * 100)}%
+                  </span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-gray-500 font-medium">Progress</p>
+                  <p className="text-sm font-bold text-gray-800 [.dark_&]:text-white">
+                    Completed {(task.subtasks || []).filter(s => s.completed).length} of {(task.subtasks || []).length} subtasks
+                  </p>
+                </div>
               </div>
               <div className="bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 rounded-xl overflow-hidden">
                 {(task.subtasks || []).length > 0 ? (
@@ -939,418 +1499,242 @@ const TaskViewModal = ({
             </div>
           </div>
 
-          {/* RIGHT PANEL: Metadata & Activity */}
-          <div className="w-full lg:w-[350px] bg-gray-50/50 [.dark_&]:bg-[#1F2234] flex flex-col shrink-0 lg:overflow-y-auto order-1 lg:order-2">
-            {/* Metadata Grid */}
-            <div className="p-6 border-b border-gray-200 [.dark_&]:border-white/10 space-y-5 bg-white [.dark_&]:bg-[#181B2A]">
-              {/* Status & Priority Row */}
-              <div className="space-y-4">
-                {/* Status Section */}
-                <div className="group relative">
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Status
-                  </label>
-                  <div className="flex items-center gap-2">
-                    {/* Status dropdown trigger (without Done in menu) */}
-                    <button
-                      onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                      className={`flex-1 px-3 py-2 rounded-lg text-xs border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] flex items-center justify-between hover:border-indigo-300 transition-colors min-w-0 ${getStatusBadge(displayStatus)}`}
-                      title={displayStatus}
-                    >
-                      <span className="font-medium truncate [.dark_&]:text-white">{displayStatus}</span>
-                      <FaChevronDown className="text-[10px] opacity-50 ml-1 shrink-0" />
-                    </button>
 
-                    {/* Separate Done control */}
-                    {statusOptions.includes("Done") && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          console.log("Status Done via pill in metadata row");
-                          // Use same completion path as other status Done flows
-                          const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-                          if (norm("Done") === "done") {
-                            setShowCompletionModal(true);
-                          } else {
-                            handleQuickUpdate("status", "Done");
-                          }
-                        }}
-                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all duration-200 whitespace-nowrap shrink-0 ${String(displayStatus || "").toLowerCase().replace(/[^a-z0-9]/g, "") === "done"
-                          ? "bg-emerald-500 text-white border-emerald-500 shadow-md"
-                          : "bg-emerald-50 [.dark_&]:bg-emerald-900/30 text-emerald-700 [.dark_&]:text-emerald-400 border-emerald-200 [.dark_&]:border-emerald-700 hover:bg-emerald-100 [.dark_&]:hover:bg-emerald-900/50 hover:border-emerald-300 opacity-70 hover:opacity-100 cursor-pointer"
-                          }`}
-                      >
-                        Done
-                      </button>
-                    )}
+
+          {/* --- RIGHT PANEL: Activity Only (Responsive) --- */}
+          <div className="lg:w-[400px] flex flex-col bg-gray-50/50 [.dark_&]:bg-black/20 border-l border-gray-100/50 [.dark_&]:border-white/10 order-1 lg:order-2 h-[50vh] lg:h-auto">
+            {/* Activity Header */}
+            <div className="p-4 border-b border-gray-100/50 [.dark_&]:border-white/10 bg-white/80 [.dark_&]:bg-[#181B2A]/80 backdrop-blur-md sticky top-0 z-10 flex justify-between items-center">
+              <h3 className="text-sm font-bold text-gray-700 [.dark_&]:text-white flex items-center gap-2">
+                <FaHistory className="text-indigo-500" />
+                Activity & Comments
+              </h3>
+            </div>
+
+            {/* Activity List */}
+            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8 relative custom-scrollbar">
+              {/* Vertical Timeline Line */}
+              <div className="absolute left-[39px] top-6 bottom-6 w-0.5 bg-gray-200 [.dark_&]:bg-white/5 z-0"></div>
+
+              {Object.keys(groupedTimeline).length === 0 ? (
+                <div className="text-center py-12 text-gray-400 relative z-10">
+                  <div className="w-12 h-12 bg-gray-100 [.dark_&]:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <FaHistory className="text-gray-300 [.dark_&]:text-gray-600" />
                   </div>
-
-                  {showStatusDropdown && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-10"
-                        onClick={() => setShowStatusDropdown(false)}
-                      ></div>
-                      <div className="absolute top-full left-0 w-full mt-1 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-100 [.dark_&]:border-white/10 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                        {statusOptions
-                          .filter((st) => st !== "Done")
-                          .map((status) => (
-                            <button
-                              key={status}
-                              onClick={() => {
-                                console.log(`Status dropdown clicked: ${status}`);
-                                handleQuickUpdate("status", status);
-                                setShowStatusDropdown(false);
-                              }}
-                              className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 [.dark_&]:hover:bg-white/5 flex items-center justify-between ${String(displayStatus || "")
-                                .toLowerCase()
-                                .replace(/[^a-z0-9]/g, "") ===
-                                String(status || "")
-                                  .toLowerCase()
-                                  .replace(/[^a-z0-9]/g, "")
-                                ? "bg-indigo-50 text-indigo-700 font-medium"
-                                : "text-gray-700 [.dark_&]:text-gray-200"
-                                }`}
-                            >
-                              {status}
-                              {String(displayStatus || "")
-                                .toLowerCase()
-                                .replace(/[^a-z0-9]/g, "") ===
-                                String(status || "")
-                                  .toLowerCase()
-                                  .replace(/[^a-z0-9]/g, "") && <FaCheck />}
-                            </button>
-                          ))}
-                      </div>
-                    </>
-                  )}
+                  <p className="text-sm">No activity yet</p>
                 </div>
+              ) : (
+                Object.entries(groupedTimeline).map(([dateLabel, items]) => (
+                  <div key={dateLabel} className="relative z-10">
+                    <div className="sticky top-0 bg-gray-50/95 [.dark_&]:bg-[#1F2234]/95 backdrop-blur py-1 mb-4 z-20 flex justify-center">
+                      <span className="text-[10px] font-bold text-gray-500 [.dark_&]:text-gray-400 bg-gray-200/50 [.dark_&]:bg-white/10 px-3 py-1 rounded-full uppercase tracking-wider shadow-sm border border-white/50 [.dark_&]:border-white/5">
+                        {dateLabel}
+                      </span>
+                    </div>
 
-                {/* Priority Section */}
-                <div className="relative">
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Priority
-                  </label>
+                    <div className="space-y-6">
+                      {items.map((item, index) => {
+                        const isComment = item.type === "comment";
+                        const isCurrentUser = item.userId === currentUser?.uid;
+
+                        // Determine Icon & Color
+                        let Icon = FaHistory;
+                        let iconBg = "bg-gray-100 text-gray-500 border-gray-200 [.dark_&]:bg-white/10 [.dark_&]:text-gray-400 [.dark_&]:border-white/10";
+
+                        if (isComment) {
+                          // For comments we use the avatar, but we can set a fallback icon just in case
+                          Icon = FaComment;
+                        } else if (item.type === "created") {
+                          Icon = FaPlus;
+                          iconBg = "bg-green-100 text-green-600 border-green-200";
+                        } else if (item.type === "completed") {
+                          Icon = FaCheck;
+                          iconBg = "bg-emerald-100 text-emerald-600 border-emerald-200";
+                        } else if (item.action === "status_updated") {
+                          Icon = FaExchangeAlt;
+                          iconBg = "bg-blue-100 text-blue-600 border-blue-200";
+                        } else if (item.action === "assignee_updated") {
+                          Icon = FaUserPlus;
+                          iconBg = "bg-purple-100 text-purple-600 border-purple-200";
+                        }
+
+
+                        return (
+                          <div key={item.id || index} className="flex gap-4 group">
+
+                            {/* Icon / Avatar Column */}
+                            <div className="relative z-10 shrink-0">
+                              {isComment ? (
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-md ring-2 ring-white [.dark_&]:ring-[#181B2A]">
+                                  {getUserDisplayName(item).substring(0, 2).toUpperCase()}
+                                </div>
+                              ) : (
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center border shadow-sm ${iconBg} z-10 bg-white`}>
+                                  <Icon className="text-sm" />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Content Column */}
+                            <div className="flex-1 min-w-0 pt-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-bold text-gray-900 [.dark_&]:text-white">
+                                  {getUserDisplayName(item)}
+                                </span>
+                                <span className="text-[10px] text-gray-400">
+                                  {formatDateTime(item.createdAt).split(',')[1]}
+                                </span>
+                              </div>
+
+                              {isComment ? (
+                                <div className={`text-sm px-4 py-3 rounded-2xl rounded-tl-none shadow-sm ${isCurrentUser
+                                  ? "bg-indigo-50 text-gray-800 border border-indigo-100 [.dark_&]:bg-indigo-900/20 [.dark_&]:text-indigo-100 [.dark_&]:border-indigo-500/20"
+                                  : "bg-white text-gray-700 border border-gray-200 [.dark_&]:bg-white/5 [.dark_&]:text-gray-300 [.dark_&]:border-white/10"
+                                  }`}>
+                                  <div className="whitespace-pre-wrap leading-relaxed">{renderMarkdown ? renderMarkdown(item.text) : item.text}</div>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-gray-600 [.dark_&]:text-gray-400 bg-gray-50 [.dark_&]:bg-white/5 px-3 py-2 rounded-lg border border-gray-100 [.dark_&]:border-white/5">
+                                  {item.details}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
+
+              {(comments.length === visibleItems || activities.length === visibleItems) && (
+                <div className="text-center pt-4 relative z-20">
                   <button
-                    onClick={() => setShowPriorityDropdown(!showPriorityDropdown)}
-                    className={`w-full px-3 py-2 rounded-lg text-xs border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] flex items-center justify-between hover:border-indigo-300 transition-colors ${getPriorityBadge(task.priority)}`}
-                    title={task.priority || "Medium"}
+                    onClick={() => setVisibleItems(prev => prev + 20)}
+                    className="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-full font-medium transition-colors"
                   >
-                    <span className="font-medium truncate [.dark_&]:text-white">{task.priority || "Medium"}</span>
-                    <FaChevronDown className="text-[10px] opacity-50 ml-1 shrink-0" />
+                    Load earlier history
                   </button>
+                </div>
+              )}
+            </div>
 
-                  {showPriorityDropdown && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setShowPriorityDropdown(false)}></div>
-                      <div className="absolute top-full left-0 w-full mt-1 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-100 [.dark_&]:border-white/10 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                        {["Low", "Medium", "High"].map(priority => (
+            {/* Comment Input Footer */}
+            <div className="p-4 border-t border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] sticky bottom-0 z-10 transition-all">
+              <div className="flex gap-2 items-end relative">
+                {/* Mention Suggestions Popover */}
+                {showMentions && (() => {
+                  const filteredUsers = [
+                    ...users.filter(u => {
+                      if (!project) return true;
+                      return (
+                        u.id === project.projectManagerId ||
+                        (project.assigneeIds && project.assigneeIds.includes(u.id))
+                      );
+                    }).map(u => ({ ...u, type: 'user', label: u.name || u.displayName })),
+                    ...clients.filter(c => {
+                      if (!project) return true;
+                      return c.id === project.clientId;
+                    }).map(c => ({ ...c, type: 'client', label: c.clientName }))
+                  ].filter(u => u.label?.toLowerCase().includes(mentionQuery.toLowerCase()));
+
+                  if (filteredUsers.length === 0) return null;
+
+                  return (
+                    <div className="absolute bottom-full left-0 mb-2 w-64 bg-white [.dark_&]:bg-[#1F2234] rounded-xl shadow-2xl border border-gray-100 [.dark_&]:border-white/10 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+                      <div className="max-h-[200px] overflow-y-auto p-1 custom-scrollbar">
+                        {filteredUsers.map((u, idx) => (
                           <button
-                            key={priority}
+                            key={`${u.type}-${u.id}`}
+                            className={`w-full text-left px-3 py-2 text-xs rounded-lg flex items-center gap-2 transition-colors ${idx === mentionIndex ? "bg-indigo-50 text-indigo-700" : "hover:bg-gray-50 [.dark_&]:hover:bg-white/5 text-gray-700 [.dark_&]:text-gray-200"}`}
                             onClick={() => {
-                              handleQuickUpdate("priority", priority);
-                              setShowPriorityDropdown(false);
+                              const beforeMention = commentText.substring(0, commentText.lastIndexOf("@", cursorPosition - 1));
+                              const afterMention = commentText.substring(cursorPosition);
+                              const newText = `${beforeMention}@${u.label} ${afterMention}`;
+                              setCommentText(newText);
+                              setShowMentions(false);
+                              setMentionQuery("");
+                              // Move cursor to end of inserted mention
+                              // Ideally we'd set input ref selection too
                             }}
-                            className={`w-full text-left px-3 py-2 text-xs hover:bg-gray-50 [.dark_&]:hover:bg-white/5 flex items-center justify-between ${task.priority === priority ? "bg-indigo-50 text-indigo-700 font-medium" : "text-gray-700 [.dark_&]:text-gray-200"}`}
                           >
-                            {priority}
-                            {task.priority === priority && <FaCheck />}
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${idx === mentionIndex ? "bg-indigo-200 text-indigo-700" : "bg-gray-100 text-gray-500"}`}>
+                              {u.label?.[0]}
+                            </div>
+                            <span className="truncate">{u.label}</span>
                           </button>
                         ))}
                       </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Assignees */}
-              <div className="relative">
-                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">
-                  Assignees
-                </label>
-                <div className="flex flex-wrap gap-2 min-h-[32px] items-center">
-                  {localAssigneesResolved.length > 0 ? (
-                    localAssigneesResolved.map((u, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-2 px-2 py-1 bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 rounded-full shadow-sm"
-                      >
-                        <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold">
-                          {u.name?.[0]}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-xs text-gray-700 [.dark_&]:text-white max-w-[80px] truncate leading-none">
-                            {u.name}
-                          </span>
-                          <span className={`text-[9px] font-medium ${u.status === 'Done' ? 'text-green-600' : 'text-gray-400'}`}>
-                            {u.status || 'To-Do'}
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <span className="text-xs text-gray-400 italic">Unassigned</span>
-                  )}
-                  {canEdit && task.source !== "self" ? (
-                    <button
-                      onClick={() => setShowAssigneePopover(!showAssigneePopover)}
-                      className={`w-6 h-6 flex items-center justify-center rounded-full border border-dashed transition-all ${showAssigneePopover ? "border-indigo-500 text-indigo-600 bg-indigo-50" : "border-gray-300 text-gray-400 hover:text-indigo-600 hover:border-indigo-400"}`}
-                    >
-                      +
-                    </button>
-                  ) : null}
-                </div>
-
-                {/* Quick Assign Popover */}
-                {showAssigneePopover && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setShowAssigneePopover(false)}></div>
-                    <div className="absolute top-full left-0 mt-2 w-64 bg-white [.dark_&]:bg-[#1F2234] rounded-xl shadow-2xl border border-gray-100 [.dark_&]:border-white/10 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100 flex flex-col max-h-[300px]">
-                      <div className="p-2 border-b border-gray-50 [.dark_&]:border-white/10 bg-gray-50/50 [.dark_&]:bg-white/5">
-                        <input
-                          type="text"
-                          placeholder="Search users..."
-                          className="w-full px-2 py-1 text-xs bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 rounded-md focus:outline-none focus:border-indigo-500 [.dark_&]:text-white"
-                          autoFocus
-                        />
-                      </div>
-                      <div className="overflow-y-auto flex-1 p-1">
-                        <div className="px-2 py-1 text-[10px] font-bold text-gray-400 uppercase">Resources</div>
-                        {users.map(u => {
-                          const isSelected = localAssigneesResolved.some(a => a.id === u.id);
-                          return (
-                            <button
-                              key={u.id}
-                              onClick={() => handleToggleAssignee(u, 'user')}
-                              className={`w-full text-left px-2 py-1.5 text-xs rounded-md flex items-center justify-between group ${isSelected ? "bg-indigo-50 text-indigo-700" : "hover:bg-gray-50 [.dark_&]:hover:bg-white/5 text-gray-700 [.dark_&]:text-gray-200"}`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isSelected ? "bg-indigo-200 text-indigo-700" : "bg-gray-100 text-gray-500"}`}>
-                                  {u.name?.[0]}
-                                </div>
-                                <span className="truncate max-w-[140px]">{u.name}</span>
-                              </div>
-                              {isSelected && <FaCheck className="text-indigo-600" />}
-                            </button>
-                          );
-                        })}
-
-                        {clients.length > 0 && (
-                          <>
-                            <div className="px-2 py-1 mt-2 text-[10px] font-bold text-gray-400 uppercase">Clients</div>
-                            {clients.map(c => {
-                              const isSelected = localAssigneesResolved.some(a => a.id === c.id);
-                              return (
-                                <button
-                                  key={c.id}
-                                  onClick={() => handleToggleAssignee(c, 'client')}
-                                  className={`w-full text-left px-2 py-1.5 text-xs rounded-md flex items-center justify-between group ${isSelected ? "bg-indigo-50 text-indigo-700" : "hover:bg-gray-50 [.dark_&]:hover:bg-white/5 text-gray-700 [.dark_&]:text-gray-200"}`}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isSelected ? "bg-indigo-200 text-indigo-700" : "bg-gray-100 text-gray-500"}`}>
-                                      {c.clientName?.[0]}
-                                    </div>
-                                    <span className="truncate max-w-[140px]">{c.clientName}</span>
-                                  </div>
-                                  {isSelected && <FaCheck className="text-indigo-600" />}
-                                </button>
-                              );
-                            })}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Dates */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Start Date
-                  </label>
-                  <div className="relative">
-                    <div className={`flex items-center gap-2 text-xs ${canEdit ? "text-gray-600 [.dark_&]:text-gray-400 hover:text-gray-900 [.dark_&]:hover:text-white cursor-pointer" : "text-gray-500"}`}>
-                      <FaRegCalendarAlt className="text-gray-400" />
-                      {formatDate(task.assignedDate)}
-                    </div>
-                    {canEdit && (
-                      <input
-                        type="date"
-                        value={task.assignedDate?.toDate ? task.assignedDate.toDate().toISOString().split('T')[0] : (task.assignedDate || "")}
-                        onChange={(e) =>
-                          handleQuickUpdate("assignedDate", e.target.value)
-                        }
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      />
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                    Due Date
-                  </label>
-                  <div className="relative">
-                    <div
-                      className={`flex items-center gap-2 text-xs ${task.dueDate &&
-                        new Date(task.dueDate) < new Date() &&
-                        task.status !== "Done"
-                        ? "text-red-600 font-bold"
-                        : canEdit ? "text-gray-600 [.dark_&]:text-gray-400 hover:text-gray-900 [.dark_&]:hover:text-white cursor-pointer" : "text-gray-500"
-                        }`}
-                    >
-                      <FaRegCalendarAlt
-                        className={
-                          task.dueDate &&
-                            new Date(task.dueDate) < new Date() &&
-                            task.status !== "Done"
-                            ? "text-red-500"
-                            : "text-gray-400"
-                        }
-                      />
-                      {formatDate(task.dueDate)}
-                    </div>
-                    {canEdit && (
-                      <input
-                        type="date"
-                        value={task.dueDate?.toDate ? task.dueDate.toDate().toISOString().split('T')[0] : (task.dueDate || "")}
-                        onChange={(e) =>
-                          handleQuickUpdate("dueDate", e.target.value)
-                        }
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Tags/Attributes */}
-              <div className="pt-2 border-t border-gray-100 [.dark_&]:border-white/10 space-y-3">
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">
-                    Tags
-                  </label>
-                  <TagInput
-                    tags={task.tags || []}
-                    onAdd={handleAddTag}
-                    onRemove={handleRemoveTag}
-                    readOnly={!canEdit}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">
-                    Time Estimate
-                  </label>
-                  <TimeEstimateInput
-                    value={task.timeEstimate || 0}
-                    onChange={handleUpdateTimeEstimate}
-                    readOnly={!canEdit}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Activity Stream Area */}
-            <div className="flex-1 flex flex-col bg-gray-50 [.dark_&]:bg-[#1F2234]">
-              <div className="px-4 py-3 border-b border-gray-200 [.dark_&]:border-white/10 bg-gray-50/80 [.dark_&]:bg-[#1F2234]/80 backdrop-blur sticky top-0">
-                <h3 className="text-xs font-bold text-gray-500 [.dark_&]:text-gray-400 uppercase">
-                  Activity
-                </h3>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                {timeline.map((item) => {
-                  const isComment = item.type === "comment";
-                  const isCreated = item.type === "created";
-                  const isCompleted = item.type === "completed";
-
-                  let Icon = FaHistory;
-                  let iconBg = "bg-gray-100 text-gray-400";
-
-                  if (isComment) {
-                    Icon = FaComment;
-                    iconBg = "bg-indigo-50 text-indigo-500";
-                  } else if (isCreated) {
-                    Icon = FaPlus;
-                    iconBg = "bg-green-50 text-green-500";
-                  } else if (isCompleted) {
-                    Icon = FaCheck;
-                    iconBg = "bg-green-100 text-green-600";
-                  } else if (item.action === "status_updated") {
-                    Icon = FaExchangeAlt;
-                    iconBg = "bg-blue-50 text-blue-500";
-                  } else if (item.action === "assignee_updated") {
-                    Icon = FaUserPlus;
-                    iconBg = "bg-purple-50 text-purple-500";
-                  }
-
-                  return (
-                    <div key={item.id} className={`flex gap-3 ${isComment ? "" : "opacity-75"}`}>
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${iconBg} shadow-sm`}>
-                        <Icon className="text-xs" />
-                      </div>
-                      <div className={`flex-1 ${isComment ? "bg-white [.dark_&]:bg-[#181B2A] p-3 rounded-lg shadow-sm border border-gray-100 [.dark_&]:border-white/10" : "py-1"}`}>
-                        <div className="flex justify-between items-start mb-1">
-                          <p className={`text-xs ${isComment ? "font-bold text-gray-900 [.dark_&]:text-white" : "font-medium text-gray-600 [.dark_&]:text-gray-400"}`}>
-                            {getUserDisplayName(item)}
-                            <span className="font-normal text-gray-400 ml-1">
-                              {isCreated ? "created this task" : isCompleted ? "completed this task" : isComment ? "commented" : ""}
-                            </span>
-                          </p>
-                          <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">
-                            {formatDateTime(item.createdAt)}
-                          </span>
-                        </div>
-
-                        {isComment ? (
-                          <p className="text-sm text-gray-700 [.dark_&]:text-gray-300 leading-relaxed whitespace-pre-wrap">{item.text}</p>
-                        ) : (
-                          <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">
-                            {item.details}
-                          </p>
-                        )}
-                      </div>
                     </div>
                   );
-                })}
-                {(comments.length === visibleItems || activities.length === visibleItems) && (
-                  <div className="text-center pt-2">
-                    <button
-                      onClick={() => setVisibleItems(prev => prev + 20)}
-                      className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-                    >
-                      Load more activity
-                    </button>
-                  </div>
-                )}
-              </div>
+                })()}
 
-              {/* Comment Input Footer */}
-              <div className="p-4 border-t border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] sticky bottom-0 z-10">
-                <div className="flex gap-2 items-end">
-                  <textarea
-                    placeholder="Write a comment..."
-                    className="flex-1 min-h-[40px] max-h-[120px] p-3 bg-gray-50 [.dark_&]:bg-white/5 border border-gray-200 [.dark_&]:border-white/10 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:bg-white [.dark_&]:focus:bg-[#181B2A] [.dark_&]:text-white transition-all resize-none"
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    onKeyDown={async (e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        if (commentText.trim()) {
-                          await addTaskComment(
-                            task.id,
-                            commentText.trim(),
-                            currentUser || { uid: "system", displayName: "System" },
-                            task.collectionName
-                          );
-                          setCommentText("");
-                        }
+                <textarea
+                  placeholder="Write a comment... (@ to mention)"
+                  className="flex-1 min-h-[44px] max-h-[120px] p-3 bg-gray-50 [.dark_&]:bg-white/5 border border-gray-200 [.dark_&]:border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:bg-white [.dark_&]:focus:bg-[#181B2A] [.dark_&]:text-white transition-all resize-none shadow-inner"
+                  value={commentText}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCommentText(val);
+                    setCursorPosition(e.target.selectionStart);
+
+                    const lastAt = val.lastIndexOf("@", e.target.selectionStart - 1);
+                    if (lastAt !== -1) {
+                      const query = val.substring(lastAt + 1, e.target.selectionStart);
+                      const charBeforeAt = lastAt > 0 ? val[lastAt - 1] : " ";
+
+                      if (/\s/.test(charBeforeAt)) {
+                        setMentionQuery(query);
+                        setShowMentions(true);
+                        setMentionIndex(0);
+                      } else {
+                        setShowMentions(false);
                       }
-                    }}
-                  />
-                  <button
-                    onClick={async () => {
+                    } else {
+                      setShowMentions(false);
+                    }
+                  }}
+                  onKeyDown={async (e) => {
+                    if (showMentions) {
+                      // ... mention nav logic ...
+                      const filteredUsersList = [
+                        ...users.filter(u => {
+                          if (!project) return true;
+                          return (u.id === project.projectManagerId || (project.assigneeIds && project.assigneeIds.includes(u.id)));
+                        }).map(u => ({ ...u, type: 'user', label: u.name || u.displayName })),
+                        ...clients.filter(c => {
+                          if (!project) return true;
+                          return c.id === project.clientId;
+                        }).map(c => ({ ...c, type: 'client', label: c.clientName }))
+                      ].filter(u => u.label?.toLowerCase().includes(mentionQuery.toLowerCase()));
+
+                      if (filteredUsersList.length > 0) {
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          setMentionIndex(prev => (prev + 1) % filteredUsersList.length);
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          setMentionIndex(prev => (prev - 1 + filteredUsersList.length) % filteredUsersList.length);
+                        } else if (e.key === "Enter" || e.key === "Tab") {
+                          e.preventDefault();
+                          const u = filteredUsersList[mentionIndex];
+                          if (u) {
+                            const beforeMention = commentText.substring(0, commentText.lastIndexOf("@", cursorPosition - 1));
+                            const afterMention = commentText.substring(cursorPosition);
+                            const newText = `${beforeMention}@${u.label} ${afterMention}`;
+                            setCommentText(newText);
+                            setShowMentions(false);
+                            setMentionQuery("");
+                          }
+                        } else if (e.key === "Escape") {
+                          setShowMentions(false);
+                        }
+                        return;
+                      }
+                    }
+
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
                       if (commentText.trim()) {
                         await addTaskComment(
                           task.id,
@@ -1360,78 +1744,95 @@ const TaskViewModal = ({
                         );
                         setCommentText("");
                       }
-                    }}
-                    disabled={!commentText.trim()}
-                    className={`p-3 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm ${buttonClass}`}
-                  >
-                    <FaPaperPlane className="text-sm" />
-                  </button>
-                </div>
+                    }
+                  }}
+                />
+                <button
+                  onClick={async () => {
+                    if (commentText.trim()) {
+                      await addTaskComment(
+                        task.id,
+                        commentText.trim(),
+                        currentUser || { uid: "system", displayName: "System" },
+                        task.collectionName
+                      );
+                      setCommentText("");
+                    }
+                  }}
+                  disabled={!commentText.trim()}
+                  className={`p-3 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg active:scale-95 ${buttonClass}`}
+                >
+                  <FaPaperPlane className="text-sm" />
+                </button>
               </div>
             </div>
           </div>
         </div>
 
         {/* Delete Confirmation Modal */}
-        {showDeleteConfirm && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-xl">
-            <div className="bg-white [.dark_&]:bg-[#1F2234] rounded-lg p-6 max-w-sm mx-4 shadow-xl">
-              <h3 className="text-lg font-bold text-gray-900 [.dark_&]:text-white mb-2">Delete Task?</h3>
-              <p className="text-sm text-gray-600 [.dark_&]:text-gray-300 mb-4">
-                Are you sure you want to delete "{task.title}"? This action cannot be undone.
-              </p>
-              <div className="flex gap-2 justify-end">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setShowDeleteConfirm(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => {
-                    setShowDeleteConfirm(false);
-                    handleDeleteTask();
-                  }}
-                >
-                  Delete
-                </Button>
+        {
+          showDeleteConfirm && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-xl">
+              <div className="bg-white [.dark_&]:bg-[#1F2234] rounded-lg p-6 max-w-sm mx-4 shadow-xl">
+                <h3 className="text-lg font-bold text-gray-900 [.dark_&]:text-white mb-2">Delete Task?</h3>
+                <p className="text-sm text-gray-600 [.dark_&]:text-gray-300 mb-4">
+                  Are you sure you want to delete "{task.title}"? This action cannot be undone.
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowDeleteConfirm(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      handleDeleteTask();
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )
+        }
 
         {/* Archive Confirmation Modal */}
-        {showArchiveConfirm && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-xl">
-            <div className="bg-white [.dark_&]:bg-[#1F2234] rounded-lg p-6 max-w-sm mx-4 shadow-xl">
-              <h3 className="text-lg font-bold text-gray-900 [.dark_&]:text-white mb-2">Archive Task?</h3>
-              <p className="text-sm text-gray-600 [.dark_&]:text-gray-300 mb-4">
-                Are you sure you want to archive "{task.title}"? You can unarchive it later from the archived tasks view.
-              </p>
-              <div className="flex gap-2 justify-end">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setShowArchiveConfirm(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setShowArchiveConfirm(false);
-                    handleArchiveTask();
-                  }}
-                >
-                  Archive
-                </Button>
+        {
+          showArchiveConfirm && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10 rounded-xl">
+              <div className="bg-white [.dark_&]:bg-[#1F2234] rounded-lg p-6 max-w-sm mx-4 shadow-xl">
+                <h3 className="text-lg font-bold text-gray-900 [.dark_&]:text-white mb-2">Archive Task?</h3>
+                <p className="text-sm text-gray-600 [.dark_&]:text-gray-300 mb-4">
+                  Are you sure you want to archive "{task.title}"? You can unarchive it later from the archived tasks view.
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowArchiveConfirm(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setShowArchiveConfirm(false);
+                      handleArchiveTask();
+                    }}
+                  >
+                    Archive
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )
+        }
 
         {/* Completion Comment Modal */}
         <CompletionCommentModal

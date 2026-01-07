@@ -18,7 +18,9 @@ import {
 } from "react-icons/fa";
 import { MdReplayCircleFilled } from "react-icons/md";
 import { getPriorityBadge, getStatusBadge } from "../../utils/colorMaps";
+import UserAvatar from "./UserAvatar";
 import { formatDate } from "../../utils/formatDate";
+import { useAuthContext } from "../../context/AuthContext";
 
 const TaskRow = ({
     task,
@@ -33,6 +35,18 @@ const TaskRow = ({
     onStatusChange,
     showActions = true,
 }) => {
+    const { user: currentUser } = useAuthContext();
+
+    // Calculate personalized status
+    const displayStatus = (() => {
+        if (!currentUser?.uid) return task.status;
+        const isAssignee = task.assigneeIds?.includes(currentUser.uid);
+        if (isAssignee && task.assigneeStatus?.[currentUser.uid]) {
+            return task.assigneeStatus[currentUser.uid].status || "To-Do";
+        }
+        return task.status;
+    })();
+
     return (
         <div
             onClick={() => onView(task)}
@@ -65,13 +79,12 @@ const TaskRow = ({
                     <>
                         <div className="flex -space-x-2">
                             {assigneesResolved.slice(0, 3).map((u, i) => (
-                                <div
+                                <UserAvatar
                                     key={i}
-                                    className="w-6 h-6 rounded-full bg-indigo-100 [.dark_&]:bg-indigo-900/30 border border-white [.dark_&]:border-transparent flex items-center justify-center text-[10px] text-indigo-700 [.dark_&]:text-indigo-300 font-bold uppercase"
-                                    title={u?.name || "Unknown"}
-                                >
-                                    {u?.name ? u.name[0] : "?"}
-                                </div>
+                                    user={u}
+                                    size="xs"
+                                    className="border border-white [.dark_&]:border-transparent"
+                                />
                             ))}
                         </div>
                         <div className="flex flex-col min-w-0">
@@ -130,7 +143,7 @@ const TaskRow = ({
                         {/* Date Text */}
                         <span
                             className={
-                                (task.dueDate?.toDate ? task.dueDate.toDate() : new Date(task.dueDate)) < new Date() && task.status !== "Done"
+                                (task.dueDate?.toDate ? task.dueDate.toDate() : new Date(task.dueDate)) < new Date() && displayStatus !== "Done"
                                     ? "text-red-500 [.dark_&]:text-red-400 font-medium text-xs"
                                     : "text-xs [.dark_&]:text-gray-400"
                             }
@@ -164,17 +177,17 @@ const TaskRow = ({
             <div>
                 <span
                     className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide ${getStatusBadge(
-                        task.status
+                        displayStatus
                     )}`}
                 >
-                    {task.status === "Done" ? (
+                    {displayStatus === "Done" ? (
                         <FaCheckCircle />
-                    ) : task.status === "In Progress" ? (
+                    ) : displayStatus === "In Progress" ? (
                         <FaSpinner className="animate-spin" />
                     ) : (
                         <FaClipboardList />
                     )}
-                    {task.status}
+                    {displayStatus}
                     {task.isDerivedStatus && (
                         <FaUserFriends className="text-[10px] opacity-70" title="Status derived from assignees" />
                     )}
@@ -184,7 +197,7 @@ const TaskRow = ({
             {/* Col 8: Actions */}
             {showActions && (
                 <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {onStatusChange && task.status !== "Done" && (
+                    {onStatusChange && displayStatus !== "Done" && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
