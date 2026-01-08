@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { FaBookOpen, FaFileAlt } from "react-icons/fa";
 import PageHeader from "../../components/PageHeader";
+import { useTheme } from "../../context/ThemeContext";
 import EmployeeKnowledgePage from "./EmployeeKnowledgePage";
 import EmployeeDocumentsPage from "./EmployeeDocumentsPage";
-import { useTheme } from "../../context/ThemeContext";
 
 export default function EmployeeKnowledgeManagement() {
   const [activeTab, setActiveTab] = useState("knowledge");

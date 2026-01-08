@@ -125,51 +125,96 @@ export default function KnowledgeProjectDetail() {
     return () => unsub();
   }, [resolvedProjectId]);
 
-  // Load documents linked to this project from documents collection
+  // Load documents linked to this project from hierarchical structure
+  // We query each folder subcollection: documents/{projectId}/{folderName}
   useEffect(() => {
     if (!resolvedProjectId) {
       setDocs([]);
       return;
     }
-    const q = query(collection(db, "documents"), where("projectId", "==", resolvedProjectId));
-    const unsub = onSnapshot(q, (snap) => {
-      const list = snap.docs.map((d) => {
-        const data = d.data() || {};
-        const ts = data.updatedAt || data.createdAt;
-        let updated = "";
-        if (ts && typeof ts.toDate === "function") updated = ts.toDate().toLocaleDateString();
-        else if (ts) updated = new Date(ts).toLocaleDateString();
-        const cts = data.createdAt;
-        let created = "";
-        if (cts && typeof cts.toDate === "function") created = cts.toDate().toLocaleDateString();
-        else if (cts) created = new Date(cts).toLocaleDateString();
-        return {
-          id: d.id,
-          name: data.name || "",
-          location: data.location || "—",
-          tags: Array.isArray(data.tags) ? data.tags : [],
-          updated,
-          created,
-          viewed: "-",
-          shared: Boolean(data.shared),
-          access: data.access || { admin: [], member: [] },
-          folder: data.folder || "", // Add folder field
-          children: data.children || 0,
-          url: data.fileDataUrl || data.url || "",
-          storagePath: data.storagePath || "",
-          fileType: data.fileType || "",
-          filename: data.filename || "",
-          createdByUid: data.createdByUid || "",
-          createdByName: data.createdByName || data.uploadedByName || "",
-          createdByRole: data.createdByRole || "", // Add role field
-          updatedByUid: data.updatedByUid || "",
-          updatedByName: data.updatedByName || data.editedByName || "",
-          momNo: data.momNo || "", // Add momNo for MOMs deletion
-        };
+
+    // First, get the list of available folders
+    const foldersDocRef = doc(db, "documents", "folders");
+    const unsubFolders = onSnapshot(foldersDocRef, async (folderSnap) => {
+      if (!folderSnap.exists()) {
+        setDocs([]);
+        return;
+      }
+
+      const folderData = folderSnap.data();
+      const folders = folderData.folders || folderData.folderNames || [];
+      const folderNames = folders.map(f => typeof f === 'string' ? f : f.name);
+
+      if (folderNames.length === 0) {
+        setDocs([]);
+        return;
+      }
+
+      // Query each folder subcollection and combine results
+      const unsubscribers = [];
+      const allDocs = [];
+
+      folderNames.forEach((folderName) => {
+        const folderCollectionRef = collection(db, "documents", resolvedProjectId, folderName);
+        const unsub = onSnapshot(folderCollectionRef, (snap) => {
+          // Remove old docs from this folder
+          const filtered = allDocs.filter(d => d.folder !== folderName);
+
+          // Add new docs from this folder
+          const newDocs = snap.docs.map((d) => {
+            const data = d.data() || {};
+            const ts = data.updatedAt || data.createdAt;
+            let updated = "";
+            if (ts && typeof ts.toDate === "function") updated = ts.toDate().toLocaleDateString();
+            else if (ts) updated = new Date(ts).toLocaleDateString();
+            const cts = data.createdAt;
+            let created = "";
+            if (cts && typeof cts.toDate === "function") created = cts.toDate().toLocaleDateString();
+            else if (cts) created = new Date(cts).toLocaleDateString();
+
+            return {
+              id: d.id,
+              name: data.name || "",
+              location: data.location || "—",
+              tags: Array.isArray(data.tags) ? data.tags : [],
+              updated,
+              created,
+              viewed: "-",
+              shared: Boolean(data.shared),
+              access: data.access || { admin: [], member: [] },
+              folder: folderName, // Folder from path
+              children: data.children || 0,
+              url: data.fileDataUrl || data.url || "",
+              storagePath: data.storagePath || "",
+              fileType: data.fileType || "",
+              filename: data.filename || "",
+              createdByUid: data.createdByUid || "",
+              createdByName: data.createdByName || data.uploadedByName || "",
+              createdByRole: data.createdByRole || "",
+              updatedByUid: data.updatedByUid || "",
+              updatedByName: data.updatedByName || data.editedByName || "",
+              momNo: data.momNo || "",
+              projectId: resolvedProjectId, // Store for edit/delete operations
+            };
+          });
+
+          // Combine and update state
+          allDocs.length = 0;
+          allDocs.push(...filtered, ...newDocs);
+          setDocs([...allDocs]);
+        });
+
+        unsubscribers.push(unsub);
       });
-      setDocs(list);
+
+      return () => {
+        unsubscribers.forEach(u => u());
+      };
     });
-    return () => unsub();
+
+    return () => {
+      unsubFolders();
+    };
   }, [resolvedProjectId]);
 
   useEffect(() => {
@@ -527,7 +572,8 @@ export default function KnowledgeProjectDetail() {
       if (form._file) {
         const safeName = (form._file.name || "file").replace(/[^a-zA-Z0-9._-]/g, "-");
         if (!storagePath) {
-          storagePath = `documents/${resolvedProjectId}/${safeName}`;
+          // Match Firestore structure: documents/{projectId}/{folder}/{fileName}
+          storagePath = `documents/${resolvedProjectId}/${form.folder}/${safeName}`;
         }
         const storageRef = ref(storage, storagePath);
         const meta = {
@@ -564,7 +610,14 @@ export default function KnowledgeProjectDetail() {
       }
 
       if (editingDoc && editingDoc.id) {
-        const refDoc = doc(db, "documents", editingDoc.id);
+        // Update existing document in hierarchical structure
+        const folderName = editingDoc.folder || form.folder;
+        if (!folderName) {
+          alert("Cannot determine folder for this document");
+          return;
+        }
+
+        const refDoc = doc(db, "documents", resolvedProjectId, folderName, editingDoc.id);
         const extFromOld = (() => {
           const name = editingDoc.filename || "";
           const idx = name.lastIndexOf(".");
@@ -578,14 +631,12 @@ export default function KnowledgeProjectDetail() {
           name: form.name,
           shared: Boolean(form.shared),
           access: form.access || { admin: [], member: [] },
-          folder: form.folder, // Required field from dropdown
           filename: nextFilename || editingDoc.filename || null,
           fileType: form._file?.type || editingDoc.fileType || null,
           fileSize: form._file?.size || editingDoc.fileSize || null,
           location: "—",
           tags: [],
           children: 0,
-          projectId: resolvedProjectId,
           updatedAt: serverTimestamp(),
           updatedByUid: auth.currentUser?.uid || "",
           updatedByName: currentUserName,
@@ -601,7 +652,7 @@ export default function KnowledgeProjectDetail() {
         setEditingDoc(null);
         setOpenAddDoc(false);
       } else {
-        // New document
+        // New document - save to hierarchical path
         if (!form.folder) {
           alert("Please select a folder");
           return;
@@ -611,7 +662,6 @@ export default function KnowledgeProjectDetail() {
           name: form.name,
           shared: Boolean(form.shared),
           access: form.access || { admin: [], member: [] },
-          folder: form.folder, // Required field from dropdown
           filename: form._file?.name || null,
           fileType: form._file?.type || null,
           fileSize: form._file?.size || null,
@@ -620,14 +670,15 @@ export default function KnowledgeProjectDetail() {
           location: "—",
           tags: [],
           children: 0,
-          projectId: resolvedProjectId,
           createdByUid: auth.currentUser?.uid || "",
           createdByName: currentUserName,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
 
-        const docRef = await addDoc(collection(db, "documents"), newDocPayload);
+        // Save to: documents/{projectId}/{folder}/{autoId}
+        const folderCollectionRef = collection(db, "documents", resolvedProjectId, form.folder);
+        const docRef = await addDoc(folderCollectionRef, newDocPayload);
 
         setOpenAddDoc(false);
       }
@@ -661,13 +712,21 @@ export default function KnowledgeProjectDetail() {
         }
       }
 
-      // Delete from documents collection
-      await deleteDoc(doc(db, "documents", deleteTarget.id));
+      // Delete from hierarchical documents collection
+      const folderName = deleteTarget.folder;
+      const projectId = deleteTarget.projectId || resolvedProjectId;
+
+      if (!folderName || !projectId) {
+        throw new Error("Cannot delete: missing folder or project information");
+      }
+
+      await deleteDoc(doc(db, "documents", projectId, folderName, deleteTarget.id));
 
       setShowDeleteModal(false);
       setDeleteTarget(null);
     } catch (e) {
       console.error("Failed to delete document", e);
+      alert("Failed to delete document: " + e.message);
     } finally {
       setIsDeleting(false);
     }

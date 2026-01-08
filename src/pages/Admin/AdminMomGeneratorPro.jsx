@@ -161,8 +161,8 @@ export default function MomGeneratorPro() {
   const activeColor = ACCENT_COLORS[accent] || ACCENT_COLORS.indigo;
 
   const inputClass = `w-full rounded px-4 py-2.5 text-sm transition-colors focus:ring-2 focus:ring-indigo-500 focus:outline-none border-none ${mode === "dark"
-      ? "bg-gray-900 text-white placeholder-gray-500"
-      : "bg-gray-50 text-gray-900 placeholder-gray-400"
+    ? "bg-gray-900 text-white placeholder-gray-500"
+    : "bg-gray-50 text-gray-900 placeholder-gray-400"
     }`;
 
   // Reference data
@@ -1022,8 +1022,8 @@ export default function MomGeneratorPro() {
         );
         const baseName = `${momNo}_${safeProject}_${meetingDate || ""}`;
         const filename = `${baseName}.pdf`;
-        // Save to documents/moms folder with momNo structure
-        const storagePath = `documents/moms/${momNo}/${filename}`;
+        // Match Firestore structure: documents/{projectId}/MOMs/{fileName}
+        const storagePath = `documents/${projectId}/MOMs/${filename}`;
         const storageRef = ref(storage, storagePath);
 
         // Generate PDF using react-pdf (much cleaner than html2canvas)
@@ -1116,12 +1116,11 @@ export default function MomGeneratorPro() {
           comments: comments || [],
         };
 
-        // Create MoM document in documents collection with momNo as document ID
-        const momDocRef = doc(db, "documents", momNo);
+        // Create MoM document in hierarchical structure: documents/{projectId}/MOMs/{momNo}
+        const momDocRef = doc(db, "documents", projectId, "MOMs", momNo);
         await setDoc(momDocRef, {
           ...momData,
           name: `${momNo} – ${selectedProject?.name || "Project"}`,
-          folder: "MOMs",
           shared: true,
           access: {
             admin: projectStaffNames.admins || [],
@@ -1341,8 +1340,8 @@ export default function MomGeneratorPro() {
                           }}
                           disabled={disableSave}
                           className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${disableSave
-                              ? "text-content-tertiary cursor-not-allowed"
-                              : "text-content-primary hover:bg-surface-subtle"
+                            ? "text-content-tertiary cursor-not-allowed"
+                            : "text-content-primary hover:bg-surface-subtle"
                             }`}
                         >
                           <FaSave
@@ -1532,8 +1531,8 @@ export default function MomGeneratorPro() {
                       <label
                         key={u.id}
                         className={`flex items-center gap-2 cursor-pointer p-1 rounded transition-colors ${mode === "dark"
-                            ? "hover:bg-gray-800"
-                            : "hover:bg-gray-200"
+                          ? "hover:bg-gray-800"
+                          : "hover:bg-gray-200"
                           }`}
                       >
                         <input
@@ -1584,8 +1583,8 @@ export default function MomGeneratorPro() {
                             );
                           }}
                           className={`text-xs px-2 py-0.5 rounded transition-colors ${mode === "dark"
-                              ? "bg-gray-700 text-white hover:bg-gray-600"
-                              : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                            ? "bg-gray-700 text-white hover:bg-gray-600"
+                            : "bg-gray-100 text-gray-800 hover:bg-gray-200"
                             }`}
                         >
                           {name}
@@ -1720,8 +1719,8 @@ export default function MomGeneratorPro() {
                     type="button"
                     onClick={isListening ? stopVoiceInput : startVoiceInput}
                     className={`absolute right-2 top-2 p-2 rounded-full transition-colors ${isListening
-                        ? "bg-red-500 text-white animate-pulse"
-                        : `bg-gray-100 text-gray-600 hover:bg-surface-subtle hover:${iconColor}` // Used iconColor
+                      ? "bg-red-500 text-white animate-pulse"
+                      : `bg-gray-100 text-gray-600 hover:bg-surface-subtle hover:${iconColor}` // Used iconColor
                       }`}
                     title={isListening ? "Stop listening" : "Start voice input"}
                   >
@@ -2365,8 +2364,8 @@ export default function MomGeneratorPro() {
                   <div
                     key={idx}
                     className={`p-4 rounded-lg border transition-colors ${isSelected
-                        ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
-                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                      ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
+                      : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
                       }`}
                   >
                     {/* Header with checkbox and task title */}

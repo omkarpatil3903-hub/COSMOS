@@ -513,8 +513,8 @@ export default function MomGeneratorPro() {
         );
         const baseName = `${momNo}_${safeProject}_${meetingDate || ""}`;
         const filename = `${baseName}.pdf`;
-        // Save to documents/moms folder with momNo structure
-        const storagePath = `documents/moms/${momNo}/${filename}`;
+        // Match Firestore structure: documents/{projectId}/MOMs/{fileName}
+        const storagePath = `documents/${projectId}/MOMs/${filename}`;
         const storageRef = ref(storage, storagePath);
 
         // Generate PDF using react-pdf
@@ -581,10 +581,9 @@ export default function MomGeneratorPro() {
           console.error("Failed to get user role", err);
         }
 
-        // Save to documents collection with momNo as document ID
-        await setDoc(doc(db, "documents", momNo), {
+        // Save MOM to hierarchical structure: documents/{projectId}/MOMs/{momNo}
+        await setDoc(doc(db, "documents", projectId, "MOMs", momNo), {
           name: momNo, // Only MOM ID, no project name
-          folder: "MOMs", // Save all MOMs to the "MOMs" folder
           shared: true,
           access: {
             admin: projectStaffNames.admins || [],
@@ -598,7 +597,6 @@ export default function MomGeneratorPro() {
           location: "—",
           tags: ["MOM", momNo],
           children: 0,
-          projectId,
           momNo,
           momVersion: String(momVersion || 1),
           createdByUid: currentUser?.uid || "",

@@ -205,6 +205,40 @@ function KnowledgeDetailView() {
                 </p>
             </Card>
 
+            {/* Links Section */}
+            {knowledge.links && knowledge.links.length > 0 && (
+                <Card title="Links" tone="muted">
+                    <div className="space-y-2">
+                        {knowledge.links.map((linkItem, index) => (
+                            <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 [.dark_&]:bg-white/5 border border-gray-200 [.dark_&]:border-white/10 hover:border-indigo-300 [.dark_&]:hover:border-indigo-500/50 transition-colors">
+                                <div className="flex-shrink-0">
+                                    <div className="w-10 h-10 rounded-lg bg-indigo-100 [.dark_&]:bg-indigo-500/20 flex items-center justify-center">
+                                        <svg className="h-5 w-5 text-indigo-600 [.dark_&]:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    {linkItem.label && (
+                                        <div className="text-sm font-medium text-gray-900 [.dark_&]:text-white truncate mb-0.5">
+                                            {linkItem.label}
+                                        </div>
+                                    )}
+                                    <a
+                                        href={linkItem.url || linkItem}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm text-indigo-600 [.dark_&]:text-indigo-400 hover:underline truncate block"
+                                    >
+                                        {linkItem.url || linkItem}
+                                    </a>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            )}
+
             {/* Documents Section */}
             {knowledge.documents && knowledge.documents.length > 0 ? (
                 <Card tone="muted">

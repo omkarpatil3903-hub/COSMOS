@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { signOut } from "firebase/auth";
-import { auth } from "../../firebase";
+import { auth, db } from "../../firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 import { Toaster } from "react-hot-toast";
 import {
   FaTachometerAlt,
@@ -16,6 +17,7 @@ import {
   FaBars,
   FaTimes,
   FaCog,
+  FaUser,
 } from "react-icons/fa";
 import { FaFileAlt } from "react-icons/fa";
 import { useTheme } from "../../context/ThemeContext";
@@ -83,14 +85,14 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
         <>
           <span
             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${isActive
-                ? `${accent === "black"
-                  ? "bg-black/20 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.3)]"
-                  : "bg-surface"
-                } ${iconColor}`
-                : `${iconColor} bg-transparent ${accent === "black"
-                  ? "opacity-80 hover:opacity-100 hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]"
-                  : ""
-                }`
+              ? `${accent === "black"
+                ? "bg-black/20 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                : "bg-surface"
+              } ${iconColor}`
+              : `${iconColor} bg-transparent ${accent === "black"
+                ? "opacity-80 hover:opacity-100 hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]"
+                : ""
+              }`
               }`}
           >
             {icon}
@@ -152,6 +154,26 @@ function EmployeeLayout() {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState({ name: "", imageUrl: "" });
+
+  // Fetch user profile from Firestore
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    const userRef = doc(db, "users", currentUser.uid);
+    const unsub = onSnapshot(userRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setUserProfile({
+          name: data.name || data.fullName || currentUser.displayName || "Employee",
+          imageUrl: data.imageUrl || "",
+        });
+      }
+    });
+
+    return () => unsub();
+  }, []);
 
   // Dynamic page title based on route
   useEffect(() => {
@@ -241,29 +263,33 @@ function EmployeeLayout() {
         aria-label="Primary"
       >
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-full shadow-lg border-2 border-white/30 p-1">
-              <img
-                src="/cosmos logo.png"
-                alt="Cosmos Logo"
-                className="h-12 w-12 object-cover rounded-full"
-              />
-            </div>
-
-            {!isCollapsed && (
+          {!isCollapsed && (
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="h-14 w-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-lg">
+                  {userProfile.imageUrl ? (
+                    <img
+                      src={userProfile.imageUrl}
+                      alt={userProfile.name}
+                      className="h-full w-full object-cover rounded-full border-2 border-white"
+                    />
+                  ) : (
+                    <div className="h-full w-full rounded-full bg-indigo-600 flex items-center justify-center text-white border-2 border-white">
+                      <FaUser className="h-6 w-6" />
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="min-w-0">
-                <p
-                  className="text-sm font-medium text-content-tertiary truncate"
-                  title={"Employee"}
-                >
+                <p className="text-sm font-medium text-content-tertiary">
                   COSMOS
                 </p>
                 <h2 className="text-lg font-semibold text-content-primary truncate">
                   Employee Portal
                 </h2>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <button
             type="button"
