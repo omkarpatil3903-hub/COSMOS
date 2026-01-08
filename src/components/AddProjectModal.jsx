@@ -13,6 +13,7 @@ import {
 } from "react-icons/fa";
 import Button from "./Button";
 import VoiceInput from "./Common/VoiceInput";
+import AssigneeSelector from "./AssigneeSelector";
 
 const AddProjectModal = ({
   showAddForm,
@@ -25,6 +26,7 @@ const AddProjectModal = ({
   handleFormSubmit,
   addErrors,
   setAddErrors,
+  hideProjectManagerDropdown = false, // New prop to hide dropdown for Managers
 }) => {
   const { iconColor, headerIconClass, buttonClass, badgeClass } = useThemeStyles();
 
@@ -185,185 +187,178 @@ const AddProjectModal = ({
                       <FaBuilding className="text-gray-400" />
                       Project Manager <span className="text-red-500">*</span>
                     </label>
-                    <div className="relative">
-                      <select
-                        value={formData.projectManagerId}
-                        onChange={(e) => {
-                          setFormData({
-                            ...formData,
-                            projectManagerId: e.target.value,
-                          });
-                          if (addErrors.projectManagerId) {
-                            setAddErrors((prev) => ({
-                              ...prev,
-                              projectManagerId: "",
-                            }));
-                          }
-                        }}
-                        className={`w-full rounded-lg border ${addErrors.projectManagerId
-                          ? "border-red-500 focus:ring-red-100"
-                          : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
-                          } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-4 transition-all duration-200 appearance-none`}
-                        required
-                      >
-                        <option value="" disabled>
-                          Select a project manager
-                        </option>
-                        {managers.map((manager) => (
-                          <option key={manager.id} value={manager.id}>
-                            {manager.name}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                    {hideProjectManagerDropdown ? (
+                      /* Show disabled input for Manager users */
+                      <>
+                        <input
+                          type="text"
+                          value={formData.projectManagerName || "Loading..."}
+                          disabled
+                          className={`w-full rounded-lg border ${addErrors.projectManagerId
+                            ? "border-red-500"
+                            : "border-gray-200 [.dark_&]:border-white/10"
+                            } bg-gray-100 [.dark_&]:bg-gray-800/50 py-2.5 px-4 text-sm text-gray-600 [.dark_&]:text-gray-400 cursor-not-allowed`}
+                        />
+                        {addErrors.projectManagerId && (
+                          <p className="text-xs text-red-600 font-medium">
+                            {addErrors.projectManagerId}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      /* Show dropdown for Admin/SuperAdmin */
+                      <div className="relative">
+                        <select
+                          value={formData.projectManagerId}
+                          onChange={(e) => {
+                            setFormData({
+                              ...formData,
+                              projectManagerId: e.target.value,
+                            });
+                            if (addErrors.projectManagerId) {
+                              setAddErrors((prev) => ({
+                                ...prev,
+                                projectManagerId: "",
+                              }));
+                            }
+                          }}
+                          className={`w-full rounded-lg border ${addErrors.projectManagerId
+                            ? "border-red-500 focus:ring-red-100"
+                            : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
+                            } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-4 transition-all duration-200 appearance-none`}
+                          required
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M19 9l-7 7-7-7"
-                          ></path>
-                        </svg>
+                          <option value="" disabled>
+                            Select a project manager
+                          </option>
+                          {managers.map((manager) => (
+                            <option key={manager.id} value={manager.id}>
+                              {manager.name}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M19 9l-7 7-7-7"
+                            ></path>
+                          </svg>
+                        </div>
                       </div>
-                    </div>
-                    {addErrors.projectManagerId && (
+                    )}
+                    {!hideProjectManagerDropdown && addErrors.projectManagerId && (
                       <p className="text-xs text-red-600 font-medium">
                         {addErrors.projectManagerId}
                       </p>
                     )}
                   </div>
 
-                  {/* Assignees */}
-                  <div className="space-y-1.5">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">
-                      <FaUsers className="text-gray-400" />
-                      Assignees
-                    </label>
-                    <div className="max-h-48 overflow-y-auto border border-gray-200 [.dark_&]:border-white/10 rounded-lg p-3 space-y-1">
-                      {assigneesOptions.map((u) => {
-                        const current = Array.isArray(formData.assigneeIds)
-                          ? formData.assigneeIds
-                          : [];
-                        const checked = current.includes(u.id);
-                        return (
-                          <label key={u.id} className="flex items-center gap-2 py-0.5">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(e) => {
-                                const next = e.target.checked
-                                  ? [...current, u.id]
-                                  : current.filter((id) => id !== u.id);
-                                setFormData({ ...formData, assigneeIds: next });
-                              }}
-                              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                            />
-                            <span className="text-sm text-gray-700 [.dark_&]:text-gray-300">{u.name}</span>
-                          </label>
-                        );
-                      })}
-                      {assigneesOptions.length === 0 && (
-                        <p className="text-xs text-gray-400">No assignees available</p>
-                      )}
+                  {/* Timeline Section - Moved here */}
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
+                      <FaCalendarAlt className={`${iconColor} [.dark_&]:text-opacity-80`} />
+                      <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
+                        Timeline
+                      </h3>
                     </div>
-                    {Array.isArray(formData.assigneeIds) && formData.assigneeIds.length > 0 ? (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {formData.assigneeIds
-                          .map((id) => assigneesOptions.find((u) => u.id === id)?.name)
-                          .filter(Boolean)
-                          .map((name) => (
-                            <span
-                              key={name}
-                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200"
-                            >
-                              {name}
-                            </span>
-                          ))}
+
+                    <div className="space-y-4">
+                      {/* Start Date */}
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">
+                          <FaCalendarAlt className="text-gray-400" />
+                          Start Date <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.startDate}
+                          onChange={(e) => {
+                            setFormData({
+                              ...formData,
+                              startDate: e.target.value,
+                            });
+                            if (addErrors.startDate) {
+                              setAddErrors((prev) => ({
+                                ...prev,
+                                startDate: "",
+                              }));
+                            }
+                          }}
+                          className={`w-full rounded-lg border ${addErrors.startDate
+                            ? "border-red-500 focus:ring-red-100"
+                            : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
+                            } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-4 transition-all duration-200`}
+                          required
+                        />
                       </div>
-                    ) : (
-                      <p className="text-xs text-gray-400">No assignees selected</p>
-                    )}
+
+                      {/* End Date */}
+                      <div className="space-y-1.5">
+                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">
+                          <FaCalendarAlt className="text-gray-400" />
+                          End Date <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.endDate}
+                          onChange={(e) => {
+                            setFormData({
+                              ...formData,
+                              endDate: e.target.value,
+                            });
+                            if (addErrors.endDate) {
+                              setAddErrors((prev) => ({
+                                ...prev,
+                                endDate: "",
+                              }));
+                            }
+                          }}
+                          className={`w-full rounded-lg border ${addErrors.endDate
+                            ? "border-red-500 focus:ring-red-100"
+                            : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
+                            } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-4 transition-all duration-200`}
+                          required
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
 
             </div>
 
-            {/* Column 2: OKRs */}
+            {/* Column 2: Assignees & OKRs */}
             <div className="space-y-6">
-              {/* Timeline Section */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
-                  <FaCalendarAlt className={`${iconColor} [.dark_&]:text-opacity-80`} />
-                  <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
-                    Timeline
-                  </h3>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Start Date */}
-                  <div className="space-y-1.5">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">
-                      <FaCalendarAlt className="text-gray-400" />
-                      Start Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.startDate}
-                      onChange={(e) => {
-                        setFormData({
-                          ...formData,
-                          startDate: e.target.value,
-                        });
-                        if (addErrors.startDate) {
-                          setAddErrors((prev) => ({
-                            ...prev,
-                            startDate: "",
-                          }));
-                        }
-                      }}
-                      className={`w-full rounded-lg border ${addErrors.startDate
-                        ? "border-red-500 focus:ring-red-100"
-                        : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
-                        } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-4 transition-all duration-200`}
-                      required
-                    />
-                  </div>
-
-                  {/* End Date */}
-                  <div className="space-y-1.5">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">
-                      <FaCalendarAlt className="text-gray-400" />
-                      End Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={formData.endDate}
-                      onChange={(e) => {
-                        setFormData({
-                          ...formData,
-                          endDate: e.target.value,
-                        });
-                        if (addErrors.endDate) {
-                          setAddErrors((prev) => ({
-                            ...prev,
-                            endDate: "",
-                          }));
-                        }
-                      }}
-                      className={`w-full rounded-lg border ${addErrors.endDate
-                        ? "border-red-500 focus:ring-red-100"
-                        : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
-                        } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-4 transition-all duration-200`}
-                      required
-                    />
-                  </div>
-                </div>
+              {/* Assignees Section - Moved here */}
+              {/* Assignees Section - Moved here */}
+              <div className="space-y-1.5">
+                <AssigneeSelector
+                  label={<>Assignees <span className="text-red-500">*</span></>}
+                  users={assigneesOptions}
+                  selectedIds={formData.assigneeIds || []}
+                  onChange={(newIds) => {
+                    setFormData({ ...formData, assigneeIds: newIds });
+                    if (addErrors.assigneeIds) {
+                      setAddErrors((prev) => ({
+                        ...prev,
+                        assigneeIds: "",
+                      }));
+                    }
+                  }}
+                />
+                {addErrors.assigneeIds && (
+                  <p className="text-xs text-red-600 font-medium">
+                    {addErrors.assigneeIds}
+                  </p>
+                )}
               </div>
               <div className="flex items-center justify-between border-b border-gray-100 [.dark_&]:border-white/10 pb-2">
                 <div className="flex items-center gap-2">
@@ -386,16 +381,20 @@ const AddProjectModal = ({
                   }}
                   className="text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-2 py-1"
                 >
-                  <FaPlus className="mr-1.5 h-3 w-3" /> Add
+                  <div className="flex items-center gap-1">
+                    <FaPlus className="w-3 h-3" />
+                    <span>Add</span>
+                  </div>
                 </Button>
               </div>
+              {addErrors.okrs && (
+                <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-xs text-red-600 mb-2">
 
-              <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                {addErrors.okrs && (
-                  <p className="text-xs text-red-600 font-medium bg-red-50 p-2 rounded-lg border border-red-100">
-                    {addErrors.okrs}
-                  </p>
-                )}
+                  {addErrors.okrs}
+                </div>
+              )}
+              <div className="space-y-4 max-h-[360px] overflow-y-auto pr-2 custom-scrollbar">
+
 
                 {formData.okrs.map((okr, okrIndex) => (
                   <div
@@ -408,7 +407,7 @@ const AddProjectModal = ({
                           {okrIndex + 1}
                         </span>
                         <label className="text-xs font-bold text-gray-700 [.dark_&]:text-gray-300 uppercase">
-                          Objective
+                          Objective <span className="text-red-500">*</span>
                         </label>
                       </div>
                       {formData.okrs.length > 1 && (
@@ -446,11 +445,24 @@ const AddProjectModal = ({
                     />
 
                     <div className="space-y-2 pl-2 border-l-2 border-indigo-100 [.dark_&]:border-indigo-500/20">
-                      <label className="text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 block">
-                        Key Results
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400">
+                          Key Results <span className="text-red-500">*</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newOkrs = [...formData.okrs];
+                            newOkrs[okrIndex].keyResults.push("");
+                            setFormData({ ...formData, okrs: newOkrs });
+                          }}
+                          className="text-indigo-500 hover:text-indigo-600 flex items-center gap-1 text-xs"
+                        >
+                          <FaPlus className="h-3 w-3" />
+                        </button>
+                      </div>
                       {okr.keyResults.map((kr, krIndex) => (
-                        <div key={krIndex} className="flex gap-2">
+                        <div key={krIndex} className="flex gap-2 items-center">
                           <VoiceInput
                             value={kr}
                             onChange={(e) => {
@@ -460,39 +472,23 @@ const AddProjectModal = ({
                               setFormData({ ...formData, okrs: newOkrs });
                             }}
                             placeholder={`Result ${krIndex + 1}...`}
-                            className="flex-1 rounded-md border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-1.5 px-3 text-xs text-gray-900 [.dark_&]:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none"
+                            className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2 px-3 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
                           />
-                          <div className="flex flex-col gap-1">
-                            {formData.okrs[okrIndex].keyResults.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const newOkrs = [...formData.okrs];
-                                  newOkrs[okrIndex].keyResults = newOkrs[
-                                    okrIndex
-                                  ].keyResults.filter((_, i) => i !== krIndex);
-                                  setFormData({ ...formData, okrs: newOkrs });
-                                }}
-                                className="text-gray-400 hover:text-red-500"
-                              >
-                                <FaTimes className="h-3 w-3" />
-                              </button>
-                            )}
-                            {krIndex ===
-                              formData.okrs[okrIndex].keyResults.length - 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const newOkrs = [...formData.okrs];
-                                    newOkrs[okrIndex].keyResults.push("");
-                                    setFormData({ ...formData, okrs: newOkrs });
-                                  }}
-                                  className="text-indigo-400 hover:text-indigo-600"
-                                >
-                                  <FaPlus className="h-3 w-3" />
-                                </button>
-                              )}
-                          </div>
+                          {formData.okrs[okrIndex].keyResults.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newOkrs = [...formData.okrs];
+                                newOkrs[okrIndex].keyResults = newOkrs[
+                                  okrIndex
+                                ].keyResults.filter((_, i) => i !== krIndex);
+                                setFormData({ ...formData, okrs: newOkrs });
+                              }}
+                              className="text-gray-400 hover:text-red-500 p-1"
+                            >
+                              <FaTimes className="h-3 w-3" />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>

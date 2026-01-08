@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { signOut } from "firebase/auth";
-import { auth } from "../../firebase";
+import { auth, db } from "../../firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 import { useAuthContext } from "../../context/useAuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { Toaster } from "react-hot-toast";
@@ -19,6 +20,7 @@ import {
   FaTimes,
   FaChevronLeft,
   FaCog,
+  FaUser,
 } from "react-icons/fa";
 
 // Reusable sidebar link component matching admin panel
@@ -135,6 +137,46 @@ export default function ClientLayout() {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState({ name: "", imageUrl: "" });
+
+  // Fetch user profile from Firestore (check both users and clients collections)
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    let unsubUsers = () => { };
+    let unsubClients = () => { };
+
+    // Try users collection first
+    const userRef = doc(db, "users", currentUser.uid);
+    unsubUsers = onSnapshot(userRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setUserProfile({
+          name: data.name || data.fullName || currentUser.displayName || "Client",
+          imageUrl: data.imageUrl || "",
+        });
+      }
+    });
+
+    // Also try clients collection
+    const clientRef = doc(db, "clients", currentUser.uid);
+    unsubClients = onSnapshot(clientRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        // Only update if we got data from clients and current profile is empty
+        setUserProfile((prev) => ({
+          name: data.clientName || data.companyName || data.name || prev.name || "Client",
+          imageUrl: data.imageUrl || data.logo || prev.imageUrl || "",
+        }));
+      }
+    });
+
+    return () => {
+      unsubUsers();
+      unsubClients();
+    };
+  }, []);
 
   // Dynamic page title based on route
   useEffect(() => {
@@ -225,32 +267,33 @@ export default function ClientLayout() {
         aria-label="Primary"
       >
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-full shadow-lg border-2 border-white/30 p-1">
-              <img
-                src="/cosmos logo.png"
-                alt="Cosmos Logo"
-                className="h-12 w-12 object-cover rounded-full"
-              />
-            </div>
-            {!isCollapsed && (
+          {!isCollapsed && (
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="h-14 w-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-lg">
+                  {userProfile.imageUrl ? (
+                    <img
+                      src={userProfile.imageUrl}
+                      alt={userProfile.name}
+                      className="h-full w-full object-cover rounded-full border-2 border-white"
+                    />
+                  ) : (
+                    <div className="h-full w-full rounded-full bg-indigo-600 flex items-center justify-center text-white border-2 border-white">
+                      <FaUser className="h-6 w-6" />
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="min-w-0">
-                <p
-                  className="text-sm font-medium text-content-tertiary truncate"
-                  title={
-                    userData?.clientName ||
-                    userData?.companyName ||
-                    "Client User"
-                  }
-                >
+                <p className="text-sm font-medium text-content-tertiary">
                   COSMOS
                 </p>
                 <h2 className="text-lg font-semibold text-content-primary truncate">
                   Client Portal
                 </h2>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <button
             type="button"

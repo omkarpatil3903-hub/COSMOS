@@ -27,9 +27,12 @@ export default function PortalProfileSettings() {
       return;
     }
 
-    // Set up real-time listener for user data from Firestore
+    let unsubUsers = () => { };
+    let unsubClients = () => { };
+
+    // Set up real-time listener for user data from Firestore (users collection)
     const userDocRef = doc(db, "users", currentUser.uid);
-    const unsubscribe = onSnapshot(
+    unsubUsers = onSnapshot(
       userDocRef,
       (docSnap) => {
         const userData = docSnap.exists() ? docSnap.data() : {};
@@ -52,8 +55,32 @@ export default function PortalProfileSettings() {
       }
     );
 
-    // Cleanup listener on unmount
-    return () => unsubscribe();
+    // Also check clients collection for client users
+    const clientDocRef = doc(db, "clients", currentUser.uid);
+    unsubClients = onSnapshot(
+      clientDocRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const clientData = docSnap.data();
+          // Update with client data if available
+          setUserInfo((prev) => ({
+            ...prev,
+            displayName: clientData.clientName || clientData.companyName || clientData.name || prev?.displayName || "Not set",
+            photoURL: clientData.imageUrl || clientData.logo || prev?.photoURL || null,
+            role: clientData.role || prev?.role || "Client",
+          }));
+        }
+      },
+      (error) => {
+        console.error("Error fetching client info:", error);
+      }
+    );
+
+    // Cleanup listeners on unmount
+    return () => {
+      unsubUsers();
+      unsubClients();
+    };
   }, []);
 
   const handleStartEdit = () => {

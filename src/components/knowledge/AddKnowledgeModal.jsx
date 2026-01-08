@@ -63,16 +63,39 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
 
   useEffect(() => {
     if (isOpen && initialItem) {
+      console.log('Loading knowledge for edit:', initialItem);
+      console.log('Initial links:', initialItem.links);
+
       setTitle(initialItem.title || "");
       setDescription(initialItem.description || "");
-      // Backward compatibility: check 'links' array first, then fallback to 'link' string
-      if (Array.isArray(initialItem.links) && initialItem.links.length > 0) {
-        setLinks(initialItem.links);
+
+      // Handle links - support both string URLs and {url, label} objects
+      // Also handle if Firestore returns it as object with numeric keys {0: "url1", 1: "url2"}
+      let linksToProcess = initialItem.links;
+
+      // Convert object with numeric keys to array
+      if (linksToProcess && typeof linksToProcess === 'object' && !Array.isArray(linksToProcess)) {
+        linksToProcess = Object.values(linksToProcess);
+      }
+
+      if (Array.isArray(linksToProcess) && linksToProcess.length > 0) {
+        // Convert objects to strings (just the URL for editing)
+        const linkStrings = linksToProcess.map(link => {
+          if (typeof link === 'string') return link;
+          if (link && typeof link === 'object') return link.url || '';
+          return '';
+        }).filter(Boolean);
+
+        console.log('Processed linkStrings:', linkStrings);
+        setLinks(linkStrings.length > 0 ? linkStrings : [""]);
       } else if (initialItem.link) {
+        console.log('Using fallback single link:', initialItem.link);
         setLinks([initialItem.link]);
       } else {
+        console.log('No links found, setting empty');
         setLinks([""]);
       }
+
       setSelectedAdmin(Array.isArray(initialItem.access?.admin) ? initialItem.access.admin : []);
       setSelectedMember(Array.isArray(initialItem.access?.member) ? initialItem.access.member : []);
       // If existing docs, use them; else start with one empty slot

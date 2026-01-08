@@ -41,9 +41,13 @@ function ManageFoldersModal({ isOpen, onClose }) {
                 const formattedFolders = folderData.map(f => {
                     if (typeof f === 'string') {
                         // Old format: convert to new format with default color
-                        return { name: f, color: '#3B82F6' };
+                        // Mark MOMs as protected folder
+                        const isProtected = f.toLowerCase() === 'moms';
+                        return { name: f, color: '#3B82F6', isSystem: isProtected };
                     }
-                    return f; // New format: already has name and color
+                    // New format: mark MOMs as protected
+                    const isProtected = f.name && f.name.toLowerCase() === 'moms';
+                    return { ...f, isSystem: f.isSystem || isProtected };
                 });
                 setFolders(formattedFolders);
             } else {
@@ -317,22 +321,28 @@ function ManageFoldersModal({ isOpen, onClose }) {
                                                         )}
                                                     </span>
                                                 </div>
-                                                <button
-                                                    onClick={() => handleStartEdit(folder)}
-                                                    className="p-1.5 rounded hover:bg-indigo-100 [.dark_&]:hover:bg-indigo-900/20 text-indigo-600 [.dark_&]:text-indigo-400"
-                                                    title={folder.isSystem ? "Edit color only" : "Edit"}
-                                                >
-                                                    <FaEdit className="h-3.5 w-3.5" />
-                                                </button>
-                                                {/* Hide delete button for system folders */}
-                                                {!folder.isSystem && (
-                                                    <button
-                                                        onClick={() => handleDeleteClick(folder)}
-                                                        className="p-1.5 rounded hover:bg-red-100 [.dark_&]:hover:bg-red-900/20 text-red-600 [.dark_&]:text-red-400"
-                                                        title="Delete"
-                                                    >
-                                                        <FaTrash className="h-3.5 w-3.5" />
-                                                    </button>
+                                                {/* Hide edit and delete buttons for system/protected folders */}
+                                                {!folder.isSystem ? (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleStartEdit(folder)}
+                                                            className="p-1.5 rounded hover:bg-indigo-100 [.dark_&]:hover:bg-indigo-900/20 text-indigo-600 [.dark_&]:text-indigo-400"
+                                                            title="Edit"
+                                                        >
+                                                            <FaEdit className="h-3.5 w-3.5" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteClick(folder)}
+                                                            className="p-1.5 rounded hover:bg-red-100 [.dark_&]:hover:bg-red-900/20 text-red-600 [.dark_&]:text-red-400"
+                                                            title="Delete"
+                                                        >
+                                                            <FaTrash className="h-3.5 w-3.5" />
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <span className="p-1.5 text-gray-400 [.dark_&]:text-gray-500" title="Protected folder - cannot edit or delete">
+                                                        <FaLock className="h-3.5 w-3.5" />
+                                                    </span>
                                                 )}
                                             </>
                                         )}

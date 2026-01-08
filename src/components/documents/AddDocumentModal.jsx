@@ -173,6 +173,13 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
         // Filter folders based on user role
         const filteredFolders = folderData.filter(f => {
           const folderObj = typeof f === 'string' ? { name: f } : f;
+          const folderName = folderObj.name || '';
+
+          // Always exclude MOMs folder - it's a protected system folder
+          const fName = folderName.toLowerCase().trim();
+          if (fName === 'moms' || fName === 'mom' || fName === 'mom\'s') {
+            return false;
+          }
 
           // If folder has visibleTo restriction, check if user's role is allowed
           if (folderObj.visibleTo && Array.isArray(folderObj.visibleTo)) {
@@ -261,7 +268,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
       tabIndex={-1}
     >
       <div
-        className={`bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto relative z-[10000] transform transition-all duration-300 ease-out ${entered ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
+        className={`bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-2xl w-full ${!canEditAccess ? "max-w-4xl" : "max-w-6xl"} max-h-[90vh] overflow-y-auto relative z-[10000] transform transition-all duration-300 ease-out ${entered ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
@@ -273,8 +280,8 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className={`grid grid-cols-1 gap-6 ${canEditAccess ? "lg:grid-cols-3" : ""}`}>
-              <div className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#1F2234] p-4 shadow-sm">
+            <div className={`grid grid-cols-1 gap-6 ${canEditAccess ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
+              <div className={`rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#1F2234] p-4 shadow-sm ${!canEditAccess ? "lg:col-span-1" : ""}`}>
                 <div className="mb-3 flex items-center gap-2">
                   <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-indigo-50 [.dark_&]:bg-indigo-900/20 text-indigo-600 [.dark_&]:text-indigo-400">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">

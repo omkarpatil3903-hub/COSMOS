@@ -92,22 +92,26 @@ function ManageProjects({ onlyMyManaged = false }) {
   // Add new state for active stat filter
   const [activeStatFilter, setActiveStatFilter] = useState(null);
 
-  // Form state
-  const [formData, setFormData] = useState({
-    projectName: "",
-    clientId: "",
-    clientName: "",
-    projectManagerId: "",
-    projectManagerName: "",
-    assigneeIds: [],
-    startDate: "",
-    endDate: "",
-    okrs: [
-      {
-        objective: "",
-        keyResults: [""],
-      },
-    ],
+  // Form state - Initialize with manager ID if onlyMyManaged is true
+  const [formData, setFormData] = useState(() => {
+    const currentUser = auth.currentUser;
+    const initialManagerId = onlyMyManaged ? (currentUser?.uid || "") : "";
+    return {
+      projectName: "",
+      clientId: "",
+      clientName: "",
+      projectManagerId: initialManagerId,
+      projectManagerName: "",
+      assigneeIds: [],
+      startDate: "",
+      endDate: "",
+      okrs: [
+        {
+          objective: "",
+          keyResults: [""],
+        },
+      ],
+    };
   });
 
   // Subscribe to Firestore projects
@@ -155,14 +159,39 @@ function ManageProjects({ onlyMyManaged = false }) {
         name: u.name || u.fullName || "",
         resourceRoleType: String(u.resourceRoleType || "").toLowerCase(),
         status: u.status || "Active",
+        role: u.resourceRoleType || "Member", // Add role for AssigneeSelector
+        imageUrl: u.imageUrl || "", // Add imageUrl for avatar
       }));
       const managersOnly = normalized; // Show all users instead of filtering by role
       setManagers(managersOnly);
-      const assignables = normalized.filter((u) => u.status === "Active"); // Show all active users
+
+      // Filter assignees based on panel type
+      let assignables = normalized.filter((u) => u.status === "Active");
+
+      // For Manager panel, exclude Admin and SuperAdmin from assignees
+      if (onlyMyManaged) {
+        assignables = assignables.filter(
+          (u) => u.resourceRoleType !== "admin" && u.resourceRoleType !== "superadmin"
+        );
+      }
+
       setAssigneesOptions(assignables);
+
+      // Auto-set manager ID and name for Manager panel
+      if (onlyMyManaged) {
+        const currentUser = auth.currentUser;
+        const currentManager = normalized.find(m => m.id === currentUser?.uid);
+        if (currentManager) {
+          setFormData(prev => ({
+            ...prev,
+            projectManagerId: currentUser?.uid || "",
+            projectManagerName: currentManager.name,
+          }));
+        }
+      }
     });
     return () => unsub();
-  }, []);
+  }, [onlyMyManaged]);
 
   // Subscribe to tasks to compute derived progress per project
   useEffect(() => {
@@ -340,6 +369,29 @@ function ManageProjects({ onlyMyManaged = false }) {
     });
   };
 
+  // Reset form for adding new project
+  const resetFormForNewProject = () => {
+    const currentUser = auth.currentUser;
+    setFormData({
+      projectName: "",
+      clientId: "",
+      clientName: "",
+      projectManagerId: onlyMyManaged ? (currentUser?.uid || "") : "",
+      projectManagerName: onlyMyManaged ? (managers.find(m => m.id === currentUser?.uid)?.name || "") : "",
+      assigneeIds: [],
+      startDate: "",
+      endDate: "",
+      okrs: [
+        {
+          objective: "",
+          keyResults: [""],
+        },
+      ],
+    });
+    setAddErrors({});
+    setShowAddForm(true);
+  };
+
   const validateProjectForm = (data) => {
     const errors = {};
 
@@ -363,8 +415,14 @@ function ManageProjects({ onlyMyManaged = false }) {
       errors.endDate = "End date is required";
     }
 
-    const hasValidOKR = Array.isArray(data.okrs)
-      ? data.okrs.some(
+    // Assignees Validation
+    if (!data.assigneeIds || data.assigneeIds.length === 0) {
+      errors.assigneeIds = "At least one assignee is required";
+    }
+
+    // OKRs Validation
+    const hasValidOKR = Array.isArray(data.okrs) && data.okrs.length > 0
+      ? data.okrs.every(
         (okr) =>
           okr.objective &&
           okr.objective.trim() &&
@@ -387,8 +445,6 @@ function ManageProjects({ onlyMyManaged = false }) {
     const errors = validateProjectForm(formData);
     setAddErrors(errors);
     if (Object.keys(errors).length) {
-      const firstError = Object.values(errors)[0];
-      if (firstError) toast.error(firstError);
       return;
     }
 
@@ -425,11 +481,14 @@ function ManageProjects({ onlyMyManaged = false }) {
         okrs: formData.okrs,
         createdAt: serverTimestamp(),
       });
+      // Reset form but preserve projectManagerId for managers
+      const currentUser = auth.currentUser;
+      const resetProjectManagerId = onlyMyManaged ? currentUser?.uid || "" : "";
       setFormData({
         projectName: "",
         clientId: "",
         clientName: "",
-        projectManagerId: "",
+        projectManagerId: resetProjectManagerId,
         projectManagerName: "",
         assigneeIds: [],
         progress: 0,
@@ -439,6 +498,7 @@ function ManageProjects({ onlyMyManaged = false }) {
       });
       setAddErrors({});
       setShowAddForm(false);
+      toast.success("Project created successfully!");
     } catch (err) {
       console.error("Add project failed", err);
       toast.error("Failed to add project");
@@ -486,8 +546,6 @@ function ManageProjects({ onlyMyManaged = false }) {
     const errors = validateProjectForm(formData);
     setEditErrors(errors);
     if (Object.keys(errors).length) {
-      const firstError = Object.values(errors)[0];
-      if (firstError) toast.error(firstError);
       return;
     }
 
@@ -909,7 +967,7 @@ function ManageProjects({ onlyMyManaged = false }) {
                     <FaTh className="w-4 h-4" />
                   </button>
                 </div>
-                <Button variant="custom" onClick={() => setShowAddForm(true)} className={`flex items-center gap-2 ${buttonClass}`}>
+                <Button variant="custom" onClick={resetFormForNewProject} className={`flex items-center gap-2 ${buttonClass}`}>
                   <FaPlus className="h-4 w-4" aria-hidden="true" />
                   Add Project
                 </Button>
@@ -935,7 +993,7 @@ function ManageProjects({ onlyMyManaged = false }) {
               </label>
             </div>
             <div className="mt-4 flex gap-3 sm:hidden">
-              <Button variant="custom" onClick={() => setShowAddForm(true)} className={`flex-1 ${buttonClass}`}>
+              <Button variant="custom" onClick={resetFormForNewProject} className={`flex-1 ${buttonClass}`}>
                 <FaPlus className="h-4 w-4" aria-hidden="true" />
                 Add
               </Button>
@@ -1184,6 +1242,7 @@ function ManageProjects({ onlyMyManaged = false }) {
             handleFormSubmit={handleFormSubmit}
             addErrors={addErrors}
             setAddErrors={setAddErrors}
+            hideProjectManagerDropdown={onlyMyManaged}
           />
 
           <EditProjectModal
@@ -1199,6 +1258,7 @@ function ManageProjects({ onlyMyManaged = false }) {
             handleEditSubmit={handleEditSubmit}
             editErrors={editErrors}
             setEditErrors={setEditErrors}
+            hideProjectManagerDropdown={onlyMyManaged}
           />
 
           <ViewProjectModal

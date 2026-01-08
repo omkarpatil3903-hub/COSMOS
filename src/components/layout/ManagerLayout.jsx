@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { signOut } from "firebase/auth";
-import { auth } from "../../firebase";
+import { auth, db } from "../../firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 import { Toaster } from "react-hot-toast";
 import {
   FaTachometerAlt,
@@ -18,6 +19,7 @@ import {
   FaUserTie,
   FaCog,
   FaMoneyCheckAlt,
+  FaUser,
 } from "react-icons/fa";
 import { useTheme } from "../../context/ThemeContext";
 import PanelSwitcher from "../PanelSwitcher";
@@ -68,8 +70,8 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
         <>
           <span
             className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${isActive
-                ? `bg-surface ${accentTextClass}`
-                : `${accentTextClass} bg-transparent`
+              ? `bg-surface ${accentTextClass}`
+              : `${accentTextClass} bg-transparent`
               }`}
           >
             {icon}
@@ -129,6 +131,26 @@ function ManagerLayout() {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState({ name: "", imageUrl: "" });
+
+  // Fetch user profile from Firestore
+  useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    const userRef = doc(db, "users", currentUser.uid);
+    const unsub = onSnapshot(userRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setUserProfile({
+          name: data.name || data.fullName || currentUser.displayName || "Manager",
+          imageUrl: data.imageUrl || "",
+        });
+      }
+    });
+
+    return () => unsub();
+  }, []);
 
   // Dynamic page title
   useEffect(() => {
@@ -211,18 +233,30 @@ function ManagerLayout() {
       <a className="sr-only-focusable" href="#main-content">
         Skip to main content
       </a>
-      <Toaster position="top-right" />
+      <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} />
       <aside
         className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
           } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"} overflow-hidden`}
         aria-label="Primary"
       >
         <div className="flex items-center justify-between gap-4 shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-soft">
-              <FaUserTie className="h-5 w-5" aria-hidden="true" />
-            </span>
-            {!isCollapsed && (
+          {!isCollapsed && (
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="h-14 w-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-lg">
+                  {userProfile.imageUrl ? (
+                    <img
+                      src={userProfile.imageUrl}
+                      alt={userProfile.name}
+                      className="h-full w-full object-cover rounded-full border-2 border-white"
+                    />
+                  ) : (
+                    <div className="h-full w-full rounded-full bg-indigo-600 flex items-center justify-center text-white border-2 border-white">
+                      <FaUser className="h-6 w-6" />
+                    </div>
+                  )}
+                </div>
+              </div>
               <div>
                 <p className="text-sm font-medium text-content-tertiary">
                   COSMOS
@@ -231,8 +265,8 @@ function ManagerLayout() {
                   Manager Panel
                 </h2>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <button
             type="button"
