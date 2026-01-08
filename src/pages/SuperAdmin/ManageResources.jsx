@@ -99,6 +99,7 @@ function ManageResources() {
     status: "Active",
     imageUrl: "",
     imageStoragePath: "",
+    mustChangePassword: true, // Default to requiring password change
   });
 
   // State for image upload
@@ -413,6 +414,7 @@ function ManageResources() {
         createdAt: serverTimestamp(),
         joinDate: new Date().toISOString().split("T")[0],
         devPassword: formData.password,
+        mustChangePassword: formData.mustChangePassword, // Force password change on first login
       };
 
       await setDoc(doc(db, "users", user.uid), newUser);
@@ -430,6 +432,7 @@ function ManageResources() {
         resourceRoleType: "",
         status: "Active",
         imageUrl: "",
+        mustChangePassword: true,
       });
       setImageFile(null);
       setImagePreview(null);
@@ -773,6 +776,7 @@ function ManageResources() {
                         resourceRoleType: "",
                         status: "Active",
                         imageUrl: "",
+                        mustChangePassword: true,
                       });
                       setImageFile(null);
                       setImagePreview(null);

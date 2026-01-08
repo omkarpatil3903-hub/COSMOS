@@ -72,7 +72,15 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {loading ? <AppLoader /> : children}
+      {loading ? (
+        // Minimal loader instead of full dashboard skeleton
+        // This prevents dashboard skeleton from flashing on public pages
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-50 dark:bg-[#0f0f0f]">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-indigo-600 dark:border-gray-700 dark:border-t-indigo-500"></div>
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 }

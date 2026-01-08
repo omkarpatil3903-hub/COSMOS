@@ -81,27 +81,43 @@ export const updateTask = async (taskId, updates, collectionName = "tasks") => {
 /**
  * Add a subtask to a task's subtasks array
  * @param {string} taskId
- * @param {string} title
+ * @param {string|object} subtaskData - Title string or full subtask object
+ * @param {string} collectionName
  */
-export const addSubtask = async (taskId, title, collectionName = "tasks") => {
+export const addSubtask = async (taskId, subtaskData, collectionName = "tasks") => {
+  // Support both legacy (string title) and new (object) format
+  const isLegacy = typeof subtaskData === "string";
   const subtask = {
     id: crypto.randomUUID
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2),
-    title,
+    title: isLegacy ? subtaskData : subtaskData.title,
+    description: isLegacy ? "" : (subtaskData.description || ""),
+    dueDate: isLegacy ? null : (subtaskData.dueDate || null),
+    assigneeId: isLegacy ? null : (subtaskData.assigneeId || null),
+    priority: isLegacy ? "Medium" : (subtaskData.priority || "Medium"),
+    order: isLegacy ? Date.now() : (subtaskData.order ?? Date.now()),
+    dependsOn: isLegacy ? [] : (subtaskData.dependsOn || []), // Phase 2: Dependencies
     completed: false,
+    createdAt: new Date().toISOString(),
+    completedAt: null,
+    completedBy: null,
   };
   await updateDoc(doc(db, collectionName, taskId), {
     subtasks: arrayUnion(subtask),
   });
+  return subtask;
 };
 
 /**
  * Toggle a subtask's completed state
  * @param {string} taskId
  * @param {string} subtaskId
+ * @param {boolean} completed
+ * @param {string} collectionName
+ * @param {string} userId - Optional user ID who completed the subtask
  */
-export const toggleSubtask = async (taskId, subtaskId, completed, collectionName = "tasks") => {
+export const toggleSubtask = async (taskId, subtaskId, completed, collectionName = "tasks", userId = null) => {
   const ref = doc(db, collectionName, taskId);
 
   // Use transaction to prevent race conditions
@@ -113,8 +129,60 @@ export const toggleSubtask = async (taskId, subtaskId, completed, collectionName
 
     const data = snap.data();
     const list = Array.isArray(data.subtasks) ? data.subtasks : [];
+
+    // Phase 2: Check dependencies before allowing completion
+    if (completed) {
+      const subtask = list.find((s) => s.id === subtaskId);
+      if (subtask?.dependsOn?.length > 0) {
+        const blockedBy = subtask.dependsOn.filter((depId) => {
+          const dep = list.find((s) => s.id === depId);
+          return dep && !dep.completed;
+        });
+        if (blockedBy.length > 0) {
+          const blockedNames = blockedBy.map((depId) => {
+            const dep = list.find((s) => s.id === depId);
+            return dep?.title || depId;
+          });
+          throw new Error(`Cannot complete: blocked by "${blockedNames.join('", "')}"`);
+        }
+      }
+    }
+
     const next = list.map((s) =>
-      s.id === subtaskId ? { ...s, completed: completed } : s
+      s.id === subtaskId
+        ? {
+          ...s,
+          completed: completed,
+          completedAt: completed ? new Date().toISOString() : null,
+          completedBy: completed ? userId : null,
+        }
+        : s
+    );
+
+    transaction.update(ref, { subtasks: next });
+  });
+};
+
+/**
+ * Update a subtask's properties
+ * @param {string} taskId
+ * @param {string} subtaskId
+ * @param {object} updates - Fields to update (title, description, dueDate, assigneeId, priority)
+ * @param {string} collectionName
+ */
+export const updateSubtask = async (taskId, subtaskId, updates, collectionName = "tasks") => {
+  const ref = doc(db, collectionName, taskId);
+
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(ref);
+    if (!snap.exists()) {
+      throw new Error("Task does not exist!");
+    }
+
+    const data = snap.data();
+    const list = Array.isArray(data.subtasks) ? data.subtasks : [];
+    const next = list.map((s) =>
+      s.id === subtaskId ? { ...s, ...updates } : s
     );
 
     transaction.update(ref, { subtasks: next });
@@ -244,6 +312,32 @@ export const logTaskActivity = async (taskId, action, details, user, collectionN
     });
   } catch (err) {
     console.error("Failed to log activity", err);
+  }
+};
+
+/**
+ * Log a subtask-specific activity (appears in main task timeline)
+ * @param {string} taskId
+ * @param {string} subtaskId
+ * @param {string} subtaskTitle
+ * @param {string} action - e.g., "subtask_completed", "subtask_added"
+ * @param {string} details - Human readable details
+ * @param {object} user - { uid, displayName }
+ */
+export const logSubtaskActivity = async (taskId, subtaskId, subtaskTitle, action, details, user, collectionName = "tasks") => {
+  try {
+    const ref = collection(doc(db, collectionName, taskId), "activities");
+    await addDoc(ref, {
+      action,
+      details,
+      subtaskId,
+      subtaskTitle,
+      userId: user?.uid || "system",
+      userName: user?.displayName || "System",
+      createdAt: serverTimestamp(),
+    });
+  } catch (err) {
+    console.error("Failed to log subtask activity", err);
   }
 };
 

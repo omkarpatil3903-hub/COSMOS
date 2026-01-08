@@ -12,6 +12,9 @@ import "./index.css";
 
 // Import all your components
 import LoginPage from "./pages/LoginPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import ForceChangePasswordPage from "./pages/ForceChangePasswordPage";
 import MainLayout from "./components/layout/MainLayout";
 import AdminLayout from "./components/layout/AdminLayout.jsx";
 import ClientLayout from "./components/layout/ClientLayout";
@@ -90,6 +93,9 @@ import PortalProfileSettings from "./pages/Shared/PortalProfileSettings";
 
 const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
+  { path: "/forgot-password", element: <ForgotPasswordPage /> },
+  { path: "/reset-password", element: <ResetPasswordPage /> },
+  { path: "/force-change-password", element: <ForceChangePasswordPage /> },
   { path: "/unauthorized", element: <Unauthorized /> },
 
   // Client Portal Routes

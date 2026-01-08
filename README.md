@@ -1,5 +1,7 @@
 <div align="center">
+reset pass production url
 
+https://yourdomain.com/reset-password
 # PM Admin Panel
 
 Modern administrative dashboard for managing clients, projects, resources, tasks, and schedules with real‑time updates powered by Firebase.
