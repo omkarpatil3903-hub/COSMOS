@@ -1,6 +1,6 @@
 // src/pages/LoginPage.jsx
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import loginBgVideo from "../assets/loginbg.mp4";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../firebase";
@@ -71,6 +71,7 @@ function LoginPage() {
       // Determine role and resource role type for redirect
       let role = null;
       let resourceRoleType = null;
+      let mustChangePassword = false;
 
       try {
         const tokenRes = await cred.user.getIdTokenResult();
@@ -90,6 +91,10 @@ function LoginPage() {
             resourceRoleType = String(uData.resourceRoleType)
               .trim()
               .toLowerCase();
+          // Check if password change is required
+          if (uData?.mustChangePassword === true) {
+            mustChangePassword = true;
+          }
         } else {
           console.log("User not found in 'users', checking 'clients'...");
           const cSnap = await getDoc(doc(db, "clients", cred.user.uid));
@@ -97,6 +102,10 @@ function LoginPage() {
             console.log("User data found in 'clients':", cSnap.data());
             if (cSnap.data()?.role) {
               role = cSnap.data().role?.trim();
+            }
+            // Check if password change is required for client
+            if (cSnap.data()?.mustChangePassword === true) {
+              mustChangePassword = true;
             }
           } else {
             console.log("User not found in 'clients' either.");
@@ -131,9 +140,17 @@ function LoginPage() {
 
       console.log("Final determined role:", role);
       console.log("Final resourceRoleType:", resourceRoleType);
+      console.log("Must change password:", mustChangePassword);
 
       // Wait for auth state to update
       await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // If password change is required, redirect to force change page
+      if (mustChangePassword) {
+        console.log("Redirecting to /force-change-password");
+        navigate("/force-change-password", { replace: true });
+        return;
+      }
 
       // Redirect based on role priority: client > resourceRoleType > role
       if (role === "client") {
@@ -297,6 +314,16 @@ function LoginPage() {
                   "Sign In"
                 )}
               </button>
+            </div>
+
+            {/* Forgot Password Link - Centered below Sign In */}
+            <div className="flex justify-center">
+              <Link
+                to="/forgot-password"
+                className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+              >
+                Forgot password?
+              </Link>
             </div>
           </form>
         </div>

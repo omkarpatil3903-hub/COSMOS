@@ -4,10 +4,11 @@ import Button from "../../components/Button";
 import { auth, db } from "../../firebase";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { updateProfile, updateEmail } from "firebase/auth";
-import { FaUser, FaEnvelope, FaShieldAlt, FaCalendar, FaEdit, FaSave, FaTimes } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaShieldAlt, FaCalendar, FaEdit, FaSave, FaTimes, FaLock } from "react-icons/fa";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import toast from "react-hot-toast";
 import VoiceInput from "../../components/Common/VoiceInput";
+import ChangePasswordModal from "../../components/ChangePasswordModal";
 
 export default function PortalProfileSettings() {
   const { buttonClass } = useThemeStyles();
@@ -19,6 +20,7 @@ export default function PortalProfileSettings() {
     email: "",
   });
   const [saving, setSaving] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   useEffect(() => {
     const currentUser = auth.currentUser;
@@ -383,6 +385,36 @@ export default function PortalProfileSettings() {
           </div>
         </div>
       </Card>
+
+      {/* Security Settings */}
+      <Card className="p-6 sm:p-8 [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10" tone="white">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 [.dark_&]:text-white mb-6 flex items-center gap-2">
+          <FaLock className="text-indigo-500" />
+          Security Settings
+        </h2>
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 [.dark_&]:bg-gray-800/50 [.dark_&]:border-gray-700">
+          <div>
+            <h3 className="text-sm font-medium text-gray-900 [.dark_&]:text-white">Password</h3>
+            <p className="text-xs text-gray-500 [.dark_&]:text-gray-400 mt-1">
+              Change your account password
+            </p>
+          </div>
+          <Button
+            variant="custom"
+            className={`flex items-center gap-2 ${buttonClass}`}
+            onClick={() => setShowChangePassword(true)}
+          >
+            <FaLock className="text-sm" />
+            Change Password
+          </Button>
+        </div>
+      </Card>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={showChangePassword}
+        onClose={() => setShowChangePassword(false)}
+      />
     </div>
   );
 }

@@ -127,6 +127,15 @@ function TaskModal({
   // Subtasks state
   const [subtasks, setSubtasks] = useState([]);
   const [newSubtask, setNewSubtask] = useState("");
+  const [expandedSubtaskId, setExpandedSubtaskId] = useState(null);
+
+  // Quick add subtask fields
+  const [newSubtaskDueDate, setNewSubtaskDueDate] = useState(null);
+  const [newSubtaskAssigneeId, setNewSubtaskAssigneeId] = useState(null);
+  const [newSubtaskPriority, setNewSubtaskPriority] = useState("Medium");
+  const [showQuickDatePicker, setShowQuickDatePicker] = useState(false);
+  const [showQuickAssigneePicker, setShowQuickAssigneePicker] = useState(false);
+  const [showQuickPriorityPicker, setShowQuickPriorityPicker] = useState(false);
 
   const [errors, setErrors] = useState({});
   const [showSeriesPrompt, setShowSeriesPrompt] = useState(false);
@@ -1053,7 +1062,7 @@ function TaskModal({
                 {/* Subtasks */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    <h3 className="text-xs font-bold text-gray-700 [.dark_&]:text-gray-300 uppercase tracking-wider">
                       Subtasks
                     </h3>
                     <span className="text-[10px] text-gray-500">
@@ -1062,87 +1071,452 @@ function TaskModal({
                   </div>
 
                   <div className="space-y-2 bg-gray-50 [.dark_&]:bg-white/5 p-3 rounded-xl border border-gray-200 [.dark_&]:border-white/10">
-                    {subtasks.map((st, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-2 group bg-white [.dark_&]:bg-[#181B2A] p-2 rounded-lg border border-gray-100 [.dark_&]:border-white/10 shadow-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={st.completed}
-                          onChange={(e) => {
-                            const next = [...subtasks];
-                            next[idx].completed = e.target.checked;
-                            setSubtasks(next);
-                          }}
-                          className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <VoiceInput
-                          value={st.title}
-                          onChange={(e) => {
-                            const next = [...subtasks];
-                            next[idx].title = e.target.value;
-                            setSubtasks(next);
-                          }}
-                          className="flex-1 bg-transparent border-none text-xs p-0 focus:ring-0 text-gray-700 [.dark_&]:text-white placeholder:text-gray-400"
-                          placeholder="Subtask title..."
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = subtasks.filter((_, i) => i !== idx);
-                            setSubtasks(next);
-                          }}
-                          className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                    {subtasks.map((st, idx) => {
+                      const isExpanded = expandedSubtaskId === st.id;
+                      const subtaskAssignee = assignees.find(a => a.id === st.assigneeId);
+                      return (
+                        <div
+                          key={st.id || idx}
+                          className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg border border-gray-100 [.dark_&]:border-white/10 shadow-sm overflow-hidden"
                         >
-                          <FaTimes className="text-xs" />
-                        </button>
-                      </div>
-                    ))}
+                          {/* Main Row */}
+                          <div className="flex items-center gap-2 p-2 group">
+                            <input
+                              type="checkbox"
+                              checked={st.completed}
+                              onChange={(e) => {
+                                const next = [...subtasks];
+                                next[idx].completed = e.target.checked;
+                                setSubtasks(next);
+                              }}
+                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
+                            />
+                            <VoiceInput
+                              value={st.title}
+                              onChange={(e) => {
+                                const next = [...subtasks];
+                                next[idx].title = e.target.value;
+                                setSubtasks(next);
+                              }}
+                              className={`flex-1 bg-transparent border-none text-xs p-0 focus:ring-0 placeholder:text-gray-400 ${st.completed ? 'text-gray-400 line-through' : 'text-gray-700 [.dark_&]:text-white'}`}
+                              placeholder="Subtask title..."
+                            />
+                            {/* Quick indicators */}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {st.dueDate && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${new Date(st.dueDate) < new Date() && !st.completed ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500 [.dark_&]:bg-white/10 [.dark_&]:text-gray-400'}`}>
+                                  {new Date(st.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                              )}
+                              {subtaskAssignee && (
+                                <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 text-[9px] font-bold flex items-center justify-center" title={subtaskAssignee.name}>
+                                  {subtaskAssignee.name?.charAt(0)?.toUpperCase()}
+                                </span>
+                              )}
+                              {st.priority && st.priority !== 'Medium' && (
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${st.priority === 'High' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                                  {st.priority === 'High' ? '!' : 'L'}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setExpandedSubtaskId(isExpanded ? null : st.id)}
+                              className="text-gray-400 hover:text-indigo-500 p-1 transition-all"
+                              title="Expand details"
+                            >
+                              <svg className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = subtasks.filter((_, i) => i !== idx);
+                                setSubtasks(next);
+                              }}
+                              className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                            >
+                              <FaTimes className="text-xs" />
+                            </button>
+                          </div>
 
-                    <div className="flex items-center gap-2 mt-2">
-                      <VoiceInput
-                        value={newSubtask}
-                        onChange={(e) => setNewSubtask(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
+                          {/* Expanded Details */}
+                          {isExpanded && (
+                            <div className="px-3 pb-3 pt-1 border-t border-gray-100 [.dark_&]:border-white/10 bg-gray-50/50 [.dark_&]:bg-white/5 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
+                              <div className="grid grid-cols-3 gap-2">
+                                {/* Due Date */}
+                                <div>
+                                  <label className="block text-[10px] font-medium text-gray-500 mb-1">Due Date</label>
+                                  <input
+                                    type="date"
+                                    value={st.dueDate || ''}
+                                    onChange={(e) => {
+                                      const next = [...subtasks];
+                                      next[idx].dueDate = e.target.value || null;
+                                      setSubtasks(next);
+                                    }}
+                                    className="w-full rounded border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1 text-[10px] text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
+                                  />
+                                </div>
+                                {/* Assignee */}
+                                <div>
+                                  <label className="block text-[10px] font-medium text-gray-500 mb-1">Assignee</label>
+                                  <select
+                                    value={st.assigneeId || ''}
+                                    onChange={(e) => {
+                                      const next = [...subtasks];
+                                      next[idx].assigneeId = e.target.value || null;
+                                      setSubtasks(next);
+                                    }}
+                                    className="w-full rounded border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1 text-[10px] text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
+                                  >
+                                    <option value="">Unassigned</option>
+                                    {assignees.map((a) => (
+                                      <option key={a.id} value={a.id}>{a.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                {/* Priority */}
+                                <div>
+                                  <label className="block text-[10px] font-medium text-gray-500 mb-1">Priority</label>
+                                  <div className="flex gap-1">
+                                    {['Low', 'Medium', 'High'].map((p) => (
+                                      <button
+                                        key={p}
+                                        type="button"
+                                        onClick={() => {
+                                          const next = [...subtasks];
+                                          next[idx].priority = p;
+                                          setSubtasks(next);
+                                        }}
+                                        className={`flex-1 py-1 text-[9px] font-medium rounded transition-all ${st.priority === p
+                                          ? p === 'High' ? 'bg-red-500 text-white' : p === 'Low' ? 'bg-blue-500 text-white' : 'bg-indigo-500 text-white'
+                                          : 'bg-gray-100 [.dark_&]:bg-white/10 text-gray-500 hover:bg-gray-200'
+                                          }`}
+                                      >
+                                        {p}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                              {/* Description */}
+                              <div>
+                                <label className="block text-[10px] font-medium text-gray-500 mb-1">Description</label>
+                                <textarea
+                                  value={st.description || ''}
+                                  onChange={(e) => {
+                                    const next = [...subtasks];
+                                    next[idx].description = e.target.value;
+                                    setSubtasks(next);
+                                  }}
+                                  placeholder="Add details..."
+                                  rows={2}
+                                  className="w-full rounded border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1 text-[10px] text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600 resize-none"
+                                />
+                              </div>
+                              {/* Dependencies */}
+                              {subtasks.length > 1 && (
+                                <div>
+                                  <label className="block text-[10px] font-medium text-gray-500 mb-1">
+                                    Depends On <span className="text-gray-400">(must complete first)</span>
+                                  </label>
+                                  <div className="flex flex-wrap gap-1">
+                                    {subtasks
+                                      .filter((other) => other.id !== st.id)
+                                      .map((other) => {
+                                        const isSelected = (st.dependsOn || []).includes(other.id);
+                                        // Check for circular dependency - can't depend on something that depends on us
+                                        const wouldBeCircular = (other.dependsOn || []).includes(st.id);
+                                        return (
+                                          <button
+                                            key={other.id}
+                                            type="button"
+                                            disabled={wouldBeCircular}
+                                            onClick={() => {
+                                              const next = [...subtasks];
+                                              const currentDeps = next[idx].dependsOn || [];
+                                              if (isSelected) {
+                                                next[idx].dependsOn = currentDeps.filter((d) => d !== other.id);
+                                              } else {
+                                                next[idx].dependsOn = [...currentDeps, other.id];
+                                              }
+                                              setSubtasks(next);
+                                            }}
+                                            className={`px-2 py-1 text-[9px] rounded border transition-all ${wouldBeCircular
+                                                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed line-through'
+                                                : isSelected
+                                                  ? 'bg-indigo-100 text-indigo-700 border-indigo-300 [.dark_&]:bg-indigo-900/30 [.dark_&]:text-indigo-400 [.dark_&]:border-indigo-500/30'
+                                                  : 'bg-white [.dark_&]:bg-[#181B2A] text-gray-600 [.dark_&]:text-gray-400 border-gray-200 [.dark_&]:border-white/10 hover:border-indigo-300'
+                                              }`}
+                                            title={wouldBeCircular ? `Circular dependency: "${other.title}" already depends on this` : ''}
+                                          >
+                                            {isSelected && <span className="mr-1">⛓️</span>}
+                                            {other.title?.slice(0, 20)}{other.title?.length > 20 ? '...' : ''}
+                                          </button>
+                                        );
+                                      })}
+                                  </div>
+                                  {(st.dependsOn || []).length > 0 && (
+                                    <p className="text-[9px] text-amber-600 [.dark_&]:text-amber-400 mt-1 flex items-center gap-1">
+                                      <span>⚠️</span> Cannot complete until dependencies are done
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Add New Subtask - Quick Add with Inline Icons */}
+                    <div className="mt-3 pt-3 border-t border-gray-200 [.dark_&]:border-white/10">
+                      <div className="flex items-center gap-2">
+                        <VoiceInput
+                          value={newSubtask}
+                          onChange={(e) => setNewSubtask(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              if (newSubtask.trim()) {
+                                const newId = Math.random().toString(36).slice(2);
+                                setSubtasks([
+                                  ...subtasks,
+                                  {
+                                    id: newId,
+                                    title: newSubtask.trim(),
+                                    description: "",
+                                    dueDate: newSubtaskDueDate,
+                                    assigneeId: newSubtaskAssigneeId,
+                                    priority: newSubtaskPriority,
+                                    order: Date.now(),
+                                    completed: false,
+                                    createdAt: new Date().toISOString(),
+                                    completedAt: null,
+                                    completedBy: null,
+                                  },
+                                ]);
+                                setNewSubtask("");
+                                setNewSubtaskDueDate(null);
+                                setNewSubtaskAssigneeId(null);
+                                setNewSubtaskPriority("Medium");
+                              }
+                            }
+                          }}
+                          placeholder="Add a subtask..."
+                          className="flex-1 rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2 text-xs text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600 shadow-sm"
+                        />
+
+                        {/* Quick Option Icons */}
+                        <div className="flex items-center gap-1">
+                          {/* Due Date Icon */}
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowQuickDatePicker(!showQuickDatePicker);
+                                setShowQuickAssigneePicker(false);
+                                setShowQuickPriorityPicker(false);
+                              }}
+                              className={`p-2 rounded-lg transition-all ${newSubtaskDueDate ? 'bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-900/30 [.dark_&]:text-indigo-400' : 'hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-gray-400 hover:text-gray-600'}`}
+                              title="Set due date"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </button>
+                            {showQuickDatePicker && (
+                              <>
+                                <div className="fixed inset-0 z-10" onClick={() => setShowQuickDatePicker(false)} />
+                                <div className="absolute bottom-full right-0 mb-2 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-200 [.dark_&]:border-white/10 p-3 z-20 animate-in fade-in zoom-in-95 duration-100">
+                                  <label className="block text-[10px] font-medium text-gray-500 mb-1">Due Date</label>
+                                  <input
+                                    type="date"
+                                    value={newSubtaskDueDate || ''}
+                                    onChange={(e) => {
+                                      setNewSubtaskDueDate(e.target.value || null);
+                                      setShowQuickDatePicker(false);
+                                    }}
+                                    className="w-36 rounded border-0 bg-gray-50 [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-xs text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
+                                    autoFocus
+                                  />
+                                  {newSubtaskDueDate && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setNewSubtaskDueDate(null);
+                                        setShowQuickDatePicker(false);
+                                      }}
+                                      className="w-full mt-1 text-[10px] text-red-500 hover:text-red-600"
+                                    >
+                                      Clear
+                                    </button>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Assignee Icon */}
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowQuickAssigneePicker(!showQuickAssigneePicker);
+                                setShowQuickDatePicker(false);
+                                setShowQuickPriorityPicker(false);
+                              }}
+                              className={`p-2 rounded-lg transition-all ${newSubtaskAssigneeId ? 'bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-900/30 [.dark_&]:text-indigo-400' : 'hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-gray-400 hover:text-gray-600'}`}
+                              title="Assign to"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                            </button>
+                            {showQuickAssigneePicker && (
+                              <>
+                                <div className="fixed inset-0 z-10" onClick={() => setShowQuickAssigneePicker(false)} />
+                                <div className="absolute bottom-full right-0 mb-2 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-200 [.dark_&]:border-white/10 p-2 z-20 w-48 max-h-48 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+                                  <label className="block text-[10px] font-medium text-gray-500 mb-1 px-1">Assign to</label>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setNewSubtaskAssigneeId(null);
+                                      setShowQuickAssigneePicker(false);
+                                    }}
+                                    className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-gray-100 [.dark_&]:hover:bg-white/10 ${!newSubtaskAssigneeId ? 'bg-indigo-50 text-indigo-600 [.dark_&]:bg-indigo-900/20 [.dark_&]:text-indigo-400' : 'text-gray-600 [.dark_&]:text-gray-300'}`}
+                                  >
+                                    Unassigned
+                                  </button>
+                                  {assignees.map((a) => (
+                                    <button
+                                      key={a.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setNewSubtaskAssigneeId(a.id);
+                                        setShowQuickAssigneePicker(false);
+                                      }}
+                                      className={`w-full text-left px-2 py-1.5 text-xs rounded flex items-center gap-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 ${newSubtaskAssigneeId === a.id ? 'bg-indigo-50 text-indigo-600 [.dark_&]:bg-indigo-900/20 [.dark_&]:text-indigo-400' : 'text-gray-600 [.dark_&]:text-gray-300'}`}
+                                    >
+                                      <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 text-[9px] font-bold flex items-center justify-center">
+                                        {a.name?.charAt(0)?.toUpperCase()}
+                                      </span>
+                                      {a.name}
+                                    </button>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Priority Icon */}
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowQuickPriorityPicker(!showQuickPriorityPicker);
+                                setShowQuickDatePicker(false);
+                                setShowQuickAssigneePicker(false);
+                              }}
+                              className={`p-2 rounded-lg transition-all ${newSubtaskPriority === 'High' ? 'bg-red-100 text-red-600 [.dark_&]:bg-red-900/30 [.dark_&]:text-red-400' :
+                                newSubtaskPriority === 'Low' ? 'bg-blue-100 text-blue-600 [.dark_&]:bg-blue-900/30 [.dark_&]:text-blue-400' :
+                                  'hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-gray-400 hover:text-gray-600'
+                                }`}
+                              title="Set priority"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                              </svg>
+                            </button>
+                            {showQuickPriorityPicker && (
+                              <>
+                                <div className="fixed inset-0 z-10" onClick={() => setShowQuickPriorityPicker(false)} />
+                                <div className="absolute bottom-full right-0 mb-2 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-200 [.dark_&]:border-white/10 p-2 z-20 animate-in fade-in zoom-in-95 duration-100">
+                                  <label className="block text-[10px] font-medium text-gray-500 mb-1 px-1">Priority</label>
+                                  <div className="flex gap-1">
+                                    {['Low', 'Medium', 'High'].map((p) => (
+                                      <button
+                                        key={p}
+                                        type="button"
+                                        onClick={() => {
+                                          setNewSubtaskPriority(p);
+                                          setShowQuickPriorityPicker(false);
+                                        }}
+                                        className={`px-3 py-1.5 text-[10px] font-medium rounded transition-all ${newSubtaskPriority === p
+                                          ? p === 'High' ? 'bg-red-500 text-white' : p === 'Low' ? 'bg-blue-500 text-white' : 'bg-indigo-500 text-white'
+                                          : 'bg-gray-100 [.dark_&]:bg-white/10 text-gray-500 hover:bg-gray-200 [.dark_&]:hover:bg-white/20'
+                                          }`}
+                                      >
+                                        {p}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="custom"
+                          onClick={() => {
                             if (newSubtask.trim()) {
+                              const newId = Math.random().toString(36).slice(2);
                               setSubtasks([
                                 ...subtasks,
                                 {
-                                  id: Math.random().toString(36).slice(2),
+                                  id: newId,
                                   title: newSubtask.trim(),
+                                  description: "",
+                                  dueDate: newSubtaskDueDate,
+                                  assigneeId: newSubtaskAssigneeId,
+                                  priority: newSubtaskPriority,
+                                  order: Date.now(),
                                   completed: false,
+                                  createdAt: new Date().toISOString(),
+                                  completedAt: null,
+                                  completedBy: null,
                                 },
                               ]);
                               setNewSubtask("");
+                              setNewSubtaskDueDate(null);
+                              setNewSubtaskAssigneeId(null);
+                              setNewSubtaskPriority("Medium");
                             }
-                          }
-                        }}
-                        placeholder="New subtask..."
-                        className="flex-1 rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-xs text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600 shadow-sm"
-                      />
-                      <Button
-                        type="button"
-                        variant="custom"
-                        onClick={() => {
-                          if (newSubtask.trim()) {
-                            setSubtasks([
-                              ...subtasks,
-                              {
-                                id: Math.random().toString(36).slice(2),
-                                title: newSubtask.trim(),
-                                completed: false,
-                              },
-                            ]);
-                            setNewSubtask("");
-                          }
-                        }}
-                        className={`whitespace-nowrap text-xs px-3 py-1.5 text-white rounded-lg transition-colors ${themeStyles.button}`}
-                      >
-                        Add
-                      </Button>
+                          }}
+                          className={`whitespace-nowrap text-xs px-4 py-2 text-white rounded-lg transition-colors ${themeStyles.button}`}
+                        >
+                          Add
+                        </Button>
+                      </div>
+
+                      {/* Selected Options Preview */}
+                      {(newSubtaskDueDate || newSubtaskAssigneeId || newSubtaskPriority !== 'Medium') && (
+                        <div className="flex items-center gap-2 mt-2 pl-1">
+                          <span className="text-[10px] text-gray-400">Options:</span>
+                          {newSubtaskDueDate && (
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-gray-100 [.dark_&]:bg-white/10 text-gray-600 [.dark_&]:text-gray-300 flex items-center gap-1">
+                              📅 {new Date(newSubtaskDueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              <button type="button" onClick={() => setNewSubtaskDueDate(null)} className="text-gray-400 hover:text-red-500">×</button>
+                            </span>
+                          )}
+                          {newSubtaskAssigneeId && (
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-gray-100 [.dark_&]:bg-white/10 text-gray-600 [.dark_&]:text-gray-300 flex items-center gap-1">
+                              👤 {assignees.find(a => a.id === newSubtaskAssigneeId)?.name}
+                              <button type="button" onClick={() => setNewSubtaskAssigneeId(null)} className="text-gray-400 hover:text-red-500">×</button>
+                            </span>
+                          )}
+                          {newSubtaskPriority !== 'Medium' && (
+                            <span className={`text-[10px] px-2 py-0.5 rounded flex items-center gap-1 ${newSubtaskPriority === 'High' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                              ⚡ {newSubtaskPriority}
+                              <button type="button" onClick={() => setNewSubtaskPriority('Medium')} className="hover:text-red-500">×</button>
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
