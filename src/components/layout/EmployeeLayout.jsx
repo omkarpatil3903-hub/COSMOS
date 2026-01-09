@@ -259,7 +259,14 @@ function EmployeeLayout() {
       <a className="sr-only-focusable" href="#main-content">
         Skip to main content
       </a>
-      <Toaster position="top-right" />
+      <Toaster
+        position="top-right"
+        containerStyle={{ zIndex: 100000 }}
+        toastOptions={{
+          style: { zIndex: 100000 },
+          duration: 2000,
+        }}
+      />
       <aside
         className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
           } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"}`}
@@ -269,19 +276,14 @@ function EmployeeLayout() {
           {!isCollapsed && (
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="h-14 w-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-lg">
-                  {userProfile.imageUrl && !imageLoadError ? (
+                <div className="h-14 w-14 rounded-full bg-gradient-to-br from-teal-400 to-teal-500 p-[2px] shadow-lg">
+                  <div className="h-full w-full rounded-full bg-white p-1">
                     <img
-                      src={userProfile.imageUrl}
-                      alt={userProfile.name}
-                      className="h-full w-full object-cover rounded-full border-2 border-white"
-                      onError={() => setImageLoadError(true)}
+                      src="/cosmos logo.png"
+                      alt="Cosmos Logo"
+                      className="h-full w-full object-cover rounded-full"
                     />
-                  ) : (
-                    <div className={`h-full w-full rounded-full ${barColor} flex items-center justify-center text-white border-2 border-white`}>
-                      <FaUser className="h-6 w-6" />
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
               <div className="min-w-0">

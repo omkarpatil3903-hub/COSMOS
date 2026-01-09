@@ -261,7 +261,14 @@ export default function ClientLayout() {
       <a className="sr-only-focusable" href="#main-content">
         Skip to main content
       </a>
-      <Toaster position="top-right" />
+      <Toaster
+        position="top-right"
+        containerStyle={{ zIndex: 100000 }}
+        toastOptions={{
+          style: { zIndex: 100000 },
+          duration: 2000,
+        }}
+      />
 
       {/* Sidebar */}
       <aside
@@ -273,19 +280,12 @@ export default function ClientLayout() {
           {!isCollapsed && (
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="h-14 w-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-lg">
-                  {userProfile.imageUrl && !imageLoadError ? (
-                    <img
-                      src={userProfile.imageUrl}
-                      alt={userProfile.name}
-                      className="h-full w-full object-cover rounded-full border-2 border-white"
-                      onError={() => setImageLoadError(true)}
-                    />
-                  ) : (
-                    <div className={`h-full w-full rounded-full ${barColor} flex items-center justify-center text-white border-2 border-white`}>
-                      <FaUser className="h-6 w-6" />
-                    </div>
-                  )}
+                <div className="bg-white p-1 rounded-full shadow-lg">
+                  <img
+                    src="/cosmos logo.png"
+                    alt="Cosmos Logo"
+                    className="h-12 w-12 object-cover rounded-full"
+                  />
                 </div>
               </div>
               <div className="min-w-0">
