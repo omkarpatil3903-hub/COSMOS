@@ -1,8 +1,9 @@
 // src/context/AuthContext.jsx
 import { useState, useEffect, useContext, useMemo } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { doc, onSnapshot } from "firebase/firestore";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
+import toast from "react-hot-toast";
 import AppLoader from "../components/AppLoader";
 import { getAccessiblePanels } from "../config/roles";
 import { initializeAppFolders } from "../utils/initializeAppFolders";
@@ -33,9 +34,41 @@ export function AuthProvider({ children }) {
       if (currentUser) {
         // Set up real-time listener for users collection
         const userDocRef = doc(db, "users", currentUser.uid);
-        unsubDataListener = onSnapshot(userDocRef, (userDoc) => {
-          if (userDoc.exists()) {
-            const data = userDoc.data();
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          // If user is in 'users' collection but doesn't have a role, default to 'member' for safety
+          setUserData({
+            ...data,
+            role: data.role ? data.role.trim() : "member",
+          });
+
+          // Force logout if account is inactive
+          if (data.status === "Inactive") {
+            await signOut(auth);
+            setUserData(null);
+            setUser(null);
+            toast.error("Your account has been deactivated. Contact your administrator.");
+            setLoading(false);
+            return;
+          }
+        } else {
+          // If not in users, check clients collection
+          const clientDocRef = doc(db, "clients", currentUser.uid);
+          const clientDoc = await getDoc(clientDocRef);
+          if (clientDoc.exists()) {
+            const data = clientDoc.data();
+
+            // Check client status if applicable
+            if (data.status === "Inactive") {
+              await signOut(auth);
+              setUserData(null);
+              setUser(null);
+              toast.error("Your account has been deactivated. Contact your administrator.");
+              setLoading(false);
+              return;
+            }
+
             setUserData({
               ...data,
               uid: currentUser.uid,
