@@ -34,7 +34,9 @@ const FollowupList = ({
     handleCompleteFollowup,
     handleRescheduleFollowup,
     handleDeleteProfileFollowup,
-    getPriorityColor
+    getPriorityColor,
+    buttonClass = "bg-indigo-600 hover:bg-indigo-700 text-white",
+    themeColors = {}
 }) => {
     const [viewMode, setViewMode] = useState('card'); // 'card', 'agenda', 'calendar'
     const [calendarViewDays, setCalendarViewDays] = useState(7); // 7, 14, or 30
@@ -65,7 +67,120 @@ const FollowupList = ({
     const [stripStartDate, setStripStartDate] = useState(getStartOfWeek(new Date()));
     const [selectedDate, setSelectedDate] = useState(toLocalDateString(new Date()));
 
-    const buttonClass = "bg-[#4f46e5] hover:bg-[#4338ca] text-white transition-colors duration-200 shadow-sm hover:shadow-md flex items-center";
+    // Helper to get calendar button classes based on theme
+    const getCalendarButtonClass = (isActive) => {
+        if (!isActive) return 'bg-gray-100 [.dark_&]:bg-slate-700 text-gray-600 [.dark_&]:text-gray-300 hover:bg-gray-200 [.dark_&]:hover:bg-slate-600';
+
+        // Extract base color from buttonClass or themeColors
+        if (buttonClass.includes('bg-purple')) return 'bg-purple-600 text-white shadow-sm';
+        if (buttonClass.includes('bg-sky')) return 'bg-sky-600 text-white shadow-sm';
+        if (buttonClass.includes('bg-pink')) return 'bg-pink-600 text-white shadow-sm';
+        if (buttonClass.includes('bg-violet')) return 'bg-violet-600 text-white shadow-sm';
+        if (buttonClass.includes('bg-amber')) return 'bg-amber-600 text-white shadow-sm';
+        if (buttonClass.includes('bg-teal')) return 'bg-teal-600 text-white shadow-sm';
+        if (buttonClass.includes('bg-emerald')) return 'bg-emerald-600 text-white shadow-sm';
+        if (buttonClass.includes('bg-blue')) return 'bg-blue-600 text-white shadow-sm';
+        return 'bg-indigo-600 text-white shadow-sm'; // default
+    };
+
+    const getCalendarSelectedClass = () => {
+        if (buttonClass.includes('bg-purple')) return 'bg-purple-600';
+        if (buttonClass.includes('bg-sky')) return 'bg-sky-600';
+        if (buttonClass.includes('bg-pink')) return 'bg-pink-600';
+        if (buttonClass.includes('bg-violet')) return 'bg-violet-600';
+        if (buttonClass.includes('bg-amber')) return 'bg-amber-600';
+        if (buttonClass.includes('bg-teal')) return 'bg-teal-600';
+        if (buttonClass.includes('bg-emerald')) return 'bg-emerald-600';
+        if (buttonClass.includes('bg-blue')) return 'bg-blue-600';
+        return 'bg-indigo-600'; // default
+    };
+
+    const getTodayRingClass = () => {
+        if (buttonClass.includes('bg-purple')) return 'ring-purple-500';
+        if (buttonClass.includes('bg-sky')) return 'ring-sky-500';
+        if (buttonClass.includes('bg-pink')) return 'ring-pink-500';
+        if (buttonClass.includes('bg-violet')) return 'ring-violet-500';
+        if (buttonClass.includes('bg-amber')) return 'ring-amber-500';
+        if (buttonClass.includes('bg-teal')) return 'ring-teal-500';
+        if (buttonClass.includes('bg-emerald')) return 'ring-emerald-500';
+        if (buttonClass.includes('bg-blue')) return 'ring-blue-500';
+        return 'ring-indigo-500'; // default
+    };
+
+    const getHeatMapClass = (level) => {
+        // level: 'heavy', 'medium', 'light'
+        if (buttonClass.includes('bg-purple')) {
+            if (level === 'heavy') return 'bg-purple-200 [.dark_&]:bg-purple-500/40';
+            if (level === 'medium') return 'bg-purple-100 [.dark_&]:bg-purple-500/20';
+            return 'bg-purple-50 [.dark_&]:bg-purple-500/10';
+        }
+        if (buttonClass.includes('bg-sky')) {
+            if (level === 'heavy') return 'bg-sky-200 [.dark_&]:bg-sky-500/40';
+            if (level === 'medium') return 'bg-sky-100 [.dark_&]:bg-sky-500/20';
+            return 'bg-sky-50 [.dark_&]:bg-sky-500/10';
+        }
+        if (buttonClass.includes('bg-pink')) {
+            if (level === 'heavy') return 'bg-pink-200 [.dark_&]:bg-pink-500/40';
+            if (level === 'medium') return 'bg-pink-100 [.dark_&]:bg-pink-500/20';
+            return 'bg-pink-50 [.dark_&]:bg-pink-500/10';
+        }
+        if (buttonClass.includes('bg-violet')) {
+            if (level === 'heavy') return 'bg-violet-200 [.dark_&]:bg-violet-500/40';
+            if (level === 'medium') return 'bg-violet-100 [.dark_&]:bg-violet-500/20';
+            return 'bg-violet-50 [.dark_&]:bg-violet-500/10';
+        }
+        if (buttonClass.includes('bg-amber')) {
+            if (level === 'heavy') return 'bg-amber-200 [.dark_&]:bg-amber-500/40';
+            if (level === 'medium') return 'bg-amber-100 [.dark_&]:bg-amber-500/20';
+            return 'bg-amber-50 [.dark_&]:bg-amber-500/10';
+        }
+        if (buttonClass.includes('bg-teal')) {
+            if (level === 'heavy') return 'bg-teal-200 [.dark_&]:bg-teal-500/40';
+            if (level === 'medium') return 'bg-teal-100 [.dark_&]:bg-teal-500/20';
+            return 'bg-teal-50 [.dark_&]:bg-teal-500/10';
+        }
+        if (buttonClass.includes('bg-emerald')) {
+            if (level === 'heavy') return 'bg-emerald-200 [.dark_&]:bg-emerald-500/40';
+            if (level === 'medium') return 'bg-emerald-100 [.dark_&]:bg-emerald-500/20';
+            return 'bg-emerald-50 [.dark_&]:bg-emerald-500/10';
+        }
+        if (buttonClass.includes('bg-blue')) {
+            if (level === 'heavy') return 'bg-blue-200 [.dark_&]:bg-blue-500/40';
+            if (level === 'medium') return 'bg-blue-100 [.dark_&]:bg-blue-500/20';
+            return 'bg-blue-50 [.dark_&]:bg-blue-500/10';
+        }
+        // default indigo
+        if (level === 'heavy') return 'bg-indigo-200 [.dark_&]:bg-indigo-500/40';
+        if (level === 'medium') return 'bg-indigo-100 [.dark_&]:bg-indigo-500/20';
+        return 'bg-indigo-50 [.dark_&]:bg-indigo-500/10';
+    };
+
+    const getBadgeClass = () => {
+        if (buttonClass.includes('bg-purple')) return 'bg-purple-100 text-purple-700 [.dark_&]:bg-purple-500/20 [.dark_&]:text-purple-300';
+        if (buttonClass.includes('bg-sky')) return 'bg-sky-100 text-sky-700 [.dark_&]:bg-sky-500/20 [.dark_&]:text-sky-300';
+        if (buttonClass.includes('bg-pink')) return 'bg-pink-100 text-pink-700 [.dark_&]:bg-pink-500/20 [.dark_&]:text-pink-300';
+        if (buttonClass.includes('bg-violet')) return 'bg-violet-100 text-violet-700 [.dark_&]:bg-violet-500/20 [.dark_&]:text-violet-300';
+        if (buttonClass.includes('bg-amber')) return 'bg-amber-100 text-amber-700 [.dark_&]:bg-amber-500/20 [.dark_&]:text-amber-300';
+        if (buttonClass.includes('bg-teal')) return 'bg-teal-100 text-teal-700 [.dark_&]:bg-teal-500/20 [.dark_&]:text-teal-300';
+        if (buttonClass.includes('bg-emerald')) return 'bg-emerald-100 text-emerald-700 [.dark_&]:bg-emerald-500/20 [.dark_&]:text-emerald-300';
+        if (buttonClass.includes('bg-blue')) return 'bg-blue-100 text-blue-700 [.dark_&]:bg-blue-500/20 [.dark_&]:text-blue-300';
+        return 'bg-indigo-100 text-indigo-700 [.dark_&]:bg-indigo-500/20 [.dark_&]:text-indigo-300';
+    };
+
+    const getDotClass = () => {
+        if (buttonClass.includes('bg-purple')) return 'bg-purple-500';
+        if (buttonClass.includes('bg-sky')) return 'bg-sky-500';
+        if (buttonClass.includes('bg-pink')) return 'bg-pink-500';
+        if (buttonClass.includes('bg-violet')) return 'bg-violet-500';
+        if (buttonClass.includes('bg-amber')) return 'bg-amber-500';
+        if (buttonClass.includes('bg-teal')) return 'bg-teal-500';
+        if (buttonClass.includes('bg-emerald')) return 'bg-emerald-500';
+        if (buttonClass.includes('bg-blue')) return 'bg-blue-500';
+        return 'bg-indigo-500';
+    };
+
+
+
 
     // --- Helper to get relative date ---
     const getRelativeDate = (dateString) => {
@@ -98,8 +213,8 @@ const FollowupList = ({
                 <div className={`flex ${compact ? 'items-center gap-4 flex-1' : 'flex-col md:flex-row md:items-center justify-between gap-4'}`}>
                     {/* Lead Info */}
                     <div className="flex items-start gap-3 flex-1">
-                        <div className={`w-10 h-10 rounded-full bg-indigo-100 [.dark_&]:bg-indigo-500/20 flex items-center justify-center flex-shrink-0 ${compact ? 'hidden md:flex' : ''}`}>
-                            <span className="font-bold text-sm text-indigo-600 [.dark_&]:text-indigo-400">
+                        <div className={`w-10 h-10 rounded-full ${themeColors.bgLight || 'bg-indigo-100 [.dark_&]:bg-indigo-500/20'} flex items-center justify-center flex-shrink-0 ${compact ? 'hidden md:flex' : ''}`}>
+                            <span className={`font-bold text-sm ${themeColors.iconColor || 'text-indigo-600 [.dark_&]:text-indigo-400'}`}>
                                 {followup.leadName?.charAt(0).toUpperCase()}
                             </span>
                         </div>
@@ -380,7 +495,7 @@ const FollowupList = ({
                             <button
                                 onClick={() => setViewMode("card")}
                                 className={`p-2 rounded-md transition-all ${viewMode === "card"
-                                    ? "bg-white [.dark_&]:bg-slate-600 shadow text-indigo-600 [.dark_&]:text-indigo-400"
+                                    ? `bg-white [.dark_&]:bg-slate-600 shadow ${themeColors.iconColor || 'text-indigo-600 [.dark_&]:text-indigo-400'}`
                                     : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700"
                                     }`}
                                 title="Card View"
@@ -390,7 +505,7 @@ const FollowupList = ({
                             <button
                                 onClick={() => setViewMode("agenda")}
                                 className={`p-2 rounded-md transition-all ${viewMode === "agenda"
-                                    ? "bg-white [.dark_&]:bg-slate-600 shadow text-indigo-600 [.dark_&]:text-indigo-400"
+                                    ? `bg-white [.dark_&]:bg-slate-600 shadow ${themeColors.iconColor || 'text-indigo-600 [.dark_&]:text-indigo-400'}`
                                     : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700"
                                     }`}
                                 title="Agenda View"
@@ -400,7 +515,7 @@ const FollowupList = ({
                             <button
                                 onClick={() => setViewMode("calendar")}
                                 className={`p-2 rounded-md transition-all ${viewMode === "calendar"
-                                    ? "bg-white [.dark_&]:bg-slate-600 shadow text-indigo-600 [.dark_&]:text-indigo-400"
+                                    ? `bg-white [.dark_&]:bg-slate-600 shadow ${themeColors.iconColor || 'text-indigo-600 [.dark_&]:text-indigo-400'}`
                                     : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700"
                                     }`}
                                 title="Calendar View"
@@ -410,6 +525,7 @@ const FollowupList = ({
                         </div>
 
                         <Button
+                            variant="custom"
                             onClick={() => setShowScheduleFollowup(true)}
                             className={buttonClass}
                         >
@@ -555,7 +671,7 @@ const FollowupList = ({
                                 <button onClick={prevWeek} className="p-2 hover:bg-gray-100 [.dark_&]:hover:bg-slate-700 rounded-full transition-colors text-gray-600 [.dark_&]:text-gray-400">
                                     <FaChevronLeft />
                                 </button>
-                                <button onClick={goToToday} className="text-sm font-semibold text-indigo-600 [.dark_&]:text-indigo-400 hover:underline px-3 py-1.5 rounded-lg hover:bg-indigo-50 [.dark_&]:hover:bg-indigo-500/10 transition-colors">
+                                <button onClick={goToToday} className={`text-sm font-semibold ${themeColors.iconColor || 'text-indigo-600 [.dark_&]:text-indigo-400'} hover:underline px-3 py-1.5 rounded-lg ${themeColors.bgLight ? `hover:${themeColors.bgLight.replace('bg-', 'bg-').replace('100', '50')}` : 'hover:bg-indigo-50'} [.dark_&]:hover:bg-indigo-500/10 transition-colors`}>
                                     Today
                                 </button>
                                 <button onClick={nextWeek} className="p-2 hover:bg-gray-100 [.dark_&]:hover:bg-slate-700 rounded-full transition-colors text-gray-600 [.dark_&]:text-gray-400">
@@ -575,10 +691,7 @@ const FollowupList = ({
                                 <button
                                     key={option.days}
                                     onClick={() => setCalendarViewDays(option.days)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${calendarViewDays === option.days
-                                        ? 'bg-indigo-600 text-white shadow-sm'
-                                        : 'bg-gray-100 [.dark_&]:bg-slate-700 text-gray-600 [.dark_&]:text-gray-300 hover:bg-gray-200 [.dark_&]:hover:bg-slate-600'
-                                        }`}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${getCalendarButtonClass(calendarViewDays === option.days)}`}
                                 >
                                     {option.label}
                                 </button>
@@ -612,11 +725,11 @@ const FollowupList = ({
                                 let heatMapClass = '';
                                 if (!isSelected) {
                                     if (followupCount >= 6) {
-                                        heatMapClass = 'bg-indigo-200 [.dark_&]:bg-indigo-500/40'; // Heavy
+                                        heatMapClass = getHeatMapClass('heavy');
                                     } else if (followupCount >= 3) {
-                                        heatMapClass = 'bg-indigo-100 [.dark_&]:bg-indigo-500/20'; // Medium
+                                        heatMapClass = getHeatMapClass('medium');
                                     } else if (followupCount >= 1) {
-                                        heatMapClass = 'bg-indigo-50 [.dark_&]:bg-indigo-500/10'; // Light
+                                        heatMapClass = getHeatMapClass('light');
                                     }
                                 }
 
@@ -627,9 +740,9 @@ const FollowupList = ({
                                         className={`
                                             flex flex-col items-center justify-center p-3 rounded-lg transition-all relative
                                             ${isSelected
-                                                ? 'bg-indigo-600 text-white shadow-lg scale-105 z-10'
+                                                ? `${getCalendarSelectedClass()} text-white shadow-lg scale-105 z-10`
                                                 : `${heatMapClass || 'hover:bg-gray-50 [.dark_&]:hover:bg-slate-700'} text-gray-700 [.dark_&]:text-gray-300`}
-                                            ${isToday && !isSelected ? 'ring-2 ring-indigo-500 text-indigo-600' : ''}
+                                            ${isToday && !isSelected ? `ring-2 ${getTodayRingClass()} ${themeColors.iconColor || 'text-indigo-600'}` : ''}
                                         `}
                                     >
                                         <span className={`text-xs font-medium uppercase mb-1 ${isSelected ? 'text-indigo-200' : 'text-gray-500'}`}>
@@ -643,7 +756,7 @@ const FollowupList = ({
                                         {hasEvents && (
                                             <span className={`absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ${isSelected
                                                 ? 'bg-white/20 text-white'
-                                                : 'bg-indigo-100 text-indigo-700 [.dark_&]:bg-indigo-500/20 [.dark_&]:text-indigo-300'
+                                                : getBadgeClass()
                                                 }`}>
                                                 {calendarData[isoDate].count}
                                             </span>
@@ -652,7 +765,7 @@ const FollowupList = ({
                                         {/* Dot Indicator - now below the number */}
                                         {hasEvents && !isSelected && (
                                             <div className="absolute bottom-1.5 flex gap-0.5">
-                                                <div className={`w-1.5 h-1.5 rounded-full ${hasEvents.priority === 'high' ? 'bg-red-500' : 'bg-indigo-500'}`} />
+                                                <div className={`w-1.5 h-1.5 rounded-full ${hasEvents.priority === 'high' ? 'bg-red-500' : getDotClass()}`} />
                                             </div>
                                         )}
                                         {/* Simple White Dot if selected */}
@@ -689,10 +802,11 @@ const FollowupList = ({
                                 </div>
                                 <p className="text-gray-500">No tasks scheduled for this day.</p>
                                 <Button
+                                    variant="custom"
                                     onClick={() => setShowScheduleFollowup(true)}
-                                    className="mt-4 text-sm bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border-transparent shadow-none"
+                                    className={buttonClass}
                                 >
-                                    + Add Task
+                                    + Schedule New Follow-Up
                                 </Button>
                             </div>
                         )}

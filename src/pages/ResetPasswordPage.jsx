@@ -24,6 +24,7 @@ function ResetPasswordPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [error, setError] = useState("");
+    const [passwordError, setPasswordError] = useState("");
     const [email, setEmail] = useState("");
     const [success, setSuccess] = useState(false);
     const [invalidLink, setInvalidLink] = useState(false);
@@ -32,7 +33,7 @@ function ResetPasswordPage() {
     const oobCode = searchParams.get("oobCode");
 
     useEffect(() => {
-        document.title = "Reset Password - Triology Consultancy";
+        document.title = "COSMOS | Reset Password";
 
         // Verify the reset code is valid
         const verifyCode = async () => {
@@ -59,6 +60,7 @@ function ResetPasswordPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
+        setPasswordError("");
 
         // Validation
         if (!newPassword || !confirmPassword) {
@@ -66,8 +68,10 @@ function ResetPasswordPage() {
             return;
         }
 
-        if (newPassword.length < 6) {
-            setError("Password must be at least 6 characters");
+        // Password validation regex
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*_\-]).{8,}$/;
+        if (!passwordRegex.test(newPassword)) {
+            setPasswordError("Password must be at least 8 characters long and include 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (!@#$%^&*_-).");
             return;
         }
 
@@ -253,7 +257,13 @@ function ResetPasswordPage() {
                                     )}
                                 </button>
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                                {passwordError ? (
+                                    <span className="text-red-400">{passwordError}</span>
+                                ) : (
+                                    "Password must be strong"
+                                )}
+                            </p>
                         </div>
 
                         {/* Confirm Password */}

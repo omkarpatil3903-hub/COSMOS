@@ -11,7 +11,10 @@ const RescheduleFollowupModal = ({
     setRescheduleForm,
     onReschedule,
     isRescheduling,
-    priorities
+    priorities,
+    headerIconClass = "bg-indigo-50 [.dark_&]:bg-indigo-500/20 text-indigo-600 [.dark_&]:text-indigo-400",
+    buttonClass = "bg-indigo-600 hover:bg-indigo-700 text-white",
+    themeColors = {}
 }) => {
     if (!isOpen || !lead) return null;
 
@@ -24,7 +27,9 @@ const RescheduleFollowupModal = ({
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-white/10">
                     <h2 className="text-lg font-bold text-gray-900 [.dark_&]:text-white flex items-center gap-2">
-                        <FaClock className="text-blue-600" />
+                        <span className={`p-1.5 rounded-lg ${headerIconClass}`}>
+                            <FaClock className="h-4 w-4" />
+                        </span>
                         Reschedule Follow-up
                     </h2>
                     <button
@@ -37,7 +42,7 @@ const RescheduleFollowupModal = ({
 
                 <form onSubmit={onReschedule}>
                     {/* Customer Info */}
-                    <div className="bg-blue-50 [.dark_&]:bg-blue-900/20 px-6 py-4 border-b border-gray-100 [.dark_&]:border-white/10">
+                    <div className={`px-6 py-4 border-b border-gray-100 [.dark_&]:border-white/10 ${themeColors.bgLight || 'bg-indigo-50 [.dark_&]:bg-indigo-900/20'}`}>
                         <h3 className="text-base font-semibold text-gray-900 [.dark_&]:text-white">
                             {lead.customerName}
                         </h3>
@@ -127,7 +132,7 @@ const RescheduleFollowupModal = ({
                         <button
                             type="submit"
                             disabled={isRescheduling}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                            className={`flex-1 ${buttonClass} px-4 py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50`}
                         >
                             <FaClock />
                             {isRescheduling ? "Rescheduling..." : "Reschedule"}

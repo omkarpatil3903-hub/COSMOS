@@ -68,8 +68,9 @@ function AddResourceModal({
       }
       case "password": {
         if (!v) return "Password is required";
-        if (String(v).length < 6)
-          return "Password must be at least 6 characters";
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*_\-]).{8,}$/;
+        if (!passwordRegex.test(v))
+          return "Password must be at least 8 characters long and include 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (!@#$%^&*_-).";
         return "";
       }
       default:
@@ -467,7 +468,7 @@ function AddResourceModal({
                     </button>
                   </div>
                   <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">
-                    Minimum 6 characters. Shared with the resource for first login.
+                    Minimum 8 characters. Shared with the resource for first login.
                   </p>
                   {(errors.password || serverErrors?.password) && (
                     <p className="text-xs text-red-600 font-medium">

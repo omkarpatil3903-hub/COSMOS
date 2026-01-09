@@ -10,7 +10,9 @@ const ScheduleFollowupModal = ({
     isSubmitting,
     leads,
     followupTypes,
-    priorities
+    priorities,
+    headerIconClass = "bg-indigo-50 [.dark_&]:bg-indigo-500/20 text-indigo-600 [.dark_&]:text-indigo-400",
+    buttonClass = "bg-indigo-600 hover:bg-indigo-700 text-white"
 }) => {
     if (!isOpen) return null;
 
@@ -23,7 +25,7 @@ const ScheduleFollowupModal = ({
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-white/10 bg-gray-50/50 [.dark_&]:bg-[#181B2A]">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-indigo-50 [.dark_&]:bg-indigo-500/20 text-indigo-600 [.dark_&]:text-indigo-400 rounded-lg">
+                        <div className={`p-2 rounded-lg ${headerIconClass}`}>
                             <FaCalendarAlt className="h-5 w-5" />
                         </div>
                         <div>
@@ -170,7 +172,7 @@ const ScheduleFollowupModal = ({
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-medium flex items-center gap-2 transition-colors disabled:opacity-50 shadow-sm"
+                            className={`px-5 py-2.5 rounded-lg ${buttonClass} font-medium flex items-center gap-2 transition-colors disabled:opacity-50 shadow-sm`}
                         >
                             <FaCheckCircle />
                             {isSubmitting ? "Scheduling..." : "Schedule Follow-Up"}

@@ -24,6 +24,7 @@ const LeadFormModal = ({
     errors = {},
     settings = {},
     buttonClass = "",
+    headerIconClass = "",
 }) => {
     const isEditMode = mode === "edit";
 
@@ -100,6 +101,20 @@ const LeadFormModal = ({
     };
 
     const handleChange = (field, value) => {
+        // Input Masking / Filtering
+        if (field === "contactNumber") {
+            // Allow only numbers, max 10
+            if (!/^\d*$/.test(value)) return;
+            if (value.length > 10) return;
+        }
+        if (field === "potentialValue") {
+            if (value < 0) return;
+        }
+        if (field === "customerName") {
+            // Allow only alphabets and spaces
+            if (/[^a-zA-Z\s]/.test(value)) return;
+        }
+
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
@@ -125,10 +140,7 @@ const LeadFormModal = ({
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-white/10 bg-gray-50/50 [.dark_&]:bg-[#181B2A] sticky top-0 z-10 backdrop-blur-md">
                     <div className="flex items-center gap-3">
                         <div
-                            className={`p-2 rounded-lg ${isEditMode
-                                ? "bg-yellow-50 [.dark_&]:bg-yellow-500/20 text-yellow-600 [.dark_&]:text-yellow-400"
-                                : "bg-indigo-50 [.dark_&]:bg-indigo-500/20 text-indigo-600 [.dark_&]:text-indigo-400"
-                                }`}
+                            className={headerIconClass || "bg-indigo-50 [.dark_&]:bg-indigo-500/20 text-indigo-600 [.dark_&]:text-indigo-400 p-2 rounded-lg"}
                         >
                             {isEditMode ? (
                                 <FaEdit className="h-5 w-5" />
@@ -353,7 +365,7 @@ const LeadFormModal = ({
                             <Button variant="secondary" onClick={onClose} type="button">
                                 Cancel
                             </Button>
-                            <Button type="submit" className={buttonClass}>
+                            <Button variant="custom" type="submit" className={buttonClass}>
                                 {isEditMode ? "Update Lead" : "Add Lead"}
                             </Button>
                         </div>

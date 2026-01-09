@@ -9,6 +9,7 @@ import { useAuthContext } from "../../context/useAuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { Toaster } from "react-hot-toast";
 import toast from "react-hot-toast";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import {
   FaTachometerAlt,
   FaProjectDiagram,
@@ -138,6 +139,8 @@ export default function ClientLayout() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [userProfile, setUserProfile] = useState({ name: "", imageUrl: "" });
+  const [imageLoadError, setImageLoadError] = useState(false);
+  const { barColor } = useThemeStyles();
 
   // Fetch user profile from Firestore (check both users and clients collections)
   useEffect(() => {
@@ -271,14 +274,15 @@ export default function ClientLayout() {
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="h-14 w-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-lg">
-                  {userProfile.imageUrl ? (
+                  {userProfile.imageUrl && !imageLoadError ? (
                     <img
                       src={userProfile.imageUrl}
                       alt={userProfile.name}
                       className="h-full w-full object-cover rounded-full border-2 border-white"
+                      onError={() => setImageLoadError(true)}
                     />
                   ) : (
-                    <div className="h-full w-full rounded-full bg-indigo-600 flex items-center justify-center text-white border-2 border-white">
+                    <div className={`h-full w-full rounded-full ${barColor} flex items-center justify-center text-white border-2 border-white`}>
                       <FaUser className="h-6 w-6" />
                     </div>
                   )}

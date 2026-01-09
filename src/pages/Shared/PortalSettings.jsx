@@ -31,37 +31,24 @@ export default function PortalSettings() {
       <PageHeader title="Settings">Manage your theme and profile.</PageHeader>
 
       <div className="space-y-6">
-        <Card className="p-4" tone="white">
-          <div className="border-b border-subtle">
-            <div className="flex items-center gap-2 -mb-px">
-              <div className="flex flex-wrap items-center gap-2">
-                {tabs.map((t, idx) => (
-                  <React.Fragment key={t.to}>
-                    <NavLink
-                      to={t.to}
-                      end
-                      className={({ isActive }) =>
-                        `flex items-center gap-2 px-4 pb-2 pt-2 text-sm font-medium transition-colors duration-150 border-b-2 ${isActive
-                          ? "text-gray-900 [.dark_&]:text-white border-gray-900 [.dark_&]:border-white"
-                          : "text-gray-500 [.dark_&]:text-gray-400 border-transparent hover:text-gray-700 [.dark_&]:hover:text-gray-200 hover:border-gray-300 [.dark_&]:hover:border-gray-600"
-                        }`
-                      }
-                    >
-                      {t.icon}
-                      <span>{t.label}</span>
-                    </NavLink>
-                    {idx < tabs.length - 1 && (
-                      <span
-                        className="mx-1 h-5 w-px bg-subtle"
-                        aria-hidden="true"
-                      />
-                    )}
-                  </React.Fragment>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Card>
+        <div className="flex bg-surface-subtle [.dark_&]:bg-slate-700/50 p-1 rounded-lg border border-subtle">
+          {tabs.map((t) => (
+            <NavLink
+              key={t.to}
+              to={t.to}
+              end
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${isActive
+                  ? "bg-white [.dark_&]:bg-slate-600 shadow text-gray-900 [.dark_&]:text-white"
+                  : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-white"
+                }`
+              }
+            >
+              {t.icon}
+              <span>{t.label}</span>
+            </NavLink>
+          ))}
+        </div>
 
         <div>
           <Outlet />
