@@ -71,7 +71,12 @@ const DraggableList = ({
                                             <input
                                                 type="text"
                                                 value={editValue}
-                                                onChange={(e) => setEditValue(e.target.value)}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    // Allow only alphabets and spaces
+                                                    if (/[^a-zA-Z\s]/.test(val)) return;
+                                                    setEditValue(val);
+                                                }}
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter') onEdit(type, item, editValue);
                                                     if (e.key === 'Escape') setEditingItem(null);

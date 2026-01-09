@@ -361,6 +361,18 @@ function ManageResources() {
     setIsAdding(true);
     setCreateFieldErrors({});
 
+    // Password validation regex
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*_\-]).{8,}$/;
+    if (!passwordRegex.test(formData.password)) {
+      setCreateFieldErrors((prev) => ({
+        ...prev,
+        password:
+          "Password must be at least 8 characters long and include 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (!@#$%^&*_-).",
+      }));
+      setIsAdding(false);
+      return;
+    }
+
     try {
       // Use the existing Firebase app configuration
       let secondaryApp;
@@ -397,7 +409,7 @@ function ManageResources() {
           const blob = await (await fetch(imageFile)).blob();
           const mime = blob.type || "image/png";
           const ext = mime.includes("jpeg") ? "jpg" : (mime.split("/")[1] || "png");
-          const path = `profiles/resource/${user.uid}/${Date.now()}.${ext}`;
+          const path = `profiles/resource/${normalisedEmail}.${ext}`;
           const storageRef = ref(storage, path);
           await uploadBytes(storageRef, blob, { contentType: mime });
           uploadedUrl = await getDownloadURL(storageRef);
@@ -420,7 +432,7 @@ function ManageResources() {
         imageStoragePath: storagePath,
         role: formData.resourceRoleType || "member",
         createdAt: serverTimestamp(),
-        joinDate: new Date().toISOString().split("T")[0],
+        joinDate: serverTimestamp(),
         devPassword: formData.password,
         mustChangePassword: formData.mustChangePassword,
       };
@@ -494,6 +506,15 @@ function ManageResources() {
     setIsUpdating(true);
 
     try {
+      if (formData.password) {
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*_\-]).{8,}$/;
+        if (!passwordRegex.test(formData.password)) {
+          toast.error("Password must be at least 8 characters long and include 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (!@#$%^&*_-).");
+          setIsUpdating(false);
+          return;
+        }
+      }
+
       const userRef = doc(db, "users", selectedResource.id);
       const normalisedEmail = formData.email?.toLowerCase().trim() || "";
       const updates = {
@@ -511,20 +532,27 @@ function ManageResources() {
 
       if (imageFile) {
         try {
+          // Delete all existing profile image variants before uploading new one
+          const extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+          for (const ext of extensions) {
+            const oldPath = `profiles/resource/${normalisedEmail}.${ext}`;
+            try {
+              await deleteObject(ref(storage, oldPath));
+              console.log(`Deleted old resource image: ${oldPath}`);
+            } catch (err) {
+              // Silently ignore - file might not exist
+            }
+          }
+
           const blob = await (await fetch(imageFile)).blob();
           const mime = blob.type || "image/png";
           const ext = mime.includes("jpeg") ? "jpg" : (mime.split("/")[1] || "png");
-          const path = `profiles/resource/${selectedResource.id}/${Date.now()}.${ext}`;
+          const path = `profiles/resource/${normalisedEmail}.${ext}`;
           const storageRef = ref(storage, path);
           await uploadBytes(storageRef, blob, { contentType: mime });
           const url = await getDownloadURL(storageRef);
           updates.imageUrl = url;
           updates.imageStoragePath = path;
-          // Optional cleanup: delete previous avatar if it existed
-          const oldPath = selectedResource.imageStoragePath;
-          if (oldPath && oldPath !== path) {
-            try { await deleteObject(ref(storage, oldPath)); } catch (delErr) { console.warn("Failed to delete old avatar:", delErr); }
-          }
         } catch (uploadErr) {
           console.error("Failed to upload resource avatar:", uploadErr);
         }

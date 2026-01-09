@@ -12,6 +12,37 @@ import {
 } from "react-icons/fa";
 import Button from "./Button";
 
+// Helper function to format Firestore Timestamp to readable date
+const formatDate = (timestamp) => {
+  if (!timestamp) return "Not provided";
+
+  // Handle Firestore Timestamp object
+  if (timestamp && typeof timestamp === 'object' && 'seconds' in timestamp) {
+    const date = new Date(timestamp.seconds * 1000);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  }
+
+  // Handle Date object
+  if (timestamp instanceof Date) {
+    return timestamp.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  }
+
+  // Handle string (legacy format)
+  if (typeof timestamp === 'string') {
+    return timestamp;
+  }
+
+  return "Not provided";
+};
+
 function ViewResourceModal({ resource, onClose }) {
   const { headerIconClass, badgeClass, gradientClass, hoverBorderClass, emailLinkClass, iconColor } = useThemeStyles();
 
@@ -132,7 +163,7 @@ function ViewResourceModal({ resource, onClose }) {
                     <span className="text-xs font-bold uppercase tracking-wide">Join Date</span>
                   </div>
                   <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
-                    {resource.joinDate || "Not provided"}
+                    {formatDate(resource.joinDate)}
                   </p>
                 </div>
 

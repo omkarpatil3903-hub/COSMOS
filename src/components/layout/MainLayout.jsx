@@ -7,6 +7,7 @@ import { auth, db } from "../../firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { Toaster } from "react-hot-toast";
 import useGlobalLeadReminders from "../../hooks/useGlobalLeadReminders.jsx";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 import {
   FaTachometerAlt,
   FaSearch,
@@ -274,6 +275,8 @@ function MainLayout() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [userProfile, setUserProfile] = useState({ name: "", imageUrl: "" });
+  const [imageLoadError, setImageLoadError] = useState(false);
+  const { barColor } = useThemeStyles();
 
   // Global lead follow-up reminders
   useGlobalLeadReminders();
@@ -408,14 +411,15 @@ function MainLayout() {
             <div className="flex items-center gap-3">
               <div className="relative">
                 <div className="h-14 w-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-[2px] shadow-lg">
-                  {userProfile.imageUrl ? (
+                  {userProfile.imageUrl && !imageLoadError ? (
                     <img
                       src={userProfile.imageUrl}
                       alt={userProfile.name}
                       className="h-full w-full object-cover rounded-full border-2 border-white"
+                      onError={() => setImageLoadError(true)}
                     />
                   ) : (
-                    <div className="h-full w-full rounded-full bg-indigo-600 flex items-center justify-center text-white border-2 border-white">
+                    <div className={`h-full w-full rounded-full ${barColor} flex items-center justify-center text-white border-2 border-white`}>
                       <FaUser className="h-6 w-6" />
                     </div>
                   )}

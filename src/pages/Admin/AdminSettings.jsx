@@ -75,35 +75,24 @@ export default function Settings() {
       </PageHeader>
 
       <div className="space-y-6">
-        <Card className="p-4 [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10" tone="white">
-
-          <div className="border-b border-subtle [.dark_&]:border-white/10">
-            <div className="flex items-center gap-2 -mb-px">
-              <div className="flex flex-wrap items-center gap-2">
-                {tabs.map((t, idx) => (
-                  <React.Fragment key={t.to}>
-                    <NavLink
-                      to={t.to}
-                      end
-                      className={({ isActive }) =>
-                        `flex items-center gap-2 px-4 pb-2 pt-2 text-sm font-medium transition-colors duration-150 border-b-2 ${isActive
-                          ? "text-gray-900 border-gray-900 [.dark_&]:text-white [.dark_&]:border-white"
-                          : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300 [.dark_&]:text-gray-400 [.dark_&]:hover:text-gray-200 [.dark_&]:hover:border-white/20"
-                        }`
-                      }
-                    >
-                      {t.icon}
-                      <span>{t.label}</span>
-                    </NavLink>
-                    {idx < tabs.length - 1 && (
-                      <span className="mx-1 h-5 w-px bg-subtle [.dark_&]:bg-white/10" aria-hidden="true" />
-                    )}
-                  </React.Fragment>
-                ))}
-              </div>
-            </div>
-          </div>
-        </Card>
+        <div className="flex bg-surface-subtle [.dark_&]:bg-slate-700/50 p-1 rounded-lg border border-subtle">
+          {tabs.map((t) => (
+            <NavLink
+              key={t.to}
+              to={t.to}
+              end
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${isActive
+                  ? "bg-white [.dark_&]:bg-slate-600 shadow text-gray-900 [.dark_&]:text-white"
+                  : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-white"
+                }`
+              }
+            >
+              {t.icon}
+              <span>{t.label}</span>
+            </NavLink>
+          ))}
+        </div>
 
         <div>
           <Outlet />

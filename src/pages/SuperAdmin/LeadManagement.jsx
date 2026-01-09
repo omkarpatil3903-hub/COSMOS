@@ -134,7 +134,115 @@ const PRODUCT_CATEGORY_OPTIONS = [
 
 function LeadManagement() {
   const navigate = useNavigate();
-  const { buttonClass, iconColor } = useThemeStyles();
+  const { buttonClass, iconColor, headerIconClass, accent } = useThemeStyles();
+
+  // --- Theme Color Logic ---
+  const getThemeSettingsColors = () => {
+    switch (accent) {
+      case 'purple':
+        return {
+          ring: 'ring-purple-500',
+          inputBg: 'bg-purple-50 [.dark_&]:bg-purple-900/20',
+          inputBorder: 'border-purple-300 [.dark_&]:border-purple-600',
+          iconColor: 'text-purple-600 [.dark_&]:text-purple-400',
+          borderLeft: 'border-l-purple-500 [.dark_&]:border-l-purple-400',
+          bgLight: 'bg-purple-100 [.dark_&]:bg-purple-500/20',
+          textTitle: 'text-purple-900 [.dark_&]:text-white',
+        };
+      case 'blue':
+        return {
+          ring: 'ring-sky-500',
+          inputBg: 'bg-sky-50 [.dark_&]:bg-sky-900/20',
+          inputBorder: 'border-sky-300 [.dark_&]:border-sky-600',
+          iconColor: 'text-sky-600 [.dark_&]:text-sky-400',
+          borderLeft: 'border-l-sky-500 [.dark_&]:border-l-sky-400',
+          bgLight: 'bg-sky-100 [.dark_&]:bg-sky-500/20',
+          textTitle: 'text-sky-900 [.dark_&]:text-white',
+        };
+      case 'pink':
+        return {
+          ring: 'ring-pink-500',
+          inputBg: 'bg-pink-50 [.dark_&]:bg-pink-900/20',
+          inputBorder: 'border-pink-300 [.dark_&]:border-pink-600',
+          iconColor: 'text-pink-600 [.dark_&]:text-pink-400',
+          borderLeft: 'border-l-pink-500 [.dark_&]:border-l-pink-400',
+          bgLight: 'bg-pink-100 [.dark_&]:bg-pink-500/20',
+          textTitle: 'text-pink-900 [.dark_&]:text-white',
+        };
+      case 'violet':
+        return {
+          ring: 'ring-violet-500',
+          inputBg: 'bg-violet-50 [.dark_&]:bg-violet-900/20',
+          inputBorder: 'border-violet-300 [.dark_&]:border-violet-600',
+          iconColor: 'text-violet-600 [.dark_&]:text-violet-400',
+          borderLeft: 'border-l-violet-500 [.dark_&]:border-l-violet-400',
+          bgLight: 'bg-violet-100 [.dark_&]:bg-violet-500/20',
+          textTitle: 'text-violet-900 [.dark_&]:text-white',
+        };
+      case 'orange':
+        return {
+          ring: 'ring-amber-500',
+          inputBg: 'bg-amber-50 [.dark_&]:bg-amber-900/20',
+          inputBorder: 'border-amber-300 [.dark_&]:border-amber-600',
+          iconColor: 'text-amber-600 [.dark_&]:text-amber-400',
+          borderLeft: 'border-l-amber-500 [.dark_&]:border-l-amber-400',
+          bgLight: 'bg-amber-100 [.dark_&]:bg-amber-500/20',
+          textTitle: 'text-amber-900 [.dark_&]:text-white',
+        };
+      case 'teal':
+        return {
+          ring: 'ring-teal-500',
+          inputBg: 'bg-teal-50 [.dark_&]:bg-teal-900/20',
+          inputBorder: 'border-teal-300 [.dark_&]:border-teal-600',
+          iconColor: 'text-teal-600 [.dark_&]:text-teal-400',
+          borderLeft: 'border-l-teal-500 [.dark_&]:border-l-teal-400',
+          bgLight: 'bg-teal-100 [.dark_&]:bg-teal-500/20',
+          textTitle: 'text-teal-900 [.dark_&]:text-white',
+        };
+      case 'bronze':
+        return {
+          ring: 'ring-amber-600',
+          inputBg: 'bg-amber-50 [.dark_&]:bg-amber-900/20',
+          inputBorder: 'border-amber-300 [.dark_&]:border-amber-600',
+          iconColor: 'text-amber-700 [.dark_&]:text-amber-400',
+          borderLeft: 'border-l-amber-600 [.dark_&]:border-l-amber-500',
+          bgLight: 'bg-amber-100 [.dark_&]:bg-amber-500/20',
+          textTitle: 'text-amber-900 [.dark_&]:text-white',
+        };
+      case 'mint':
+        return {
+          ring: 'ring-emerald-500',
+          inputBg: 'bg-emerald-50 [.dark_&]:bg-emerald-900/20',
+          inputBorder: 'border-emerald-300 [.dark_&]:border-emerald-600',
+          iconColor: 'text-emerald-600 [.dark_&]:text-emerald-400',
+          borderLeft: 'border-l-emerald-500 [.dark_&]:border-l-emerald-400',
+          bgLight: 'bg-emerald-100 [.dark_&]:bg-emerald-500/20',
+          textTitle: 'text-emerald-900 [.dark_&]:text-white',
+        };
+      case 'black':
+        return {
+          ring: 'ring-blue-500',
+          inputBg: 'bg-blue-50 [.dark_&]:bg-blue-900/20',
+          inputBorder: 'border-blue-300 [.dark_&]:border-blue-600',
+          iconColor: 'text-blue-600 [.dark_&]:text-blue-400',
+          borderLeft: 'border-l-blue-500 [.dark_&]:border-l-blue-400',
+          bgLight: 'bg-blue-100 [.dark_&]:bg-blue-500/20',
+          textTitle: 'text-blue-900 [.dark_&]:text-white',
+        };
+      default: // indigo
+        return {
+          ring: 'ring-indigo-500',
+          inputBg: 'bg-indigo-50 [.dark_&]:bg-indigo-900/20',
+          inputBorder: 'border-indigo-300 [.dark_&]:border-indigo-600',
+          iconColor: 'text-indigo-600 [.dark_&]:text-indigo-400',
+          borderLeft: 'border-l-indigo-500 [.dark_&]:border-l-indigo-400',
+          bgLight: 'bg-indigo-100 [.dark_&]:bg-indigo-500/20',
+          textTitle: 'text-indigo-900 [.dark_&]:text-white',
+        };
+    }
+  };
+
+  const themeColors = getThemeSettingsColors();
 
   // Authentication Check
   useEffect(() => {
@@ -298,6 +406,9 @@ function LeadManagement() {
           assignedTo: data.assignedTo || "",
           assignedToName: data.assignedToName || "",
           createdAt: data.createdAt || null,
+
+          // --- Helpers ---
+          // ... existing code ...
         };
       });
       setLeads(list);
@@ -746,13 +857,36 @@ function LeadManagement() {
   const validateForm = (data) => {
     const errs = {};
     if (!data.date) errs.date = "Date is required";
-    if (!data.customerName?.trim())
+
+    // Customer Name: Required + Alphabets Only
+    if (!data.customerName?.trim()) {
       errs.customerName = "Customer Name is required";
-    if (!data.contactNumber?.trim())
+    } else if (/[^a-zA-Z\s]/.test(data.customerName)) {
+      errs.customerName = "Customer Name can only contain letters and spaces";
+    }
+
+    // Contact Number: Required + 10 digits
+    if (!data.contactNumber?.trim()) {
       errs.contactNumber = "Contact Number is required";
-    if (!data.email?.trim()) errs.email = "Email Address is required";
+    } else if (!/^\d{10}$/.test(data.contactNumber.trim())) {
+      errs.contactNumber = "Contact Number must be exactly 10 digits";
+    }
+
+    // Email: Required + Valid Format
+    if (!data.email?.trim()) {
+      errs.email = "Email Address is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
+      errs.email = "Enter a valid email address";
+    }
+
     if (!data.companyName?.trim()) errs.companyName = "Company Name is required";
     if (!data.sourceOfLead) errs.sourceOfLead = "Source of Lead is required";
+
+    // Potential Value: Non-negative
+    if (data.potentialValue && Number(data.potentialValue) < 0) {
+      errs.potentialValue = "Potential Value must be non-negative";
+    }
+
     return errs;
   };
 
@@ -1511,7 +1645,7 @@ function LeadManagement() {
           <button
             onClick={() => setActiveView("leads")}
             className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-all ${activeView === "leads"
-              ? "bg-white [.dark_&]:bg-slate-600 shadow text-indigo-600 [.dark_&]:text-indigo-400"
+              ? `bg-white [.dark_&]:bg-slate-600 shadow ${themeColors.iconColor}`
               : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-white"
               }`}
           >
@@ -1521,7 +1655,7 @@ function LeadManagement() {
           <button
             onClick={() => setActiveView("followups")}
             className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-all ${activeView === "followups"
-              ? "bg-white [.dark_&]:bg-slate-600 shadow text-indigo-600 [.dark_&]:text-indigo-400"
+              ? `bg-white [.dark_&]:bg-slate-600 shadow ${themeColors.iconColor}`
               : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-white"
               }`}
           >
@@ -1531,7 +1665,7 @@ function LeadManagement() {
           <button
             onClick={() => setActiveView("settings")}
             className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-all ${activeView === "settings"
-              ? "bg-white [.dark_&]:bg-slate-600 shadow text-indigo-600 [.dark_&]:text-indigo-400"
+              ? `bg-white [.dark_&]:bg-slate-600 shadow ${themeColors.iconColor}`
               : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-white"
               }`}
           >
@@ -1557,7 +1691,7 @@ function LeadManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-gray-900 [.dark_&]:text-white flex items-center gap-2">
-                    <FaBell className="text-blue-600 [.dark_&]:text-blue-400" />
+                    <FaBell className={themeColors.iconColor} />
                     Follow-up Reminders
                   </h3>
                   <p className="text-xs text-gray-600 [.dark_&]:text-gray-300 mt-1">
@@ -1649,7 +1783,7 @@ function LeadManagement() {
                         )}
                       </div>
 
-                      <button className="text-blue-600 [.dark_&]:text-blue-400 text-xs font-medium hover:underline">
+                      <button className={`${themeColors.iconColor} text-xs font-medium hover:underline`}>
                         View
                       </button>
                     </div>
@@ -1666,7 +1800,7 @@ function LeadManagement() {
                     setActiveView('followups');
                     setShowNotifications(false);
                   }}
-                  className="w-full text-center text-sm text-blue-600 [.dark_&]:text-blue-400 hover:underline font-medium"
+                  className={`w-full text-center text-sm ${themeColors.iconColor} hover:underline font-medium`}
                 >
                   View all follow-ups →
                 </button>
@@ -1683,19 +1817,19 @@ function LeadManagement() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div
               onClick={() => setActiveStatFilter(null)}
-              className={`cursor-pointer bg-white [.dark_&]:bg-slate-800/60 [.dark_&]:backdrop-blur-sm p-4 rounded-xl shadow-sm border border-gray-200 [.dark_&]:border-blue-500/30 border-l-4 border-l-blue-500 [.dark_&]:border-l-blue-400 hover:shadow-md transition-shadow ${activeStatFilter === null ? 'ring-2 ring-blue-500' : ''}`}
+              className={`cursor-pointer bg-white [.dark_&]:bg-slate-800/60 [.dark_&]:backdrop-blur-sm p-4 rounded-xl shadow-sm border border-gray-200 [.dark_&]:border-blue-500/30 ${themeColors.borderLeft} hover:shadow-md transition-shadow ${activeStatFilter === null ? `ring-2 ${themeColors.ring}` : ''}`}
             >
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-sm font-medium text-blue-600 [.dark_&]:text-blue-400">
+                  <p className={`text-sm font-medium ${themeColors.iconColor}`}>
                     Total Leads
                   </p>
-                  <p className="text-3xl font-bold text-blue-900 [.dark_&]:text-white mt-1">
+                  <p className={`text-3xl font-bold ${themeColors.textTitle} mt-1`}>
                     {stats.total}
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-full bg-blue-100 [.dark_&]:bg-blue-500/20 flex items-center justify-center">
-                  <FaUserTie className="text-blue-600 [.dark_&]:text-blue-400 text-xl" />
+                <div className={`w-12 h-12 rounded-full ${themeColors.bgLight} flex items-center justify-center`}>
+                  <FaUserTie className={`${themeColors.iconColor} text-xl`} />
                 </div>
               </div>
             </div>
@@ -1758,7 +1892,7 @@ function LeadManagement() {
           {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-4 mt-4">
             {/* Search */}
-            <div className="relative flex-1 min-w-[200px] max-w-md">
+            <div className="relative flex-1 min-w-[200px]">
               <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
@@ -1774,7 +1908,7 @@ function LeadManagement() {
               <button
                 onClick={() => setViewMode("table")}
                 className={`p-2 rounded-md transition-all ${viewMode === "table"
-                  ? "bg-white [.dark_&]:bg-slate-600 shadow text-indigo-600 [.dark_&]:text-indigo-400"
+                  ? `bg-white [.dark_&]:bg-slate-600 shadow ${themeColors.iconColor}`
                   : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700"
                   }`}
                 title="Table View"
@@ -1784,7 +1918,7 @@ function LeadManagement() {
               <button
                 onClick={() => setViewMode("kanban")}
                 className={`p-2 rounded-md transition-all ${viewMode === "kanban"
-                  ? "bg-white [.dark_&]:bg-slate-600 shadow text-indigo-600 [.dark_&]:text-indigo-400"
+                  ? `bg-white [.dark_&]:bg-slate-600 shadow ${themeColors.iconColor}`
                   : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700"
                   }`}
                 title="Kanban View"
@@ -1794,7 +1928,7 @@ function LeadManagement() {
               <button
                 onClick={() => setViewMode("grouped")}
                 className={`p-2 rounded-md transition-all ${viewMode === "grouped"
-                  ? "bg-white [.dark_&]:bg-slate-600 shadow text-indigo-600 [.dark_&]:text-indigo-400"
+                  ? `bg-white [.dark_&]:bg-slate-600 shadow ${themeColors.iconColor}`
                   : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700"
                   }`}
                 title="Grouped View"
@@ -1805,6 +1939,7 @@ function LeadManagement() {
 
             {/* Create Lead Button */}
             <Button
+              variant="custom"
               onClick={() => {
                 resetForm();
                 setSelectedLead(null);
@@ -1904,6 +2039,8 @@ function LeadManagement() {
                 default: return "text-gray-600 bg-gray-100 border-gray-200";
               }
             }}
+            buttonClass={buttonClass}
+            themeColors={themeColors}
           />
         </div>
       )}
@@ -1978,10 +2115,11 @@ function LeadManagement() {
                 {activeSettingsTab === 'lead' && (
                   <>
                     {/* Lead Statuses */}
+                    {/* Lead Statuses */}
                     <SettingsSection
                       title="Lead Statuses"
                       icon={FaFlag}
-                      iconColor="text-blue-600 [.dark_&]:text-blue-400"
+                      iconColor={themeColors.iconColor}
                       items={leadStatuses}
                       type="status"
                       description="Manage available lead status options"
@@ -1999,18 +2137,19 @@ function LeadManagement() {
                       setEditingItem={setEditingItem}
                       setEditValue={setEditValue}
                       colors={{
-                        ring: 'ring-blue-500',
-                        inputBg: 'bg-blue-50 [.dark_&]:bg-blue-900/20',
-                        inputBorder: 'border-blue-300 [.dark_&]:border-blue-600'
+                        ring: themeColors.ring,
+                        inputBg: themeColors.inputBg,
+                        inputBorder: themeColors.inputBorder
                       }}
                       usageCounts={settingsUsageStats.status}
                     />
 
                     {/* Lead Priorities */}
+                    {/* Lead Priorities */}
                     <SettingsSection
                       title="Priority Levels"
                       icon={FaExclamationTriangle}
-                      iconColor="text-orange-600 [.dark_&]:text-orange-400"
+                      iconColor={themeColors.iconColor}
                       items={leadPriorities}
                       type="priority"
                       description="Configure priority levels for leads"
@@ -2028,18 +2167,19 @@ function LeadManagement() {
                       setEditingItem={setEditingItem}
                       setEditValue={setEditValue}
                       colors={{
-                        ring: 'ring-orange-500',
-                        inputBg: 'bg-orange-50 [.dark_&]:bg-orange-900/20',
-                        inputBorder: 'border-orange-300 [.dark_&]:border-orange-600'
+                        ring: themeColors.ring,
+                        inputBg: themeColors.inputBg,
+                        inputBorder: themeColors.inputBorder
                       }}
                       usageCounts={settingsUsageStats.priority}
                     />
 
                     {/* Lead Sources */}
+                    {/* Lead Sources */}
                     <SettingsSection
                       title="Lead Sources"
                       icon={FaBullhorn}
-                      iconColor="text-green-600 [.dark_&]:text-green-400"
+                      iconColor={themeColors.iconColor}
                       items={leadSources}
                       type="source"
                       description="Manage where leads come from"
@@ -2057,9 +2197,9 @@ function LeadManagement() {
                       setEditingItem={setEditingItem}
                       setEditValue={setEditValue}
                       colors={{
-                        ring: 'ring-green-500',
-                        inputBg: 'bg-green-50 [.dark_&]:bg-green-900/20',
-                        inputBorder: 'border-green-300 [.dark_&]:border-green-600'
+                        ring: themeColors.ring,
+                        inputBg: themeColors.inputBg,
+                        inputBorder: themeColors.inputBorder
                       }}
                       usageCounts={settingsUsageStats.source}
                     />
@@ -2070,10 +2210,11 @@ function LeadManagement() {
                 {activeSettingsTab === 'followup' && (
                   <>
                     {/* Follow-up Types */}
+                    {/* Follow-up Types */}
                     <SettingsSection
                       title="Follow-up Types"
                       icon={FaPhoneAlt}
-                      iconColor="text-purple-600 [.dark_&]:text-purple-400"
+                      iconColor={themeColors.iconColor}
                       items={followupTypes}
                       type="followupType"
                       description="Define types of follow-up activities"
@@ -2091,9 +2232,9 @@ function LeadManagement() {
                       setEditingItem={setEditingItem}
                       setEditValue={setEditValue}
                       colors={{
-                        ring: 'ring-purple-500',
-                        inputBg: 'bg-purple-50 [.dark_&]:bg-purple-900/20',
-                        inputBorder: 'border-purple-300 [.dark_&]:border-purple-600'
+                        ring: themeColors.ring,
+                        inputBg: themeColors.inputBg,
+                        inputBorder: themeColors.inputBorder
                       }}
                       usageCounts={settingsUsageStats.followupType}
                     />
@@ -2362,12 +2503,16 @@ function LeadManagement() {
 
       {
         showDeleteModal && (
-          <DeleteConfirmationModal
-            title="Delete Lead"
-            message={`Are you sure you want to delete ${selectedLead?.customerName}? This action cannot be undone.`}
-            onConfirm={handleDelete}
-            onCancel={() => setShowDeleteModal(false)}
-          />
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteModal(false)}>
+            <div onClick={(e) => e.stopPropagation()}>
+              <DeleteConfirmationModal
+                title="Delete Lead"
+                message={`Are you sure you want to delete ${selectedLead?.customerName}? This action cannot be undone.`}
+                onConfirm={handleDelete}
+                onClose={() => setShowDeleteModal(false)}
+              />
+            </div>
+          </div>
         )
       }
 
@@ -2536,6 +2681,9 @@ function LeadManagement() {
         onReschedule={handleRescheduleFollowupSubmit}
         isRescheduling={savingFollowup}
         priorities={leadPriorities}
+        buttonClass={buttonClass}
+        headerIconClass={headerIconClass}
+        themeColors={themeColors}
       />
 
       {/* Complete Follow-up Modal */}
@@ -2567,6 +2715,8 @@ function LeadManagement() {
         newSettingValue={newSettingValue}
         setNewSettingValue={setNewSettingValue}
         onAdd={handleAddSetting}
+        buttonClass={buttonClass}
+        iconColor={themeColors.iconColor}
       />
 
       {/* Lead Form Modal - Add Mode */}
@@ -2589,6 +2739,7 @@ function LeadManagement() {
           products,
         }}
         buttonClass={buttonClass}
+        headerIconClass={headerIconClass}
       />
 
       {/* Lead Form Modal - Edit Mode */}
@@ -2612,6 +2763,7 @@ function LeadManagement() {
           products,
         }}
         buttonClass={buttonClass}
+        headerIconClass={headerIconClass}
       />
     </div >
   );

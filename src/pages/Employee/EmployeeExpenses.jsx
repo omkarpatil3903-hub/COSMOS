@@ -339,19 +339,19 @@ const EmployeeExpenses = () => {
         />
       </div>
 
-      <div className="bg-[#1e1e2d] p-4 rounded-2xl border border-gray-800 shadow-lg">
+      <Card title="Search & Actions" tone="muted">
         {/* Row 1: Search + Add Expense Button */}
         <div className="flex items-center gap-4 mb-4">
           <div className="relative flex-1">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaSearch className="text-gray-500 text-sm" />
+              <FaSearch className="text-gray-400 dark:text-gray-500 text-sm" />
             </div>
             <input
               type="text"
               placeholder="Search expenses by title or description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-700 bg-[#2b2b40] py-2.5 pl-10 pr-3 text-sm text-gray-300 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#2b2b40] py-2.5 pl-10 pr-3 text-sm text-gray-900 dark:text-gray-300 placeholder:text-gray-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none transition-all"
             />
           </div>
 
@@ -370,14 +370,14 @@ const EmployeeExpenses = () => {
         {/* Row 2: Filters */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <FaFilter className="text-gray-500" />
-            <span className="font-medium text-gray-300">Filters:</span>
+            <FaFilter className="text-gray-400 dark:text-gray-500" />
+            <span className="font-medium text-gray-700 dark:text-gray-300">Filters:</span>
           </div>
 
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-gray-700 bg-[#2b2b40] py-2 px-3 text-sm text-gray-300 focus:border-indigo-500 focus:outline-none"
+            className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#2b2b40] py-2 px-3 text-sm text-gray-900 dark:text-gray-300 focus:border-indigo-500 focus:outline-none"
           >
             <option value="all">All Statuses</option>
             <option value="Draft">Draft</option>
@@ -390,7 +390,7 @@ const EmployeeExpenses = () => {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="rounded-lg border border-gray-700 bg-[#2b2b40] py-2 px-3 text-sm text-gray-300 focus:border-indigo-500 focus:outline-none"
+            className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#2b2b40] py-2 px-3 text-sm text-gray-900 dark:text-gray-300 focus:border-indigo-500 focus:outline-none"
           >
             <option value="all">All Categories</option>
             <option value="Travel">Travel</option>
@@ -400,28 +400,28 @@ const EmployeeExpenses = () => {
             <option value="Other">Other</option>
           </select>
 
-          <div className="flex items-center gap-2 bg-[#2b2b40] rounded-lg border border-gray-700 px-3 py-2">
+          <div className="flex items-center gap-2 bg-gray-50 dark:bg-[#2b2b40] rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2">
             <span className="text-sm text-gray-500">Date:</span>
             <input
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              className="bg-transparent text-sm text-gray-300 border-none p-0 focus:ring-0 w-28"
+              className="bg-transparent text-sm text-gray-900 dark:text-gray-300 border-none p-0 focus:ring-0 w-28"
             />
             <span className="text-gray-500">-</span>
             <input
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
-              className="bg-transparent text-sm text-gray-300 border-none p-0 focus:ring-0 w-28"
+              className="bg-transparent text-sm text-gray-900 dark:text-gray-300 border-none p-0 focus:ring-0 w-28"
             />
           </div>
 
-          <div className="ml-auto text-sm font-medium text-gray-400">
+          <div className="ml-auto text-sm font-medium text-gray-500 dark:text-gray-400">
             Showing {filtered.length} of {expenses.length} expenses
           </div>
         </div>
-      </div>
+      </Card>
 
 
       {loading ? (
@@ -438,172 +438,186 @@ const EmployeeExpenses = () => {
           title="Expense History"
           tone="muted"
           actions={
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                Page {page} of {Math.ceil(filtered.length / rowsPerPage) || 1}
-              </span>
-              <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                Rows per page
-              </label>
-              <select
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#181B2A] px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  variant="secondary"
-                  className="px-3 py-1"
-                  disabled={page === 1}
+            filtered.length > 0 && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Page {page} of {Math.ceil(filtered.length / rowsPerPage) || 1}
+                </span>
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Rows per page
+                </label>
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#181B2A] px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                 >
-                  Previous
-                </Button>
-                <Button
-                  onClick={() => setPage((p) => Math.min(Math.ceil(filtered.length / rowsPerPage), p + 1))}
-                  variant="secondary"
-                  className="px-3 py-1"
-                  disabled={page >= Math.ceil(filtered.length / rowsPerPage)}
-                >
-                  Next
-                </Button>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    variant="secondary"
+                    className="px-3 py-1"
+                    disabled={page === 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    onClick={() => setPage((p) => Math.min(Math.ceil(filtered.length / rowsPerPage), p + 1))}
+                    variant="secondary"
+                    className="px-3 py-1"
+                    disabled={page >= Math.ceil(filtered.length / rowsPerPage)}
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
-            </div>
+            )
           }
         >
           <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-[#1e1e2d]">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sr No</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Title</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Project</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
-                  <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Document</th>
-                  <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-[#181b2a] divide-y divide-gray-200 dark:divide-gray-700">
-                {filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((e, index) => (
-                  <tr
-                    key={e.id}
-                    onClick={() => setViewingExpense(e)}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group cursor-pointer"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-400">
-                      {(page - 1) * rowsPerPage + index + 1}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                          {e.title}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {e.projectName ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
-                          <FaProjectDiagram className="text-[10px] text-indigo-500 dark:text-indigo-400" />
-                          {e.projectName}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400 italic">No project</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      <div className="flex items-center gap-2">
-                        <FaCalendarAlt className="text-gray-400" />
-                        {e.date ? new Date(e.date).toLocaleDateString("en-GB") : "-"}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
-                        <FaTag className="text-[10px] text-gray-500 dark:text-gray-400" />
-                        {e.category || "Other"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="text-sm font-bold text-gray-900 dark:text-white">
-                        {e.amount?.toFixed ? e.amount.toFixed(2) : e.amount}
-                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1">
-                          {e.currency || "INR"}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      {e.receiptUrl ? (
-                        <button
-                          onClick={(ev) => {
-                            ev.stopPropagation();
-                            setViewingReceipt({
-                              url: e.receiptUrl,
-                              name: `Receipt - ${e.title}`,
-                              fileType: "image/jpeg", // Defaulting to image, modal handles detection
-                              id: e.id
-                            });
-                          }}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
-                        >
-                          <FaFileInvoice /> Receipt
-                        </button>
-                      ) : (
-                        <span className="text-xs text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(e.status, false)}`}
-                      >
-                        {e.status || "Unknown"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="flex justify-end items-center gap-2">
-                        {(e.status === "Draft" || e.status === "Rejected" || e.status === "Submitted") && (
-                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(ev) => ev.stopPropagation()}>
-                            <Button
-                              size="xs"
-                              variant="ghost"
-                              onClick={(ev) => { ev.stopPropagation(); handleEdit(e); }}
-                              title={e.status === "Rejected" ? "Edit & Resubmit" : "Edit"}
-                            >
-                              <FaEdit />
-                            </Button>
-                            <Button
-                              size="xs"
-                              variant="ghost"
-                              className="text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
-                              onClick={(ev) => { ev.stopPropagation(); handleDeleteClick(e); }}
-                              title="Delete"
-                            >
-                              <FaTrash />
-                            </Button>
-                          </div>
-                        )}
-                        {e.status === "Rejected" && e.rejectionReason && (
-                          <span className="group relative" onClick={(ev) => ev.stopPropagation()}>
-                            <FaTimes className="text-red-500 cursor-help" />
-                            <span className="absolute right-0 top-full mt-1 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg z-50 invisible group-hover:visible">
-                              {e.rejectionReason}
-                            </span>
-                          </span>
-                        )}
-                      </div>
-                    </td>
+            {filtered.length > 0 ? (
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-[#1e1e2d]">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sr No</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Title</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Project</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Document</th>
+                    <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white dark:bg-[#181b2a] divide-y divide-gray-200 dark:divide-gray-700">
+                  {filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((e, index) => (
+                    <tr
+                      key={e.id}
+                      onClick={() => setViewingExpense(e)}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group cursor-pointer"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500 dark:text-gray-400">
+                        {(page - 1) * rowsPerPage + index + 1}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                            {e.title}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {e.projectName ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700">
+                            <FaProjectDiagram className="text-[10px] text-indigo-500 dark:text-indigo-400" />
+                            {e.projectName}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">No project</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center gap-2">
+                          <FaCalendarAlt className="text-gray-400" />
+                          {e.date ? new Date(e.date).toLocaleDateString("en-GB") : "-"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
+                          <FaTag className="text-[10px] text-gray-500 dark:text-gray-400" />
+                          {e.category || "Other"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="text-sm font-bold text-gray-900 dark:text-white">
+                          {e.amount?.toFixed ? e.amount.toFixed(2) : e.amount}
+                          <span className="text-xs font-medium text-gray-500 dark:text-gray-400 ml-1">
+                            {e.currency || "INR"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        {e.receiptUrl ? (
+                          <button
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              setViewingReceipt({
+                                url: e.receiptUrl,
+                                name: `Receipt - ${e.title}`,
+                                fileType: "image/jpeg", // Defaulting to image, modal handles detection
+                                id: e.id
+                              });
+                            }}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300"
+                          >
+                            <FaFileInvoice /> Receipt
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(e.status, false)}`}
+                        >
+                          {e.status || "Unknown"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="flex justify-end items-center gap-2">
+                          {(e.status === "Draft" || e.status === "Rejected" || e.status === "Submitted") && (
+                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(ev) => ev.stopPropagation()}>
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                onClick={(ev) => { ev.stopPropagation(); handleEdit(e); }}
+                                title={e.status === "Rejected" ? "Edit & Resubmit" : "Edit"}
+                              >
+                                <FaEdit />
+                              </Button>
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                className="text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                                onClick={(ev) => { ev.stopPropagation(); handleDeleteClick(e); }}
+                                title="Delete"
+                              >
+                                <FaTrash />
+                              </Button>
+                            </div>
+                          )}
+                          {e.status === "Rejected" && e.rejectionReason && (
+                            <span className="group relative" onClick={(ev) => ev.stopPropagation()}>
+                              <FaTimes className="text-red-500 cursor-help" />
+                              <span className="absolute right-0 top-full mt-1 w-48 p-2 bg-gray-800 text-white text-xs rounded shadow-lg z-50 invisible group-hover:visible">
+                                {e.rejectionReason}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center bg-white dark:bg-[#181b2a]">
+                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                  <FaFileInvoice className="text-3xl text-gray-400 dark:text-gray-500" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">No expenses found</h3>
+                <p className="text-gray-500 dark:text-gray-400 mt-1 max-w-sm mx-auto">
+                  No expenses match your current filters. Clear filters or add a new expense.
+                </p>
+              </div>
+            )}
           </div>
         </Card>
       )}

@@ -152,5 +152,6 @@ export const useThemeStyles = () => {
         linkColor: getLinkColor(),
         emailLinkClass: getEmailLinkClass(),
         barColor: getBarColor(),
+        accent, // Expose accent for custom logic
     };
 };
