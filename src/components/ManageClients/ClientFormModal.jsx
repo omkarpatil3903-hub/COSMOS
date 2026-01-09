@@ -40,6 +40,7 @@ const ClientFormModal = ({
         noOfEmployees: "",
         imageUrl: "",
         role: "client",
+        mustChangePassword: true, // Default: require password change on first login
     });
     const [imagePreview, setImagePreview] = useState(null);
     const [showPassword, setShowPassword] = useState(false);
@@ -60,6 +61,7 @@ const ClientFormModal = ({
                     imageUrl: initialData.imageUrl || "",
                     role: initialData.role || "client",
                     password: "", // Usually don't populate password on edit
+                    mustChangePassword: initialData.mustChangePassword ?? false, // For edit, default to existing value
                 });
                 setImagePreview(initialData.imageUrl || null);
             } else {
@@ -75,6 +77,7 @@ const ClientFormModal = ({
                     noOfEmployees: "",
                     imageUrl: "",
                     role: "client",
+                    mustChangePassword: true, // Default to true for new clients
                 });
                 setImagePreview(null);
             }
@@ -356,6 +359,22 @@ const ClientFormModal = ({
                                             </button>
                                         </div>
                                         <p className="text-xs text-gray-500">Min. 6 characters</p>
+                                    </div>
+
+                                    {/* Force Password Change Toggle */}
+                                    <div className="flex items-center gap-3 pt-3">
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.mustChangePassword}
+                                                onChange={(e) => setFormData((prev) => ({ ...prev, mustChangePassword: e.target.checked }))}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 [.dark_&]:peer-focus:ring-indigo-800 rounded-full peer [.dark_&]:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all [.dark_&]:border-gray-600 peer-checked:bg-indigo-600"></div>
+                                        </label>
+                                        <span className="text-sm font-medium text-gray-700 [.dark_&]:text-gray-300">
+                                            Force Password Change on First Login
+                                        </span>
                                     </div>
                                 </div>
                             </div>

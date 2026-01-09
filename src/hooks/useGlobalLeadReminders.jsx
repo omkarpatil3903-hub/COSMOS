@@ -4,6 +4,8 @@ import { collection, getDocs, collectionGroup, query, where, doc, getDoc } from 
 import { db } from "../firebase";
 import toast from "react-hot-toast";
 import { FaBell, FaExclamationTriangle } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+import { useAuthContext } from "../context/AuthContext";
 
 /**
  * Global hook to check for lead follow-up reminders on app initialization.
@@ -11,6 +13,8 @@ import { FaBell, FaExclamationTriangle } from "react-icons/fa";
  */
 const useGlobalLeadReminders = () => {
     const hasChecked = useRef(false);
+    const navigate = useNavigate();
+    const { userData } = useAuthContext();
 
     useEffect(() => {
         // Only run once per session
@@ -138,7 +142,21 @@ const useGlobalLeadReminders = () => {
                                             <button
                                                 onClick={() => {
                                                     toast.dismiss(t.id);
-                                                    window.location.href = "/admin/leads?view=followups";
+                                                    // Determine path based on role
+                                                    const role = userData?.role || "superadmin";
+                                                    // Default to /lead-management if superadmin, /admin/lead-management if admin
+                                                    // If role is something else, fallback to user-appropriate path or default
+                                                    let basePath;
+                                                    if (role === 'superadmin') {
+                                                        basePath = "/lead-management";
+                                                    } else if (role === 'admin') {
+                                                        basePath = "/admin/lead-management";
+                                                    } else {
+                                                        // Fallback for others if they see this? Assuming mainly admin task
+                                                        basePath = "/lead-management";
+                                                    }
+
+                                                    navigate(`${basePath}?view=followups`);
                                                 }}
                                                 className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white ${buttonBg} focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors`}
                                             >
@@ -186,7 +204,7 @@ const useGlobalLeadReminders = () => {
         // Delay slightly to allow app to stabilize
         const timer = setTimeout(checkFollowups, 2000);
         return () => clearTimeout(timer);
-    }, []);
+    }, [navigate, userData]); // Added dependencies
 };
 
 export default useGlobalLeadReminders;

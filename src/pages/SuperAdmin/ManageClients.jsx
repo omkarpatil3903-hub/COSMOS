@@ -212,6 +212,8 @@ function ManageClients() {
         // Ensure we store the password for dev reference (as per your original requirement)
         password: submittedData.password || "******",
         status: "Active",
+        role: "client", // Assign client role for proper routing
+        mustChangePassword: submittedData.mustChangePassword ?? true, // Use form value, default to true
         joinDate: serverTimestamp(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),

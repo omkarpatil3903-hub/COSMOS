@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import loginBgVideo from "../assets/loginbg.mp4";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth, db } from "../firebase";
 import { getDoc, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import toast from "react-hot-toast";
@@ -86,6 +86,18 @@ function LoginPage() {
         if (uSnap.exists()) {
           const uData = uSnap.data();
           console.log("User data found in 'users':", uData);
+
+          // BLOCK INACTIVE USERS
+          if (uData.status === "Inactive") {
+            const msg = "Account is inactive. Please contact administrator.";
+            console.log("User is Inactive. Blocking login.");
+            await signOut(auth); // Force sign out
+            toast.error(msg);
+            setErrorMsg(msg);
+            setLoading(false);
+            return;
+          }
+
           if (!role && uData?.role) role = uData.role?.trim();
           if (uData?.resourceRoleType)
             resourceRoleType = String(uData.resourceRoleType)
@@ -100,6 +112,18 @@ function LoginPage() {
           const cSnap = await getDoc(doc(db, "clients", cred.user.uid));
           if (cSnap.exists()) {
             console.log("User data found in 'clients':", cSnap.data());
+
+            // BLOCK INACTIVE CLIENTS
+            if (cSnap.data()?.status === "Inactive") {
+              const msg = "Account is inactive. Please contact administrator.";
+              console.log("Client is Inactive. Blocking login.");
+              await signOut(auth);
+              toast.error(msg);
+              setErrorMsg(msg);
+              setLoading(false);
+              return;
+            }
+
             if (cSnap.data()?.role) {
               role = cSnap.data().role?.trim();
             }
@@ -144,6 +168,10 @@ function LoginPage() {
 
       // Wait for auth state to update
       await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // SESSION SECURITY: Store login timestamp for session duration tracking
+      // This timestamp is used by useSessionSecurity hook to enforce max session duration
+      localStorage.setItem("sessionStartTime", Date.now().toString());
 
       // If password change is required, redirect to force change page
       if (mustChangePassword) {

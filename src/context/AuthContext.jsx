@@ -1,8 +1,9 @@
 // src/context/AuthContext.jsx
 import { useState, useEffect, useContext, useMemo } from "react";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
+import toast from "react-hot-toast";
 import AppLoader from "../components/AppLoader";
 import { getAccessiblePanels } from "../config/roles";
 import { initializeAppFolders } from "../utils/initializeAppFolders";
@@ -32,12 +33,33 @@ export function AuthProvider({ children }) {
             ...data,
             role: data.role ? data.role.trim() : "member",
           });
+
+          // Force logout if account is inactive
+          if (data.status === "Inactive") {
+            await signOut(auth);
+            setUserData(null);
+            setUser(null);
+            toast.error("Your account has been deactivated. Contact your administrator.");
+            setLoading(false);
+            return;
+          }
         } else {
           // If not in users, check clients collection
           const clientDocRef = doc(db, "clients", currentUser.uid);
           const clientDoc = await getDoc(clientDocRef);
           if (clientDoc.exists()) {
             const data = clientDoc.data();
+
+            // Check client status if applicable
+            if (data.status === "Inactive") {
+              await signOut(auth);
+              setUserData(null);
+              setUser(null);
+              toast.error("Your account has been deactivated. Contact your administrator.");
+              setLoading(false);
+              return;
+            }
+
             setUserData({
               ...data,
               role: data.role ? data.role.trim() : "client",
