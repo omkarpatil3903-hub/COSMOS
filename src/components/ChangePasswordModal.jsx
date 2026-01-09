@@ -19,10 +19,12 @@ function ChangePasswordModal({ isOpen, onClose }) {
     const [showNew, setShowNew] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [error, setError] = useState("");
+    const [passwordError, setPasswordError] = useState("");
 
     const validatePassword = (password) => {
-        if (password.length < 6) {
-            return "Password must be at least 6 characters";
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*_\-]).{8,}$/;
+        if (!passwordRegex.test(password)) {
+            return "Password must be at least 8 characters long and include 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (!@#$%^&*_-).";
         }
         return null;
     };
@@ -30,6 +32,7 @@ function ChangePasswordModal({ isOpen, onClose }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
+        setPasswordError("");
 
         // Validate
         if (!currentPassword || !newPassword || !confirmPassword) {
@@ -39,7 +42,7 @@ function ChangePasswordModal({ isOpen, onClose }) {
 
         const validationError = validatePassword(newPassword);
         if (validationError) {
-            setError(validationError);
+            setPasswordError(validationError);
             return;
         }
 
@@ -84,7 +87,8 @@ function ChangePasswordModal({ isOpen, onClose }) {
             // Friendly error messages
             switch (err?.code) {
                 case "auth/wrong-password":
-                    setError("Current password is incorrect");
+                case "auth/invalid-credential":
+                    setError("Current password does not match.");
                     break;
                 case "auth/weak-password":
                     setError("New password is too weak. Use at least 6 characters.");
@@ -108,6 +112,7 @@ function ChangePasswordModal({ isOpen, onClose }) {
         setNewPassword("");
         setConfirmPassword("");
         setError("");
+        setPasswordError("");
         setShowCurrent(false);
         setShowNew(false);
         setShowConfirm(false);
@@ -185,7 +190,13 @@ function ChangePasswordModal({ isOpen, onClose }) {
                                 {showNew ? <FaEyeSlash /> : <FaEye />}
                             </button>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                            {passwordError ? (
+                                <span className="text-red-500">{passwordError}</span>
+                            ) : (
+                                "Min 8 chars, 1 upper, 1 lower, 1 number, 1 special char"
+                            )}
+                        </p>
                     </div>
 
                     {/* Confirm Password */}
@@ -248,8 +259,8 @@ function ChangePasswordModal({ isOpen, onClose }) {
                         </button>
                     </div>
                 </form>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }
 

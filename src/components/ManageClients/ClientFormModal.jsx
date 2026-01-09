@@ -26,6 +26,8 @@ const ClientFormModal = ({
     initialData,
     isSubmitting,
     mode = "add", // 'add' or 'edit'
+    errors = {},
+    onClearError = () => { },
 }) => {
     const { buttonClass, iconColor, headerIconClass, linkColor } = useThemeStyles();
 
@@ -44,7 +46,6 @@ const ClientFormModal = ({
     });
     const [imagePreview, setImagePreview] = useState(null);
     const [showPassword, setShowPassword] = useState(false);
-    const [errors, setErrors] = useState({});
 
     // Initialize form when opening
     useEffect(() => {
@@ -81,7 +82,6 @@ const ClientFormModal = ({
                 });
                 setImagePreview(null);
             }
-            setErrors({});
         }
     }, [isOpen, mode, initialData]);
 
@@ -107,7 +107,7 @@ const ClientFormModal = ({
         const nextValue = name === "email" ? value.toLowerCase() : value;
         setFormData((prev) => ({ ...prev, [name]: nextValue }));
         if (errors[name]) {
-            setErrors((prev) => ({ ...prev, [name]: "" }));
+            onClearError(name);
         }
     };
 
@@ -199,15 +199,26 @@ const ClientFormModal = ({
                                         <FaEnvelope className="text-gray-400 text-xs" />
                                         Email Address <span className="text-red-500">*</span>
                                     </label>
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
-                                        placeholder="john@example.com"
-                                        required
-                                    />
+                                    {mode === "edit" ? (
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={formData.email}
+                                            readOnly
+                                            className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-gray-800/50 py-2.5 px-4 text-sm text-gray-500 [.dark_&]:text-gray-400 cursor-not-allowed focus:outline-none transition-all duration-200"
+                                            placeholder="john@example.com"
+                                        />
+                                    ) : (
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
+                                            placeholder="john@example.com"
+                                            required
+                                        />
+                                    )}
                                 </div>
                                 <div className="space-y-1.5">
                                     <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">
@@ -346,7 +357,7 @@ const ClientFormModal = ({
                                                 name="password"
                                                 value={formData.password}
                                                 onChange={handleChange}
-                                                className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 pr-10 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
+                                                className={`w-full rounded-lg border ${errors.password ? "border-red-500" : "border-gray-200 [.dark_&]:border-white/10"} bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 pr-10 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200`}
                                                 placeholder={mode === "add" ? "••••••••" : "Leave blank to keep current"}
                                                 required={mode === "add"}
                                             />
@@ -358,7 +369,15 @@ const ClientFormModal = ({
                                                 {showPassword ? <FaEyeSlash /> : <FaEye />}
                                             </button>
                                         </div>
-                                        <p className="text-xs text-gray-500">Min. 6 characters</p>
+                                        {errors.password ? (
+                                            <p className="text-xs text-red-500 font-medium mt-1">{errors.password}</p>
+                                        ) : (
+                                            <p className="text-xs text-gray-500">
+                                                {mode === "add"
+                                                    ? "Minimum 8 characters. Shared with the resource for first login."
+                                                    : "Leave blank to keep their existing password."}
+                                            </p>
+                                        )}
                                     </div>
 
                                     {/* Force Password Change Toggle */}

@@ -69,6 +69,7 @@ function ManageClients() {
   const [isAdding, setIsAdding] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
 
   // Table States
   const [searchTerm, setSearchTerm] = useState("");
@@ -168,6 +169,17 @@ function ManageClients() {
     try {
       setIsAdding(true);
 
+      // Password validation regex
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*_\-]).{8,}$/;
+      if (!passwordRegex.test(submittedData.password)) {
+        setFormErrors((prev) => ({
+          ...prev,
+          password: "Password must be at least 8 characters long and include 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (!@#$%^&*_-)."
+        }));
+        setIsAdding(false);
+        return;
+      }
+
       // 1. Create Auth User (Secondary App to avoid logging out admin)
       const secondaryName = "Secondary";
       const secondaryApp = getApps().some((a) => a.name === secondaryName)
@@ -192,7 +204,7 @@ function ManageClients() {
           const blob = await (await fetch(submittedData.imageUrl)).blob();
           const mime = blob.type || "image/png";
           const ext = mime.includes("jpeg") ? "jpg" : (mime.split("/")[1] || "png");
-          const path = `profiles/client/${uid}/${Date.now()}.${ext}`;
+          const path = `profiles/client/${email}.${ext}`;
           const storageRef = ref(storage, path);
           await uploadBytes(storageRef, blob, { contentType: mime });
           uploadedUrl = await getDownloadURL(storageRef);
@@ -241,6 +253,17 @@ function ManageClients() {
     try {
       setIsUpdating(true);
       // Remove password from update if not provided or needed
+      if (submittedData.password) {
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*_\-]).{8,}$/;
+        if (!passwordRegex.test(submittedData.password)) {
+          setFormErrors((prev) => ({
+            ...prev,
+            password: "Password must be at least 8 characters long and include 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (!@#$%^&*_-)."
+          }));
+          setIsUpdating(false);
+          return;
+        }
+      }
       const { password, ...rest } = submittedData;
       const updateData = {
         ...rest,
@@ -265,25 +288,28 @@ function ManageClients() {
         updateData.imageStoragePath = "";
       } else if (submittedData.imageUrl && submittedData.imageUrl.startsWith("data:")) {
         try {
+          // Delete all existing profile image variants before uploading new one
+          const extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+          const email = submittedData.email || selectedClient.email;
+          for (const ext of extensions) {
+            const oldPath = `profiles/client/${email}.${ext}`;
+            try {
+              await deleteObject(ref(storage, oldPath));
+              console.log(`Deleted old client image: ${oldPath}`);
+            } catch (err) {
+              // Silently ignore - file might not exist
+            }
+          }
+
           const blob = await (await fetch(submittedData.imageUrl)).blob();
           const mime = blob.type || "image/png";
           const ext = mime.includes("jpeg") ? "jpg" : (mime.split("/")[1] || "png");
-          const path = `profiles/client/${selectedClient.id}/${Date.now()}.${ext}`;
+          const path = `profiles/client/${email}.${ext}`;
           const storageRef = ref(storage, path);
           await uploadBytes(storageRef, blob, { contentType: mime });
           const url = await getDownloadURL(storageRef);
           updateData.imageUrl = url;
           updateData.imageStoragePath = path;
-
-          // Delete old image if exists
-          const oldPath = selectedClient.imageStoragePath || "";
-          if (oldPath && oldPath !== path) {
-            try {
-              await deleteObject(ref(storage, oldPath));
-            } catch (delErr) {
-              console.warn("Failed to delete old image from storage:", delErr);
-            }
-          }
         } catch (uploadErr) {
           console.error("Failed to upload client logo:", uploadErr);
         }
@@ -384,7 +410,7 @@ function ManageClients() {
               <span className="text-sm font-medium text-content-secondary">
                 Showing {filteredClients.length} records
               </span>
-              <Button onClick={() => setShowAddForm(true)} variant="custom" className={buttonClass}>
+              <Button onClick={() => { setShowAddForm(true); setFormErrors({}); }} variant="custom" className={buttonClass}>
                 <FaPlus className="h-4 w-4" /> Add Client
               </Button>
             </div>
@@ -511,6 +537,8 @@ function ManageClients() {
         onSubmit={handleFormSubmit}
         isSubmitting={isAdding}
         mode="add"
+        errors={formErrors}
+        onClearError={(field) => setFormErrors((prev) => ({ ...prev, [field]: "" }))}
       />
 
       <ClientFormModal
@@ -523,6 +551,8 @@ function ManageClients() {
         initialData={selectedClient}
         isSubmitting={isUpdating}
         mode="edit"
+        errors={formErrors}
+        onClearError={(field) => setFormErrors((prev) => ({ ...prev, [field]: "" }))}
       />
 
       <ClientViewModal

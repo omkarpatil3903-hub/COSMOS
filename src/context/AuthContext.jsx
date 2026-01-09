@@ -20,10 +20,19 @@ export function AuthProvider({ children }) {
     // Initialize app folders (e.g., MOMs folder for superadmin/admin)
     initializeAppFolders();
 
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    let unsubDataListener = null; // Track the data listener for cleanup
+
+    const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+
+      // Clean up previous data listener if exists
+      if (unsubDataListener) {
+        unsubDataListener();
+        unsubDataListener = null;
+      }
+
       if (currentUser) {
-        // First check users collection
+        // Set up real-time listener for users collection
         const userDocRef = doc(db, "users", currentUser.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
@@ -62,26 +71,46 @@ export function AuthProvider({ children }) {
 
             setUserData({
               ...data,
-              role: data.role ? data.role.trim() : "client",
-            });
-          } else {
-            // User exists in Auth but not in Firestore - treat as superadmin ONLY if email matches a hardcoded safe list or similar, otherwise member
-            // For now, we will default to 'member' to prevent unauthorized admin access for broken records
-            setUserData({
-              email: currentUser.email,
-              name: currentUser.displayName || currentUser.email,
-              role: "member", // Changed from 'admin' to 'member' for security
               uid: currentUser.uid,
+              role: data.role ? data.role.trim() : "member",
+            });
+            setLoading(false);
+          } else {
+            // If not in users, check clients collection
+            const clientDocRef = doc(db, "clients", currentUser.uid);
+            unsubDataListener = onSnapshot(clientDocRef, (clientDoc) => {
+              if (clientDoc.exists()) {
+                const data = clientDoc.data();
+                setUserData({
+                  ...data,
+                  uid: currentUser.uid,
+                  role: data.role ? data.role.trim() : "client",
+                });
+              } else {
+                // User exists in Auth but not in Firestore
+                setUserData({
+                  email: currentUser.email,
+                  name: currentUser.displayName || currentUser.email,
+                  role: "member",
+                  uid: currentUser.uid,
+                });
+              }
+              setLoading(false);
             });
           }
-        }
+        });
       } else {
         setUserData(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe(); // Cleanup the listener
+    return () => {
+      unsubAuth();
+      if (unsubDataListener) {
+        unsubDataListener();
+      }
+    };
   }, []);
 
   // Compute accessible panels based on user's role

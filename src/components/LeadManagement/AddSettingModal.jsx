@@ -9,7 +9,9 @@ const AddSettingModal = ({
     setSettingType,
     newSettingValue,
     setNewSettingValue,
-    onAdd
+    onAdd,
+    buttonClass = "bg-blue-600 hover:bg-blue-700 text-white",
+    iconColor = "text-blue-600"
 }) => {
     if (!isOpen) return null;
 
@@ -46,7 +48,7 @@ const AddSettingModal = ({
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-white/10">
                     <h2 className="text-lg font-bold text-gray-900 [.dark_&]:text-white flex items-center gap-2">
-                        <FaPlus className="text-blue-600 [.dark_&]:text-blue-400" />
+                        <FaPlus className={iconColor} />
                         Add New {getTitle()}
                     </h2>
                     <button
@@ -65,7 +67,12 @@ const AddSettingModal = ({
                     <input
                         type="text"
                         value={newSettingValue}
-                        onChange={(e) => setNewSettingValue(e.target.value)}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            // Allow only alphabets and spaces
+                            if (/[^a-zA-Z\s]/.test(val)) return;
+                            setNewSettingValue(val);
+                        }}
                         placeholder={`Enter ${settingType}...`}
                         className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-3 px-4 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         onKeyPress={(e) => {
@@ -81,7 +88,7 @@ const AddSettingModal = ({
                 <div className="flex gap-3 px-6 py-4 border-t border-gray-100 [.dark_&]:border-white/10">
                     <button
                         onClick={onAdd}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                        className={`flex-1 ${buttonClass} px-4 py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors`}
                     >
                         <FaPlus />
                         Add

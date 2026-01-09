@@ -27,7 +27,7 @@ function LoginPage() {
 
   // Set page title
   useEffect(() => {
-    document.title = "Login - Triology Consultancy";
+    document.title = "COSMOS | Login";
   }, []);
 
   const friendlyAuthError = (code) => {
