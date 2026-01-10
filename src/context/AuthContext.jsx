@@ -22,7 +22,7 @@ export function AuthProvider({ children }) {
 
     let unsubDataListener = null; // Track the data listener for cleanup
 
-    const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
+    const unsubAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
 
       // Clean up previous data listener if exists
@@ -52,6 +52,7 @@ export function AuthProvider({ children }) {
             setLoading(false);
             return;
           }
+          setLoading(false);
         } else {
           // If not in users, check clients collection
           const clientDocRef = doc(db, "clients", currentUser.uid);
@@ -72,33 +73,20 @@ export function AuthProvider({ children }) {
             setUserData({
               ...data,
               uid: currentUser.uid,
-              role: data.role ? data.role.trim() : "member",
+              role: data.role ? data.role.trim() : "client",
             });
             setLoading(false);
           } else {
-            // If not in users, check clients collection
-            const clientDocRef = doc(db, "clients", currentUser.uid);
-            unsubDataListener = onSnapshot(clientDocRef, (clientDoc) => {
-              if (clientDoc.exists()) {
-                const data = clientDoc.data();
-                setUserData({
-                  ...data,
-                  uid: currentUser.uid,
-                  role: data.role ? data.role.trim() : "client",
-                });
-              } else {
-                // User exists in Auth but not in Firestore
-                setUserData({
-                  email: currentUser.email,
-                  name: currentUser.displayName || currentUser.email,
-                  role: "member",
-                  uid: currentUser.uid,
-                });
-              }
-              setLoading(false);
+            // User exists in Auth but not in Firestore
+            setUserData({
+              email: currentUser.email,
+              name: currentUser.displayName || currentUser.email,
+              role: "member",
+              uid: currentUser.uid,
             });
+            setLoading(false);
           }
-        });
+        }
       } else {
         setUserData(null);
         setLoading(false);
@@ -139,4 +127,3 @@ export function AuthProvider({ children }) {
 export const useAuthContext = () => {
   return useContext(AuthContext);
 };
-

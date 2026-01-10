@@ -21,10 +21,12 @@ import VoiceInput from "../../components/Common/VoiceInput";
 import toast from "react-hot-toast";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 export default function EmployeeReports() {
   const { user, userData } = useAuthContext();
   const uid = user?.uid || userData?.uid;
+  const { gradientClass } = useThemeStyles();
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -666,7 +668,7 @@ Generated on: ${formatDateToDDMMYYYY(
         actions={
           <Button
             onClick={handleGenerateReport}
-            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition-all duration-200"
+            className={`flex items-center gap-2 bg-gradient-to-r ${gradientClass} hover:opacity-90 text-white shadow-lg transition-all duration-200`}
           >
             <FaWandMagicSparkles />
             Generate Report
