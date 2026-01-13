@@ -194,6 +194,17 @@ function PanelSwitcher({ isCollapsed = false }) {
         return IconComponent;
     };
 
+    const getPanelIconColor = (path) => {
+        if (accent === "black" && isDark) {
+            if (path === "/") return "text-indigo-400"; // Super Admin
+            if (path.startsWith("/admin")) return "text-blue-400"; // Admin
+            if (path.startsWith("/manager")) return "text-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.3)]"; // Manager
+            if (path.startsWith("/employee")) return "text-amber-400"; // Employee
+            if (path.startsWith("/client")) return "text-cyan-400"; // Client
+        }
+        return "";
+    };
+
     return (
         <div className="relative" ref={dropdownRef}>
             {/* Trigger Button */}
@@ -254,6 +265,7 @@ function PanelSwitcher({ isCollapsed = false }) {
                         {accessiblePanels.map((panel) => {
                             const IconComponent = getIconComponent(panel.icon);
                             const isActive = panel.path === currentPanel;
+                            const iconColorClass = getPanelIconColor(panel.path);
 
                             return (
                                 <button
@@ -276,7 +288,7 @@ function PanelSwitcher({ isCollapsed = false }) {
                                             : isDark
                                                 ? "bg-white/5"
                                                 : "bg-gray-100"
-                                            }`}
+                                            } ${iconColorClass}`}
                                     >
                                         <IconComponent className="h-4 w-4" />
                                     </span>

@@ -48,10 +48,10 @@ import {
   createNextRecurringInstance,
 } from "../../utils/recurringTasks";
 import { logTaskActivity } from "../../services/taskService";
+import TaskModal from "../../components/TaskModal";
+
 import TaskViewModal from "../../components/TaskManagment/TaskViewModal";
 import AddReminderModal from "../../components/Reminders/AddReminderModal";
-import AddSelfTaskModal from "../../components/TaskManagment/AddSelfTaskModal";
-import EditSelfTaskModal from "../../components/TaskManagment/EditSelfTaskModal";
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { useTheme } from "../../context/ThemeContext";
@@ -125,8 +125,7 @@ const EmployeeTasks = () => {
   const [progressDrafts, setProgressDrafts] = useState({});
   const [showCompleted, setShowCompleted] = useState(false);
   const [taskSource, setTaskSource] = useState("admin"); // 'admin' or 'self'
-  const [showAddSelfTaskModal, setShowAddSelfTaskModal] = useState(false);
-  const [showEditTaskModal, setShowEditTaskModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [selectedSelfTaskIds, setSelectedSelfTaskIds] = useState(new Set());
 
@@ -510,7 +509,56 @@ const EmployeeTasks = () => {
   // Handle edit task
   const handleEditTask = (task) => {
     setEditingTask(task);
-    setShowEditTaskModal(true);
+    setShowTaskModal(true);
+  };
+
+  const handleSaveTask = async (taskData) => {
+    try {
+      const isEdit = !!(editingTask && editingTask.id);
+
+      // Basic payload preparation
+      // Ensure we target selfTasks for employee created tasks
+      const payload = {
+        ...taskData,
+        userId: user.uid,
+        source: "self",
+        updatedAt: serverTimestamp(),
+      };
+
+      delete payload.id; // Don't save ID inside doc
+
+      if (isEdit) {
+        // Handle Recurring Series Update if needed
+        const needsSeriesUpdate = taskData.updateSeries;
+        // Note: For simple self tasks, we might just update the doc.
+        // If specific recurrence handling is needed, add here.
+
+        await updateDoc(doc(db, "selfTasks", editingTask.id), payload);
+        toast.success("Task updated successfully");
+        logTaskActivity(editingTask.id, "updated", "Task details updated", user, "selfTasks");
+      } else {
+        payload.createdAt = serverTimestamp();
+        payload.status = payload.status || "To-Do";
+        payload.progressPercent = 0;
+        payload.collectionName = "selfTasks";
+        payload.assigneeType = payload.assigneeType || "user";
+        if (!payload.assignees || payload.assignees.length === 0) {
+          // Default to self if none selected
+          payload.assignees = [{ type: 'user', id: user.uid }];
+          payload.assigneeId = user.uid;
+        }
+
+        const ref = await addDoc(collection(db, "selfTasks"), payload);
+        toast.success("Task created successfully");
+        logTaskActivity(ref.id, "created", "Task created", user, "selfTasks");
+      }
+
+      setShowTaskModal(false);
+      setEditingTask(null);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to save task");
+    }
   };
 
   // Handle save edited task
@@ -1203,7 +1251,10 @@ const EmployeeTasks = () => {
               )}
             </div>
             <button
-              onClick={() => setShowAddSelfTaskModal(true)}
+              onClick={() => {
+                setEditingTask(null);
+                setShowTaskModal(true);
+              }}
               className={`inline-flex items-center gap-2 px-4 py-2 rounded-md ${buttonClass} text-sm font-medium whitespace-nowrap`}
             >
               <FaPlus className="w-4 h-4" />
@@ -1346,24 +1397,21 @@ const EmployeeTasks = () => {
             )}
 
           {/* Add Self Task Modal (UI matched to provided screenshot) */}
-          <AddSelfTaskModal
-            isOpen={showAddSelfTaskModal}
-            onClose={() => setShowAddSelfTaskModal(false)}
-            projects={projectOptions}
-            user={user}
-          />
-
-          {/* Edit Task Modal */}
-          <EditSelfTaskModal
-            isOpen={showEditTaskModal}
-            onClose={() => {
-              setShowEditTaskModal(false);
-              setEditingTask(null);
-            }}
-            task={editingTask}
-            projects={projectOptions}
-            user={user}
-          />
+          {/* Task Modal (Create/Edit) */}
+          {showTaskModal && (
+            <TaskModal
+              onClose={() => {
+                setShowTaskModal(false);
+                setEditingTask(null);
+              }}
+              onSave={handleSaveTask}
+              taskToEdit={editingTask}
+              projects={projectOptions}
+              assignees={[{ ...user, name: user.name || user.displayName || user.email || "Me" }]} // Limit assignees to self for self-tasks
+              clients={clients}
+              statuses={effectiveStatuses}
+            />
+          )}
 
           <CompletionCommentModal
             open={showCompletionModal}
@@ -1451,7 +1499,10 @@ const EmployeeTasks = () => {
                         title="Today's Tasks"
                         tasks={todaysTasks}
                         colorClass="bg-red-600"
-                        onOpenCreate={() => setShowAddSelfTaskModal(true)}
+                        onOpenCreate={() => {
+                          setEditingTask(null);
+                          setShowTaskModal(true);
+                        }}
                         selectedIds={selectedSelfTaskIds}
                         onToggleSelect={toggleSelectSelfTask}
                         onView={(task) => setSelectedTask(task)}
@@ -1489,7 +1540,10 @@ const EmployeeTasks = () => {
                           tasks={tasksForStatus}
                           colorClass={colorClass}
                           colorHex={hex || null}
-                          onOpenCreate={() => setShowAddSelfTaskModal(true)}
+                          onOpenCreate={() => {
+                            setEditingTask(null);
+                            setShowTaskModal(true);
+                          }}
                           selectedIds={selectedSelfTaskIds}
                           onToggleSelect={toggleSelectSelfTask}
                           onView={(task) => setSelectedTask(task)}
@@ -1605,9 +1659,9 @@ const EmployeeTasks = () => {
           statuses={effectiveStatuses}
           currentUser={user}
           onClose={() => setSelectedTask(null)}
-          onEdit={(updatedTask) => {
+          onEdit={(task) => {
             setSelectedTask(null);
-            handleStatusChange(updatedTask.id, updatedTask.status);
+            handleEditTask(task);
           }}
           onDelete={async (task) => {
             if (
