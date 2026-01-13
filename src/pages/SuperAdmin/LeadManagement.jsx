@@ -614,7 +614,8 @@ function LeadManagement() {
       const alerts = [];
 
       allFollowups.forEach(followup => {
-        if (followup.status !== 'completed') {
+        // Only show notifications for PENDING follow-ups (not completed or rescheduled)
+        if (followup.status === 'pending') {
           const status = getFollowupNotificationStatus(followup.date);
 
           // Only show overdue, today, and tomorrow

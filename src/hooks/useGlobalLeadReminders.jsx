@@ -97,24 +97,30 @@ const useGlobalLeadReminders = () => {
                 const overdue = [];    // Follow-ups with date before today
                 const dueToday = [];   // Follow-ups scheduled for today
 
-                // Helper to get lead name - for better performance we might need to 
+                // Helper to get lead info - for better performance we might need to 
                 // store leadName on the followup document or do a quick lookup
+                // Also validates that the lead still exists (skip orphaned followups)
                 const getLeadInfo = async (followups) => {
                     const results = [];
                     for (const f of followups) {
                         try {
                             if (f.leadId) {
                                 const leadDoc = await getDoc(doc(db, 'leads', f.leadId));
+                                // Skip if lead document doesn't exist (orphaned followup)
+                                if (!leadDoc.exists()) {
+                                    console.log(`🔔 Skipping orphaned followup - lead ${f.leadId} not found`);
+                                    continue;
+                                }
                                 const leadData = leadDoc.data();
                                 results.push({
                                     ...f,
                                     leadName: leadData?.customerName || "Unknown Lead"
                                 });
-                            } else {
-                                results.push({ ...f, leadName: "Lead" });
                             }
+                            // Skip followups without leadId (shouldn't happen but safety check)
                         } catch (e) {
-                            results.push({ ...f, leadName: "Lead" });
+                            console.error("Error fetching lead for followup:", e);
+                            // Skip on error - better to not show than show stale data
                         }
                     }
                     return results;
@@ -217,14 +223,21 @@ const useGlobalLeadReminders = () => {
                 // TOAST NOTIFICATIONS: Display follow-up reminders
                 // Business Decision: Overdue shown longer (10s) as they're more critical
                 // Due-today shown for 8s - important but less urgent
+                // Only show if valid (non-orphaned) follow-ups exist after enrichment
                 if (overdue.length > 0) {
                     const leads = await enrichLeads(overdue);
-                    toast.custom((t) => renderToast('overdue', overdue.length, leads, t), { duration: 10000 });
+                    // Only show toast if there are valid leads (not orphaned)
+                    if (leads.length > 0) {
+                        toast.custom((t) => renderToast('overdue', leads.length, leads, t), { duration: 10000 });
+                    }
                 }
 
                 if (dueToday.length > 0) {
                     const leads = await enrichLeads(dueToday);
-                    toast.custom((t) => renderToast('today', dueToday.length, leads, t), { duration: 8000 });
+                    // Only show toast if there are valid leads (not orphaned)
+                    if (leads.length > 0) {
+                        toast.custom((t) => renderToast('today', leads.length, leads, t), { duration: 8000 });
+                    }
                 }
 
                 hasChecked.current = true;

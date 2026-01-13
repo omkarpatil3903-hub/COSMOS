@@ -46,7 +46,7 @@ import SessionSecurityProvider from "./SessionSecurityProvider";
  * - Enables session timeout tracking for protected routes
  */
 function ProtectedRoute({ children, allowedRoles = [] }) {
-  const { user, userData, loading } = useAuthContext();
+  const { user, userData, loading, isProjectManager } = useAuthContext();
 
   // Show loading spinner while checking auth
   if (loading) return <Spinner />;
@@ -71,6 +71,17 @@ function ProtectedRoute({ children, allowedRoles = [] }) {
   // Business Rule: Higher-ranked roles can access lower-ranked panels
   // Example: superadmin can access admin, manager, employee routes
   if (effectiveRole && canAccessRoute(effectiveRole, allowedRoles)) {
+    return (
+      <SessionSecurityProvider>
+        {children}
+      </SessionSecurityProvider>
+    );
+  }
+
+  // PROJECT MANAGER ACCESS: Allow members assigned as PM to access manager panel
+  // Business Rule: If user is assigned as projectManagerId in any project,
+  // they should be able to access the manager panel regardless of their base role
+  if (isProjectManager && allowedRoles.includes("manager")) {
     return (
       <SessionSecurityProvider>
         {children}

@@ -23,7 +23,7 @@
 
 import { useState, useEffect, useContext, useMemo } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, onSnapshot } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import toast from "react-hot-toast";
 import AppLoader from "../components/AppLoader";
@@ -56,6 +56,9 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  // PROJECT MANAGER ACCESS: Track if user is assigned as PM for any project
+  // This allows members to access /manager panel when they're assigned as project managers
+  const [isProjectManager, setIsProjectManager] = useState(false);
 
   useEffect(() => {
     // Initialize app folders (e.g., MOMs folder for superadmin/admin)
@@ -155,15 +158,52 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // PROJECT MANAGER DETECTION: Listen for projects where user is assigned as PM
+  // Business Rule: Members assigned as projectManagerId should access /manager panel
+  useEffect(() => {
+    if (!user) {
+      setIsProjectManager(false);
+      return;
+    }
+
+    // Listen for any projects where this user is the project manager
+    const projectsQuery = query(
+      collection(db, "projects"),
+      where("projectManagerId", "==", user.uid)
+    );
+
+    const unsubProjects = onSnapshot(projectsQuery, (snapshot) => {
+      // If user is PM for at least one project, grant manager panel access
+      setIsProjectManager(!snapshot.empty);
+    });
+
+    return () => unsubProjects();
+  }, [user]);
+
   // RBAC PANEL COMPUTATION: Determines which navigation panels the user can access
   // Memoized to prevent unnecessary recalculations on every render
   // Uses lowercase normalization to handle inconsistent role casing from Firestore
+  // PROJECT MANAGER ENHANCEMENT: If user is a PM, include manager panel in accessible panels
   const accessiblePanels = useMemo(() => {
     const role = userData?.role?.toLowerCase() || '';
-    return getAccessiblePanels(role);
-  }, [userData?.role]);
+    const panels = getAccessiblePanels(role);
 
-  const value = { user, userData, loading, accessiblePanels };
+    // If user is assigned as project manager but doesn't have manager role,
+    // add manager panel to their accessible panels
+    if (isProjectManager && role !== 'manager' && role !== 'admin' && role !== 'superadmin') {
+      const hasManagerPanel = panels.some(p => p.path === '/manager');
+      if (!hasManagerPanel) {
+        return [
+          ...panels,
+          { path: '/manager', label: 'Manager Panel', icon: 'FaUserTie' }
+        ];
+      }
+    }
+
+    return panels;
+  }, [userData?.role, isProjectManager]);
+
+  const value = { user, userData, loading, accessiblePanels, isProjectManager };
 
   return (
     <AuthContext.Provider value={value}>
