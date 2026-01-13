@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import { useLocation } from "react-router-dom";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import toast from "react-hot-toast";
 import PageHeader from "../../components/PageHeader";
@@ -145,6 +146,8 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
       return next;
     });
   };
+
+
 
   // Fetch statuses from settings
   // Fetch statuses from settings (Real-time)
@@ -346,6 +349,19 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
     setView("list");
     setTimeout(scrollToTasksList, 0);
   }, [scrollToTasksList]);
+
+  // Check for overrides via URL query params (e.g. ?filter=overdue)
+  // This is used by the Manager Dashboard "Overdue" card.
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const filterType = params.get("filter");
+
+    if (filterType === "overdue") {
+      applyOverdueQuickFilter();
+    }
+  }, [location.search, applyOverdueQuickFilter]);
 
   const clearFilters = () => {
     setFilters({
@@ -2375,6 +2391,7 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
           assignees={activeUsers}
           clients={clients}
           statuses={statusOptions}
+          isManager={onlyMyManagedProjects} // Pass manager flag
         />
       )}
       {showViewModal && viewingTask && (

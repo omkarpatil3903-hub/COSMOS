@@ -823,7 +823,7 @@ function ManageProjects({ onlyMyManaged = false }) {
                       Total Projects
                     </p>
                     <p className="text-3xl font-bold text-blue-900 [.dark_&]:text-white mt-1">
-                      {projects.length}
+                      {projectsWithDerived.length}
                     </p>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-blue-200/50 [.dark_&]:bg-blue-500/20 flex items-center justify-center">
@@ -876,7 +876,7 @@ function ManageProjects({ onlyMyManaged = false }) {
                     </p>
                     <p className="text-3xl font-bold text-yellow-900 [.dark_&]:text-white mt-1">
                       {
-                        projects.filter(
+                        projectsWithDerived.filter(
                           (p) => p.progress > 0 && p.progress < 100
                         ).length
                       }
@@ -905,7 +905,7 @@ function ManageProjects({ onlyMyManaged = false }) {
                       Not Started
                     </p>
                     <p className="text-3xl font-bold text-red-900 [.dark_&]:text-white mt-1">
-                      {projects.filter((p) => p.progress === 0).length}
+                      {projectsWithDerived.filter((p) => p.progress === 0).length}
                     </p>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-red-200/50 [.dark_&]:bg-red-500/20 flex items-center justify-center">
