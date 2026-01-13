@@ -1,4 +1,33 @@
-// src/components/Button.jsx
+/**
+ * Button Component
+ *
+ * Purpose: Reusable button component with multiple variants.
+ * Base styles with variant-specific colors and states.
+ *
+ * Responsibilities:
+ * - Render button with consistent base styling
+ * - Apply variant-specific colors
+ * - Handle disabled state with opacity
+ * - Support custom className override for "custom" variant
+ *
+ * Props:
+ * - children: Button content
+ * - onClick: Click handler
+ * - variant: 'primary' | 'secondary' | 'ghost' | 'danger' | 'custom'
+ * - type: Button type (default: 'button')
+ * - disabled: Disable button
+ * - className: Additional classes (used fully in 'custom' variant)
+ *
+ * Variants:
+ * - primary: Indigo background, white text
+ * - secondary: Border, surface bg, hover indigo
+ * - ghost: Transparent, hover subtle bg
+ * - danger: Red background, white text
+ * - custom: No default styles, fully controlled by className
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 
 // The component now accepts 'className' as a prop

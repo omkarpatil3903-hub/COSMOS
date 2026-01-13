@@ -1,4 +1,39 @@
-// src/components/TaskManagment/TagInput.jsx
+/**
+ * TagInput Component
+ *
+ * Purpose: Reusable tag input with colored badges.
+ * Supports add/remove operations and keyboard navigation.
+ *
+ * Responsibilities:
+ * - Display existing tags with colored badges
+ * - Toggle input mode for adding new tags
+ * - Handle tag addition via Enter key
+ * - Handle ESC to cancel input
+ * - Prevent duplicate tags
+ * - Remove tags via X button
+ *
+ * Dependencies:
+ * - react-icons (FaTimes, FaPlus)
+ *
+ * Props:
+ * - tags: Array of tag strings
+ * - onAdd: Callback when new tag is added
+ * - onRemove: Callback when tag is removed
+ * - placeholder: Input placeholder text
+ * - readOnly: Disable add/remove (default: false)
+ *
+ * Features:
+ * - 8 color variants cycled by tag index
+ * - Dark mode support via [.dark_&] classes
+ * - Inline input with autofocus
+ * - Dashed "Add tag" button when not editing
+ *
+ * TAG_COLORS Array:
+ * - blue, green, purple, orange, pink, indigo, teal, red
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState } from "react";
 import { FaTimes, FaPlus } from "react-icons/fa";
 

@@ -1,4 +1,46 @@
-// src/components/MainLayout.jsx
+/**
+ * MainLayout Component (Super Admin)
+ *
+ * Purpose: Application shell for Super Admin portal.
+ * Provides sidebar navigation, theme support, and responsive layout.
+ *
+ * Responsibilities:
+ * - Render collapsible sidebar with navigation links
+ * - Handle drag-and-drop nav item reordering
+ * - Persist nav order to localStorage
+ * - Display user profile and logout button
+ * - Manage mobile navigation overlay
+ * - Set page titles based on route
+ * - Initialize global lead reminders
+ *
+ * Dependencies:
+ * - React Router (NavLink, Outlet)
+ * - @hello-pangea/dnd (drag-drop)
+ * - Firebase Auth (signOut)
+ * - Firestore (user profile)
+ * - ThemeContext (accent color, dark mode)
+ * - useThemeStyles (bar color)
+ * - PanelSwitcher (role hierarchy access)
+ * - useGlobalLeadReminders (background notifications)
+ *
+ * Navigation Items:
+ * - Dashboard, Resources, Clients, Projects, Tasks
+ * - Lead Management, Knowledge, Expenses, Reports
+ * - MOM Pro, Calendar, Settings
+ *
+ * Features:
+ * - Collapsible sidebar (lg:w-24 / lg:w-72)
+ * - Mobile drawer with backdrop
+ * - Accent-based icon colors
+ * - Light/dark mode styling
+ * - Skip-to-content accessibility link
+ * - Dynamic document.title per route
+ *
+ * LocalStorage:
+ * - navOrder: Array of route paths for item order
+ *
+ * Last Modified: 2026-01-10
+ */
 import React, { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";

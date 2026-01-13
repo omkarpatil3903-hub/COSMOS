@@ -1,3 +1,40 @@
+/**
+ * AddProjectModal Component
+ *
+ * Purpose: Modal for creating new projects with OKR (Objectives and Key Results).
+ * Two-column form layout with project details, timeline, assignees, and OKRs.
+ *
+ * Responsibilities:
+ * - Display project name, company selector, project manager, dates
+ * - Render AssigneeSelector for multi-select team members
+ * - Dynamic OKRs section with add/remove objectives and key results
+ * - Voice input support for text fields
+ * - Validation error display per field
+ * - Theme-aware styling via useThemeStyles
+ *
+ * Dependencies:
+ * - useThemeStyles hook
+ * - VoiceInput, AssigneeSelector, Button components
+ * - react-icons (FaLayerGroup, FaBuilding, etc.)
+ *
+ * Props:
+ * - showAddForm: Modal visibility state
+ * - setShowAddForm: Toggle modal
+ * - formData/setFormData: Form state
+ * - clients: Array of client options
+ * - managers: Array of manager options
+ * - assigneesOptions: Array of assignee users
+ * - handleFormSubmit: Submit handler
+ * - addErrors/setAddErrors: Validation errors
+ * - hideProjectManagerDropdown: Hide PM selector for Manager role
+ *
+ * Form Layout:
+ * - Column 1: Project Details (name, company, PM) + Timeline (start/end date)
+ * - Column 2: Assignees + OKRs (dynamic list)
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import { useThemeStyles } from "../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";

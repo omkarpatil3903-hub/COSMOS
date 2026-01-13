@@ -1,3 +1,62 @@
+/**
+ * LeadList Component
+ *
+ * Purpose: Multi-view component for displaying leads.
+ * Supports table, kanban, and grouped view modes.
+ *
+ * Responsibilities:
+ * - Render Table View with sortable columns and bulk actions
+ * - Render Kanban View with drag-and-drop between statuses
+ * - Render Grouped View with collapsible status groups
+ * - Handle lead selection for bulk operations
+ * - Provide inline status change dropdown
+ * - Format follow-up dates from various input types
+ *
+ * Dependencies:
+ * - @hello-pangea/dnd (drag and drop for kanban)
+ * - react-icons (various)
+ * - Button, Card (UI components)
+ * - LeadGroup (grouped view component)
+ *
+ * Props:
+ * - viewMode: 'table' | 'kanban' | 'grouped'
+ * - currentRows: Paginated leads for table
+ * - filteredLeads: All filtered leads
+ * - selectedLeads: Set of selected IDs
+ * - setSelectedLeads: Update selection
+ * - leadStatuses/LEAD_STATUSES: Dynamic status options
+ * - sortConfig: { key, direction }
+ * - handleSort/handleDragEnd: Event handlers
+ * - currentPage/rowsPerPage: Pagination state
+ * - openProfile/openView/openEdit: Open handlers
+ * - setShowScheduleFollowup/setScheduleFollowupForm: Follow-up handlers
+ * - setSelectedLead/setShowDeleteModal: Delete handlers
+ * - setShowBulkStatusModal/setShowBulkDeleteModal: Bulk action handlers
+ * - getFollowUpStatus/getStatusColor/getPriorityColor: Color helpers
+ * - onStatusChange: Inline status update handler
+ * - onAddLeadWithStatus: Add lead with pre-set status
+ *
+ * Table Headers:
+ * 1. Checkbox
+ * 2. No. (index)
+ * 3. Date (sortable)
+ * 4. Customer Name (sortable, clickable)
+ * 5. Company (sortable)
+ * 6. Contact Info (email + phone)
+ * 7. Next Follow-up (sortable)
+ * 8. Status (sortable, inline dropdown)
+ * 9. Priority (sortable)
+ * 10. Actions
+ *
+ * Kanban Features:
+ * - Drag-and-drop between columns
+ * - Status-colored headers
+ * - Total value per column
+ * - Priority-colored left border
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {

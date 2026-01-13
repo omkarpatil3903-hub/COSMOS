@@ -1,4 +1,44 @@
-// src/components/ClientLayout.jsx
+/**
+ * ClientLayout Component
+ *
+ * Purpose: Application shell for Client portal.
+ * Provides sidebar navigation, theme support, and responsive layout.
+ *
+ * Responsibilities:
+ * - Render collapsible sidebar with navigation links
+ * - Handle drag-and-drop nav item reordering
+ * - Persist nav order to localStorage (navOrder_client)
+ * - Display user profile and logout button
+ * - Manage mobile navigation overlay
+ * - Set page titles based on route
+ * - Fetch profile from users OR clients collection
+ *
+ * Dependencies:
+ * - React Router (NavLink, Outlet)
+ * - @hello-pangea/dnd (drag-drop)
+ * - Firebase Auth (signOut)
+ * - Firestore (user/client profile)
+ * - ThemeContext (accent color)
+ * - useThemeStyles (bar color)
+ *
+ * Navigation Items (/client prefix):
+ * - Dashboard, Projects, Tasks, Calendar, Settings
+ *
+ * Profile Lookup:
+ * - Tries users collection first
+ * - Falls back to clients collection
+ * - Merges data from both sources
+ *
+ * Features:
+ * - Collapsible sidebar
+ * - Mobile drawer with backdrop
+ * - Accent-based icon colors
+ * - Dynamic document.title per route
+ *
+ * LocalStorage: navOrder_client
+ *
+ * Last Modified: 2026-01-10
+ */
 import { useState, useEffect } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";

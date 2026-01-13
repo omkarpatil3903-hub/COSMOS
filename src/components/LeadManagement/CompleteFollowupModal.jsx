@@ -1,3 +1,43 @@
+/**
+ * CompleteFollowupModal Component
+ *
+ * Purpose: Modal for completing a scheduled follow-up with outcome.
+ * Records the result of a follow-up interaction.
+ *
+ * Responsibilities:
+ * - Display customer name and follow-up context
+ * - Collect outcome selection (required)
+ * - Collect closing/completion notes (optional)
+ * - Submit completion with loading state
+ *
+ * Dependencies:
+ * - react-icons (FaCheckCircle)
+ * - HiXMark (close icon)
+ *
+ * Props:
+ * - isOpen: Modal visibility state
+ * - onClose: Close handler
+ * - lead: Parent lead object (for customer name)
+ * - completeFollowup: Follow-up being completed
+ * - completeForm: Form state { outcome, completionNotes }
+ * - setCompleteForm: Update form state
+ * - onComplete: Submit handler
+ * - isCompleting: Loading state
+ *
+ * Outcome Options:
+ * - "successful" → Deal Closed
+ * - "interested" → Follow-up Required
+ * - "not_interested" → Not Interested
+ * - "no_response" → No Response
+ * - "needs_analysis" → Needs more analysis
+ *
+ * Form Fields:
+ * - outcome: Required dropdown
+ * - completionNotes: Optional textarea
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from 'react';
 import { FaCheckCircle } from 'react-icons/fa';
 import { HiXMark } from 'react-icons/hi2';

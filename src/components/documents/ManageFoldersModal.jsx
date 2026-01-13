@@ -1,3 +1,52 @@
+/**
+ * ManageFoldersModal Component
+ *
+ * Purpose: Admin modal for managing document folders (CRUD operations).
+ * Allows creating, renaming, recoloring, and deleting folders.
+ *
+ * Responsibilities:
+ * - Display existing folders with colors
+ * - Create new folders with custom colors
+ * - Edit folder name and color
+ * - Delete folders with confirmation workflow
+ * - Protect system folders (MOMs) from modification
+ * - Cascade delete: remove all documents in deleted folder
+ *
+ * Dependencies:
+ * - Firestore (documents/folders, documents collection)
+ * - Firebase Storage (for file deletion during folder delete)
+ * - Button (UI component)
+ * - useThemeStyles (themed button class)
+ * - react-icons (folder, lock, edit, trash icons)
+ *
+ * Props:
+ * - isOpen: Modal visibility
+ * - onClose: Close callback
+ *
+ * Folder Data Model:
+ * - name: Folder display name
+ * - color: Hex color for folder badge
+ * - isSystem: Boolean (true for MOMs folder)
+ * - visibleTo: Array of roles that can see folder (optional)
+ *
+ * Delete Workflow:
+ * 1. Show confirmation modal
+ * 2. Require typing "Delete {FolderName}" exactly
+ * 3. Delete all documents from Storage
+ * 4. Delete all documents from Firestore
+ * 5. Remove folder from folders list
+ *
+ * System Folder Protection:
+ * - MOMs folder marked as isSystem
+ * - System folders cannot be renamed or deleted
+ * - Shows lock icon instead of edit/delete buttons
+ *
+ * Color Palette:
+ * - 20 predefined colors for quick selection
+ * - Custom color picker also available
+ *
+ * Last Modified: 2026-01-10
+ */
 
 import React, { useEffect, useState } from "react";
 import { HiXMark } from "react-icons/hi2";

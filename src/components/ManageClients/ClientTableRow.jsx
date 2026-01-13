@@ -1,3 +1,43 @@
+/**
+ * ClientTableRow Component
+ *
+ * Purpose: Renders a single row in the clients table.
+ * Displays client info with edit/delete action buttons.
+ *
+ * Responsibilities:
+ * - Display client avatar (image or initial)
+ * - Show client details in table cells
+ * - Handle row click for view modal
+ * - Provide edit/delete action buttons
+ *
+ * Dependencies:
+ * - react-icons (edit, trash icons)
+ *
+ * Props:
+ * - client: Client object to display
+ * - index: Row index for numbering
+ * - onEdit: Edit callback with client ID
+ * - onDelete: Delete callback with client ID
+ * - onView: View callback with client ID
+ *
+ * Table Columns:
+ * - #: Row number (1-indexed)
+ * - Avatar: Image or initial badge
+ * - Company Name: Truncated text
+ * - Client Name: Truncated text
+ * - Email: Truncated text
+ * - Contact No: Phone number
+ * - Business Type: Badge with truncated text
+ * - Employees: Green badge with count
+ * - Actions: Edit/Delete buttons (sticky right)
+ *
+ * Interactions:
+ * - Row click triggers onView
+ * - Edit/Delete buttons stop propagation
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import { FaEdit, FaEye, FaTrash } from "react-icons/fa";
 

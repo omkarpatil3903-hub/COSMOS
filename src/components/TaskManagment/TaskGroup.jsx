@@ -1,4 +1,55 @@
-// src/components/TaskManagment/TaskGroup.jsx
+/**
+ * TaskGroup Component
+ *
+ * Purpose: Collapsible task group container with header and task rows.
+ * Groups tasks by status or custom grouping criteria.
+ *
+ * Responsibilities:
+ * - Display group header with title, count, and actions
+ * - Toggle collapse/expand state
+ * - Render TaskRow components for each task
+ * - Provide header menu with group operations
+ * - Show column headers with icons
+ * - Quick add task button at bottom
+ *
+ * Dependencies:
+ * - TaskRow (task row component)
+ * - react-icons (various icons)
+ *
+ * Props:
+ * - title: Group name/status
+ * - tasks: Array of tasks in this group
+ * - colorClass: Tailwind background class
+ * - colorHex: Optional hex color override
+ * - onOpenCreate: Callback to open create modal
+ * - selectedIds: Set of selected task IDs
+ * - onToggleSelect: Toggle task selection
+ * - onView: View task callback
+ * - resolveAssignees: Function to resolve assignee data
+ * - onEdit/onDelete/onSetReminder/onUpload/onStatusChange: Task actions
+ * - showActions: Show action column (default: true)
+ * - onHeaderMenu: Header menu action callback
+ * - hideHeaderActions: Hide header action buttons
+ *
+ * Header Menu Actions:
+ * - Edit status (custom statuses only)
+ * - Change color (custom statuses only)
+ * - Pin status
+ * - Select all tasks in group
+ *
+ * Column Headers (8 columns):
+ * 1. Checkbox spacer
+ * 2. Task Name (FaTasks icon)
+ * 3. Assignees (FaUserFriends icon)
+ * 4. Assigned Date (FaRegCalendarPlus icon)
+ * 5. Due Date (FaRegCalendarAlt icon)
+ * 6. Priority (FaFlag icon, centered)
+ * 7. Status (FaClipboardList icon)
+ * 8. Actions (optional, centered)
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState, useEffect, useRef } from "react";
 import {
     FaCaretDown,

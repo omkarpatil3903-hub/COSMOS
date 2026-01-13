@@ -1,4 +1,49 @@
-// src/components/TaskModal.jsx
+/**
+ * TaskModal Component
+ *
+ * Purpose: Modal for creating and editing tasks with comprehensive features.
+ * Three-column layout with recurring task support, OKR linking, subtasks.
+ *
+ * Responsibilities:
+ * - Task creation with title, description, project, priority, status
+ * - Assignee selection (resource or client, multi-select for resources)
+ * - Date management (assigned date, due date)
+ * - Recurring task configuration (pattern, interval, end conditions)
+ * - OKR linking (objective and key results from project)
+ * - Subtask management with quick-add (due date, assignee, priority)
+ * - Edit mode with change detection
+ * - Series update prompt for recurring tasks
+ *
+ * Dependencies:
+ * - Button, VoiceInput components
+ * - validateTaskForm from formBuilders
+ * - calculateNextDueDate from recurringTasks
+ * - useTheme for accent styling
+ * - react-hot-toast for notifications
+ * - react-icons (MdReplayCircleFilled, FaTimes, etc.)
+ *
+ * Props:
+ * - onClose: Close handler
+ * - onSave: Save handler (receives task payload)
+ * - taskToEdit: Task object for edit mode (or { status } for new)
+ * - projects: Array of available projects
+ * - assignees: Array of resource users
+ * - clients: Array of client users
+ * - statuses: Array of status options
+ *
+ * Form Layout:
+ * - Column 1: Details & Classification (title, description, project, priority, status)
+ * - Column 2: Assignment & Schedule (assignee type, assignees, dates)
+ * - Column 3: Advanced & Subtasks (weightage, recurring, OKRs, subtasks)
+ *
+ * Recurring Patterns:
+ * - daily: Every N days
+ * - weekly: Every N weeks (with optional day selection)
+ * - monthly: Every N months (same day of month)
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState, useEffect, useMemo } from "react";
 import Button from "./Button";
 import toast from "react-hot-toast";
@@ -1245,10 +1290,10 @@ function TaskModal({
                                               setSubtasks(next);
                                             }}
                                             className={`px-2 py-1 text-[9px] rounded border transition-all ${wouldBeCircular
-                                                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed line-through'
-                                                : isSelected
-                                                  ? 'bg-indigo-100 text-indigo-700 border-indigo-300 [.dark_&]:bg-indigo-900/30 [.dark_&]:text-indigo-400 [.dark_&]:border-indigo-500/30'
-                                                  : 'bg-white [.dark_&]:bg-[#181B2A] text-gray-600 [.dark_&]:text-gray-400 border-gray-200 [.dark_&]:border-white/10 hover:border-indigo-300'
+                                              ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed line-through'
+                                              : isSelected
+                                                ? 'bg-indigo-100 text-indigo-700 border-indigo-300 [.dark_&]:bg-indigo-900/30 [.dark_&]:text-indigo-400 [.dark_&]:border-indigo-500/30'
+                                                : 'bg-white [.dark_&]:bg-[#181B2A] text-gray-600 [.dark_&]:text-gray-400 border-gray-200 [.dark_&]:border-white/10 hover:border-indigo-300'
                                               }`}
                                             title={wouldBeCircular ? `Circular dependency: "${other.title}" already depends on this` : ''}
                                           >

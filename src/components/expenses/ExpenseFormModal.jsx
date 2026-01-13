@@ -1,3 +1,54 @@
+/**
+ * ExpenseFormModal Component
+ *
+ * Purpose: Modal form for creating and editing expense records.
+ * Supports voice input for text fields and file upload for receipts.
+ *
+ * Responsibilities:
+ * - Create new expense records
+ * - Edit existing expense records
+ * - Validate required fields (title, date, amount)
+ * - Handle file upload for receipts
+ * - Associate expense with project (optional)
+ * - Show loading state during submission
+ *
+ * Dependencies:
+ * - Button (UI component)
+ * - VoiceInput (speech-to-text input wrapper)
+ * - react-icons (form field icons)
+ *
+ * Props:
+ * - isOpen: Modal visibility
+ * - onClose: Close callback
+ * - onSubmit: Async callback with form data
+ * - initialData: Expense data for edit mode (null for create)
+ * - projects: Array of projects for dropdown
+ * - isSubmitting: Boolean for submit loading state
+ * - title: Modal header text
+ *
+ * Form Fields:
+ * - title: Expense title (required, voice input)
+ * - date: Expense date (required)
+ * - projectId: Associated project (optional dropdown)
+ * - category: Travel, Food, Stay, Office, Other
+ * - amount: Expense amount (required, positive number)
+ * - currency: INR (fixed)
+ * - description: Details (optional, voice input textarea)
+ * - receipt: File upload (optional, image/PDF)
+ *
+ * Validation:
+ * - Title required
+ * - Date required
+ * - Amount must be positive number
+ *
+ * Edit Mode:
+ * - Prefills form with initialData
+ * - Shows "Has existing receipt" indicator
+ * - New receipt upload replaces existing
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState, useEffect } from "react";
 import {
     FaTimes,

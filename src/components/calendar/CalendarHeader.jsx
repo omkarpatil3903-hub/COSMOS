@@ -1,3 +1,38 @@
+/**
+ * CalendarHeader Component
+ *
+ * Purpose: Renders the calendar navigation bar with month controls,
+ * filter dropdowns, and action buttons.
+ *
+ * Responsibilities:
+ * - Month navigation (previous/next/today buttons)
+ * - Display current month and year
+ * - Event type filter (all/meetings/tasks)
+ * - Status filter (all/approved/pending/cancelled/completed)
+ * - Project filter dropdown
+ * - Employee schedule filter with indicator
+ * - Clear all filters button
+ *
+ * Dependencies:
+ * - Card, Button (UI components)
+ * - ThemeContext (for dark mode styling)
+ * - dateUtils (MONTH_NAMES)
+ * - react-icons (navigation icons)
+ *
+ * Props:
+ * - currentDate: Date for display
+ * - onNavigateMonth: Callback for month change (-1 or +1)
+ * - onToday: Callback to jump to current month
+ * - filterType/Status/Project/Employee: Current filter values
+ * - onFilter*Change: Callbacks for filter changes
+ * - projects: Array of projects for dropdown
+ * - resources: Array of users for employee dropdown
+ * - employeeScheduleInfo: Object with employee name when filter active
+ * - onClearEmployeeFilter: Callback to clear employee view
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import Card from "../Card";
 import Button from "../Button";
@@ -32,16 +67,20 @@ const CalendarHeader = ({
   onClearEmployeeFilter,
 }) => {
   const { mode } = useTheme();
+
+  // THEME-AWARE: Select styling based on light/dark mode
   const selectClassName = `border rounded px-3 py-2 text-sm outline-none transition-colors ${mode === "dark"
-      ? "bg-gray-700 border-gray-600 text-white"
-      : "bg-white border-gray-300 text-gray-900"
+    ? "bg-gray-700 border-gray-600 text-white"
+    : "bg-white border-gray-300 text-gray-900"
     }`;
 
   return (
     <>
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
+          {/* LEFT: Navigation Controls */}
           <div className="flex items-center gap-4">
+            {/* Month Navigation Arrows */}
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onNavigateMonth(-1)}
@@ -62,12 +101,15 @@ const CalendarHeader = ({
               </button>
             </div>
 
+            {/* Today Button */}
             <Button variant="secondary" onClick={onToday}>
               <FaCalendarAlt /> Today
             </Button>
           </div>
 
+          {/* RIGHT: Filter Dropdowns */}
           <div className="flex items-center gap-3 flex-wrap">
+            {/* Type Filter */}
             <select
               value={filterType}
               onChange={(e) => onFilterTypeChange(e.target.value)}
@@ -78,6 +120,7 @@ const CalendarHeader = ({
               <option value="task">Tasks</option>
             </select>
 
+            {/* Status Filter */}
             <select
               value={filterStatus}
               onChange={(e) => onFilterStatusChange(e.target.value)}
@@ -90,6 +133,7 @@ const CalendarHeader = ({
               <option value="completed">Completed</option>
             </select>
 
+            {/* Project Filter */}
             <select
               value={filterProject}
               onChange={(e) => onFilterProjectChange(e.target.value)}
@@ -103,6 +147,8 @@ const CalendarHeader = ({
               ))}
             </select>
 
+            {/* Employee Filter */}
+            {/* BUSINESS RULE: Excludes clients from employee dropdown */}
             <select
               value={filterEmployee}
               onChange={(e) => onFilterEmployeeChange(e.target.value)}
@@ -119,7 +165,7 @@ const CalendarHeader = ({
                 ))}
             </select>
 
-            {/* Clear All Filters Button */}
+            {/* CLEAR FILTERS: Shows only when any filter is active */}
             {(filterType !== "all" ||
               filterStatus !== "all" ||
               filterProject !== "all" ||
@@ -143,7 +189,7 @@ const CalendarHeader = ({
         </div>
       </Card>
 
-      {/* Employee Schedule Indicator */}
+      {/* EMPLOYEE SCHEDULE INDICATOR: Shows when viewing specific employee's schedule */}
       {employeeScheduleInfo && (
         <Card className="border-l-4 border-blue-500">
           <div className="flex items-center justify-between">

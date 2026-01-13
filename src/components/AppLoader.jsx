@@ -1,5 +1,30 @@
-// src/components/AppLoader.jsx
-// Full-screen loading component shown during initial auth check
+/**
+ * AppLoader Component
+ *
+ * Purpose: Full-screen skeleton loader shown during initial auth check.
+ * Reads theme from localStorage before React context is available.
+ *
+ * Responsibilities:
+ * - Display skeleton sidebar with nav items
+ * - Display skeleton main content (header, stat cards, charts)
+ * - Theme-aware colors (reads localStorage directly)
+ * - Support for "auto" mode (checks system preference)
+ *
+ * Dependencies:
+ * - react-icons (FaShieldAlt for logo)
+ *
+ * Theme Detection:
+ * - Reads "cosmos_theme" from localStorage
+ * - Handles "light", "dark", and "auto" modes
+ * - Falls back to light mode if not found
+ *
+ * Skeleton Sections:
+ * - Sidebar: Logo, 10 nav items, logout button
+ * - Main: Header, 4 stat cards, 2 charts
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useMemo } from "react";
 import { FaShieldAlt } from "react-icons/fa";
 

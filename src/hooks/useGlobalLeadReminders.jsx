@@ -1,4 +1,25 @@
-// src/hooks/useGlobalLeadReminders.js
+/**
+ * useGlobalLeadReminders Hook
+ *
+ * Purpose: Monitors lead follow-ups across the entire application and displays
+ * toast notifications for overdue and due-today follow-ups on app initialization.
+ *
+ * Responsibilities:
+ * - Queries all pending follow-ups using Firestore collectionGroup (efficient cross-lead query)
+ * - Categorizes follow-ups into 'overdue' and 'due today' buckets
+ * - Enriches follow-up data with parent lead names for better UX
+ * - Displays role-aware toast notifications with actionable links
+ * - Runs only once per session to avoid notification fatigue
+ *
+ * Dependencies:
+ * - Firestore (collectionGroup query on 'followups' subcollections)
+ * - react-hot-toast (custom toast rendering)
+ * - React Router (navigation to follow-ups view)
+ * - AuthContext (for role-based navigation paths)
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import { useEffect, useRef } from "react";
 import { collection, getDocs, collectionGroup, query, where, doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
@@ -8,10 +29,28 @@ import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../context/AuthContext";
 
 /**
- * Global hook to check for lead follow-up reminders on app initialization.
- * Shows toast notifications for overdue and today's follow-ups.
+ * Global hook for lead follow-up reminder notifications.
+ *
+ * Business Logic:
+ * - Uses collectionGroup to query all 'followups' subcollections across all leads
+ *   (more efficient than iterating through each lead document)
+ * - Filters for 'pending' status only (completed follow-ups are ignored)
+ * - Compares follow-up dates against today to determine overdue vs due-today
+ * - Fetches parent lead data for customer names (N+1 query, but acceptable for notifications)
+ * - Shows custom styled toasts with action buttons for quick navigation
+ *
+ * Side Effects:
+ * - Queries Firestore on mount (delayed by 2s for app stabilization)
+ * - Displays toast notifications
+ * - Sets hasChecked ref to prevent duplicate runs in same session
+ *
+ * Performance Notes:
+ * - 2-second delay allows app to stabilize before making queries
+ * - hasChecked ref ensures single execution per session even with StrictMode
+ * - Lead name enrichment is sequential to avoid rate limiting
  */
 const useGlobalLeadReminders = () => {
+    // SESSION GUARD: Prevent multiple checks in same session (important for StrictMode)
     const hasChecked = useRef(false);
     const navigate = useNavigate();
     const { userData } = useAuthContext();
@@ -49,12 +88,14 @@ const useGlobalLeadReminders = () => {
                     });
                 });
 
-                // Check for overdue and today's follow-ups
+                // DATE COMPARISON LOGIC: Categorize follow-ups by urgency
+                // Business Rule: Normalize to midnight for accurate day comparison
+                // (ignores time of day - only date matters for follow-up scheduling)
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
-                const overdue = [];
-                const dueToday = [];
+                const overdue = [];    // Follow-ups with date before today
+                const dueToday = [];   // Follow-ups scheduled for today
 
                 // Helper to get lead name - for better performance we might need to 
                 // store leadName on the followup document or do a quick lookup
@@ -106,85 +147,76 @@ const useGlobalLeadReminders = () => {
 
                 const renderToast = (type, count, leads, t) => {
                     const isOverdue = type === 'overdue';
-                    const bgColor = isOverdue ? 'bg-red-50' : 'bg-amber-50';
-                    const iconColor = isOverdue ? 'text-red-500' : 'text-amber-500';
-                    const iconBg = isOverdue ? 'bg-red-100' : 'bg-amber-100';
-                    const titleColor = isOverdue ? 'text-red-800' : 'text-amber-800';
-                    const buttonBg = isOverdue
-                        ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                        : 'bg-amber-500 hover:bg-amber-600 focus:ring-amber-500';
+                    const accentColor = isOverdue ? 'bg-red-500' : 'bg-amber-500';
+                    const textColor = isOverdue ? 'text-red-600' : 'text-amber-600';
 
                     return (
                         <div
-                            className={`${t.visible ? 'animate-enter' : 'animate-leave'} 
-                            max-w-md w-full bg-white shadow-lg rounded-xl pointer-events-auto flex ring-1 ring-black ring-opacity-5 overflow-hidden`}
+                            className={`${t.visible ? 'animate-in fade-in slide-in-from-top-2 duration-200' : 'opacity-0'} 
+                            max-w-xs w-full bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-100 dark:border-slate-700 overflow-hidden`}
                         >
-                            <div className={`flex-1 w-0 p-4`}>
-                                <div className="flex items-start">
-                                    <div className="flex-shrink-0 pt-0.5">
-                                        <div className={`h-10 w-10 rounded-full ${iconBg} flex items-center justify-center`}>
+                            {/* Top accent bar */}
+                            <div className={`h-1 ${accentColor}`} />
+
+                            <div className="px-3 py-2.5">
+                                {/* Header row */}
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className={`flex-shrink-0 w-6 h-6 rounded-full ${isOverdue ? 'bg-red-100' : 'bg-amber-100'} flex items-center justify-center`}>
                                             {isOverdue ? (
-                                                <FaExclamationTriangle className={`h-5 w-5 ${iconColor}`} />
+                                                <FaExclamationTriangle className={`w-3 h-3 ${textColor}`} />
                                             ) : (
-                                                <FaBell className={`h-5 w-5 ${iconColor}`} />
+                                                <FaBell className={`w-3 h-3 ${textColor}`} />
                                             )}
                                         </div>
+                                        <span className={`text-sm font-semibold ${textColor}`}>
+                                            {count} Overdue Follow-up{count > 1 ? "s" : ""}
+                                        </span>
                                     </div>
-                                    <div className="ml-3 flex-1">
-                                        <p className={`text-sm font-bold ${titleColor}`}>
-                                            {count} {isOverdue ? "Overdue Follow-up" : "Follow-up Due Today"}{count > 1 ? "s" : ""}
-                                        </p>
-                                        <p className="mt-1 text-sm text-gray-500 line-clamp-2">
-                                            {leads.slice(0, 3).map((f) => f.leadName).join(", ")}
-                                            {count > 3 && ` +${count - 3} more`}
-                                        </p>
-                                        <div className="mt-3 flex gap-2">
-                                            <button
-                                                onClick={() => {
-                                                    toast.dismiss(t.id);
-                                                    // Determine path based on role
-                                                    const role = userData?.role || "superadmin";
-                                                    // Default to /lead-management if superadmin, /admin/lead-management if admin
-                                                    // If role is something else, fallback to user-appropriate path or default
-                                                    let basePath;
-                                                    if (role === 'superadmin') {
-                                                        basePath = "/lead-management";
-                                                    } else if (role === 'admin') {
-                                                        basePath = "/admin/lead-management";
-                                                    } else {
-                                                        // Fallback for others if they see this? Assuming mainly admin task
-                                                        basePath = "/lead-management";
-                                                    }
-
-                                                    navigate(`${basePath}?view=followups`);
-                                                }}
-                                                className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white ${buttonBg} focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors`}
-                                            >
-                                                View Action Items
-                                            </button>
-                                            <button
-                                                onClick={() => toast.dismiss(t.id)}
-                                                className="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                                            >
-                                                Dismiss
-                                            </button>
-                                        </div>
-                                    </div>
+                                    <button
+                                        onClick={() => toast.dismiss(t.id)}
+                                        className="flex-shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
                                 </div>
-                            </div>
-                            <div className={`flex border-l border-gray-200`}>
-                                <button
-                                    onClick={() => toast.dismiss(t.id)}
-                                    className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-gray-600 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                >
-                                    Close
-                                </button>
+
+                                {/* Lead names */}
+                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 truncate">
+                                    {leads.slice(0, 3).map((f) => f.leadName).join(", ")}
+                                    {count > 3 && ` +${count - 3} more`}
+                                </p>
+
+                                {/* Action buttons */}
+                                <div className="mt-2 flex items-center gap-2">
+                                    <button
+                                        onClick={() => {
+                                            toast.dismiss(t.id);
+                                            const role = userData?.role || "superadmin";
+                                            const basePath = role === 'admin' ? "/admin/lead-management" : "/lead-management";
+                                            navigate(`${basePath}?view=followups`);
+                                        }}
+                                        className={`flex-1 px-2.5 py-1 text-xs font-medium rounded-md text-white ${isOverdue ? 'bg-red-500 hover:bg-red-600' : 'bg-amber-500 hover:bg-amber-600'} transition-colors`}
+                                    >
+                                        View Action Items
+                                    </button>
+                                    <button
+                                        onClick={() => toast.dismiss(t.id)}
+                                        className="px-2.5 py-1 text-xs font-medium rounded-md text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                                    >
+                                        Dismiss
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     );
                 };
 
-                // Trigger Toasts
+                // TOAST NOTIFICATIONS: Display follow-up reminders
+                // Business Decision: Overdue shown longer (10s) as they're more critical
+                // Due-today shown for 8s - important but less urgent
                 if (overdue.length > 0) {
                     const leads = await enrichLeads(overdue);
                     toast.custom((t) => renderToast('overdue', overdue.length, leads, t), { duration: 10000 });
@@ -201,10 +233,12 @@ const useGlobalLeadReminders = () => {
             }
         };
 
-        // Delay slightly to allow app to stabilize
+        // DELAYED EXECUTION: Wait 2 seconds before checking
+        // Reason: Allows React app to fully hydrate (auth context, routing, etc.)
+        // Prevents race conditions with auth state and improves initial load performance
         const timer = setTimeout(checkFollowups, 2000);
         return () => clearTimeout(timer);
-    }, [navigate, userData]); // Added dependencies
+    }, [navigate, userData]); // Dependencies: re-run if navigation or user changes
 };
 
 export default useGlobalLeadReminders;

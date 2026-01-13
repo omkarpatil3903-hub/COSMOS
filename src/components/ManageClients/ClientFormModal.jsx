@@ -1,3 +1,57 @@
+/**
+ * ClientFormModal Component
+ *
+ * Purpose: Modal form for creating and editing client accounts.
+ * Supports company logo upload and password change requirements.
+ *
+ * Responsibilities:
+ * - Create new client accounts
+ * - Edit existing client information
+ * - Handle company logo upload (base64)
+ * - Manage password visibility toggle
+ * - Validate required fields
+ * - Support voice input for text fields
+ *
+ * Dependencies:
+ * - useThemeStyles (themed button/icon classes)
+ * - VoiceInput (speech-to-text input)
+ * - Button (UI component)
+ * - react-icons (form field icons)
+ *
+ * Props:
+ * - isOpen: Modal visibility
+ * - onClose: Close callback
+ * - onSubmit: Submit callback with form data
+ * - initialData: Client data for edit mode
+ * - isSubmitting: Boolean for submit loading state
+ * - mode: 'add' | 'edit'
+ * - errors: Validation error object
+ * - onClearError: Clear specific field error
+ *
+ * Form Sections:
+ * 1. Basic Information: Company name, client name, email, contact
+ * 2. Business Details: Business type, employees, address
+ * 3. Media & Security: Logo upload, password, force change toggle
+ *
+ * Form Fields:
+ * - companyName: Required
+ * - clientName: Required
+ * - email: Required (readonly in edit mode)
+ * - contactNo: Required
+ * - typeOfBusiness: Required
+ * - address: Required (textarea with voice input)
+ * - noOfEmployees: Optional
+ * - imageUrl: Optional (base64, max 1MB)
+ * - password: Required for add, optional for edit
+ * - mustChangePassword: Toggle for first-login password change
+ *
+ * Security Features:
+ * - Password visibility toggle
+ * - Force password change on first login option
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState, useEffect } from "react";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";

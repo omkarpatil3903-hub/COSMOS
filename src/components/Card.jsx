@@ -1,4 +1,35 @@
-// src/components/Card.jsx
+/**
+ * Card Component
+ *
+ * Purpose: Theme-aware card container with optional header.
+ * Provides consistent card styling across the application.
+ *
+ * Responsibilities:
+ * - Render card with rounded corners, border, shadow
+ * - Display optional header with title, icon, and actions
+ * - Apply tone-based background colors
+ * - Special handling for 'black' accent theme
+ *
+ * Dependencies:
+ * - useTheme context for accent color
+ *
+ * Props:
+ * - title: Optional card title
+ * - icon: Optional React element for header icon
+ * - children: Card body content
+ * - actions: Optional React element for header actions
+ * - className: Additional classes
+ * - tone: 'surface' | 'strong' | 'muted' | 'white'
+ *
+ * Tone Colors:
+ * - surface/strong: bg-surface-strong
+ * - muted: bg-surface-subtle
+ * - white: bg-white (dark: bg-surface-strong)
+ * - Black accent: special grey background for dark mode
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import { useTheme } from "../context/ThemeContext";
 

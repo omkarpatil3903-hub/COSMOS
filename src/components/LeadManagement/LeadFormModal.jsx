@@ -1,20 +1,53 @@
+/**
+ * LeadFormModal Component
+ *
+ * Purpose: Unified modal for creating and editing leads.
+ * Supports add mode (new lead) and edit mode (update existing).
+ *
+ * Responsibilities:
+ * - Display multi-section form with all lead fields
+ * - Handle form state and validation
+ * - Apply input masking (phone: numbers only, name: letters only)
+ * - Reset form on modal open/mode change
+ * - Dynamic status/priority from settings
+ *
+ * Dependencies:
+ * - react-icons (FaUserTie, FaEdit, FaBell)
+ * - HiXMark (close icon)
+ * - Button (UI component)
+ *
+ * Props:
+ * - isOpen: Modal visibility state
+ * - onClose: Close handler
+ * - mode: 'add' | 'edit'
+ * - initialData: Pre-fill data for edit mode
+ * - onSubmit: Form submit handler (receives formData)
+ * - errors: Validation errors object
+ * - settings: Dynamic settings { leadStatuses, leadPriorities, leadSources, sectors, productCategories, products }
+ * - buttonClass: Theme button class
+ * - headerIconClass: Theme icon background class
+ *
+ * Form Layout (4 rows):
+ * 1. Date*, Customer Name*, Contact Number*, Email*
+ * 2. Company Name*, Potential Value (₹), Address
+ * 3. Source of Lead*
+ * 4. Status, Priority, Notes
+ *
+ * Input Validation:
+ * - contactNumber: Digits only, max 10 chars
+ * - customerName: Letters and spaces only
+ * - potentialValue: Non-negative numbers
+ *
+ * Required Fields (*):
+ * - date, customerName, contactNumber, email, companyName, sourceOfLead
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState, useEffect } from "react";
 import { FaUserTie, FaEdit, FaBell } from "react-icons/fa";
 import { HiXMark } from "react-icons/hi2";
 import Button from "../../components/Button";
-
-/**
- * LeadFormModal - Unified modal for Add and Edit lead functionality
- * @param {Object} props
- * @param {boolean} props.isOpen - Whether the modal is open
- * @param {Function} props.onClose - Function to close the modal
- * @param {string} props.mode - 'add' or 'edit'
- * @param {Object} props.initialData - Initial form data (for edit mode)
- * @param {Function} props.onSubmit - Form submission handler
- * @param {Object} props.errors - Form validation errors
- * @param {Object} props.settings - Dynamic settings (statuses, priorities, sources, etc.)
- * @param {string} props.buttonClass - Button class from theme
- */
 const LeadFormModal = ({
     isOpen,
     onClose,

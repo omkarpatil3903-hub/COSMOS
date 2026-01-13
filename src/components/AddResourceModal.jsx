@@ -1,3 +1,41 @@
+/**
+ * AddResourceModal Component
+ *
+ * Purpose: Modal for creating new team member (resource) accounts.
+ * Three-column form with Basic Info, Role & Employment, Account & Access.
+ *
+ * Responsibilities:
+ * - Profile image upload preview
+ * - Full name, email, mobile validation
+ * - Employment type, resource type, role selection
+ * - Password creation with strength validation
+ * - "Require password change on first login" toggle
+ * - Fetch role options from Firestore settings/hierarchy
+ *
+ * Dependencies:
+ * - useThemeStyles hook
+ * - VoiceInput, Button components
+ * - Firebase Firestore (db)
+ * - react-icons (FaUser, FaBriefcase, FaLock, etc.)
+ *
+ * Props:
+ * - showAddForm/setShowAddForm: Modal visibility
+ * - formData/setFormData: Form state
+ * - onSubmit/onClose: Handlers
+ * - imagePreview/onImageChange/onImageRemove: Profile image handling
+ * - existingEmails: Array of emails already in use
+ * - serverErrors/clearServerError: API error display
+ * - isSubmitting: Loading state
+ *
+ * Validation Rules:
+ * - fullName: Min 2 chars
+ * - email: Valid format, not in existingEmails
+ * - mobile: Exactly 10 digits
+ * - password: 8+ chars, 1 upper, 1 lower, 1 number, 1 special char
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState, useEffect } from "react";
 import { useThemeStyles } from "../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";

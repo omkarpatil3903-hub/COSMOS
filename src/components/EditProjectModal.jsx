@@ -1,3 +1,37 @@
+/**
+ * EditProjectModal Component
+ *
+ * Purpose: Modal for editing existing projects and OKRs.
+ * Two-column form similar to AddProjectModal but for updates.
+ *
+ * Responsibilities:
+ * - Pre-populate form with existing project data
+ * - Allow editing project name, company, PM, dates
+ * - Manage assignees via AssigneeSelector
+ * - Dynamic OKRs section (add/edit/remove objectives and key results)
+ * - Validation error display per field
+ *
+ * Dependencies:
+ * - useThemeStyles hook
+ * - VoiceInput, AssigneeSelector components
+ * - react-icons (FaEdit, FaLayerGroup, etc.)
+ *
+ * Props:
+ * - showEditForm/setShowEditForm: Modal visibility
+ * - selectedProject/setSelectedProject: Project being edited
+ * - formData/setFormData: Form state (pre-populated)
+ * - clients, managers, assigneesOptions: Dropdown data
+ * - handleEditSubmit: Submit handler
+ * - editErrors/setEditErrors: Validation errors
+ * - hideProjectManagerDropdown: Hide PM for Manager role
+ *
+ * Form Layout:
+ * - Column 1: Project Details (name, company, PM) + Timeline
+ * - Column 2: Assignees + OKRs (dynamic list)
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import { useThemeStyles } from "../hooks/useThemeStyles";
 import { FaTimes, FaPlus, FaEdit, FaLayerGroup, FaBuilding, FaCalendarAlt, FaBullseye, FaTrash } from "react-icons/fa";

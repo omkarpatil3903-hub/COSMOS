@@ -1,3 +1,46 @@
+/**
+ * DataTable Component
+ *
+ * Purpose: Reusable data table with sorting, pagination, and customizable columns.
+ * Used across various document views for consistent table presentation.
+ *
+ * Responsibilities:
+ * - Render tabular data with configurable columns
+ * - Handle column sorting (ascending/descending)
+ * - Manage pagination (page size, navigation)
+ * - Support sticky columns for actions
+ * - Handle row click events
+ *
+ * Dependencies:
+ * - Button (UI component)
+ * - react-icons (sort icons)
+ *
+ * Props:
+ * - columns: Array of column definitions
+ *   - key: Data field key
+ *   - label: Column header text
+ *   - sortable: Boolean for sortable columns
+ *   - render: Custom render function (row, absoluteIndex, pageIndex)
+ *   - align: 'left' | 'center' | 'right'
+ *   - stickyRight: Boolean for sticky positioning
+ *   - headerClassName: Additional header cell classes
+ *   - cellClassName: Additional body cell classes
+ * - rows: Data array
+ * - rowKey: Field name or function to generate unique keys
+ * - sortConfig: { key, direction } for current sort state
+ * - onSort: Callback when column header clicked
+ * - page: Current page number (1-indexed)
+ * - rowsPerPage: Items per page
+ * - onPageChange: Callback for page navigation
+ * - onRowsPerPageChange: Callback for page size change
+ * - emptyText: Message when no data
+ * - onRowClick: Optional row click handler
+ *
+ * Pagination Options: 5, 10, 25, 50 rows per page
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import { FaSortAmountDownAlt, FaSortAmountUpAlt } from "react-icons/fa";
 import Button from "../Button";

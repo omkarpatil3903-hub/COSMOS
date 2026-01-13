@@ -1,3 +1,51 @@
+/**
+ * AddKnowledgeModal Component
+ *
+ * Purpose: Modal form for creating and editing knowledge base entries.
+ * Supports multiple links, document uploads, and access control.
+ *
+ * Responsibilities:
+ * - Create/edit knowledge entries with title and description
+ * - Manage multiple reference links
+ * - Upload multiple documents to Firebase Storage
+ * - Assign access permissions (admin/member)
+ * - Track activity changes for audit log
+ * - Handle voice input for text fields
+ *
+ * Dependencies:
+ * - Firestore (users, tasks, projects collections)
+ * - Firebase Storage (knowledge/{id}/ path)
+ * - Firebase Auth (current user for activity tracking)
+ * - VoiceInput (speech-to-text input)
+ * - AssigneeSelector (user selection)
+ * - Button (UI component)
+ *
+ * Props:
+ * - isOpen: Modal visibility
+ * - onClose: Close callback
+ * - onSubmit: Submit callback with knowledge data
+ * - initialItem: Knowledge entry to edit (null for create)
+ * - projectId: Project context for user filtering
+ * - canEditAccess: Boolean to show access controls
+ *
+ * Form Fields:
+ * - title: Required, voice input supported
+ * - description: Required, voice input textarea
+ * - links: Array of URLs (optional, dynamic add/remove)
+ * - documents: Array of file uploads (optional)
+ * - access: { admin: [], member: [] } user assignments
+ *
+ * Activity Tracking:
+ * - Detects changes in title, description, links, documents, assignees
+ * - Passes activityChanges array to parent for audit log
+ *
+ * Document Upload:
+ * - Stored in knowledge/{knowledgeId}/ folder
+ * - Includes metadata: name, displayName, size, url, storagePath
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useEffect, useState } from "react";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";

@@ -1,6 +1,67 @@
 /**
- * Shared Expense Management Component
- * Used by both SuperAdmin and Admin portals to avoid code duplication
+ * ExpenseManagementBase Component
+ *
+ * Purpose: Shared expense management dashboard for admin portals.
+ * Provides full CRUD operations, approval workflow, and reporting.
+ *
+ * Responsibilities:
+ * - Display expense statistics (total, approved, paid amounts)
+ * - List expenses in paginated table
+ * - Filter by status, category, date range, search query
+ * - Approve/reject individual expenses with reason
+ * - Mark expenses as paid
+ * - Bulk approve/pay selected expenses
+ * - Edit/delete expense records
+ * - Export filtered data to CSV
+ * - View expense details in modal
+ * - View receipts in document preview modal
+ *
+ * Dependencies:
+ * - Firestore (expenses, users, projects collections)
+ * - expenseService (CRUD operations)
+ * - expenseConfig (categories, status colors)
+ * - ExpenseDetailModal (expense view)
+ * - ExpenseFormModal (expense edit)
+ * - DeleteConfirmationModal (delete confirmation)
+ * - DocumentPreviewModal (receipt viewer)
+ * - Button, Card, PageHeader (UI components)
+ *
+ * Props:
+ * - buttonClass: Custom button styling class
+ * - useDarkMode: Boolean for dark mode styling adjustments
+ *
+ * Workflow States:
+ * - Draft (not used in admin view)
+ * - Submitted: Pending review
+ * - Approved: Awaiting payment
+ * - Rejected: Declined with reason
+ * - Paid: Completed
+ *
+ * Stats Cards (clickable filters):
+ * - Total: All expenses
+ * - Approved: Approved amount total
+ * - Paid: Paid amount total
+ *
+ * Bulk Operations:
+ * - Select all / individual rows
+ * - Approve Selected
+ * - Mark Paid
+ *
+ * Filters:
+ * - Status dropdown
+ * - Category dropdown
+ * - Date range (from/to)
+ * - Search query (title, employee, description)
+ *
+ * Pagination:
+ * - 10/25/50 rows per page
+ * - Previous/Next navigation
+ *
+ * CSV Export:
+ * - Exports filtered results
+ * - Includes all fields
+ *
+ * Last Modified: 2026-01-10
  */
 import { useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "../../context/useAuthContext";

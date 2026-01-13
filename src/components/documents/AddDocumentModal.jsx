@@ -1,3 +1,46 @@
+/**
+ * AddDocumentModal Component
+ *
+ * Purpose: Modal form for creating and editing documents with access control.
+ * Handles file upload, folder selection, and user assignment.
+ *
+ * Responsibilities:
+ * - Create new documents with file upload
+ * - Edit existing document metadata
+ * - Assign access permissions (admins/members)
+ * - Filter folders by user role visibility
+ * - Display activity timeline for edits
+ * - Validate required fields before submission
+ *
+ * Dependencies:
+ * - Firestore (users, tasks, projects, documents/folders collections)
+ * - Firebase Auth (current user for activity tracking)
+ * - AssigneeSelector (user selection component)
+ * - Button (UI component)
+ *
+ * Props:
+ * - isOpen: Modal visibility
+ * - onClose: Close callback
+ * - onSubmit: Submit callback with document data
+ * - initialDoc: Document to edit (null for create)
+ * - projectId: Project context for user filtering
+ * - canEditAccess: Boolean to show access controls
+ * - userRole: Current user's role for folder filtering
+ *
+ * Business Rules:
+ * - MOMs folder is always hidden (protected system folder)
+ * - Folders can have visibleTo restrictions by role
+ * - Access is split into admin and member arrays
+ * - Activity timeline shows creation and last update
+ *
+ * Form Validation:
+ * - Name required
+ * - Folder required
+ * - File required for new documents
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useEffect, useState } from "react";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";

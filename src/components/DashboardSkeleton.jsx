@@ -1,4 +1,35 @@
-// src/components/DashboardSkeleton.jsx
+/**
+ * DashboardSkeleton Component
+ *
+ * Purpose: Skeleton loading state for the main dashboard page.
+ * Displays placeholder shapes while data is loading.
+ *
+ * Responsibilities:
+ * - Render stat card skeletons (4 cards)
+ * - Render chart skeletons (bar chart, pie chart, calendar)
+ * - Render progress bar skeletons
+ * - Animate with pulse effect
+ *
+ * Dependencies:
+ * - PageHeader, Card components
+ *
+ * Internal Components:
+ * - SkeletonStatCard: Stat card placeholder
+ * - SkeletonChart: Bar chart placeholder with random heights
+ * - SkeletonCalendar: Calendar grid placeholder (7x5)
+ * - SkeletonPieChart: Circular chart + legend placeholder
+ * - SkeletonProgressBars: Progress list placeholder
+ * - SkeletonProjectsProgress: Project progress list placeholder
+ *
+ * Layout:
+ * - PageHeader with description
+ * - 4-column stat cards grid
+ * - 2-column charts grid (top row)
+ * - 2-column progress/health grid (bottom row)
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import PageHeader from "./PageHeader";
 import Card from "./Card";

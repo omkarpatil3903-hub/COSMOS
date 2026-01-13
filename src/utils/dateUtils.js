@@ -1,25 +1,55 @@
 /**
  * Date Utilities for Calendar System
- * Handles all date conversions, formatting, and calculations
+ *
+ * Purpose: Comprehensive date handling utilities for the calendar and task
+ * management system, including conversions, formatting, and calculations.
+ *
+ * Responsibilities:
+ * - Firestore Timestamp to JavaScript Date conversion
+ * - Date formatting for display and input fields
+ * - Relative time calculations ("5m ago", "2h ago")
+ * - Calendar grid generation
+ * - Date comparison utilities
+ *
+ * Dependencies: None (pure JavaScript)
+ *
+ * Timezone Handling:
+ * All date operations use local timezone. For cross-timezone applications,
+ * consider using UTC or a library like date-fns or luxon.
+ *
+ * Last Modified: 2026-01-10
  */
 
 /**
- * Convert Firestore timestamp to JavaScript Date
- * @param {*} value - Firestore timestamp or date string
- * @returns {Date|null}
+ * Convert Firestore timestamp to JavaScript Date.
+ * Handles multiple input formats gracefully.
+ *
+ * @param {Timestamp|Date|string|object|null} value - Firestore timestamp, Date, or date string
+ * @returns {Date|null} JavaScript Date or null if invalid
+ *
+ * Supported Formats:
+ * - Firestore Timestamp: { toDate: () => Date }
+ * - Firestore-like object: { seconds: number }
+ * - JavaScript Date object
+ * - ISO date string
  */
 export const tsToDate = (value) => {
   if (!value) return null;
+  // FIRESTORE TIMESTAMP: Has toDate() method
   if (typeof value.toDate === "function") return value.toDate();
+  // FIRESTORE-LIKE: Has seconds property (manual timestamp construction)
   if (typeof value.seconds === "number") return new Date(value.seconds * 1000);
+  // STRING/DATE: Try native parsing
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
 /**
- * Convert Date to input value format (YYYY-MM-DD)
- * @param {Date} date
- * @returns {string}
+ * Convert Date to HTML input value format (YYYY-MM-DD).
+ * Compatible with <input type="date" value={...} />
+ *
+ * @param {Date} date - Date to convert
+ * @returns {string} Date string in YYYY-MM-DD format or empty string
  */
 export const dateToInputValue = (date) => {
   if (!date) return "";
@@ -30,9 +60,10 @@ export const dateToInputValue = (date) => {
 };
 
 /**
- * Get time ago string (e.g., "5m ago", "2h ago")
- * @param {Date} date
- * @returns {string}
+ * Get human-readable relative time string.
+ *
+ * @param {Date} date - Date to compare against now
+ * @returns {string} Relative time (e.g., "Just now", "5m ago", "2h ago", "3d ago")
  */
 export const getTimeAgo = (date) => {
   if (!date) return "";
@@ -45,10 +76,12 @@ export const getTimeAgo = (date) => {
 };
 
 /**
- * Check if two dates are the same day
- * @param {Date} date1
- * @param {Date} date2
- * @returns {boolean}
+ * Check if two dates are the same calendar day.
+ * Ignores time components.
+ *
+ * @param {Date} date1 - First date
+ * @param {Date} date2 - Second date
+ * @returns {boolean} True if same year, month, and day
  */
 export const isSameDay = (date1, date2) => {
   if (!date1 || !date2) return false;
@@ -60,18 +93,21 @@ export const isSameDay = (date1, date2) => {
 };
 
 /**
- * Check if date is today
- * @param {Date} date
- * @returns {boolean}
+ * Check if date is today.
+ *
+ * @param {Date} date - Date to check
+ * @returns {boolean} True if date is today
  */
 export const isToday = (date) => {
   return isSameDay(date, new Date());
 };
 
 /**
- * Check if date is in the past
- * @param {Date} date
- * @returns {boolean}
+ * Check if date is in the past (before today).
+ * Compares at day level, not time level.
+ *
+ * @param {Date} date - Date to check
+ * @returns {boolean} True if date is before today
  */
 export const isPast = (date) => {
   if (!date) return false;
@@ -83,30 +119,37 @@ export const isPast = (date) => {
 };
 
 /**
- * Get days in month
- * @param {number} year
- * @param {number} month (0-11)
- * @returns {number}
+ * Get number of days in a specific month.
+ *
+ * @param {number} year - Full year (e.g., 2026)
+ * @param {number} month - Month index (0-11, where 0 = January)
+ * @returns {number} Number of days in the month (28-31)
  */
 export const getDaysInMonth = (year, month) => {
+  // TRICK: Day 0 of next month = last day of current month
   return new Date(year, month + 1, 0).getDate();
 };
 
 /**
- * Get first day of month (0-6, Sunday-Saturday)
- * @param {number} year
- * @param {number} month (0-11)
- * @returns {number}
+ * Get day of week for first day of month.
+ *
+ * @param {number} year - Full year
+ * @param {number} month - Month index (0-11)
+ * @returns {number} Day of week (0-6, where 0 = Sunday)
  */
 export const getFirstDayOfMonth = (year, month) => {
   return new Date(year, month, 1).getDay();
 };
 
 /**
- * Format date for display
- * @param {Date|string} date
+ * Format date for display using Intl.DateTimeFormat.
+ *
+ * @param {Date|string} date - Date to format
  * @param {object} options - Intl.DateTimeFormat options
- * @returns {string}
+ * @returns {string} Formatted date string
+ *
+ * @example
+ * formatDate(new Date(), { month: 'short', day: 'numeric' }) // "Jan 10"
  */
 export const formatDate = (date, options = {}) => {
   if (!date) return "";
@@ -115,9 +158,17 @@ export const formatDate = (date, options = {}) => {
 };
 
 /**
- * Get date range for calendar view
- * @param {Date} currentDate
- * @returns {Array<Date>}
+ * Generate array of dates for calendar grid display.
+ * Includes days from previous/next months to fill 6-week grid.
+ *
+ * @param {Date} currentDate - Any date in the target month
+ * @returns {Array<Date>} Array of 42 dates (6 weeks × 7 days)
+ *
+ * Business Logic:
+ * - Starts with days from previous month to align with week start
+ * - Includes all days of current month
+ * - Fills remaining cells with next month's days
+ * - Always returns 42 dates for consistent grid layout
  */
 export const getCalendarDates = (currentDate) => {
   const year = currentDate.getFullYear();
@@ -127,19 +178,19 @@ export const getCalendarDates = (currentDate) => {
 
   const dates = [];
 
-  // Previous month days
+  // PREVIOUS MONTH: Fill leading days to align week start
   const prevMonthDays = getDaysInMonth(year, month - 1);
   for (let i = firstDay - 1; i >= 0; i--) {
     dates.push(new Date(year, month - 1, prevMonthDays - i));
   }
 
-  // Current month days
+  // CURRENT MONTH: All days of target month
   for (let i = 1; i <= daysInMonth; i++) {
     dates.push(new Date(year, month, i));
   }
 
-  // Next month days to fill grid
-  const remainingDays = 42 - dates.length; // 6 weeks * 7 days
+  // NEXT MONTH: Fill to complete 6-week grid (42 cells)
+  const remainingDays = 42 - dates.length;
   for (let i = 1; i <= remainingDays; i++) {
     dates.push(new Date(year, month + 1, i));
   }
@@ -148,7 +199,7 @@ export const getCalendarDates = (currentDate) => {
 };
 
 /**
- * Month names
+ * Month names for display.
  */
 export const MONTH_NAMES = [
   "January",
@@ -166,7 +217,7 @@ export const MONTH_NAMES = [
 ];
 
 /**
- * Day names
+ * Day names for calendar headers.
  */
 export const DAY_NAMES = [
   "Sunday",
@@ -179,9 +230,14 @@ export const DAY_NAMES = [
 ];
 
 /**
- * Get days until deadline
- * @param {Date|string} deadline
- * @returns {number}
+ * Calculate days until a deadline.
+ *
+ * @param {Date|string} deadline - Target deadline date
+ * @returns {number} Days remaining (negative if past, Infinity if no deadline)
+ *
+ * @example
+ * getDaysUntil("2026-01-15") // 5 (if today is Jan 10)
+ * getDaysUntil("2026-01-05") // -5 (if today is Jan 10)
  */
 export const getDaysUntil = (deadline) => {
   if (!deadline) return Infinity;

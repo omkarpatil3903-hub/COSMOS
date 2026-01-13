@@ -1,7 +1,20 @@
-// src/components/SkeletonRow.jsx
-import React from "react";
+/**
+ * SkeletonRow Component
+ *
+ * Purpose: Table row skeleton for loading states.
+ * Displays animated placeholder cells while data loads.
+ *
+ * Responsibilities:
+ * - Render specified number of skeleton cells
+ * - Apply pulse animation for loading effect
+ *
+ * Props:
+ * - columns: Number of cells to render
+ *
+ * Last Modified: 2026-01-10
+ */
 
-// The 'columns' prop tells the component how many skeleton cells to create.
+import React from "react";
 function SkeletonRow({ columns }) {
   return (
     <tr className="animate-pulse">

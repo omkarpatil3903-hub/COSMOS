@@ -1,4 +1,41 @@
-// src/components/MainLayout.jsx
+/**
+ * AdminLayout Component
+ *
+ * Purpose: Application shell for Admin portal.
+ * Provides sidebar navigation, theme support, and responsive layout.
+ *
+ * Responsibilities:
+ * - Render collapsible sidebar with navigation links
+ * - Handle drag-and-drop nav item reordering
+ * - Persist nav order to localStorage (navOrder_admin)
+ * - Display user profile and logout button
+ * - Manage mobile navigation overlay
+ * - Set page titles based on route
+ *
+ * Dependencies:
+ * - React Router (NavLink, Outlet)
+ * - @hello-pangea/dnd (drag-drop)
+ * - Firebase Auth (signOut)
+ * - Firestore (user profile)
+ * - ThemeContext (accent color)
+ * - useThemeStyles (bar color)
+ * - PanelSwitcher (role hierarchy access)
+ *
+ * Navigation Items (/admin prefix):
+ * - Dashboard, Resources, Clients, Projects, Tasks
+ * - Lead Management, Knowledge, Expenses, Reports
+ * - MOM Pro, Calendar, Settings
+ *
+ * Features:
+ * - Collapsible sidebar
+ * - Mobile drawer with backdrop
+ * - Accent-based icon colors (theme support)
+ * - Dynamic document.title per route
+ *
+ * LocalStorage: navOrder_admin
+ *
+ * Last Modified: 2026-01-10
+ */
 import React, { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";

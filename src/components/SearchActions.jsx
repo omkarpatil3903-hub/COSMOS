@@ -1,3 +1,28 @@
+/**
+ * SearchActions Component
+ *
+ * Purpose: Reusable search bar with optional right-side actions.
+ * Standard search input with icon and responsive layout.
+ *
+ * Responsibilities:
+ * - Render search input with search icon
+ * - Handle search value changes
+ * - Display optional right-side action elements
+ *
+ * Props:
+ * - value: Current search value (controlled)
+ * - onChange: Handler for value changes
+ * - placeholder: Input placeholder text
+ * - rightActions: React elements for right side (buttons, etc.)
+ *
+ * Layout:
+ * - Search input fills available width (max-xl on desktop)
+ * - Actions on right side
+ * - Stacked on mobile
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import { FaSearch } from "react-icons/fa";
 

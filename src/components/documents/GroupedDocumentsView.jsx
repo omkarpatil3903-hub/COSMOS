@@ -1,3 +1,49 @@
+/**
+ * GroupedDocumentsView Component
+ *
+ * Purpose: Displays documents grouped by folder with collapsible sections.
+ * Each folder has a colored header and expandable document table.
+ *
+ * Responsibilities:
+ * - Group documents by folder property
+ * - Fetch folder colors from Firestore
+ * - Provide collapsible folder sections
+ * - Search/filter across all folders
+ * - Handle document preview modal
+ * - Support edit/delete actions per document
+ *
+ * Dependencies:
+ * - Firestore (documents/folders for colors)
+ * - DocumentPreviewModal (preview dialog)
+ * - react-icons (file, folder, action icons)
+ *
+ * Props:
+ * - rows: Array of document objects
+ * - query: Search filter string
+ * - showActions: Boolean to show edit/delete buttons
+ * - onEdit: Edit callback
+ * - onDelete: Delete callback
+ *
+ * Folder Colors:
+ * - Fetched from documents/folders collection
+ * - Old format (string array) uses default blue
+ * - New format (object array) has explicit color
+ *
+ * Table Columns:
+ * - SR. NO.: Sequential number within folder
+ * - Document Name: Title with file icon
+ * - Folder: Folder name with color indicator
+ * - Uploaded By: Role or name of uploader
+ * - Last Updated: Modification date
+ * - Actions: Edit/Delete on hover
+ *
+ * Navigation:
+ * - Preview modal with prev/next document navigation
+ * - Navigates across all documents, not just current folder
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useMemo, useState, useEffect } from "react";
 import { FaFileAlt, FaEdit, FaTrash, FaChevronDown, FaChevronUp, FaFolder, FaUser } from "react-icons/fa";
 import DocumentPreviewModal from "./DocumentPreviewModal";

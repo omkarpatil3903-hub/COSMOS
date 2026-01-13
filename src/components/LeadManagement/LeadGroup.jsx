@@ -1,4 +1,52 @@
-// src/components/LeadManagement/LeadGroup.jsx
+/**
+ * LeadGroup Component
+ *
+ * Purpose: Collapsible container for leads grouped by status.
+ * Used in the "grouped" view mode of LeadList.
+ *
+ * Responsibilities:
+ * - Display status badge with count and total value
+ * - Toggle collapse/expand on header click
+ * - Auto-expand when new leads added
+ * - Render LeadRow components for each lead
+ * - Provide quick add button in header and footer
+ * - Show column headers when expanded
+ *
+ * Dependencies:
+ * - LeadRow (row component)
+ * - react-icons (FaCaretDown, FaCaretRight, FaPlus, etc.)
+ *
+ * Props:
+ * - status: Status name for this group
+ * - leads: Array of leads in this group
+ * - selectedLeads: Set of selected lead IDs
+ * - onToggleSelect: Toggle lead selection
+ * - onView/onEdit/onScheduleFollowup/onAddLead/onStatusChange/onDelete: Actions
+ * - getFollowUpStatus/getPriorityColor/formatFollowUpDate: Helpers
+ * - leadStatuses: Array of available statuses
+ * - showActions: Show action column (default: true)
+ *
+ * Status Color Mapping:
+ * - remaining/new → blue
+ * - contacted → purple
+ * - qualified → indigo
+ * - proposal → yellow
+ * - negotiation → orange
+ * - converted → green
+ * - lost → red
+ *
+ * Column Headers (7):
+ * 1. Checkbox spacer
+ * 2. Customer/Company (FaUser icon)
+ * 3. Contact (FaPhone icon)
+ * 4. Follow-up (FaBell icon)
+ * 5. Status
+ * 6. Priority (FaFlag icon, centered)
+ * 7. Actions (optional)
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState, useEffect, useRef } from "react";
 import {
     FaCaretDown,

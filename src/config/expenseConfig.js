@@ -1,8 +1,31 @@
 /**
- * Shared Expense Configuration
- * Centralized categories, statuses, and colors for expense management
+ * Expense Configuration
+ *
+ * Purpose: Centralized configuration for the expense management module,
+ * defining categories, statuses, colors, and currencies.
+ *
+ * Responsibilities:
+ * - Defines allowed expense categories (Travel, Food, Stay, Office, Other)
+ * - Defines expense workflow statuses (Draft → Submitted → Approved/Rejected → Paid)
+ * - Provides Tailwind CSS classes for status badge styling (light & dark mode)
+ * - Defines supported currencies with symbols
+ * - Provides helper functions for dynamic styling
+ *
+ * Dependencies:
+ * - Tailwind CSS (all color classes are Tailwind utilities)
+ *
+ * Usage:
+ * - Import constants in expense forms, tables, and filters
+ * - Use getStatusColorClass() for dynamic badge styling
+ *
+ * Last Modified: 2026-01-10
  */
 
+// ============================================================================
+// EXPENSE CATEGORIES
+// ============================================================================
+// BUSINESS RULE: Limited to 5 standard categories for consistent reporting
+// Adding new categories requires updating analytics/reporting dashboards
 export const EXPENSE_CATEGORIES = [
     { value: "Travel", label: "Travel" },
     { value: "Food", label: "Food" },
@@ -11,6 +34,14 @@ export const EXPENSE_CATEGORIES = [
     { value: "Other", label: "Other" },
 ];
 
+// ============================================================================
+// EXPENSE STATUSES (Workflow)
+// ============================================================================
+// BUSINESS RULE: Expense lifecycle follows this workflow:
+// Draft → Submitted → Approved/Rejected → Paid
+// "Draft" allows employees to save incomplete expenses
+// "Submitted" triggers manager review
+// "Paid" is the terminal state after finance completes reimbursement
 export const EXPENSE_STATUSES = [
     { value: "Draft", label: "Draft" },
     { value: "Submitted", label: "Submitted" },
@@ -19,6 +50,15 @@ export const EXPENSE_STATUSES = [
     { value: "Paid", label: "Paid" },
 ];
 
+// ============================================================================
+// STATUS COLOR MAPPING
+// ============================================================================
+// DESIGN DECISION: Color-coded statuses for quick visual identification
+// - Gray: Draft (neutral, incomplete)
+// - Blue: Submitted (in progress, awaiting action)
+// - Green: Approved (positive outcome)
+// - Red: Rejected (negative outcome, needs attention)
+// - Purple: Paid (completed, distinct from approved)
 export const STATUS_COLORS = {
     Draft: {
         bg: "bg-gray-100",
@@ -52,8 +92,18 @@ export const STATUS_COLORS = {
     },
 };
 
-// Helper to get combined status class string
+/**
+ * Generates combined Tailwind class string for status badges.
+ *
+ * @param {string} status - Expense status (Draft, Submitted, Approved, Rejected, Paid)
+ * @param {boolean} useDarkMode - Whether to include dark mode classes (default: true)
+ * @returns {string} Combined Tailwind CSS class string
+ *
+ * @example
+ * <span className={getStatusColorClass('Approved')}>Approved</span>
+ */
 export const getStatusColorClass = (status, useDarkMode = true) => {
+    // FALLBACK: Default to Draft styling for unknown/null statuses
     const colors = STATUS_COLORS[status] || STATUS_COLORS.Draft;
     let classes = `${colors.bg} ${colors.text}`;
     if (useDarkMode) {
@@ -62,11 +112,14 @@ export const getStatusColorClass = (status, useDarkMode = true) => {
     return classes;
 };
 
+// ============================================================================
+// SUPPORTED CURRENCIES
+// ============================================================================
+// BUSINESS RULE: INR is the primary currency for domestic expenses
+// USD, EUR, GBP supported for international travel/client work
 export const CURRENCIES = [
     { value: "INR", label: "₹ INR", symbol: "₹" },
-    { value: "USD", label: "$ USD", symbol: "$" },
-    { value: "EUR", label: "€ EUR", symbol: "€" },
-    { value: "GBP", label: "£ GBP", symbol: "£" },
 ];
 
+// PAGINATION: Default items per page for expense list views
 export const DEFAULT_PAGE_SIZE = 10;

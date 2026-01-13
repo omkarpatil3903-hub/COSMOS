@@ -1,3 +1,46 @@
+/**
+ * TaskListItem Component
+ *
+ * Purpose: Card-style task item for list view display.
+ * Shows comprehensive task info with badges and actions.
+ *
+ * Responsibilities:
+ * - Display task title, description, and completion comment
+ * - Show priority and status badges
+ * - Display assigned and due dates with overdue warning
+ * - Render OKR badges (objective, key results)
+ * - Show assignee avatars with names
+ * - Display progress bar for In Progress tasks
+ * - Provide View/Edit/Delete/Reassign actions
+ *
+ * Dependencies:
+ * - colorMaps (getPriorityBadge, getStatusBadge)
+ * - UserAvatar (avatar component)
+ * - AuthContext (currentUser for status calculation)
+ * - react-icons (status icons, date icons, warning)
+ *
+ * Props:
+ * - task: Task object to display
+ * - project: Associated project object
+ * - assignee: Primary assignee (legacy)
+ * - isSelected: Checkbox state
+ * - onToggleSelect: Selection toggle
+ * - onView/onEdit/onDelete/onReassign: Action callbacks
+ * - activeUsers: Users for reassign dropdown
+ *
+ * Status Calculation:
+ * - Uses personalized assigneeStatus if current user is assignee
+ * - Falls back to global task.status otherwise
+ *
+ * Visual Indicators:
+ * - Red badge for overdue tasks
+ * - Gray badge for archived tasks
+ * - Purple badge for recurring tasks
+ * - Progress bar shows progressPercent
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import {
   FaCheckCircle,

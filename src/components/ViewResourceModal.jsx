@@ -1,3 +1,35 @@
+/**
+ * ViewResourceModal Component
+ *
+ * Purpose: Read-only modal for viewing team member (resource) details.
+ * Displays profile, contact info, role info, and account details.
+ *
+ * Responsibilities:
+ * - Display profile card with image/avatar, name, role, badges
+ * - Show contact info: email, mobile
+ * - Show role info: role type, join date
+ * - Display current password (admin-only visible)
+ *
+ * Dependencies:
+ * - useThemeStyles hook for themed styling
+ * - Button component
+ * - react-icons (FaUser, FaEnvelope, FaPhone, FaBriefcase, etc.)
+ *
+ * Props:
+ * - resource: Resource object to display
+ * - onClose: Close handler
+ *
+ * Layout:
+ * - Two-column on medium+ screens
+ * - Left: Profile card with avatar, name, role, status indicator
+ * - Right: Details grid (email, mobile, role type, join date, password)
+ *
+ * Helper Functions:
+ * - formatDate: Handles Firestore Timestamp, Date, or string formats
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import { useThemeStyles } from "../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";
