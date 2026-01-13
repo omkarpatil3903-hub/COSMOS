@@ -1,3 +1,40 @@
+/**
+ * GanttChart Component
+ *
+ * Purpose: Interactive Gantt chart for project/task timeline visualization.
+ * Built on dhtmlx-gantt library with theme integration.
+ *
+ * Responsibilities:
+ * - Render project and task bars with status/priority colors
+ * - Zoom controls (day, week, month views)
+ * - Collapse/expand all projects
+ * - Today marker with pulse animation
+ * - Fullscreen mode toggle
+ * - Rich tooltips with task details
+ * - Dynamic CSS for theme and accent colors
+ *
+ * Dependencies:
+ * - dhtmlx-gantt library
+ * - useTheme, useThemeStyles hooks
+ * - react-dom/server (renderToStaticMarkup)
+ * - react-icons (FaCalendarDay, FaCalendarWeek, etc.)
+ *
+ * Props:
+ * - data: Array of tasks/projects with:
+ *   - id, text, parent, start_date, end_date, duration
+ *   - status, statusColor, priority, priorityColor
+ *   - assignedTo, progress, color (for projects)
+ *
+ * Features:
+ * - Zoom plugin: Day/Week/Month scales
+ * - Marker plugin: Today marker
+ * - Tooltip plugin: Rich task details
+ * - Dark/light mode aware
+ * - Legend component (collapsible)
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useEffect, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import gantt from "dhtmlx-gantt";

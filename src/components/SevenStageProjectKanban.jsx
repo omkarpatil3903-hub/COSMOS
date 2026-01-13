@@ -1,3 +1,42 @@
+/**
+ * SevenStageProjectKanban Component
+ *
+ * Purpose: Multi-stage project pipeline Kanban board.
+ * Loads pipeline stages from Firestore and displays projects in columns.
+ *
+ * Responsibilities:
+ * - Load pipeline stages from settings/project-levels Firestore doc
+ * - Group projects by pipelineStage field
+ * - Display progress bar with stage counts (paginated for >7 stages)
+ * - Render each stage as a column with project cards
+ * - Move projects between stages via dropdown
+ * - Substage management per stage (add/toggle completion)
+ *
+ * Dependencies:
+ * - Firebase Firestore (db)
+ * - react-hot-toast for notifications
+ * - react-icons (FaChevronRight, FaEye, FaEdit, etc.)
+ *
+ * Props:
+ * - projects: Array of project objects with pipelineStage
+ * - onUpdate: Callback when project is updated (id, patch)
+ *
+ * Data Model:
+ * - Pipeline stages from settings/project-levels.levels[]
+ * - Each stage: { level, name } -> mapped to { id, label, level, color, icon }
+ * - Project: { pipelineStage, pipelineSubstages: { [stageId]: [...] } }
+ *
+ * Features:
+ * - Dynamic stage loading from Firestore
+ * - Color-coded stages based on level number
+ * - Icon assignment based on stage name keywords
+ * - Progress bar with pagination (7 stages per page)
+ * - Substage modal for checklist management
+ * - Fallback to default 7 stages if not configured
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import { useState, useMemo, useEffect } from "react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";

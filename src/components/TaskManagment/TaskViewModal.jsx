@@ -1,4 +1,67 @@
-// src/components/TaskManagment/TaskViewModal.jsx
+/**
+ * TaskViewModal Component
+ *
+ * Purpose: Comprehensive task detail modal with editing, comments, and activity.
+ * The primary interface for viewing and managing individual tasks.
+ *
+ * Responsibilities:
+ * - Display task details (title, description, dates, priority, status)
+ * - Manage subtasks (add, toggle, edit, delete)
+ * - Handle comments with @mentions
+ * - Show activity timeline (comments + activities merged)
+ * - Track time spent per user (start/stop timer)
+ * - Toggle assignees with multi-select
+ * - Quick inline updates for fields
+ * - Handle task completion with comment modal
+ * - Support recurring task instance creation
+ * - Delete and archive tasks
+ *
+ * Dependencies:
+ * - taskService (CRUD, comments, activities, time tracking)
+ * - recurringTasks (createNextRecurringInstance, shouldCreateNextInstance)
+ * - colorMaps (getStatusBadge, getPriorityBadge)
+ * - formatDate (date formatting)
+ * - Firestore (real-time updates)
+ * - TagInput, TimeEstimateInput, UserAvatar, CompletionCommentModal
+ * - useThemeStyles (themed styling)
+ *
+ * Props:
+ * - task: Initial task object
+ * - project: Associated project
+ * - projects: All projects for dropdown
+ * - users: All users for assignee selection
+ * - clients: All clients for assignee selection
+ * - onClose: Close callback
+ * - onEdit: Edit mode callback
+ * - currentUser: Current logged-in user
+ * - onDelete/onArchive: Action callbacks
+ * - canDelete/canArchive/canEdit: Permission flags
+ * - statuses: Available status options
+ *
+ * Sections:
+ * 1. Header: Title, recurring indicator, action menu
+ * 2. Main Content: Description, tags, time estimate, subtasks
+ * 3. Sidebar: Status, priority, dates, assignees, project, time tracking
+ * 4. Timeline: Grouped comments and activities with dates
+ * 5. Comment Input: With @mention support
+ *
+ * Status Logic:
+ * - Admin tasks: Updates assigneeStatus per user, calculates global
+ * - Self tasks: Updates global status directly
+ * - Completion triggers recurring instance creation
+ *
+ * Time Tracking:
+ * - Per-user timer with start/stop
+ * - Elapsed time calculated from trackingStartTime
+ * - Global total from all assignee times
+ *
+ * Keyboard Shortcuts:
+ * - ESC: Close modal (with unsaved changes check)
+ * - Cmd/Ctrl+Enter: Save description
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useEffect, useState, useMemo } from "react";
 import {
   FaTimes,

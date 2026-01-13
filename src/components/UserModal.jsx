@@ -1,7 +1,30 @@
-// src/components/UserModal.jsx
-import React, { useState, useEffect } from "react";
+/**
+ * UserModal Component
+ *
+ * Purpose: Generic modal for creating/editing basic user records.
+ * Simple form with name, mobile, and status fields.
+ *
+ * Responsibilities:
+ * - Display user form with name, mobile, status
+ * - Pre-fill fields for edit mode
+ * - Handle form submission
+ *
+ * Props:
+ * - onClose: Close handler
+ * - onSave: Save handler (receives { id, name, mobile, status })
+ * - userToEdit: User object for edit mode
+ *
+ * Form Fields:
+ * - name: Required text input
+ * - mobile: Required phone input
+ * - status: Select (Active/Inactive)
+ *
+ * Note: This is a generic user modal, not voter-specific.
+ *
+ * Last Modified: 2026-01-10
+ */
 
-// Generic user modal for PM context (no voter-specific fields)
+import React, { useState, useEffect } from "react";
 function UserModal({ onClose, onSave, userToEdit }) {
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");

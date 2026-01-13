@@ -1,4 +1,21 @@
-// src/components/Spinner.jsx
+/**
+ * Spinner Component
+ *
+ * Purpose: Simple loading spinner for async operations.
+ * Centered spinning border animation.
+ *
+ * Responsibilities:
+ * - Display centered spinning indicator
+ * - Used during auth checks, data loading
+ *
+ * Styling:
+ * - Indigo border with transparent fill
+ * - Spin animation
+ * - Centered with padding
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 
 function Spinner() {

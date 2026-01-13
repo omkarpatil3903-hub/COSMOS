@@ -1,3 +1,44 @@
+/**
+ * KanbanBoard Component
+ *
+ * Purpose: Drag-and-drop Kanban board for task status management.
+ * Displays tasks in columns grouped by status.
+ *
+ * Responsibilities:
+ * - Render columns for each status (customizable or default)
+ * - Group tasks by status (with normalized matching)
+ * - Drag-and-drop to change task status
+ * - WIP (Work In Progress) limits per column
+ * - Task card with priority, due date, project, assignee
+ * - Download images button for tasks with attachments
+ * - Column header menu (edit, color, pin, select all)
+ * - Optional inline reassignment control
+ *
+ * Dependencies:
+ * - getPriorityBadge from colorMaps
+ * - react-hot-toast for notifications
+ * - react-icons (FaFlag, FaCalendarAlt, FaDownload, etc.)
+ *
+ * Props:
+ * - tasks: Array of task objects
+ * - onMove: Handler when task is dropped (taskId, newStatus)
+ * - onEdit: Handler when task card clicked
+ * - getProject/getAssignee: Lookup functions
+ * - wipLimits: Optional { statusKey: number } for WIP enforcement
+ * - enforceWip: Boolean to block drops when at limit
+ * - onBlocked: Callback when WIP limit blocks drop
+ * - columns: Custom column definitions (key, title, color)
+ * - showReassignOnCard/users/onReassign: Inline reassignment
+ *
+ * Features:
+ * - Status matching (case-insensitive, normalized)
+ * - Overdue task highlighting
+ * - Progress bar for "In Progress" tasks
+ * - Image download with staggered fetching
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import { useState, useEffect, useRef } from "react";
 import { FaFlag, FaCalendarAlt, FaDownload, FaEllipsisV, FaPen, FaPalette, FaThumbtack, FaListUl } from "react-icons/fa";
 import { getPriorityBadge } from "../utils/colorMaps";

@@ -1,12 +1,58 @@
+/**
+ * useThemeStyles Hook
+ *
+ * Purpose: Provides centralized, theme-aware Tailwind CSS class names
+ * based on the current accent color from ThemeContext.
+ *
+ * Responsibilities:
+ * - Maps accent color selections to corresponding Tailwind CSS classes
+ * - Provides consistent styling across all UI components
+ * - Handles both light and dark mode variants using Tailwind's dark: prefix
+ * - Returns pre-computed class strings for immediate use in className props
+ *
+ * Dependencies:
+ * - ThemeContext (useTheme hook for current accent color)
+ * - Tailwind CSS (all returned classes are Tailwind utilities)
+ *
+ * Supported Accent Colors:
+ * - indigo (default), purple, blue, pink, violet, orange, teal, bronze, mint, black
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import { useTheme } from "../context/ThemeContext";
 
 /**
- * Custom hook that provides theme-aware styling classes
- * This centralizes all theme-based styling logic in one place
+ * Custom hook for theme-aware styling classes.
+ *
+ * @returns {Object} Theme style classes and utilities:
+ *   - buttonClass: Primary button styling (bg, hover, shadow, text)
+ *   - iconColor: Icon text color class
+ *   - headerIconClass: Icon container styling for headers (bg + text, light/dark)
+ *   - badgeClass: Badge/pill styling (bg, text, border, light/dark)
+ *   - gradientClass: Gradient from/to classes for accent gradients
+ *   - hoverBorderClass: Border color on hover (light/dark)
+ *   - linkColor: Text color for links
+ *   - emailLinkClass: Email/URL link styling with dark mode support
+ *   - barColor: Solid background color for progress bars, dividers
+ *   - accent: Raw accent color name for custom logic
+ *
+ * @example
+ * const { buttonClass, iconColor, gradientClass } = useThemeStyles();
+ * <button className={buttonClass}>Submit</button>
+ * <Icon className={iconColor} />
+ * <div className={`bg-gradient-to-r ${gradientClass}`}>...</div>
  */
 export const useThemeStyles = () => {
     const { accent } = useTheme();
 
+    /**
+     * Returns primary button classes based on current accent.
+     * Includes background, hover state, shadow, and text color.
+     *
+     * DESIGN DECISION: 'black' accent maps to blue for better visual contrast
+     * Reason: Pure black buttons lack visual appeal; blue provides brand consistency
+     */
     const getButtonClass = () => {
         if (accent === 'black') return 'bg-blue-600 hover:bg-blue-700 shadow-sm text-white';
         switch (accent) {
@@ -22,6 +68,10 @@ export const useThemeStyles = () => {
         }
     };
 
+    /**
+     * Returns icon text color class based on current accent.
+     * Uses 500 shade for good visibility on both light and dark backgrounds.
+     */
     const getIconColor = () => {
         if (accent === 'black') return 'text-blue-500';
         switch (accent) {

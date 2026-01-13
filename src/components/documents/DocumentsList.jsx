@@ -1,3 +1,39 @@
+/**
+ * DocumentsList Component
+ *
+ * Purpose: Displays a searchable, sortable list of documents with actions.
+ * Provides a simplified table view with inline search and controls.
+ *
+ * NOTE: This component uses hardcoded demo data. For production,
+ * replace with actual Firestore data fetching.
+ *
+ * Responsibilities:
+ * - Display documents in table format
+ * - Search/filter by name, location, dates
+ * - Sort by name (ascending/descending)
+ * - Row click to view document
+ * - Action menu for each row
+ *
+ * Dependencies:
+ * - Button (UI component)
+ * - react-icons (icons)
+ *
+ * Props:
+ * - title: Section header text (default: "All Docs")
+ * - onRowClick: Callback when document row is clicked
+ *
+ * Table Columns:
+ * - Name: Document title with file icon
+ * - Location: Folder or workspace location
+ * - Tags: Document labels
+ * - Date Updated: Last modification time
+ * - Date Viewed: Last access time
+ * - Sharing: Shared status indicator
+ * - Actions: Ellipsis menu button
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useMemo, useState } from "react";
 import {
   FaFileAlt,

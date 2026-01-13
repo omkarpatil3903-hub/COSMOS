@@ -1,3 +1,48 @@
+/**
+ * RemindersList Component
+ *
+ * Purpose: Displays user's reminders in a grouped, collapsible list.
+ * Provides CRUD operations and snooze functionality.
+ *
+ * Responsibilities:
+ * - Fetch user's pending reminders from Firestore
+ * - Group reminders by: Overdue, Today, Upcoming
+ * - Display reminder cards with actions
+ * - Handle add/edit via AddReminderModal
+ * - Mark reminders as complete
+ * - Delete reminders with confirmation
+ * - Snooze reminders (1h, tomorrow, next week)
+ *
+ * Dependencies:
+ * - Firestore (reminders collection)
+ * - Firebase Auth (current user for filtering)
+ * - AddReminderModal (create/edit modal)
+ * - Card, Button (UI components)
+ * - react-hot-toast (notifications)
+ *
+ * Grouping Logic:
+ * - Overdue: dueAt < now
+ * - Today: dueAt is today but not overdue
+ * - Upcoming: dueAt is after today
+ *
+ * Snooze Durations:
+ * - 1 Hour: Adds 1 hour to current time
+ * - Tomorrow: Sets to 9 AM next day
+ * - Next Week: Sets to 9 AM in 7 days
+ *
+ * Actions (per reminder):
+ * - Snooze (dropdown)
+ * - Edit (opens modal)
+ * - Complete (marks status="completed")
+ * - Delete (with confirmation)
+ *
+ * Real-time Updates:
+ * - Uses onSnapshot for live data
+ * - Client-side sorting by dueAt ascending
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState, useEffect } from "react";
 import { collection, query, where, onSnapshot, orderBy, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase";
@@ -159,8 +204,8 @@ const RemindersList = () => {
                         {reminder.title}
                     </h4>
                     <p className={`text-xs mt-1 flex items-center gap-1 ${new Date(reminder.dueAt?.toDate ? reminder.dueAt.toDate() : reminder.dueAt) < new Date()
-                            ? "text-red-600 font-medium"
-                            : "text-indigo-600"
+                        ? "text-red-600 font-medium"
+                        : "text-indigo-600"
                         }`}>
                         <FaClock className="text-[10px]" />
                         {formatDueTime(reminder.dueAt)}

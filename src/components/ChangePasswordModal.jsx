@@ -1,4 +1,41 @@
-// src/components/ChangePasswordModal.jsx
+/**
+ * ChangePasswordModal Component
+ *
+ * Purpose: Modal for authenticated users to change their password.
+ * Re-authenticates with current password before updating.
+ *
+ * Responsibilities:
+ * - Collect current, new, and confirm password
+ * - Validate password strength (8+ chars, upper, lower, number, special)
+ * - Re-authenticate user with Firebase
+ * - Update password in Firebase Auth
+ * - Update devPassword in Firestore for dev reference
+ * - Display friendly error messages
+ *
+ * Dependencies:
+ * - Firebase Auth (EmailAuthProvider, reauthenticate, updatePassword)
+ * - Firebase Firestore (update devPassword)
+ * - react-hot-toast for notifications
+ * - react-icons (FaLock, FaEye, FaEyeSlash, etc.)
+ *
+ * Props:
+ * - isOpen: Modal visibility state
+ * - onClose: Close handler
+ *
+ * Validation:
+ * - All fields required
+ * - Password regex: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*_-]).{8,}$/
+ * - Passwords must match
+ * - New password must differ from current
+ *
+ * Error Handling:
+ * - auth/wrong-password, auth/invalid-credential
+ * - auth/weak-password, auth/requires-recent-login
+ * - auth/too-many-requests
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import { useState } from "react";
 import {
     EmailAuthProvider,

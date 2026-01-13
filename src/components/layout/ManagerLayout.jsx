@@ -1,3 +1,42 @@
+/**
+ * ManagerLayout Component
+ *
+ * Purpose: Application shell for Project Manager portal.
+ * Provides sidebar navigation, theme support, and responsive layout.
+ *
+ * Responsibilities:
+ * - Render collapsible sidebar with navigation links
+ * - Handle drag-and-drop nav item reordering
+ * - Persist nav order to localStorage (navOrder_manager)
+ * - Display user profile and logout button
+ * - Manage mobile navigation overlay
+ * - Set page titles based on route
+ *
+ * Dependencies:
+ * - React Router (NavLink, Outlet)
+ * - @hello-pangea/dnd (drag-drop)
+ * - Firebase Auth (signOut)
+ * - Firestore (user profile)
+ * - ThemeContext (accent color)
+ * - useThemeStyles (bar color)
+ * - PanelSwitcher (role hierarchy access)
+ *
+ * Navigation Items (/manager prefix):
+ * - Dashboard, My Projects, Task Management, Reports
+ * - Calendar, Knowledge Management, Team Expenses, Settings
+ *
+ * Features:
+ * - Collapsible sidebar
+ * - Mobile drawer with backdrop
+ * - Accent-based icon colors
+ * - PanelSwitcher for employee access
+ * - Dynamic document.title per route
+ *
+ * LocalStorage: navOrder_manager
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";

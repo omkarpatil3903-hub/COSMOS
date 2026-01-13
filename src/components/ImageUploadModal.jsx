@@ -1,3 +1,34 @@
+/**
+ * ImageUploadModal Component
+ *
+ * Purpose: Modal for selecting and uploading images to a task.
+ * Provides file validation, preview, and upload progress.
+ *
+ * Responsibilities:
+ * - File input with image type filter
+ * - Validate file type (JPG, PNG, GIF, WebP)
+ * - Validate file size (max 5MB)
+ * - Display image preview with filename and size
+ * - Show upload progress state
+ * - Handle save/cancel actions
+ *
+ * Dependencies:
+ * - react-icons (FaTimes, FaUpload, FaImage)
+ *
+ * Props:
+ * - isOpen: Modal visibility
+ * - onClose: Close handler
+ * - onSave: Save handler (receives taskId, file)
+ * - taskId: Task to attach image to
+ * - uploading: Loading state
+ *
+ * Validation:
+ * - Allowed types: image/jpeg, image/jpg, image/png, image/gif, image/webp
+ * - Max size: 5MB (5 * 1024 * 1024 bytes)
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState } from 'react';
 import { FaTimes, FaUpload, FaImage } from 'react-icons/fa';
 
@@ -22,7 +53,7 @@ const ImageUploadModal = ({ isOpen, onClose, onSave, taskId, uploading }) => {
       }
 
       setSelectedFile(file);
-      
+
       // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {

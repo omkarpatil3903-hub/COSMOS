@@ -1,8 +1,47 @@
-// src/components/PanelSwitcher.jsx
-// Reusable component for switching between accessible panels
+/**
+ * PanelSwitcher Component
+ *
+ * Purpose: Dropdown for switching between accessible panels/dashboards.
+ * Allows users with multiple roles to navigate between their panels.
+ *
+ * Responsibilities:
+ * - Show current panel as trigger button
+ * - Display dropdown with all accessible panels
+ * - Handle panel switching via navigation
+ * - Support collapsed sidebar mode
+ * - Theme-aware accent colors
+ *
+ * Dependencies:
+ * - useAuthContext for accessiblePanels
+ * - useTheme for accent colors
+ * - React Router (useNavigate, useLocation)
+ * - react-icons (FaShieldAlt, FaUserShield, FaUserTie, etc.)
+ *
+ * Props:
+ * - isCollapsed: Whether sidebar is collapsed (changes layout)
+ *
+ * Features:
+ * - Only renders if user has >1 accessible panel
+ * - Panel detection based on current pathname
+ * - Icon mapping for panel types
+ * - Checkmark on currently active panel
+ * - Click outside to close dropdown
+ * - Accent-based color theming
+ *
+ * Panel Detection:
+ * - /admin -> Admin panel
+ * - /manager -> Manager panel
+ * - /employee -> Employee panel
+ * - /client -> Client panel
+ * - / -> SuperAdmin root
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuthContext } from "../context/useAuthContext";
+
 import {
     FaShieldAlt,
     FaUserShield,
@@ -160,8 +199,8 @@ function PanelSwitcher({ isCollapsed = false }) {
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={`flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${isDark
-                        ? "bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10"
-                        : `bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200`
+                    ? "bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10"
+                    : `bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200`
                     } ${isCollapsed ? "justify-center" : ""}`}
                 title={isCollapsed ? "Switch Panel" : ""}
             >
@@ -204,8 +243,8 @@ function PanelSwitcher({ isCollapsed = false }) {
                 >
                     <div
                         className={`px-3 py-2 text-xs font-semibold uppercase tracking-wider ${isDark
-                                ? "text-gray-500 border-b border-white/5"
-                                : "text-gray-500 border-b border-gray-100"
+                            ? "text-gray-500 border-b border-white/5"
+                            : "text-gray-500 border-b border-gray-100"
                             }`}
                     >
                         Switch Panel
@@ -220,22 +259,22 @@ function PanelSwitcher({ isCollapsed = false }) {
                                     key={panel.path}
                                     onClick={() => handlePanelSwitch(panel.path)}
                                     className={`flex items-center gap-3 w-full px-3 py-2.5 text-sm transition-colors ${isActive
-                                            ? isDark
-                                                ? `${accentColors.darkBg} ${accentColors.darkText}`
-                                                : `${accentColors.bg} ${accentColors.text}`
-                                            : isDark
-                                                ? "text-gray-300 hover:bg-white/5"
-                                                : `text-gray-700 ${accentColors.hover}`
+                                        ? isDark
+                                            ? `${accentColors.darkBg} ${accentColors.darkText}`
+                                            : `${accentColors.bg} ${accentColors.text}`
+                                        : isDark
+                                            ? "text-gray-300 hover:bg-white/5"
+                                            : `text-gray-700 ${accentColors.hover}`
                                         }`}
                                 >
                                     <span
                                         className={`flex h-8 w-8 items-center justify-center rounded-lg ${isActive
-                                                ? isDark
-                                                    ? "bg-white/10"
-                                                    : accentColors.bg
-                                                : isDark
-                                                    ? "bg-white/5"
-                                                    : "bg-gray-100"
+                                            ? isDark
+                                                ? "bg-white/10"
+                                                : accentColors.bg
+                                            : isDark
+                                                ? "bg-white/5"
+                                                : "bg-gray-100"
                                             }`}
                                     >
                                         <IconComponent className="h-4 w-4" />

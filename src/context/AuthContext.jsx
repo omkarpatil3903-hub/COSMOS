@@ -1,4 +1,26 @@
-// src/context/AuthContext.jsx
+/**
+ * AuthContext Provider Component
+ *
+ * Purpose: Provides authentication state and user data to the entire application
+ * through React Context, enabling role-based access control and session management.
+ *
+ * Responsibilities:
+ * - Listens to Firebase Auth state changes and maintains user session
+ * - Fetches and caches user profile data from Firestore (users/clients collections)
+ * - Determines user role and computes accessible panels based on RBAC configuration
+ * - Handles inactive account detection and forced logout
+ * - Initializes required app folders on startup
+ *
+ * Dependencies:
+ * - Firebase Auth (onAuthStateChanged, signOut)
+ * - Firestore (users, clients collections)
+ * - AuthContextBase (base context object)
+ * - roles config (getAccessiblePanels for RBAC)
+ * - initializeAppFolders utility
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import { useState, useEffect, useContext, useMemo } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -10,7 +32,26 @@ import { initializeAppFolders } from "../utils/initializeAppFolders";
 
 import AuthContext from "./AuthContextBase";
 
-// 2. Create the Provider component
+/**
+ * AuthProvider - Main authentication context provider component.
+ *
+ * @param {Object} props - Component props
+ * @param {React.ReactNode} props.children - Child components to wrap with auth context
+ *
+ * Business Logic:
+ * - On mount, subscribes to Firebase Auth state changes
+ * - When user is authenticated, fetches their profile from 'users' collection first
+ * - If not found in 'users', checks 'clients' collection (for client portal users)
+ * - If user exists in Auth but not in Firestore, assigns minimum 'member' role
+ * - Automatically logs out users with 'Inactive' status
+ *
+ * Side Effects:
+ * - Initializes app folders on mount (MOMs folder for admin roles)
+ * - May trigger signOut for inactive accounts
+ * - Displays toast notifications on account deactivation
+ *
+ * @returns {JSX.Element} Context provider wrapping children with loading state
+ */
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
@@ -37,13 +78,18 @@ export function AuthProvider({ children }) {
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           const data = userDoc.data();
-          // If user is in 'users' collection but doesn't have a role, default to 'member' for safety
+          // SECURITY RULE: Default to 'member' role (lowest privilege) if role is missing or empty
+          // Reason: Prevents privilege escalation if admin accidentally creates user without role
+          // Business Decision: Safer to deny access than accidentally grant elevated permissions
           setUserData({
             ...data,
             role: data.role ? data.role.trim() : "member",
           });
 
-          // Force logout if account is inactive
+          // SECURITY RULE: Force logout for deactivated accounts
+          // Reason: Ensures terminated employees or suspended users cannot access the system
+          // even if they have a valid Firebase Auth session (e.g., remember me, cached token)
+          // Business Decision: Immediate access revocation takes priority over user experience
           if (data.status === "Inactive") {
             await signOut(auth);
             setUserData(null);
@@ -54,7 +100,9 @@ export function AuthProvider({ children }) {
           }
           setLoading(false);
         } else {
-          // If not in users, check clients collection
+          // USER LOOKUP HIERARCHY: Check 'clients' collection as fallback
+          // Reason: System has two user types - internal staff (users collection) and external clients
+          // Business Decision: Staff users are checked first as they have higher access privileges
           const clientDocRef = doc(db, "clients", currentUser.uid);
           const clientDoc = await getDoc(clientDocRef);
           if (clientDoc.exists()) {
@@ -77,7 +125,13 @@ export function AuthProvider({ children }) {
             });
             setLoading(false);
           } else {
-            // User exists in Auth but not in Firestore
+            // FALLBACK HANDLING: User exists in Firebase Auth but has no Firestore profile
+            // Scenario: This can happen if:
+            //   1. User was created via Firebase Console directly (bypass app flow)
+            //   2. Firestore document was accidentally deleted
+            //   3. Data migration issue or sync failure
+            // Security Decision: Assign minimal 'member' role to prevent unauthorized access
+            // while still allowing the user to log in (they can request role upgrade from admin)
             setUserData({
               email: currentUser.email,
               name: currentUser.displayName || currentUser.email,
@@ -101,7 +155,9 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  // Compute accessible panels based on user's role
+  // RBAC PANEL COMPUTATION: Determines which navigation panels the user can access
+  // Memoized to prevent unnecessary recalculations on every render
+  // Uses lowercase normalization to handle inconsistent role casing from Firestore
   const accessiblePanels = useMemo(() => {
     const role = userData?.role?.toLowerCase() || '';
     return getAccessiblePanels(role);
@@ -124,6 +180,20 @@ export function AuthProvider({ children }) {
   );
 }
 
+/**
+ * useAuthContext - Custom hook to access authentication context.
+ *
+ * @returns {Object} Authentication context containing:
+ *   - user: Firebase Auth user object (null if not authenticated)
+ *   - userData: User profile from Firestore (role, name, email, etc.)
+ *   - loading: Boolean indicating if auth state is being determined
+ *   - accessiblePanels: Array of panel names the user can access based on role
+ *
+ * @example
+ * const { user, userData, loading, accessiblePanels } = useAuthContext();
+ * if (loading) return <Spinner />;
+ * if (!user) return <Navigate to="/login" />;
+ */
 export const useAuthContext = () => {
   return useContext(AuthContext);
 };

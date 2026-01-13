@@ -1,3 +1,55 @@
+/**
+ * ViewLeadModal Component
+ *
+ * Purpose: Read-only modal for viewing lead details and follow-up history.
+ * Provides tabbed interface for profile and follow-ups.
+ *
+ * Responsibilities:
+ * - Display lead header with avatar, name, company, status
+ * - Tab: Profile Details (contact info, source, priority, notes)
+ * - Tab: Follow-ups (timeline with history, actions)
+ * - Inline add follow-up form
+ * - Complete/Reschedule/Delete follow-up actions
+ * - Edit lead button in footer
+ *
+ * Dependencies:
+ * - react-icons (FaUser, FaTimes, FaBell, etc.)
+ * - HiXMark (close icon)
+ * - Button (UI component)
+ *
+ * Props:
+ * - isOpen: Modal visibility state
+ * - onClose: Close handler
+ * - lead: Lead object to display
+ * - activeTab: 'details' | 'followups'
+ * - setActiveTab: Tab switch handler
+ * - followups: Array of follow-ups for this lead
+ * - loadingFollowups: Loading state
+ * - showAddFollowup/setShowAddFollowup: Add form toggle
+ * - followupForm/setFollowupForm: Add form state
+ * - onAddFollowup: Add form submit handler
+ * - savingFollowup: Add form loading state
+ * - onDeleteFollowup/onReschedule/onComplete: Follow-up actions
+ * - onEdit: Open edit lead modal
+ * - getStatusColor/getPriorityColor: Color helpers
+ *
+ * Profile Details Section:
+ * - Lead Date, Contact Number, Email, Address
+ * - Source of Lead, Priority
+ * - Notes (if present)
+ *
+ * Follow-ups Section:
+ * - Add Follow-up button + inline form
+ * - Follow-up timeline with:
+ *   - Date, time, status badge
+ *   - Notes
+ *   - Reschedule history (if any)
+ *   - Completion outcome/notes (if completed)
+ *   - Complete/Reschedule/Delete buttons
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from 'react';
 import {
     FaUser, FaTimes, FaBell, FaCalendarAlt, FaPhone,

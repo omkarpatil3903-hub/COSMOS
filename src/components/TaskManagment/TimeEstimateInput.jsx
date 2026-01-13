@@ -1,4 +1,44 @@
-// src/components/TaskManagment/TimeEstimateInput.jsx
+/**
+ * TimeEstimateInput Component
+ *
+ * Purpose: Time estimate input with quick presets and custom entry.
+ * Displays time in hours/days format.
+ *
+ * Responsibilities:
+ * - Display current time estimate or "Not set"
+ * - Toggle edit mode on click
+ * - Provide quick preset buttons (2h, 4h, 1d, 2d, 1w)
+ * - Allow custom hour input
+ * - Clear estimate option
+ * - Format hours to days/hours display
+ *
+ * Dependencies:
+ * - react-icons (FaClock, FaTimes)
+ *
+ * Props:
+ * - value: Current estimate in hours
+ * - onChange: Callback with new hours value
+ * - readOnly: Disable editing (default: false)
+ *
+ * Quick Presets:
+ * - 2h = 2 hours
+ * - 4h = 4 hours
+ * - 1d = 8 hours (1 work day)
+ * - 2d = 16 hours
+ * - 1w = 40 hours
+ *
+ * Display Format:
+ * - < 8 hours: "Xh"
+ * - >= 8 hours: "Xd" or "Xd Xh"
+ * - 0 or null: "Not set"
+ *
+ * Keyboard Support:
+ * - Enter: Submit custom value
+ * - Escape: Cancel editing
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState } from "react";
 import { FaClock, FaTimes } from "react-icons/fa";
 

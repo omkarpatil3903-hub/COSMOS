@@ -1,6 +1,45 @@
 /**
- * Expense Detail Modal Component
- * Matches project-wide modal styling patterns
+ * ExpenseDetailModal Component
+ *
+ * Purpose: Displays detailed view of a single expense in a modal.
+ * Shows key metrics, employee info, description, receipts, and status history.
+ *
+ * Responsibilities:
+ * - Display expense amount, date, category in metric cards
+ * - Show employee and project association
+ * - Display description text
+ * - Preview receipt images or PDF links
+ * - Show rejection reason (for rejected expenses)
+ * - Show approval/payment info (for approved/paid expenses)
+ * - Display creation and submission timestamps
+ *
+ * Dependencies:
+ * - Button (UI component)
+ * - useThemeStyles (themed icon and badge classes)
+ * - expenseConfig (status color mapping)
+ * - react-icons (various icons)
+ *
+ * Props:
+ * - expense: Expense object to display
+ * - onClose: Close callback
+ * - onViewReceipt: Callback to open receipt in document viewer
+ * - useDarkMode: Boolean for dark mode styling
+ *
+ * Display Sections:
+ * 1. Header: Title, ID, close button
+ * 2. Status Badge: Current expense status
+ * 3. Metric Cards: Amount, Date, Category
+ * 4. Info Card: Employee, Project
+ * 5. Description: Expense details text
+ * 6. Receipt: Image preview or link
+ * 7. Rejection/Approval Info: Status-specific section
+ * 8. Timestamps: Created, Submitted dates
+ *
+ * Status-Specific UI:
+ * - Rejected: Red banner with reason and rejector
+ * - Approved/Paid: Green banner with approver and dates
+ *
+ * Last Modified: 2026-01-10
  */
 import React from "react";
 import { HiXMark } from "react-icons/hi2";

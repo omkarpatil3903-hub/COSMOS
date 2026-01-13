@@ -1,3 +1,42 @@
+/**
+ * AddSettingModal Component
+ *
+ * Purpose: Modal for adding new dynamic settings for lead management.
+ * Handles status, priority, source, sector, product category, and product.
+ *
+ * Responsibilities:
+ * - Display modal with type-specific title and label
+ * - Input validation (alphabets and spaces only)
+ * - Submit on Enter key press
+ * - Theme-aware styling with customizable button class
+ *
+ * Dependencies:
+ * - react-icons (FaPlus for add button)
+ * - HiXMark (close icon)
+ *
+ * Props:
+ * - isOpen: Modal visibility state
+ * - onClose: Close handler
+ * - settingType: 'status' | 'priority' | 'source' | 'sector' | 'productCategory' | 'product'
+ * - setSettingType: Not used directly (controlled by parent)
+ * - newSettingValue: Current input value
+ * - setNewSettingValue: Update input value
+ * - onAdd: Submit handler
+ * - buttonClass: Theme button class
+ * - iconColor: Theme icon color class
+ *
+ * Setting Types & Labels:
+ * - status → "Status Name"
+ * - priority → "Priority Level"
+ * - source → "Source Name"
+ * - sector → "Sector Name"
+ * - productCategory → "Category Name"
+ * - product → "Product Name"
+ * - default → "Type Name" (for followup types)
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from 'react';
 import { FaPlus } from 'react-icons/fa';
 import { HiXMark } from 'react-icons/hi2';

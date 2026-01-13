@@ -1,3 +1,54 @@
+/**
+ * FollowupList Component
+ *
+ * Purpose: Multi-view dashboard for managing all follow-ups.
+ * Supports card, agenda, and calendar strip views.
+ *
+ * Responsibilities:
+ * - Display stats cards (Total, Pending, Today, Overdue, Rescheduled, Completed)
+ * - Provide search and view toggle UI
+ * - Render Card View with filter pills and follow-up items
+ * - Render Agenda View with grouped buckets (overdue, today, upcoming)
+ * - Render Calendar Strip View with heat map, day selection
+ * - Handle complete, reschedule, delete actions
+ *
+ * Dependencies:
+ * - react-icons (various)
+ * - Button, Card (UI components)
+ *
+ * Props:
+ * - followupStats: { total, pending, today, overdue, rescheduled, completed }
+ * - followupFilter: Current filter key
+ * - setFollowupFilter: Update filter
+ * - loadingAllFollowups: Loading state
+ * - filteredFollowups: Filtered list for card view
+ * - allFollowups: All follow-ups for calendar/agenda
+ * - setShowScheduleFollowup: Open schedule modal
+ * - getFollowupNotificationStatus: Notification helper
+ * - getFollowUpStatus: Status helper (overdue/today/upcoming)
+ * - getFollowupColor: Status color helper
+ * - handleCompleteFollowup: Complete action
+ * - handleRescheduleFollowup: Reschedule action
+ * - handleDeleteProfileFollowup: Delete action
+ * - getPriorityColor: Priority color helper
+ * - buttonClass: Theme button class
+ * - themeColors: Theme color object
+ *
+ * View Modes:
+ * - card: Traditional list with filter pills
+ * - agenda: Grouped by overdue/today/upcoming
+ * - calendar: Week/2-week/month strip with heat map
+ *
+ * Calendar Features:
+ * - Heat map intensity (heavy/medium/light)
+ * - Day badge with follow-up count
+ * - Month picker for navigation
+ * - Show/hide completed toggle
+ * - Auto-scroll to today on view switch
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState, useMemo, useEffect } from 'react';
 import {
     FaPhoneAlt,

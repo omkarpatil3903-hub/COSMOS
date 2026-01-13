@@ -1,4 +1,52 @@
-// src/components/LeadManagement/LeadRow.jsx
+/**
+ * LeadRow Component
+ *
+ * Purpose: Grid-based row component for the grouped view.
+ * Displays lead info with inline status change and action buttons.
+ *
+ * Responsibilities:
+ * - Display lead in 7-column grid layout
+ * - Show selection checkbox
+ * - Show customer name and company
+ * - Display contact info (phone, email)
+ * - Show follow-up date with status badge
+ * - Render inline status dropdown
+ * - Show priority badge
+ * - Provide action buttons (view, edit, schedule, delete)
+ *
+ * Dependencies:
+ * - react-icons (FaEye, FaEdit, FaBell, etc.)
+ *
+ * Props:
+ * - lead: Lead object to display
+ * - isSelected: Checkbox state
+ * - onToggleSelect: Selection toggle
+ * - onView/onEdit/onDelete/onScheduleFollowup/onStatusChange: Actions
+ * - getFollowUpStatus/getPriorityColor/formatFollowUpDate: Helpers
+ * - leadStatuses: Available status options
+ * - showActions: Show action column (default: true)
+ *
+ * Grid Columns (7):
+ * 1. Checkbox (30px)
+ * 2. Customer/Company (1fr, clickable)
+ * 3. Contact info (150px)
+ * 4. Follow-up date badge (120px)
+ * 5. Status dropdown (110px)
+ * 6. Priority badge (80px, centered)
+ * 7. Action buttons (80px, optional)
+ *
+ * Status Color Mapping:
+ * - remaining/new → blue
+ * - contacted → purple
+ * - qualified → indigo
+ * - proposal → yellow
+ * - negotiation → orange
+ * - converted → green
+ * - lost → red
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import {
     FaEye,

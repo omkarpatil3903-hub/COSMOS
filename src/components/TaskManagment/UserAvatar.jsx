@@ -1,13 +1,46 @@
-import React, { useState } from 'react';
-
 /**
- * UserAvatar - Reusable avatar component that displays user profile image or initials
- * @param {Object} user - User object with name and imageUrl
- * @param {string} size - Size variant: 'xs' | 'sm' | 'md' | 'lg'
- * @param {string} className - Additional CSS classes
- * @param {boolean} showStatusDot - Whether to show status indicator
- * @param {string} status - User's task status (Done, In Progress, etc.)
+ * UserAvatar Component
+ *
+ * Purpose: Reusable avatar component for displaying user profile images.
+ * Falls back to initials when no image is available.
+ *
+ * Responsibilities:
+ * - Display user profile image with rounded styling
+ * - Show initial badge when image not available or fails
+ * - Handle image load errors gracefully
+ * - Support multiple size variants
+ * - Optional status indicator dot
+ *
+ * Dependencies:
+ * - React useState for image error tracking
+ *
+ * Props:
+ * - user: Object with name and imageUrl
+ * - size: 'xs' | 'sm' | 'md' | 'lg' (default: 'md')
+ * - className: Additional CSS classes
+ * - showStatusDot: Show status indicator (default: false)
+ * - status: Task status for dot color (Done/In Progress/other)
+ *
+ * Size Variants:
+ * - xs: w-6 h-6, text-[10px]
+ * - sm: w-8 h-8, text-xs
+ * - md: w-10 h-10, text-sm
+ * - lg: w-12 h-12, text-base
+ *
+ * Status Dot Colors:
+ * - Done: green-500
+ * - In Progress: amber-500
+ * - Other: gray-400
+ *
+ * Fallback Behavior:
+ * - Uses first letter of user.name as initial
+ * - Shows '?' if name not available
+ * - Tracks imageError state to switch to fallback
+ *
+ * Last Modified: 2026-01-10
  */
+
+import React, { useState } from 'react';
 const UserAvatar = ({
     user,
     size = 'md',

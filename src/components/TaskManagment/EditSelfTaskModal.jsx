@@ -1,3 +1,51 @@
+/**
+ * EditSelfTaskModal Component
+ *
+ * Purpose: Modal form for editing self-tasks and limited admin task edits.
+ * Handles status updates differently based on task source.
+ *
+ * Responsibilities:
+ * - Edit task title, description, priority, status
+ * - Update project association
+ * - Modify assigned and due dates
+ * - Handle status differently for self vs admin tasks
+ * - Log activity on updates
+ *
+ * Dependencies:
+ * - Firestore (selfTasks/tasks collections)
+ * - taskService (logTaskActivity)
+ * - VoiceInput (speech-to-text)
+ * - useThemeStyles (themed button/icon classes)
+ * - react-hot-toast (notifications)
+ *
+ * Props:
+ * - isOpen: Modal visibility
+ * - onClose: Close callback
+ * - task: Task object to edit
+ * - projects: Array of available projects
+ * - user: Current user object
+ *
+ * Form Fields:
+ * - title: Required
+ * - description: Optional
+ * - projectId: Optional
+ * - priority: High | Medium | Low
+ * - status: Dynamic from settings
+ * - assignedDate: Date picker
+ * - dueDate: Date picker
+ *
+ * Status Update Logic:
+ * - Self Tasks (collectionName === "selfTasks"):
+ *   - Updates global status directly
+ *   - Sets progressPercent and completedAt on Done
+ * - Admin Tasks (collectionName === "tasks"):
+ *   - Updates assigneeStatus.{userId}.status
+ *   - Does NOT update global status (calculated from all assignees)
+ *   - Sets completedAt/progressPercent per assignee
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState, useEffect } from "react";
 import { FaTasks, FaTimes } from "react-icons/fa";
 import VoiceInput from "../Common/VoiceInput";

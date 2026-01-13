@@ -1,3 +1,31 @@
+/**
+ * DeleteProjectModal Component
+ *
+ * Purpose: Confirmation modal specifically for deleting projects.
+ * Simpler variant of DeleteConfirmationModal for project deletion.
+ *
+ * Responsibilities:
+ * - Display project name being deleted
+ * - Provide Cancel and Delete buttons
+ * - Handle modal close and delete action
+ *
+ * Dependencies:
+ * - Button component
+ * - HiXMark icon
+ *
+ * Props:
+ * - showDeleteModal: Modal visibility state
+ * - setShowDeleteModal: Toggle modal
+ * - selectedProject: Project object being deleted
+ * - setSelectedProject: Clear selection on close
+ * - handleDelete: Delete handler (receives project ID)
+ *
+ * Note: This is a convenience wrapper. Consider using
+ * DeleteConfirmationModal for more customization.
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import { HiXMark } from "react-icons/hi2";
 import Button from "./Button";

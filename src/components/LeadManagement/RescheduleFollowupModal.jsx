@@ -1,3 +1,46 @@
+/**
+ * RescheduleFollowupModal Component
+ *
+ * Purpose: Modal for rescheduling a scheduled follow-up.
+ * Tracks reschedule history with reasons.
+ *
+ * Responsibilities:
+ * - Display customer name and reschedule count warning
+ * - Collect new date, time, priority, and reason
+ * - Submit reschedule with loading state
+ * - Theme-aware styling with customizable classes
+ *
+ * Dependencies:
+ * - react-icons (FaClock, FaFlag)
+ * - HiXMark (close icon)
+ *
+ * Props:
+ * - isOpen: Modal visibility state
+ * - onClose: Close handler
+ * - lead: Parent lead object
+ * - rescheduleFollowup: Follow-up being rescheduled
+ * - rescheduleForm: Form state { date, time, priority, reason }
+ * - setRescheduleForm: Update form state
+ * - onReschedule: Submit handler
+ * - isRescheduling: Loading state
+ * - priorities: Array of priority options
+ * - headerIconClass: Theme icon class
+ * - buttonClass: Theme button class
+ * - themeColors: Theme color object
+ *
+ * Form Fields:
+ * - date: Required date picker
+ * - time: Optional time picker
+ * - priority: Dropdown (Low/Medium/High/Urgent)
+ * - reason: Optional textarea
+ *
+ * Reschedule Warning:
+ * - Shown if rescheduleHistory.length > 0
+ * - Orange warning indicating multiple reschedules
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from 'react';
 import { FaClock, FaFlag } from 'react-icons/fa';
 import { HiXMark } from 'react-icons/hi2';

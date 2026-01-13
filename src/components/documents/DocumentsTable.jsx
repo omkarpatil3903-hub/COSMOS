@@ -1,3 +1,43 @@
+/**
+ * DocumentsTable Component
+ *
+ * Purpose: Displays documents in a paginated, sortable table with preview modal.
+ * Wraps DataTable with document-specific columns and behavior.
+ *
+ * Responsibilities:
+ * - Define document-specific table columns
+ * - Handle search filtering across multiple fields
+ * - Manage sorting state
+ * - Integrate DocumentPreviewModal for viewing
+ * - Handle document download with filename resolution
+ * - Provide edit/delete actions when enabled
+ *
+ * Dependencies:
+ * - DataTable (reusable table component)
+ * - DocumentPreviewModal (preview dialog)
+ * - react-icons (file, edit, trash icons)
+ *
+ * Props:
+ * - rows: Array of document objects (falls back to demo data)
+ * - query: Search string for filtering
+ * - users: User list (for display purposes)
+ * - clients: Client list (for display purposes)
+ * - showActions: Boolean to show edit/delete buttons
+ * - onEdit: Edit callback
+ * - onDelete: Delete callback
+ *
+ * Download Logic:
+ * - Attempts blob download first (prevents new tab)
+ * - Falls back to direct link on failure
+ * - Resolves filename from: filename > storagePath > URL > fileType
+ *
+ * Navigation:
+ * - Arrow buttons in preview modal for next/prev document
+ * - Wraps around at list boundaries
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useMemo, useState } from "react";
 import { FaFileAlt, FaEdit, FaTrash } from "react-icons/fa";
 import DataTable from "./DataTable";

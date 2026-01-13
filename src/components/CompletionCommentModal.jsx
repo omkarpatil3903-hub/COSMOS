@@ -1,3 +1,36 @@
+/**
+ * CompletionCommentModal Component
+ *
+ * Purpose: Modal for adding an optional comment when marking a task as done.
+ * Provides textarea with character limits.
+ *
+ * Responsibilities:
+ * - Display modal with title and description
+ * - Render textarea for completion comment
+ * - Validate min/max length
+ * - Submit comment on confirm
+ *
+ * Dependencies:
+ * - Card, Button components
+ *
+ * Props:
+ * - open: Modal visibility state
+ * - onClose: Close handler
+ * - onSubmit: Submit handler (receives comment string)
+ * - title: Modal title (default: "Mark Task as Done")
+ * - confirmLabel: Button label (default: "Mark Done")
+ * - defaultComment: Initial comment value
+ * - placeholder: Textarea placeholder
+ * - minLength: Minimum characters (default: 0 = optional)
+ * - maxLength: Maximum characters (default: 300)
+ *
+ * Validation:
+ * - Too short: comment.length < minLength
+ * - Too long: comment.length > maxLength
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useEffect, useState } from "react";
 import Card from "./Card";
 import Button from "./Button";

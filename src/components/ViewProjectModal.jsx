@@ -1,3 +1,35 @@
+/**
+ * ViewProjectModal Component
+ *
+ * Purpose: Read-only modal for viewing project details.
+ * Displays project info, team, and OKRs in a structured layout.
+ *
+ * Responsibilities:
+ * - Display project name and header
+ * - Show key metrics: client, timeline (start/end dates), progress bar
+ * - Display team: project manager and assignees
+ * - Show OKRs (Objectives and Key Results) with scrollable list
+ *
+ * Dependencies:
+ * - useThemeStyles hook for themed styling
+ * - formatDate utility
+ * - Button component
+ * - react-icons (FaCalendarAlt, FaUserTie, FaChartLine, FaBullseye, etc.)
+ *
+ * Props:
+ * - showViewModal: Boolean visibility
+ * - setShowViewModal: Toggle function
+ * - selectedProject: Project object to display
+ * - setSelectedProject: Clear function on close
+ *
+ * Layout:
+ * - Two-column grid on large screens
+ * - Left: Metrics cards (client, timeline, progress) + Team section
+ * - Right: OKRs section (scrollable)
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import { useThemeStyles } from "../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";

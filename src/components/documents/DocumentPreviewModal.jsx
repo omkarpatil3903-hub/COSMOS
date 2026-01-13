@@ -1,3 +1,50 @@
+/**
+ * DocumentPreviewModal Component
+ *
+ * Purpose: Full-screen modal for previewing documents with metadata sidebar.
+ * Supports images, PDFs, and provides download functionality.
+ *
+ * Responsibilities:
+ * - Display document preview (image/PDF/fallback)
+ * - Show document metadata (uploader, dates, filename)
+ * - Display access control list (admins/members)
+ * - Enable document download with proper filename
+ * - Support navigation between documents (prev/next)
+ * - Handle missing/deleted files gracefully
+ *
+ * Dependencies:
+ * - Button (UI component)
+ * - useThemeStyles (themed button class)
+ * - react-hot-toast (download notifications)
+ * - react-icons (file type, navigation icons)
+ *
+ * Props:
+ * - open: Modal visibility (default: true)
+ * - onClose: Close callback
+ * - doc: Document object to preview
+ * - onSave: Optional save callback
+ * - docs: Array of documents for navigation
+ * - onNavigate: Navigation callback ('prev'/'next')
+ * - variant: 'default' | 'compact' for size
+ * - showMetadata: Boolean to show sidebar
+ *
+ * File Type Detection:
+ * - Image: MIME type starts with 'image/' or data URI
+ * - PDF: MIME type is 'application/pdf' or file extension
+ * - Other: Generic file icon with download prompt
+ *
+ * Download Logic:
+ * - Fetch as blob to enable proper download (not new tab)
+ * - Resolve filename from: filename > storagePath > URL > fileType
+ * - Firebase Storage URLs get content-disposition header appended
+ *
+ * Error States:
+ * - Image load error: Shows "Document Not Found" message
+ * - PDF load error: Shows "Document Not Found" message
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState } from "react";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import Button from "../Button";

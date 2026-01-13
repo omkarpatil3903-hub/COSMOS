@@ -1,3 +1,38 @@
+/**
+ * EditResourceModal Component
+ *
+ * Purpose: Modal for editing existing team member (resource) profiles.
+ * Three-column form similar to AddResourceModal but for updates.
+ *
+ * Responsibilities:
+ * - Pre-populate form with existing resource data
+ * - Profile image upload/remove
+ * - Editable: name, mobile, employment, resource type, role, status
+ * - Read-only: email (cannot be changed after creation)
+ * - Optional password update (leave blank to keep existing)
+ * - Fetch role options from Firestore settings/hierarchy
+ *
+ * Dependencies:
+ * - useThemeStyles hook
+ * - VoiceInput, Button components
+ * - Firebase Firestore (db)
+ * - react-icons (FaEdit, FaUser, FaBriefcase, FaLock, etc.)
+ *
+ * Props:
+ * - showEditForm/formData/setFormData: Form state
+ * - onSubmit/onClose: Handlers
+ * - imagePreview/onImageChange/onImageRemove: Image handling
+ * - existingEmails: For validation (excluding current)
+ * - serverErrors/clearServerError/isSubmitting: API state
+ * - hasChanges: Enable/disable submit button
+ *
+ * Validation:
+ * - Password optional; if provided, same rules as Add
+ * - Mobile: 10 digits
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState, useEffect } from "react";
 import { useThemeStyles } from "../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";

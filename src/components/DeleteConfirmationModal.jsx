@@ -1,4 +1,39 @@
-// src/components/DeleteConfirmationModal.jsx
+/**
+ * DeleteConfirmationModal Component
+ *
+ * Purpose: Reusable confirmation dialog for delete operations.
+ * Supports optional text confirmation for high-risk deletions.
+ *
+ * Responsibilities:
+ * - Display warning icon with title and description
+ * - Show item title/subtitle if provided
+ * - Optional text confirmation input
+ * - Cancel and Delete buttons with loading state
+ *
+ * Dependencies:
+ * - react-icons (FaExclamationTriangle, FaSpinner)
+ *
+ * Props:
+ * - onClose: Cancel handler
+ * - onConfirm: Delete handler
+ * - itemType: Type label (default: "item")
+ * - title: Modal title (default: "Confirm Deletion")
+ * - description: Main description text
+ * - itemTitle/itemSubtitle: Item being deleted
+ * - cancelLabel/confirmLabel: Button labels
+ * - permanentMessage: Secondary warning message
+ * - isLoading: Loading state
+ * - requireTextConfirmation: Enable text confirmation
+ * - confirmationText: Text user must type to confirm
+ *
+ * Features:
+ * - Delete button disabled until text matches
+ * - Theme-aware styling
+ * - Loading spinner on confirm
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState } from "react";
 import { FaExclamationTriangle, FaSpinner } from "react-icons/fa";
 

@@ -1,3 +1,45 @@
+/**
+ * ClientViewModal Component
+ *
+ * Purpose: Read-only modal displaying complete client information.
+ * Shows client profile with all business details.
+ *
+ * Responsibilities:
+ * - Display client avatar (image or initial)
+ * - Show company and client name prominently
+ * - Display all client fields in info boxes
+ * - Provide close button
+ *
+ * Dependencies:
+ * - useThemeStyles (themed icon/gradient classes)
+ * - Button (UI component)
+ * - react-icons (info field icons)
+ *
+ * Props:
+ * - isOpen: Modal visibility
+ * - onClose: Close callback
+ * - client: Client object to display
+ *
+ * Display Sections:
+ * 1. Header: Logo/initial, company name, client name
+ * 2. Info Grid: 6 info boxes in 2-column layout
+ *
+ * Info Boxes:
+ * - Email: Blue icon, clickable link styling
+ * - Contact: Green icon, phone number
+ * - Business Type: Purple icon
+ * - Employees: Orange icon, count
+ * - Password: Red icon, masked or dev password
+ * - Address: Default icon, location
+ *
+ * InfoBox Helper Component:
+ * - Displays icon, label, and value
+ * - Handles email link styling
+ * - Shows "Not provided" for empty values
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";

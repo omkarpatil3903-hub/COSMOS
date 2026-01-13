@@ -1,4 +1,31 @@
-// src/components/StatCard.jsx
+/**
+ * StatCard Component
+ *
+ * Purpose: Dashboard statistics card with icon, label, value.
+ * Theme-aware with color variants for different metric types.
+ *
+ * Responsibilities:
+ * - Display icon in colored circle
+ * - Show label (uppercase tracking)
+ * - Display main value (large, bold)
+ * - Optional subValue for additional context
+ *
+ * Dependencies:
+ * - useTheme for dark mode detection
+ *
+ * Props:
+ * - icon: React element for card icon
+ * - label: Metric label text
+ * - value: Main metric value
+ * - subValue: Optional secondary text
+ * - color: Color variant (blue, green, indigo, sky, amber, purple, red, gray)
+ *
+ * Color Variants:
+ * Each color has light mode and dark mode bg/icon classes.
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import { useTheme } from "../context/ThemeContext";
 

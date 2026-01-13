@@ -1,4 +1,52 @@
-// src/components/TaskManagment/TaskRow.jsx
+/**
+ * TaskRow Component
+ *
+ * Purpose: Grid-based task row for table view display.
+ * Used within TaskGroup for consistent task listing.
+ *
+ * Responsibilities:
+ * - Display task in 8-column grid layout
+ * - Show selection checkbox
+ * - Display assignee avatars with stacking
+ * - Show assigned and due dates with formatting
+ * - Render priority and status badges
+ * - Show recurring task indicator
+ * - Provide hover-visible action buttons
+ *
+ * Dependencies:
+ * - colorMaps (getPriorityBadge, getStatusBadge)
+ * - UserAvatar (avatar component)
+ * - formatDate (date formatting utility)
+ * - AuthContext (currentUser for status calculation)
+ * - react-icons (action icons)
+ *
+ * Props:
+ * - task: Task object to display
+ * - assigneesResolved: Pre-resolved assignee data
+ * - isSelected: Checkbox state
+ * - onToggleSelect: Selection toggle
+ * - onView: Row click handler
+ * - onEdit/onDelete/onSetReminder/onUpload/onStatusChange: Actions
+ * - showActions: Show action column (default: true)
+ *
+ * Grid Columns (8):
+ * 1. Selection checkbox (30px)
+ * 2. Task title (1fr)
+ * 3. Assignees with avatars (180px)
+ * 4. Assigned date (100px)
+ * 5. Due date with recurring icon (100px)
+ * 6. Priority badge, centered (80px)
+ * 7. Status badge (110px)
+ * 8. Action buttons, hover-visible (80px)
+ *
+ * Status Display:
+ * - Uses personalized assigneeStatus if current user is assignee
+ * - Falls back to global task.status otherwise
+ * - Shows derived status icon if calculated from assignees
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 import {
     FaCheckCircle,

@@ -1,3 +1,50 @@
+/**
+ * AddSelfTaskModal Component
+ *
+ * Purpose: Modal form for creating personal/self-assigned tasks.
+ * These tasks are stored in the selfTasks collection.
+ *
+ * Responsibilities:
+ * - Create new self-tasks with title, description, priority, status
+ * - Optionally link to a project
+ * - Set assigned and due dates
+ * - Load status options from settings/task-statuses
+ * - Voice input support for title and description
+ *
+ * Dependencies:
+ * - Firestore (selfTasks collection, settings/task-statuses)
+ * - VoiceInput (speech-to-text)
+ * - useThemeStyles (themed button/icon classes)
+ * - react-hot-toast (notifications)
+ *
+ * Props:
+ * - isOpen: Modal visibility
+ * - onClose: Close callback
+ * - projects: Array of available projects
+ * - user: Current user object
+ *
+ * Form Sections:
+ * 1. Details & Classification: Title, description, project, priority, status
+ * 2. Assignment & Schedule: Assigned (read-only), assigned date, due date
+ *
+ * Form Fields:
+ * - title: Required
+ * - description: Optional
+ * - projectId: Optional (links to project)
+ * - priority: Low | Medium | High (default: Medium)
+ * - status: Dynamic from settings, excludes Done in dropdown
+ * - assignedDate: Defaults to today
+ * - dueDate: Optional
+ *
+ * Business Logic:
+ * - Status options fetched from settings/task-statuses document
+ * - Done status shown as separate button (not in dropdown)
+ * - progressPercent set to 100 if status is Done
+ * - Task auto-assigned to current user (userId, assigneeId)
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState, useEffect } from "react";
 import { FaTasks, FaTimes } from "react-icons/fa";
 import VoiceInput from "../Common/VoiceInput";

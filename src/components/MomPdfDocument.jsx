@@ -1,7 +1,41 @@
+/**
+ * MomPdfDocument Component
+ *
+ * Purpose: React-PDF document for generating Minutes of Meeting PDFs.
+ * Renders structured meeting information in a printable format.
+ *
+ * Responsibilities:
+ * - Render PDF with meeting header and info table
+ * - Display attendees (internal and external)
+ * - Discussion table with topic and notes
+ * - Action items table with task, responsible, deadline
+ * - Optional comments section
+ * - Footer with generation date and page numbers
+ *
+ * Dependencies:
+ * - @react-pdf/renderer (Document, Page, Text, View, StyleSheet)
+ *
+ * Props (via data object):
+ * - momNo: Meeting number identifier
+ * - projectName: Project for the meeting
+ * - meetingDate, meetingStartTime, meetingEndTime, meetingVenue
+ * - attendees: Array of names/objects
+ * - externalAttendees: Array of external participants
+ * - momPreparedBy: Meeting preparer name
+ * - discussions: Array of { topic, notes }
+ * - actionItems: Array of { task, responsiblePerson, deadline }
+ * - comments: Array of { author, text }
+ *
+ * Features:
+ * - HTML parsing for notes (bold, lists, line breaks)
+ * - Repeatable table headers for multi-page tables
+ * - Normalized attendee handling (string/array/object)
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-
-// Create styles for the PDF document
 const styles = StyleSheet.create({
     page: {
         padding: 40,

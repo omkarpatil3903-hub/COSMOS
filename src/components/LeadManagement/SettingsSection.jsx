@@ -1,3 +1,51 @@
+/**
+ * SettingsSection Component
+ *
+ * Purpose: Reusable section for managing dynamic settings with drag-and-drop.
+ * Used for lead statuses, priorities, sources, sectors, products, etc.
+ *
+ * Responsibilities:
+ * - Display section header with title, icon, and add button
+ * - Render draggable list of items with reorder support
+ * - Handle inline editing on click
+ * - Delete items (disabled if in use)
+ * - Show empty state with add first item CTA
+ *
+ * Dependencies:
+ * - @hello-pangea/dnd (drag and drop)
+ * - react-icons (FaPlus, FaTrash, FaGripVertical, FaExclamationTriangle)
+ *
+ * Exported Components:
+ * - SettingsSection (main wrapper)
+ * - DraggableList (internal, reorderable list)
+ * - EmptyState (internal, no items display)
+ *
+ * SettingsSection Props:
+ * - title: Section heading
+ * - description: Optional subtext
+ * - icon: Icon component
+ * - iconColor: Icon Tailwind class
+ * - items: Array of strings
+ * - type: Setting type identifier
+ * - onAdd/onEdit/onDelete/onReorder: Action handlers
+ * - editingItem/editValue/setEditingItem/setEditValue: Inline edit state
+ * - emptyMessage/emptySuggestions: Empty state text
+ * - colors: { ring, inputBg, inputBorder } override classes
+ * - usageCounts: Object mapping item → count (for delete protection)
+ *
+ * DraggableList Features:
+ * - Drag handle (FaGripVertical)
+ * - Click to edit inline
+ * - Enter to save, Escape to cancel
+ * - Usage count badge
+ * - Delete disabled if item in use
+ *
+ * Input Validation:
+ * - Alphabets and spaces only
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { FaPlus, FaTrash, FaGripVertical, FaExclamationTriangle } from 'react-icons/fa';

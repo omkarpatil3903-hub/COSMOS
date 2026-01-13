@@ -1,3 +1,42 @@
+/**
+ * EmployeeLayout Component
+ *
+ * Purpose: Application shell for Employee portal.
+ * Provides sidebar navigation, theme support, and responsive layout.
+ *
+ * Responsibilities:
+ * - Render collapsible sidebar with navigation links
+ * - Handle drag-and-drop nav item reordering
+ * - Persist nav order to localStorage (navOrder_employee)
+ * - Display user profile and logout button
+ * - Manage mobile navigation overlay
+ * - Set page titles based on route
+ *
+ * Dependencies:
+ * - React Router (NavLink, Outlet)
+ * - @hello-pangea/dnd (drag-drop)
+ * - Firebase Auth (signOut)
+ * - Firestore (user profile)
+ * - ThemeContext (accent color)
+ * - useThemeStyles (bar color)
+ * - PanelSwitcher (role hierarchy access)
+ *
+ * Navigation Items (/employee prefix):
+ * - Dashboard, My Tasks, Projects, Reports
+ * - Knowledge, Calendar, My Expenses, Settings
+ *
+ * Features:
+ * - Collapsible sidebar
+ * - Mobile drawer with backdrop
+ * - Accent-based icon colors (with black theme support)
+ * - PanelSwitcher for manager access (if applicable)
+ * - Dynamic document.title per route
+ *
+ * LocalStorage: navOrder_employee
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";

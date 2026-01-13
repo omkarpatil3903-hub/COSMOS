@@ -1,3 +1,45 @@
+/**
+ * ScheduleFollowupModal Component
+ *
+ * Purpose: Modal for scheduling a new follow-up for a lead.
+ * Collects date, time, type, priority, and notes.
+ *
+ * Responsibilities:
+ * - Display lead selector from available leads
+ * - Collect follow-up details (type, date, time, priority, notes)
+ * - Submit schedule with loading state
+ * - Theme-aware styling with customizable classes
+ *
+ * Dependencies:
+ * - react-icons (FaCalendarAlt, FaTimes, FaUserTie, etc.)
+ *
+ * Props:
+ * - isOpen: Modal visibility state
+ * - onClose: Close handler
+ * - form: Form state { leadId, type, date, time, priority, notes }
+ * - setForm: Update form state
+ * - onSubmit: Submit handler
+ * - isSubmitting: Loading state
+ * - leads: Array of leads for selector
+ * - followupTypes: Array of follow-up type options
+ * - priorities: Array of priority options
+ * - headerIconClass: Theme icon class
+ * - buttonClass: Theme button class
+ *
+ * Form Fields:
+ * - leadId: Required dropdown (from leads array)
+ * - type: Follow-up type (phone_call, email, meeting, demo, proposal)
+ * - date: Required date picker
+ * - time: Optional time picker
+ * - priority: Priority dropdown
+ * - notes: Optional textarea
+ *
+ * Default Follow-up Types:
+ * - Phone Call, Email, Meeting, Demo, Proposal
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from 'react';
 import { FaCalendarAlt, FaTimes, FaUserTie, FaPhoneAlt, FaClock, FaFlag, FaEdit, FaCheckCircle } from 'react-icons/fa';
 

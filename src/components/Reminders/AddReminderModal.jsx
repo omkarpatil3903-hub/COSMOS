@@ -1,3 +1,46 @@
+/**
+ * AddReminderModal Component
+ *
+ * Purpose: Modal form for creating and editing reminders.
+ * Supports personal reminders and task-linked reminders.
+ *
+ * Responsibilities:
+ * - Create new reminders with title, date, time
+ * - Edit existing reminder details
+ * - Handle optional description field
+ * - Validate required fields before submission
+ * - Show loading state during submission
+ *
+ * Dependencies:
+ * - Firestore (reminders collection)
+ * - Firebase Auth (current user for ownership)
+ * - Button (UI component)
+ * - react-hot-toast (notifications)
+ *
+ * Props:
+ * - isOpen: Modal visibility
+ * - onClose: Close callback
+ * - initialData: { title?, relatedTaskId? } for create mode
+ * - reminderToEdit: Existing reminder for edit mode
+ * - onSuccess: Callback after successful save
+ *
+ * Form Fields:
+ * - title: Required, reminder subject
+ * - date: Required, due date
+ * - time: Required, due time
+ * - description: Optional, additional details
+ *
+ * Default Values (Create Mode):
+ * - Date: Today
+ * - Time: Next hour (rounded)
+ *
+ * Reminder Types:
+ * - "task": Linked to a task via relatedTaskId
+ * - "personal": Standalone reminder
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState, useEffect } from "react";
 import { FaBell, FaCalendarAlt, FaClock, FaTimes, FaSpinner } from "react-icons/fa";
 import Button from "../Button";

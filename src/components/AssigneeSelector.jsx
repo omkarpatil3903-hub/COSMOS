@@ -1,3 +1,36 @@
+/**
+ * AssigneeSelector Component
+ *
+ * Purpose: Multi-select user picker with floating popover.
+ * Displays selected users as avatars with search and suggestions.
+ *
+ * Responsibilities:
+ * - Display selected user avatars (max 5 shown, +N overflow)
+ * - Add assignee button (dashed border when empty)
+ * - Floating popover with search input
+ * - Assigned section: already selected users (checkmark)
+ * - Suggestions section: filtered unselected users
+ * - Toggle selection on click
+ * - Click outside to close
+ *
+ * Dependencies:
+ * - react-icons (FaCheck, FaSearch, FaUserCircle, FaPlus)
+ *
+ * Props:
+ * - users: Array of { id, name, email, imageUrl, role }
+ * - selectedIds: Array of selected user IDs
+ * - onChange: Callback with updated ID array
+ * - label: Optional label text (default: "Access")
+ *
+ * Features:
+ * - Real-time search by name or email
+ * - Avatar fallback to initials
+ * - Role badge display
+ * - Theme-aware styling
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { FaCheck, FaSearch, FaUserCircle, FaPlus } from "react-icons/fa";
 

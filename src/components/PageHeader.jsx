@@ -1,4 +1,31 @@
-// src/components/PageHeader.jsx
+/**
+ * PageHeader Component
+ *
+ * Purpose: Standard page header with title, description, and action buttons.
+ * Provides consistent header styling across all pages.
+ *
+ * Responsibilities:
+ * - Display page title with responsive sizing
+ * - Optional description/children for page context
+ * - Optional subtext for additional info
+ * - Optional actions slot for buttons/controls
+ *
+ * Props:
+ * - title: Page title (required)
+ * - description: Description text (preferred over children)
+ * - children: Alternative to description (fallback)
+ * - subtext: Additional secondary text
+ * - actions: React elements for header actions
+ * - className: Additional classes for title
+ *
+ * Layout:
+ * - Two-column on larger screens (title/description left, actions right)
+ * - Stacked on mobile
+ * - Bottom border separator
+ *
+ * Last Modified: 2026-01-10
+ */
+
 import React from "react";
 
 function PageHeader({ title, description, children, actions, subtext, className }) {
