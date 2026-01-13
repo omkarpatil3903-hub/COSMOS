@@ -70,6 +70,18 @@ function PanelSwitcher({ isCollapsed = false }) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
 
+    // Close dropdown when clicking outside
+    // IMPORTANT: This hook must be called before any early returns (Rules of Hooks)
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
     // Only show if user can access more than one panel
     if (!accessiblePanels || accessiblePanels.length <= 1) {
         return null;
@@ -89,17 +101,6 @@ function PanelSwitcher({ isCollapsed = false }) {
     const currentPanelData = accessiblePanels.find(
         (p) => p.path === currentPanel
     );
-
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
 
     // Get accent-based colors
     const getAccentColors = () => {
