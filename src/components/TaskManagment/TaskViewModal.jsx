@@ -159,6 +159,7 @@ const TaskViewModal = ({
   canDelete = true,
   canArchive = true,
   canEdit = true,
+  canTrackTime = true,
   statuses = [],
 }) => {
   const { buttonClass, linkColor, iconColor } = useThemeStyles();
@@ -1275,7 +1276,7 @@ const TaskViewModal = ({
                   <div className="min-h-[34px] flex items-center gap-2">
                     <button
                       onClick={handleToggleTimer}
-                      disabled={!canEdit}
+                      disabled={!canTrackTime}
                       className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isTracking ? "bg-red-50 text-red-600 animate-pulse-red border border-red-200" : "bg-indigo-50 text-indigo-600 border border-indigo-200 hover:bg-indigo-100"}`}
                       title={isTracking ? "Stop Timer" : "Start Timer"}
                     >

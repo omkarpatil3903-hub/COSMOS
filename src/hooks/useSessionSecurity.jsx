@@ -30,7 +30,7 @@ import toast from "react-hot-toast";
 // ============================================================================
 // BUSINESS RULE: Inactivity timeout set to 30 minutes for security.
 // Reason: Standard for business applications to protect sensitive data.
-const INACTIVITY_TIMEOUT_MS = 2 * 60 * 1000; // 1 hour
+const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
 
 // BUSINESS RULE: Maximum session duration of 8 hours.
 // Reason: Aligns with typical work day; forces re-authentication for audit trail.

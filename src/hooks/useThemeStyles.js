@@ -192,6 +192,102 @@ export const useThemeStyles = () => {
         }
     };
 
+    /**
+     * Returns selected/active state background class (light tint).
+     * Use for row selections, active tabs, highlighted items.
+     */
+    const getSelectedBgClass = () => {
+        if (accent === 'black') return 'bg-blue-50 [.dark_&]:bg-blue-900/20';
+        switch (accent) {
+            case 'purple': return 'bg-purple-50 [.dark_&]:bg-purple-900/20';
+            case 'blue': return 'bg-sky-50 [.dark_&]:bg-sky-900/20';
+            case 'pink': return 'bg-pink-50 [.dark_&]:bg-pink-900/20';
+            case 'violet': return 'bg-violet-50 [.dark_&]:bg-violet-900/20';
+            case 'orange': return 'bg-amber-50 [.dark_&]:bg-amber-900/20';
+            case 'teal': return 'bg-teal-50 [.dark_&]:bg-teal-900/20';
+            case 'bronze': return 'bg-amber-50 [.dark_&]:bg-amber-900/20';
+            case 'mint': return 'bg-emerald-50 [.dark_&]:bg-emerald-900/20';
+            default: return 'bg-indigo-50 [.dark_&]:bg-indigo-900/20';
+        }
+    };
+
+    /**
+     * Returns hover accent classes for interactive elements.
+     * Use for icon buttons, list items that need hover feedback.
+     */
+    const getHoverAccentClass = () => {
+        if (accent === 'black') return 'hover:text-blue-600 hover:bg-blue-50 [.dark_&]:hover:text-blue-400 [.dark_&]:hover:bg-blue-900/20';
+        switch (accent) {
+            case 'purple': return 'hover:text-purple-600 hover:bg-purple-50 [.dark_&]:hover:text-purple-400 [.dark_&]:hover:bg-purple-900/20';
+            case 'blue': return 'hover:text-sky-600 hover:bg-sky-50 [.dark_&]:hover:text-sky-400 [.dark_&]:hover:bg-sky-900/20';
+            case 'pink': return 'hover:text-pink-600 hover:bg-pink-50 [.dark_&]:hover:text-pink-400 [.dark_&]:hover:bg-pink-900/20';
+            case 'violet': return 'hover:text-violet-600 hover:bg-violet-50 [.dark_&]:hover:text-violet-400 [.dark_&]:hover:bg-violet-900/20';
+            case 'orange': return 'hover:text-amber-600 hover:bg-amber-50 [.dark_&]:hover:text-amber-400 [.dark_&]:hover:bg-amber-900/20';
+            case 'teal': return 'hover:text-teal-600 hover:bg-teal-50 [.dark_&]:hover:text-teal-400 [.dark_&]:hover:bg-teal-900/20';
+            case 'bronze': return 'hover:text-amber-700 hover:bg-amber-50 [.dark_&]:hover:text-amber-400 [.dark_&]:hover:bg-amber-900/20';
+            case 'mint': return 'hover:text-emerald-600 hover:bg-emerald-50 [.dark_&]:hover:text-emerald-400 [.dark_&]:hover:bg-emerald-900/20';
+            default: return 'hover:text-indigo-600 hover:bg-indigo-50 [.dark_&]:hover:text-indigo-400 [.dark_&]:hover:bg-indigo-900/20';
+        }
+    };
+
+    /**
+     * Returns text color for selected/highlighted items.
+     * Use for text inside selected rows, active menu items.
+     */
+    const getSelectedTextClass = () => {
+        if (accent === 'black') return 'text-blue-700 [.dark_&]:text-blue-300';
+        switch (accent) {
+            case 'purple': return 'text-purple-700 [.dark_&]:text-purple-300';
+            case 'blue': return 'text-sky-700 [.dark_&]:text-sky-300';
+            case 'pink': return 'text-pink-700 [.dark_&]:text-pink-300';
+            case 'violet': return 'text-violet-700 [.dark_&]:text-violet-300';
+            case 'orange': return 'text-amber-700 [.dark_&]:text-amber-300';
+            case 'teal': return 'text-teal-700 [.dark_&]:text-teal-300';
+            case 'bronze': return 'text-amber-800 [.dark_&]:text-amber-300';
+            case 'mint': return 'text-emerald-700 [.dark_&]:text-emerald-300';
+            default: return 'text-indigo-700 [.dark_&]:text-indigo-300';
+        }
+    };
+
+    /**
+     * Returns focus ring and border classes for forms and buttons.
+     * Use for input focus states, checkbox accents.
+     */
+    const getRingClass = () => {
+        if (accent === 'black') return 'focus:ring-blue-500 focus:border-blue-500';
+        switch (accent) {
+            case 'purple': return 'focus:ring-purple-500 focus:border-purple-500';
+            case 'blue': return 'focus:ring-sky-500 focus:border-sky-500';
+            case 'pink': return 'focus:ring-pink-500 focus:border-pink-500';
+            case 'violet': return 'focus:ring-violet-500 focus:border-violet-500';
+            case 'orange': return 'focus:ring-amber-500 focus:border-amber-500';
+            case 'teal': return 'focus:ring-teal-500 focus:border-teal-500';
+            case 'bronze': return 'focus:ring-amber-600 focus:border-amber-600';
+            case 'mint': return 'focus:ring-emerald-500 focus:border-emerald-500';
+            default: return 'focus:ring-indigo-500 focus:border-indigo-500';
+        }
+    };
+
+    /**
+     * Returns group-hover text color class.
+     * Use for child elements that change color when parent group is hovered.
+     * IMPORTANT: Tailwind requires complete class names - cannot interpolate.
+     */
+    const getGroupHoverTextClass = () => {
+        if (accent === 'black') return 'group-hover:text-blue-600 [.dark_&]:group-hover:text-blue-400';
+        switch (accent) {
+            case 'purple': return 'group-hover:text-purple-600 [.dark_&]:group-hover:text-purple-400';
+            case 'blue': return 'group-hover:text-sky-600 [.dark_&]:group-hover:text-sky-400';
+            case 'pink': return 'group-hover:text-pink-600 [.dark_&]:group-hover:text-pink-400';
+            case 'violet': return 'group-hover:text-violet-600 [.dark_&]:group-hover:text-violet-400';
+            case 'orange': return 'group-hover:text-amber-600 [.dark_&]:group-hover:text-amber-400';
+            case 'teal': return 'group-hover:text-teal-600 [.dark_&]:group-hover:text-teal-400';
+            case 'bronze': return 'group-hover:text-amber-700 [.dark_&]:group-hover:text-amber-400';
+            case 'mint': return 'group-hover:text-emerald-600 [.dark_&]:group-hover:text-emerald-400';
+            default: return 'group-hover:text-indigo-600 [.dark_&]:group-hover:text-indigo-400';
+        }
+    };
+
     return {
         buttonClass: getButtonClass(),
         iconColor: getIconColor(),
@@ -202,6 +298,11 @@ export const useThemeStyles = () => {
         linkColor: getLinkColor(),
         emailLinkClass: getEmailLinkClass(),
         barColor: getBarColor(),
+        selectedBgClass: getSelectedBgClass(),
+        hoverAccentClass: getHoverAccentClass(),
+        selectedTextClass: getSelectedTextClass(),
+        ringClass: getRingClass(),
+        groupHoverTextClass: getGroupHoverTextClass(),
         accent, // Expose accent for custom logic
     };
 };

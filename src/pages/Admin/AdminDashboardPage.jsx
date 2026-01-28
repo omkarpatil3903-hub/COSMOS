@@ -24,7 +24,7 @@ import { useThemeStyles } from "../../hooks/useThemeStyles";
 function DashboardPage() {
   const navigate = useNavigate();
   const { user, userData } = useAuthContext(); // Get user data for personalization
-  const { iconColor, buttonClass } = useThemeStyles(); // Get theme icon color and button class
+  const { iconColor, buttonClass, barColor } = useThemeStyles(); // Get theme icon color and button class
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -736,7 +736,7 @@ function DashboardPage() {
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
-                  className="h-2 rounded-full transition-all duration-500 bg-indigo-600"
+                  className={`h-2 rounded-full transition-all duration-500 ${barColor}`}
                   style={{ width: `${p.progress}%` }}
                 ></div>
               </div>

@@ -69,6 +69,7 @@ import { getPriorityBadge, getStatusBadge } from "../../utils/colorMaps";
 import UserAvatar from "./UserAvatar";
 import { formatDate } from "../../utils/formatDate";
 import { useAuthContext } from "../../context/AuthContext";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 const TaskRow = ({
     task,
@@ -84,6 +85,7 @@ const TaskRow = ({
     showActions = true,
 }) => {
     const { user: currentUser } = useAuthContext();
+    const { selectedBgClass, iconColor, hoverAccentClass, groupHoverTextClass } = useThemeStyles();
 
     // Calculate personalized status
     const displayStatus = (() => {
@@ -101,7 +103,7 @@ const TaskRow = ({
             className={`group grid ${showActions
                 ? "grid-cols-[30px_1fr_180px_100px_100px_80px_110px_80px]"
                 : "grid-cols-[30px_1fr_180px_100px_100px_80px_110px]"
-                } items-center gap-4 border-b border-gray-100 [.dark_&]:border-white/10 py-3 px-4 hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors cursor-pointer text-sm ${isSelected ? "bg-indigo-50 [.dark_&]:bg-indigo-900/20" : ""
+                } items-center gap-4 border-b border-gray-100 [.dark_&]:border-white/10 py-3 px-4 hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors cursor-pointer text-sm ${isSelected ? selectedBgClass : ""
                 }`}
         >
             {/* Col 1: Selection Checkbox */}
@@ -116,7 +118,7 @@ const TaskRow = ({
 
             {/* Col 2: Title */}
             <div className="min-w-0">
-                <span className="font-medium text-gray-800 [.dark_&]:text-white truncate block group-hover:text-indigo-600 [.dark_&]:group-hover:text-indigo-400">
+                <span className={`font-medium text-gray-800 [.dark_&]:text-white truncate block ${groupHoverTextClass}`}>
                     {task.title || "Untitled Task"}
                 </span>
             </div>
@@ -182,7 +184,7 @@ const TaskRow = ({
                         {/* LOGIC: If recurring, show Loop. If not, show Calendar. NEVER show both. */}
                         {task.isRecurring ? (
                             <MdReplayCircleFilled
-                                className="text-indigo-500 shrink-0 text-sm"
+                                className={`${iconColor} shrink-0 text-sm`}
                                 title={`Recurring: ${task.recurringPattern || "Daily"}`}
                             />
                         ) : (
@@ -307,7 +309,7 @@ const TaskRow = ({
                                 e.stopPropagation();
                                 onEdit(task);
                             }}
-                            className="p-1.5 text-gray-400 [.dark_&]:text-gray-500 hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 hover:bg-indigo-50 [.dark_&]:hover:bg-indigo-900/20 rounded-md transition-colors"
+                            className={`p-1.5 text-gray-400 [.dark_&]:text-gray-500 ${hoverAccentClass} rounded-md transition-colors`}
                             title="Edit Task"
                         >
                             <FaEdit />

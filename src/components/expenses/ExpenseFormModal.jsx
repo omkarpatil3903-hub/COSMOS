@@ -129,6 +129,34 @@ export default function ExpenseFormModal({
         }
     };
 
+    // Constants for file validation
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+
+    /**
+     * Validates and handles receipt file selection.
+     * Enforces max 5MB size and image/PDF file types only.
+     */
+    const handleReceiptChange = (file) => {
+        if (!file) return;
+
+        // Validate file size
+        if (file.size > MAX_FILE_SIZE) {
+            setErrors((prev) => ({ ...prev, receipt: 'File size must be less than 5MB' }));
+            return;
+        }
+
+        // Validate file type
+        if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+            setErrors((prev) => ({ ...prev, receipt: 'Only images (JPEG, PNG, GIF, WebP) and PDF files are allowed' }));
+            return;
+        }
+
+        // Clear any previous receipt error and set the file
+        setErrors((prev) => ({ ...prev, receipt: null }));
+        handleChange('receipt', file);
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
         const newErrors = {};
@@ -342,7 +370,7 @@ export default function ExpenseFormModal({
                                             accept="image/*,application/pdf"
                                             className="sr-only"
                                             onChange={(e) =>
-                                                handleChange("receipt", e.target.files[0])
+                                                handleReceiptChange(e.target.files[0])
                                             }
                                         />
                                     </label>
@@ -358,6 +386,12 @@ export default function ExpenseFormModal({
                                         Has existing receipt
                                     </p>
                                 )}
+                                {errors.receipt && (
+                                    <p className="text-xs text-red-600 dark:text-red-400 mt-2 font-medium">
+                                        {errors.receipt}
+                                    </p>
+                                )}
+                                <p className="text-xs text-gray-400 mt-2">Max 5MB · Images or PDF only</p>
                             </div>
                         </div>
                     </div>
