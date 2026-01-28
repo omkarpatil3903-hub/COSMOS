@@ -39,6 +39,7 @@
 
 import React, { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { version } from "../../../package.json";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../../firebase";
@@ -66,10 +67,110 @@ import PanelSwitcher from "../PanelSwitcher";
 
 // Reusable Sidebar Link Component
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
-  const { accent } = useTheme();
+  const { accent, mode } = useTheme();
 
-  const accentTextClass =
-    accent === "purple"
+  // Get accent-based colors for light mode
+  const getAccentColors = () => {
+    const colorMap = {
+      purple: {
+        bg: "bg-purple-50",
+        bgStrong: "bg-purple-100",
+        text: "text-purple-600",
+        icon: "text-purple-500",
+        border: "border-purple-100",
+      },
+      blue: {
+        bg: "bg-sky-50",
+        bgStrong: "bg-sky-100",
+        text: "text-sky-600",
+        icon: "text-sky-500",
+        border: "border-sky-100",
+      },
+      pink: {
+        bg: "bg-pink-50",
+        bgStrong: "bg-pink-100",
+        text: "text-pink-600",
+        icon: "text-pink-500",
+        border: "border-pink-100",
+      },
+      violet: {
+        bg: "bg-violet-50",
+        bgStrong: "bg-violet-100",
+        text: "text-violet-600",
+        icon: "text-violet-500",
+        border: "border-violet-100",
+      },
+      orange: {
+        bg: "bg-amber-50",
+        bgStrong: "bg-amber-100",
+        text: "text-amber-600",
+        icon: "text-amber-500",
+        border: "border-amber-100",
+      },
+      teal: {
+        bg: "bg-teal-50",
+        bgStrong: "bg-teal-100",
+        text: "text-teal-600",
+        icon: "text-teal-500",
+        border: "border-teal-100",
+      },
+      bronze: {
+        bg: "bg-amber-50",
+        bgStrong: "bg-amber-100",
+        text: "text-amber-700",
+        icon: "text-amber-600",
+        border: "border-amber-100",
+      },
+      mint: {
+        bg: "bg-emerald-50",
+        bgStrong: "bg-emerald-100",
+        text: "text-emerald-600",
+        icon: "text-emerald-500",
+        border: "border-emerald-100",
+      },
+      black: {
+        bg: "bg-gray-100",
+        bgStrong: "bg-gray-200",
+        text: "text-gray-800",
+        icon: "text-gray-600",
+        border: "border-gray-200",
+      },
+      indigo: {
+        bg: "bg-indigo-50",
+        bgStrong: "bg-indigo-100",
+        text: "text-indigo-600",
+        icon: "text-indigo-500",
+        border: "border-indigo-100",
+      },
+    };
+    return colorMap[accent] || colorMap.indigo;
+  };
+
+  const accentColors = getAccentColors();
+
+  // Get icon color - ALL icons use accent color in light mode
+  const getIconColor = (to) => {
+    if (accent === "black") {
+      // Define specific colors for each route in black theme
+      if (to === "/manager" || to === "/manager/dashboard" || to === "")
+        return "text-blue-400";
+      if (to.includes("projects")) return "text-purple-400";
+      if (to.includes("tasks")) return "text-green-400";
+      if (to.includes("reports")) return "text-yellow-400";
+      if (to.includes("calendar")) return "text-red-400";
+      if (to.includes("knowledge")) return "text-cyan-400";
+      if (to.includes("expenses")) return "text-orange-400";
+      if (to.includes("settings")) return "text-pink-400";
+      return "text-indigo-400"; // Default color
+    }
+
+    // For light mode, ALL icons use accent color
+    if (mode === "light") {
+      return accentColors.icon;
+    }
+
+    // For non-black dark themes, use the accent color
+    return accent === "purple"
       ? "text-purple-400"
       : accent === "blue"
         ? "text-sky-400"
@@ -85,16 +186,23 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
                   ? "text-amber-500"
                   : accent === "mint"
                     ? "text-emerald-400"
-                    : accent === "black"
-                      ? "text-slate-100"
-                      : "text-indigo-400";
+                    : "text-indigo-400";
+  };
+
+  const iconColor = getIconColor(to);
 
   const baseClasses = `group flex items-center ${isCollapsed ? "justify-center px-2" : "gap-3 px-3"
     } rounded-lg border border-transparent py-2 text-sm font-medium transition-colors`;
+
+  // Light mode specific styling - only active tab gets background
   const activeClasses =
-    "border-subtle bg-surface-strong text-content-primary shadow-soft";
+    mode === "light"
+      ? `${accentColors.bg} ${accentColors.text} ${accentColors.border}`
+      : "border-subtle bg-surface-strong text-content-primary shadow-soft";
   const inactiveClasses =
-    "text-content-secondary hover:bg-surface-subtle hover:text-content-primary";
+    mode === "light"
+      ? "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+      : "text-content-secondary hover:bg-surface-subtle hover:text-content-primary";
 
   return (
     <NavLink
@@ -109,9 +217,18 @@ const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
       {({ isActive }) => (
         <>
           <span
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${isActive
-              ? `bg-surface ${accentTextClass}`
-              : `${accentTextClass} bg-transparent`
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200 ${isActive
+              ? `${accent === "black"
+                ? "bg-black/20 backdrop-blur-sm shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                : mode === "light"
+                  ? accentColors.bgStrong
+                  : "bg-surface"
+              } ${iconColor}`
+              : `${iconColor} ${mode === "light" ? "bg-gray-100" : "bg-transparent"
+              } ${accent === "black"
+                ? "opacity-80 hover:opacity-100 hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]"
+                : ""
+              }`
               }`}
           >
             {icon}
@@ -395,6 +512,13 @@ function ManagerLayout() {
             </span>
             {!isCollapsed && <span>Logout</span>}
           </button>
+
+          {/* Version Display */}
+          {!isCollapsed && (
+            <div className="mt-1 px-3 mb-[-10px] text-xs text-content-tertiary text-center">
+              COSMOS | Version {version}
+            </div>
+          )}
         </div>
       </aside>
 

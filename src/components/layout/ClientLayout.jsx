@@ -41,6 +41,7 @@
  */
 import { useState, useEffect } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
+import { version } from "../../../package.json";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../../firebase";
@@ -416,6 +417,13 @@ export default function ClientLayout() {
             </span>
             {!isCollapsed && <span>Logout</span>}
           </button>
+
+          {/* Version Display */}
+          {!isCollapsed && (
+            <div className="mt-1 px-3 mb-[-10px] text-xs text-content-tertiary text-center">
+              COSMOS | Version {version}
+            </div>
+          )}
         </div>
       </aside>
 

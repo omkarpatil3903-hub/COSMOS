@@ -29,46 +29,94 @@
 import React from "react";
 import { useTheme } from "../context/ThemeContext";
 
-const StatCard = ({ icon, label, value, subValue, color = "indigo" }) => {
+const StatCard = ({ icon, label, value, subValue, color = "indigo", variant = "soft" }) => {
   const { mode } = useTheme();
 
-  // Light pastel backgrounds with strong, visible icon colors
+  // Color configurations for soft (pastel) and solid (gradient) variants
   const colors = {
     blue: {
-      bg: "bg-blue-50 dark:bg-blue-500/10",
-      icon: "text-blue-500 dark:text-blue-400",
+      soft: {
+        bg: "bg-blue-50 dark:bg-blue-500/10",
+        icon: "text-blue-500 dark:text-blue-400",
+      },
+      solid: {
+        bg: "bg-gradient-to-br from-blue-500 to-blue-600",
+        icon: "text-white",
+      },
     },
     green: {
-      bg: "bg-emerald-50 dark:bg-emerald-500/10",
-      icon: "text-emerald-500 dark:text-emerald-400",
+      soft: {
+        bg: "bg-emerald-50 dark:bg-emerald-500/10",
+        icon: "text-emerald-500 dark:text-emerald-400",
+      },
+      solid: {
+        bg: "bg-gradient-to-br from-emerald-500 to-emerald-600",
+        icon: "text-white",
+      },
     },
     indigo: {
-      bg: "bg-indigo-50 dark:bg-indigo-500/10",
-      icon: "text-indigo-500 dark:text-indigo-400",
+      soft: {
+        bg: "bg-indigo-50 dark:bg-indigo-500/10",
+        icon: "text-indigo-500 dark:text-indigo-400",
+      },
+      solid: {
+        bg: "bg-gradient-to-br from-indigo-400 to-purple-500",
+        icon: "text-white",
+      },
     },
     sky: {
-      bg: "bg-sky-50 dark:bg-sky-500/10",
-      icon: "text-sky-500 dark:text-sky-400",
+      soft: {
+        bg: "bg-sky-50 dark:bg-sky-500/10",
+        icon: "text-sky-500 dark:text-sky-400",
+      },
+      solid: {
+        bg: "bg-gradient-to-br from-sky-500 to-sky-600",
+        icon: "text-white",
+      },
     },
     amber: {
-      bg: "bg-amber-50 dark:bg-amber-500/10",
-      icon: "text-amber-500 dark:text-amber-400",
+      soft: {
+        bg: "bg-amber-50 dark:bg-amber-500/10",
+        icon: "text-amber-500 dark:text-amber-400",
+      },
+      solid: {
+        bg: "bg-gradient-to-br from-amber-500 to-amber-600",
+        icon: "text-white",
+      },
     },
     purple: {
-      bg: "bg-purple-50 dark:bg-purple-500/10",
-      icon: "text-purple-500 dark:text-purple-400",
+      soft: {
+        bg: "bg-purple-50 dark:bg-purple-500/10",
+        icon: "text-purple-500 dark:text-purple-400",
+      },
+      solid: {
+        bg: "bg-gradient-to-br from-purple-500 to-purple-600",
+        icon: "text-white",
+      },
     },
     red: {
-      bg: "bg-red-50 dark:bg-red-500/10",
-      icon: "text-red-500 dark:text-red-400",
+      soft: {
+        bg: "bg-red-50 dark:bg-red-500/10",
+        icon: "text-red-500 dark:text-red-400",
+      },
+      solid: {
+        bg: "bg-gradient-to-br from-red-500 to-red-600",
+        icon: "text-white",
+      },
     },
     gray: {
-      bg: "bg-gray-100 dark:bg-gray-500/10",
-      icon: "text-gray-500 dark:text-gray-400",
+      soft: {
+        bg: "bg-gray-100 dark:bg-gray-500/10",
+        icon: "text-gray-500 dark:text-gray-400",
+      },
+      solid: {
+        bg: "bg-gradient-to-br from-gray-400 to-gray-500",
+        icon: "text-white",
+      },
     },
   };
 
-  const colorConfig = colors[color] || colors.indigo;
+  const colorConfig = (colors[color] || colors.indigo)[variant] || (colors[color] || colors.indigo).soft;
 
   return (
     <div
@@ -77,7 +125,7 @@ const StatCard = ({ icon, label, value, subValue, color = "indigo" }) => {
       <div className="flex items-center gap-4">
         {/* Icon Circle */}
         <div
-          className={`flex h-12 w-12 items-center justify-center rounded-full ${colorConfig.bg}`}
+          className={`flex h-12 w-12 items-center justify-center rounded-full ${colorConfig.bg} shadow-sm`}
         >
           <span className={colorConfig.icon}>
             {icon}

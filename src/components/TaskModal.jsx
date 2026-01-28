@@ -55,16 +55,18 @@ import { calculateNextDueDate } from "../utils/recurringTasks";
 import { useTheme } from "../context/ThemeContext";
 
 // Inline simple searchable multi-select component
-function SearchMultiSelect({ items, selected, onChange, placeholder }) {
+// Inline simple searchable multi-select component
+function SearchMultiSelect({ items, selected, onChange, placeholder, disabledIds = [] }) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(
     () =>
-      items.filter((i) => i.label.toLowerCase().includes(query.toLowerCase())),
+      items.filter((i) => (i.label || "").toLowerCase().includes(query.toLowerCase())),
     [items, query]
   );
 
   const toggle = (id) => {
+    if (disabledIds.includes(id)) return; // Prevent toggling disabled items
     const set = new Set(selected);
     if (set.has(id)) set.delete(id);
     else set.add(id);
@@ -80,20 +82,25 @@ function SearchMultiSelect({ items, selected, onChange, placeholder }) {
         className="block w-full rounded-md border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#181B2A] px-3 py-2 text-sm text-content-primary [.dark_&]:text-white"
       />
       <div className="mt-2 max-h-40 overflow-y-auto rounded-md border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#181B2A]">
-        {filtered.map((i) => (
-          <label
-            key={i.id}
-            className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 [.dark_&]:hover:bg-white/5 text-gray-700 [.dark_&]:text-white"
-          >
-            <input
-              type="checkbox"
-              checked={selected.includes(i.id)}
-              onChange={() => toggle(i.id)}
-              className="rounded border-subtle"
-            />
-            <span>{i.label}</span>
-          </label>
-        ))}
+        {filtered.map((i) => {
+          const isDisabled = disabledIds.includes(i.id);
+          return (
+            <label
+              key={i.id}
+              className={`flex items-center gap-2 px-3 py-2 text-sm ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50 [.dark_&]:hover:bg-white/5'} text-gray-700 [.dark_&]:text-white`}
+            >
+              <input
+                type="checkbox"
+                checked={selected.includes(i.id)}
+                onChange={() => toggle(i.id)}
+                disabled={isDisabled}
+                className="rounded border-subtle"
+              />
+              <span>{i.label}</span>
+              {isDisabled && <span className="ml-auto text-[10px] italic">(Locked)</span>}
+            </label>
+          )
+        })}
         {!filtered.length && (
           <div className="px-3 py-2 text-xs text-content-tertiary">
             No matches
@@ -112,10 +119,31 @@ function TaskModal({
   assignees = [],
   clients = [],
   statuses = [],
+  isManager = false, // New prop to identify manager role
 }) {
   const { accent } = useTheme();
 
-  // Helper to get theme-specific styles
+  // Calculate disabled assignee IDs (prevent removing existing assignees for managers)
+  const disabledAssigneeIds = useMemo(() => {
+    if (isManager && taskToEdit && taskToEdit.id) {
+      // If editing an existing task as a manager, lock existing assignees
+      // Check both 'assignees' array and legacy 'assigneeId'
+      const existing = [];
+      if (Array.isArray(taskToEdit.assignees)) {
+        // Handle both strings and objects (extract .id if object)
+        taskToEdit.assignees.forEach(a => {
+          if (typeof a === 'object' && a?.id) existing.push(a.id);
+          else if (typeof a === 'string') existing.push(a);
+        });
+      } else if (taskToEdit.assigneeId) {
+        existing.push(taskToEdit.assigneeId);
+      }
+      return existing;
+    }
+    return [];
+  }, [isManager, taskToEdit]);
+
+  // Helper to get theme-specific styles -- (keep existing code)
   const getThemeStyles = () => {
     const styles = {
       purple: { button: 'bg-purple-600 hover:bg-purple-700 focus-visible:ring-purple-500', iconBg: 'bg-purple-50', iconText: 'text-purple-600' },
@@ -672,64 +700,84 @@ function TaskModal({
 
                 <div className="space-y-4">
                   {/* Assignee Type Toggle */}
-                  <div className="flex bg-gray-100 [.dark_&]:bg-white/5 p-1 rounded-lg">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAssigneeType("user");
-                        setAssigneesSelected([]);
-                        setAssigneeId("");
-                      }}
-                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "user"
-                        ? "bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white shadow-sm"
-                        : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-200"
-                        }`}
-                    >
-                      Resource
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAssigneeType("client");
-                        setAssigneesSelected([]);
-                        setAssigneeId("");
-                      }}
-                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "client"
-                        ? "bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white shadow-sm"
-                        : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-200"
-                        }`}
-                    >
-                      Client
-                    </button>
-                  </div>
+                  {!isManager && (
+                    <div className="flex bg-gray-100 [.dark_&]:bg-white/5 p-1 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAssigneeType("user");
+                          setAssigneesSelected([]);
+                          setAssigneeId("");
+                        }}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "user"
+                          ? "bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white shadow-sm"
+                          : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-200"
+                          }`}
+                      >
+                        Resource
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAssigneeType("client");
+                          setAssigneesSelected([]);
+                          setAssigneeId("");
+                        }}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "client"
+                          ? "bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white shadow-sm"
+                          : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-200"
+                          }`}
+                      >
+                        Client
+                      </button>
+                    </div>
+                  )}
 
                   {/* Assignee Selector */}
                   <div>
                     {assigneeType === "user" ? (
-                      <SearchMultiSelect
-                        items={assignees.map((u) => ({
-                          id: u.id,
-                          label: u.name,
-                        }))}
-                        selected={assigneesSelected
-                          .filter((a) => a.type === "user")
-                          .map((a) => a.id)}
-                        onChange={(ids) => {
-                          const others = assigneesSelected.filter(
-                            (a) => a.type !== "user"
-                          );
-                          const nextSame = ids.map((id) => ({
-                            type: "user",
-                            id,
-                          }));
-                          const next = [...nextSame, ...others];
-                          setAssigneesSelected(next);
-                          setAssigneeId(nextSame[0]?.id || "");
-                          if (errors.assigneeId)
-                            setErrors((p) => ({ ...p, assigneeId: "" }));
-                        }}
-                        placeholder="Select resources..."
-                      />
+                      <div>
+                        {!projectId ? (
+                          <div className="text-sm text-gray-500 italic p-2 border border-dashed border-gray-300 rounded-md text-center">
+                            Select a project to view team members
+                          </div>
+                        ) : (
+                          <SearchMultiSelect
+                            items={assignees
+                              .filter(u => {
+                                if (projectId) {
+                                  const proj = projects.find(p => p.id === projectId);
+                                  // Check if user is in the project's assigneeIds
+                                  return proj?.assigneeIds?.includes(u.id);
+                                }
+                                return true;
+                              })
+                              .map((u) => ({
+                                id: u.id,
+                                label: u.name,
+                              }))}
+                            selected={assigneesSelected
+                              .filter((a) => a.type === "user")
+                              .map((a) => a.id)}
+                            onChange={(ids) => {
+                              const others = assigneesSelected.filter(
+                                (a) => a.type !== "user"
+                              );
+                              const nextSame = ids.map((id) => ({
+                                type: "user",
+                                id,
+                              }));
+                              const next = [...nextSame, ...others];
+                              setAssigneesSelected(next);
+                              setAssigneeId(nextSame[0]?.id || "");
+                              if (errors.assigneeId)
+                                setErrors((p) => ({ ...p, assigneeId: "" }));
+                            }}
+                            placeholder="Select team members..."
+                            disabledIds={disabledAssigneeIds}
+                          />
+                        )}
+                      </div>
                     ) : (
                       <select
                         value={assigneeId}

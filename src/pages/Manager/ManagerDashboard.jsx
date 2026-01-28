@@ -32,6 +32,8 @@ import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import toast from "react-hot-toast";
+import StatCard from "../../components/StatCard";
+import TeamMembersModal from "../../components/TeamMembersModal";
 
 export default function ManagerDashboard() {
     const navigate = useNavigate();
@@ -66,6 +68,7 @@ export default function ManagerDashboard() {
     const [reminderNotifications, setReminderNotifications] = useState([]);
     const [dismissedNotifications, setDismissedNotifications] = useState(new Set());
     const notificationRef = useRef(null);
+    const [showTeamModal, setShowTeamModal] = useState(false);
 
     // Get current user's managed projects
     useEffect(() => {
@@ -78,13 +81,16 @@ export default function ManagerDashboard() {
         );
 
         const unsub = onSnapshot(q, (snap) => {
-            const list = snap.docs.map((d) => ({
-                id: d.id,
-                ...d.data(),
-                assigneeIds: d.data().assigneeIds || [],
-                startDate: d.data().startDate?.toDate?.() || null,
-                endDate: d.data().endDate?.toDate?.() || null,
-            }));
+            const list = snap.docs.map((d) => {
+                const data = d.data();
+                return {
+                    id: d.id,
+                    ...data,
+                    assigneeIds: data.assigneeIds || [],
+                    startDate: data.startDate?.toDate ? data.startDate.toDate() : (data.startDate || null),
+                    endDate: data.endDate?.toDate ? data.endDate.toDate() : (data.endDate || null),
+                };
+            });
             setProjects(list);
         });
 
@@ -101,6 +107,24 @@ export default function ManagerDashboard() {
     }, []);
 
     // Get tasks for managed projects
+    // Helper to safely parse dates
+    const parseDate = (dateInput) => {
+        if (!dateInput) return null;
+        try {
+            // Handle Firestore Timestamp
+            if (dateInput.toDate && typeof dateInput.toDate === 'function') {
+                return dateInput.toDate();
+            }
+            // Handle String or Date
+            const d = new Date(dateInput);
+            if (!isNaN(d.getTime())) return d;
+            return null;
+        } catch (e) {
+            console.error("Date parsing error:", dateInput, e);
+            return null;
+        }
+    };
+
     useEffect(() => {
         if (!projects.length) {
             setLoading(false);
@@ -131,6 +155,25 @@ export default function ManagerDashboard() {
                 };
             });
             const filtered = allTasks.filter((t) => projectIds.includes(t.projectId));
+
+            // Overdue Debug Log
+            console.log("Found Tasks:", filtered.length);
+            filtered.forEach(t => {
+                const status = (t.status || "").toLowerCase();
+                const due = t.dueDate;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                let isOver = false;
+                if (due) {
+                    const d = new Date(due);
+                    d.setHours(0, 0, 0, 0);
+                    isOver = d < today;
+                }
+
+                // console.log(`Task [${t.title}]: Status=${t.status}, Due=${due}, IsOver=${isOver}`);
+            });
+
             setTasks(filtered);
             setLoading(false);
         });
@@ -138,14 +181,24 @@ export default function ManagerDashboard() {
         return () => unsub();
     }, [projects]);
 
-    // Get team members from managed projects
-    const teamMembers = useMemo(() => {
-        const memberIds = new Set();
-        projects.forEach((p) => {
-            (p.assigneeIds || []).forEach((id) => memberIds.add(id));
+    // Get team members grouped by project
+    const projectTeams = useMemo(() => {
+        return projects.map((project) => {
+            const members = users.filter((u) => (project.assigneeIds || []).includes(u.id));
+            return {
+                id: project.id,
+                name: project.projectName || project.name || "Untitled Project",
+                members
+            };
         });
-        return users.filter((u) => memberIds.has(u.id));
     }, [projects, users]);
+
+    // Keep flat list for stats if needed, or derive from projectTeams
+    const teamMembers = useMemo(() => {
+        const uniqueIds = new Set();
+        projectTeams.forEach(p => p.members.forEach(m => uniqueIds.add(m.id)));
+        return users.filter(u => uniqueIds.has(u.id));
+    }, [projectTeams, users]);
 
     // Compute stats
     const stats = useMemo(() => {
@@ -167,11 +220,32 @@ export default function ManagerDashboard() {
             ["in progress", "in-progress"].includes((t.status || "").toLowerCase())
         ).length;
         const overdueTasks = tasks.filter((t) => {
-            if (!t.dueDate) return false;
             const status = (t.status || "").toLowerCase();
             if (["done", "completed", "complete"].includes(status)) return false;
-            return t.dueDate < new Date();
+
+            // Robust date parsing
+            let dueDate = null;
+            if (t.dueDate?.toDate) {
+                dueDate = t.dueDate.toDate();
+            } else if (t.dueDate) {
+                dueDate = new Date(t.dueDate);
+            }
+
+            // Check if invalid date
+            if (!dueDate || isNaN(dueDate.getTime())) return false;
+
+            // Normalize to start of day for fair comparison
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const due = new Date(dueDate);
+            due.setHours(0, 0, 0, 0);
+
+            const isOver = due < today;
+            // console.log(`Task: ${t.title}, Status: ${status}, Due: ${due.toISOString()}, Today: ${today.toISOString()}, Overdue: ${isOver}`);
+            return isOver;
         }).length;
+
+        // console.log("Manager Stats Debug:", { totalProjects, totalTasks, overdueTasks, sampleTask: tasks[0] });
 
         const teamSize = teamMembers.length;
 
@@ -212,7 +286,7 @@ export default function ManagerDashboard() {
             ).length;
             const progress = total > 0 ? Math.round((done / total) * 100) : 0;
             return { ...p, progress, taskCount: total, completedTasks: done };
-        }).slice(0, 4);
+        });
     }, [projects, tasks]);
 
     // Load quick notes
@@ -1097,117 +1171,117 @@ export default function ManagerDashboard() {
                 </div>
             </div>
 
+
+            {/* Stats Cards */}
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* My Projects */}
                 <div
                     onClick={() => navigate("/manager/projects")}
-                    className="cursor-pointer bg-white [.dark_&]:bg-[#1F2234] rounded-xl shadow-sm border border-gray-200 [.dark_&]:border-white/10 p-6 hover:shadow-md transition-all hover:border-indigo-200 [.dark_&]:hover:border-indigo-500/30"
+                    className="cursor-pointer transform transition-transform hover:scale-105"
+                    title="Click to view Projects page"
                 >
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 [.dark_&]:text-gray-400">My Projects</p>
-                            <p className="text-3xl font-bold text-gray-900 [.dark_&]:text-white mt-1">{stats.totalProjects}</p>
-                            <p className="text-xs text-green-600 [.dark_&]:text-green-400 mt-1">
-                                {stats.completedProjects} completed
-                            </p>
-                        </div>
-                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
-                            <FaProjectDiagram className="text-white text-xl" />
-                        </div>
-                    </div>
+                    <StatCard
+                        icon={<FaProjectDiagram className="h-5 w-5" />}
+                        label="My Projects"
+                        value={stats.totalProjects}
+                        subValue={<span className="text-green-600 dark:text-green-400">{stats.completedProjects} completed</span>}
+                        color="amber"
+                        variant="solid"
+                    />
                 </div>
 
                 {/* Team Members */}
-                <div className="bg-white [.dark_&]:bg-[#1F2234] rounded-xl shadow-sm border border-gray-200 [.dark_&]:border-white/10 p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 [.dark_&]:text-gray-400">Team Members</p>
-                            <p className="text-3xl font-bold text-gray-900 [.dark_&]:text-white mt-1">{stats.teamSize}</p>
-                            <p className="text-xs text-gray-500 [.dark_&]:text-gray-400 mt-1">Across all projects</p>
-                        </div>
-                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
-                            <FaUsers className="text-white text-xl" />
-                        </div>
-                    </div>
+                <div
+                    onClick={() => setShowTeamModal(true)}
+                    className="cursor-pointer transform transition-transform hover:scale-105"
+                    title="Click to view all team members"
+                >
+                    <StatCard
+                        icon={<FaUsers className="h-5 w-5" />}
+                        label="Team Members"
+                        value={stats.teamSize}
+                        subValue="Across all projects"
+                        color="green"
+                        variant="solid"
+                    />
                 </div>
 
-                {/* Tasks */}
+                {/* Total Tasks */}
                 <div
                     onClick={() => navigate("/manager/tasks")}
-                    className="cursor-pointer bg-white [.dark_&]:bg-[#1F2234] rounded-xl shadow-sm border border-gray-200 [.dark_&]:border-white/10 p-6 hover:shadow-md transition-all hover:border-indigo-200 [.dark_&]:hover:border-indigo-500/30"
+                    className="cursor-pointer transform transition-transform hover:scale-105"
+                    title="Click to view Tasks page"
                 >
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 [.dark_&]:text-gray-400">Total Tasks</p>
-                            <p className="text-3xl font-bold text-gray-900 [.dark_&]:text-white mt-1">{stats.totalTasks}</p>
-                            <p className="text-xs text-blue-600 [.dark_&]:text-blue-400 mt-1">
-                                {stats.inProgressTasks} in progress
-                            </p>
-                        </div>
-                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                            <FaTasks className="text-white text-xl" />
-                        </div>
-                    </div>
+                    <StatCard
+                        icon={<FaTasks className="h-5 w-5" />}
+                        label="Total Tasks"
+                        value={stats.totalTasks}
+                        subValue={<span className="text-blue-600 dark:text-blue-400">{stats.inProgressTasks} in progress</span>}
+                        color="blue"
+                        variant="solid"
+                    />
                 </div>
 
                 {/* Overdue Tasks */}
-                <div className="bg-white [.dark_&]:bg-[#1F2234] rounded-xl shadow-sm border border-gray-200 [.dark_&]:border-white/10 p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 [.dark_&]:text-gray-400">Overdue Tasks</p>
-                            <p className={`text-3xl font-bold mt-1 ${stats.overdueTasks > 0 ? "text-red-600 [.dark_&]:text-red-400" : "text-gray-900 [.dark_&]:text-white"}`}>
-                                {stats.overdueTasks}
-                            </p>
-                            <p className="text-xs text-gray-500 [.dark_&]:text-gray-400 mt-1">Need attention</p>
-                        </div>
-                        <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${stats.overdueTasks > 0
-                            ? "bg-gradient-to-br from-red-500 to-red-600"
-                            : "bg-gradient-to-br from-gray-400 to-gray-500"
-                            }`}>
-                            <FaExclamationTriangle className="text-white text-xl" />
-                        </div>
-                    </div>
+                <div
+                    onClick={() => navigate("/manager/tasks?filter=overdue")}
+                    className="cursor-pointer transform transition-transform hover:scale-105"
+                    title="Click to view overdue tasks"
+                >
+                    <StatCard
+                        icon={<FaExclamationTriangle className="h-5 w-5" />}
+                        label="Overdue Tasks"
+                        value={stats.overdueTasks}
+                        subValue="Need attention"
+                        color={stats.overdueTasks > 0 ? "red" : "gray"}
+                        variant="solid"
+                    />
                 </div>
             </div>
+
+            <TeamMembersModal
+                isOpen={showTeamModal}
+                onClose={() => setShowTeamModal(false)}
+                members={teamMembers}
+                tasks={tasks}
+                projects={projects}
+            />
 
             {/* Two Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Project Progress */}
                 <Card title="Project Progress" className="h-full">
-                    <div className="space-y-4">
+                    <div className="space-y-0 divide-y divide-gray-100 dark:divide-white/10 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                         {projectsWithProgress.length === 0 ? (
-                            <p className="text-gray-500 [.dark_&]:text-gray-400 text-center py-8">No projects assigned yet</p>
+                            <p className="text-gray-500 dark:text-gray-400 text-center py-8">No projects assigned yet</p>
                         ) : (
                             projectsWithProgress.map((project) => (
-                                <div key={project.id} className="border border-gray-100 [.dark_&]:border-white/10 rounded-lg p-4 hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h4 className="font-medium text-gray-900 [.dark_&]:text-white truncate flex-1">{project.projectName}</h4>
-                                        <span className="text-sm font-semibold text-gray-600 [.dark_&]:text-gray-300 ml-2">{project.progress}%</span>
+                                <div key={project.id} className="group py-3 first:pt-0 last:pb-0 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors px-2 -mx-2 rounded-md">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <div className="min-w-0 flex-1 mr-4">
+                                            <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                {project.projectName}
+                                            </h4>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                {project.clientName || "(No Client)"}
+                                            </p>
+                                        </div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap font-medium">
+                                            {project.completedTasks}/{project.taskCount} <span className="mx-1">•</span> {project.progress}%
+                                        </div>
                                     </div>
-                                    <div className="w-full bg-gray-200 [.dark_&]:bg-gray-700 rounded-full h-2 mb-2">
+                                    <div className="w-full bg-gray-100 dark:bg-gray-700/50 rounded-full h-1.5 mt-2 overflow-hidden">
                                         <div
-                                            className={`h-2 rounded-full transition-all duration-300 ${project.progress === 100 ? "bg-green-500" :
+                                            className={`h-full rounded-full transition-all duration-300 ${project.progress === 100 ? "bg-green-500" :
                                                 project.progress > 50 ? "bg-blue-500" :
-                                                    project.progress > 0 ? "bg-amber-500" : "bg-gray-400"
+                                                    project.progress > 0 ? "bg-amber-500" : "bg-gray-300 dark:bg-gray-600"
                                                 }`}
                                             style={{ width: `${project.progress}%` }}
                                         />
                                     </div>
-                                    <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">
-                                        {project.completedTasks}/{project.taskCount} tasks completed
-                                    </p>
                                 </div>
                             ))
-                        )}
-                        {projects.length > 4 && (
-                            <Button
-                                variant="ghost"
-                                onClick={() => navigate("/manager/projects")}
-                                className="w-full text-indigo-600"
-                            >
-                                View All Projects <FaArrowRight className="ml-2 h-3 w-3" />
-                            </Button>
                         )}
                     </div>
                 </Card>
@@ -1242,23 +1316,41 @@ export default function ManagerDashboard() {
 
             {/* Team Overview */}
             <Card title="Team Overview">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    {teamMembers.length === 0 ? (
+                <div className="space-y-6 max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
+                    {projectTeams.length === 0 ? (
                         <p className="text-gray-500 [.dark_&]:text-gray-400 col-span-full text-center py-8">
-                            No team members assigned to your projects yet.
+                            No projects assigned yet.
                         </p>
                     ) : (
-                        teamMembers.slice(0, 12).map((member) => (
-                            <div key={member.id} className="text-center p-3 border border-gray-100 [.dark_&]:border-white/10 rounded-lg hover:bg-gray-50 [.dark_&]:hover:bg-white/5">
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-lg mx-auto mb-2">
-                                    {(member.name || member.fullName || "?").charAt(0).toUpperCase()}
-                                </div>
-                                <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white truncate">
-                                    {member.name || member.fullName || "Unknown"}
-                                </p>
-                                <p className="text-xs text-gray-500 [.dark_&]:text-gray-400 truncate">
-                                    {member.resourceRole || "Team Member"}
-                                </p>
+                        projectTeams.map((project) => (
+                            <div key={project.id} className="border-b border-gray-100 [.dark_&]:border-white/10 last:border-0 pb-6 last:pb-0">
+                                <h4 className="text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300 mb-3 flex items-center gap-2">
+                                    <FaProjectDiagram className="text-indigo-500" />
+                                    {project.name}
+                                    <span className="text-xs font-normal text-gray-400 bg-gray-100 [.dark_&]:bg-white/10 px-2 py-0.5 rounded-full">
+                                        {project.members.length} members
+                                    </span>
+                                </h4>
+
+                                {project.members.length === 0 ? (
+                                    <p className="text-xs text-gray-400 italic pl-6">No members assigned to this project.</p>
+                                ) : (
+                                    <div className="flex overflow-x-auto gap-4 pb-2 custom-scrollbar">
+                                        {project.members.map((member) => (
+                                            <div key={`${project.id}-${member.id}`} className="min-w-[130px] w-[130px] shrink-0 text-center p-3 border border-gray-100 [.dark_&]:border-white/10 rounded-lg hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors">
+                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm mx-auto mb-2 shadow-sm">
+                                                    {(member.name || member.fullName || "?").charAt(0).toUpperCase()}
+                                                </div>
+                                                <p className="text-xs font-medium text-gray-900 [.dark_&]:text-white truncate">
+                                                    {member.name || member.fullName || "Unknown"}
+                                                </p>
+                                                <p className="text-[10px] text-gray-500 [.dark_&]:text-gray-400 truncate mt-0.5">
+                                                    {member.resourceRole || "Team Member"}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         ))
                     )}

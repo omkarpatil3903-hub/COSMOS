@@ -1418,6 +1418,7 @@ function Calendar({ onlyMyManagedProjects = false }) {
               projects={projects.map((p) => ({ id: p.id, name: p.name }))}
               assignees={resources}
               clients={clients}
+              isManager={onlyMyManagedProjects}
             />
           )}
 

@@ -1,6 +1,7 @@
 // src/pages/LoginPage.jsx
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { version } from "../../package.json";
 import loginBgVideo from "../assets/loginbg.mp4";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth, db } from "../firebase";
@@ -353,9 +354,16 @@ function LoginPage() {
                 Forgot password?
               </Link>
             </div>
+
           </form>
         </div>
       </div>
+
+      {/* Version Footer */}
+      <div className="absolute bottom-4 text-white/30 text-xs z-20">
+        COSMOS | Version {version}
+      </div>
+
     </div>
   );
 }
