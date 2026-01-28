@@ -8,6 +8,8 @@ import {
 } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { withErrorBoundary } from "./components/RouteWithErrorBoundary";
 import "./index.css";
 
 // Import all your components
@@ -92,11 +94,11 @@ import PortalThemeSettings from "./pages/Shared/PortalThemeSettings";
 import PortalProfileSettings from "./pages/Shared/PortalProfileSettings";
 
 const router = createBrowserRouter([
-  { path: "/login", element: <LoginPage /> },
-  { path: "/forgot-password", element: <ForgotPasswordPage /> },
-  { path: "/reset-password", element: <ResetPasswordPage /> },
-  { path: "/force-change-password", element: <ForceChangePasswordPage /> },
-  { path: "/unauthorized", element: <Unauthorized /> },
+  { path: "/login", element: withErrorBoundary(<LoginPage />) },
+  { path: "/forgot-password", element: withErrorBoundary(<ForgotPasswordPage />) },
+  { path: "/reset-password", element: withErrorBoundary(<ResetPasswordPage />) },
+  { path: "/force-change-password", element: withErrorBoundary(<ForceChangePasswordPage />) },
+  { path: "/unauthorized", element: withErrorBoundary(<Unauthorized />) },
 
   // Client Portal Routes
   {
@@ -107,20 +109,20 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { path: "/client", element: <ClientDashboard /> },
-      { path: "/client/projects", element: <ClientProjects /> },
-      { path: "/client/tasks", element: <ClientTasks /> },
-      { path: "/client/calendar", element: <ClientCalendar /> },
-      { path: "/client/reports", element: <ClientReports /> },
-      { path: "/client/documents", element: <ClientDocuments /> },
-      { path: "/client/manage-documents", element: <ClientManageDocument /> },
+      { path: "/client", element: withErrorBoundary(<ClientDashboard />) },
+      { path: "/client/projects", element: withErrorBoundary(<ClientProjects />) },
+      { path: "/client/tasks", element: withErrorBoundary(<ClientTasks />) },
+      { path: "/client/calendar", element: withErrorBoundary(<ClientCalendar />) },
+      { path: "/client/reports", element: withErrorBoundary(<ClientReports />) },
+      { path: "/client/documents", element: withErrorBoundary(<ClientDocuments />) },
+      { path: "/client/manage-documents", element: withErrorBoundary(<ClientManageDocument />) },
       {
         path: "/client/settings",
-        element: <PortalSettings />,
+        element: withErrorBoundary(<PortalSettings />),
         children: [
           { index: true, element: <Navigate to="theme" replace /> },
-          { path: "theme", element: <PortalThemeSettings /> },
-          { path: "profile", element: <PortalProfileSettings /> },
+          { path: "theme", element: withErrorBoundary(<PortalThemeSettings />) },
+          { path: "profile", element: withErrorBoundary(<PortalProfileSettings />) },
         ],
       },
     ],
@@ -135,27 +137,27 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { path: "/employee", element: <EmployeeDashboard /> },
-      { path: "/employee/tasks", element: <EmployeeTasks /> },
-      { path: "/employee/projects", element: <EmployeeProjects /> },
-      { path: "/employee/calendar", element: <EmployeeCalendar /> },
-      { path: "/employee/reports", element: <EmployeeReports /> },
-      { path: "/employee/documents", element: <EmployeeDocuments /> },
-      { path: "/employee/knowledge-management", element: <EmployeeKnowledgeManagement /> },
-      { path: "/employee/knowledge-management/:projectName", element: <KnowledgeProjectDetail /> },
-      { path: "/employee/knowledge/:id", element: <KnowledgeDetailView /> },
+      { path: "/employee", element: withErrorBoundary(<EmployeeDashboard />) },
+      { path: "/employee/tasks", element: withErrorBoundary(<EmployeeTasks />) },
+      { path: "/employee/projects", element: withErrorBoundary(<EmployeeProjects />) },
+      { path: "/employee/calendar", element: withErrorBoundary(<EmployeeCalendar />) },
+      { path: "/employee/reports", element: withErrorBoundary(<EmployeeReports />) },
+      { path: "/employee/documents", element: withErrorBoundary(<EmployeeDocuments />) },
+      { path: "/employee/knowledge-management", element: withErrorBoundary(<EmployeeKnowledgeManagement />) },
+      { path: "/employee/knowledge-management/:projectName", element: withErrorBoundary(<KnowledgeProjectDetail />) },
+      { path: "/employee/knowledge/:id", element: withErrorBoundary(<KnowledgeDetailView />) },
       {
         path: "/employee/manage-documents",
-        element: <EmployeeManageDocument />,
+        element: withErrorBoundary(<EmployeeManageDocument />),
       },
-      { path: "/employee/expenses", element: <EmployeeExpenses /> },
+      { path: "/employee/expenses", element: withErrorBoundary(<EmployeeExpenses />) },
       {
         path: "/employee/settings",
-        element: <PortalSettings />,
+        element: withErrorBoundary(<PortalSettings />),
         children: [
           { index: true, element: <Navigate to="theme" replace /> },
-          { path: "theme", element: <PortalThemeSettings /> },
-          { path: "profile", element: <PortalProfileSettings /> },
+          { path: "theme", element: withErrorBoundary(<PortalThemeSettings />) },
+          { path: "profile", element: withErrorBoundary(<PortalProfileSettings />) },
         ],
       },
     ],
@@ -170,30 +172,30 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { path: "/admin", element: <AdminDashboardPage /> },
-      { path: "/admin/manage-resources", element: <AdminManageResources /> },
-      { path: "/admin/manage-clients", element: <AdminManageClients /> },
-      { path: "/admin/manage-projects", element: <AdminManageProjects /> },
-      { path: "/admin/knowledge-management", element: <AdminKnowledgeManagement /> },
-      { path: "/admin/knowledge-management/:projectName", element: <AdminKnowledgeProjectDetail /> },
-      { path: "/admin/knowledge/:id", element: <KnowledgeDetailView /> },
-      { path: "/admin/manage-knowledge", element: <AdminManageDocument /> },
-      { path: "/admin/mom-pro", element: <AdminMomGeneratorPro /> },
-      { path: "/admin/task-management", element: <AdminTaskManagment /> },
-      { path: "/admin/lead-management", element: <AdminLeadManagement /> },
-      { path: "/admin/reports", element: <AdminReportsPage /> },
-      { path: "/admin/expenses", element: <AdminExpenseManagement /> },
-      { path: "/admin/calendar", element: <AdminCalendar /> },
+      { path: "/admin", element: withErrorBoundary(<AdminDashboardPage />) },
+      { path: "/admin/manage-resources", element: withErrorBoundary(<AdminManageResources />) },
+      { path: "/admin/manage-clients", element: withErrorBoundary(<AdminManageClients />) },
+      { path: "/admin/manage-projects", element: withErrorBoundary(<AdminManageProjects />) },
+      { path: "/admin/knowledge-management", element: withErrorBoundary(<AdminKnowledgeManagement />) },
+      { path: "/admin/knowledge-management/:projectName", element: withErrorBoundary(<AdminKnowledgeProjectDetail />) },
+      { path: "/admin/knowledge/:id", element: withErrorBoundary(<KnowledgeDetailView />) },
+      { path: "/admin/manage-knowledge", element: withErrorBoundary(<AdminManageDocument />) },
+      { path: "/admin/mom-pro", element: withErrorBoundary(<AdminMomGeneratorPro />) },
+      { path: "/admin/task-management", element: withErrorBoundary(<AdminTaskManagment />) },
+      { path: "/admin/lead-management", element: withErrorBoundary(<AdminLeadManagement />) },
+      { path: "/admin/reports", element: withErrorBoundary(<AdminReportsPage />) },
+      { path: "/admin/expenses", element: withErrorBoundary(<AdminExpenseManagement />) },
+      { path: "/admin/calendar", element: withErrorBoundary(<AdminCalendar />) },
       {
         path: "/admin/settings",
-        element: <AdminSettings />,
+        element: withErrorBoundary(<AdminSettings />),
         children: [
           { index: true, element: <Navigate to="add-hierarchy" replace /> },
-          { path: "add-hierarchy", element: <AdminAddHierarchy /> },
-          { path: "project-settings", element: <AdminProjectSettings /> },
-          { path: "status-settings", element: <AdminStatusSettings /> },
-          { path: "theme", element: <PortalThemeSettings /> },
-          { path: "profile", element: <PortalProfileSettings /> },
+          { path: "add-hierarchy", element: withErrorBoundary(<AdminAddHierarchy />) },
+          { path: "project-settings", element: withErrorBoundary(<AdminProjectSettings />) },
+          { path: "status-settings", element: withErrorBoundary(<AdminStatusSettings />) },
+          { path: "theme", element: withErrorBoundary(<PortalThemeSettings />) },
+          { path: "profile", element: withErrorBoundary(<PortalProfileSettings />) },
         ],
       },
     ],
@@ -207,22 +209,22 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { path: "/manager", element: <ManagerDashboard /> },
-      { path: "/manager/projects", element: <ManageProjects onlyMyManaged={true} /> },
-      { path: "/manager/tasks", element: <TaskManagment onlyMyManagedProjects={true} /> },
-      { path: "/manager/reports", element: <ReportsPage onlyMyManagedProjects={true} /> },
-      { path: "/manager/calendar", element: <Calendar onlyMyManagedProjects={true} /> },
-      { path: "/manager/knowledge-management", element: <ManagerKnowledgeManagement /> },
-      { path: "/manager/knowledge-management/:projectName", element: <KnowledgeProjectDetail /> },
-      { path: "/manager/knowledge/:id", element: <KnowledgeDetailView /> },
-      { path: "/manager/expenses", element: <ManagerExpenses /> },
+      { path: "/manager", element: withErrorBoundary(<ManagerDashboard />) },
+      { path: "/manager/projects", element: withErrorBoundary(<ManageProjects onlyMyManaged={true} />) },
+      { path: "/manager/tasks", element: withErrorBoundary(<TaskManagment onlyMyManagedProjects={true} />) },
+      { path: "/manager/reports", element: withErrorBoundary(<ReportsPage onlyMyManagedProjects={true} />) },
+      { path: "/manager/calendar", element: withErrorBoundary(<Calendar onlyMyManagedProjects={true} />) },
+      { path: "/manager/knowledge-management", element: withErrorBoundary(<ManagerKnowledgeManagement />) },
+      { path: "/manager/knowledge-management/:projectName", element: withErrorBoundary(<KnowledgeProjectDetail />) },
+      { path: "/manager/knowledge/:id", element: withErrorBoundary(<KnowledgeDetailView />) },
+      { path: "/manager/expenses", element: withErrorBoundary(<ManagerExpenses />) },
       {
         path: "/manager/settings",
-        element: <PortalSettings />,
+        element: withErrorBoundary(<PortalSettings />),
         children: [
           { index: true, element: <Navigate to="theme" replace /> },
-          { path: "theme", element: <PortalThemeSettings /> },
-          { path: "profile", element: <PortalProfileSettings /> },
+          { path: "theme", element: withErrorBoundary(<PortalThemeSettings />) },
+          { path: "profile", element: withErrorBoundary(<PortalProfileSettings />) },
         ],
       },
     ],
@@ -237,32 +239,32 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { path: "/", element: <DashboardPage /> },
-      { path: "/manage-resources", element: <ManageResources /> },
-      { path: "/manage-clients", element: <ManageClients /> },
-      { path: "/manage-projects", element: <ManageProjects /> },
-      { path: "/knowledge-management", element: <SuperAdminKnowledgeManagement /> },
-      { path: "/knowledge/:id", element: <KnowledgeDetailView /> },
-      { path: "/document-viewer", element: <DocumentViewer /> },
-      { path: "/knowledge-management/:projectName", element: <KnowledgeProjectDetail /> },
-      { path: "/manage-knowledge", element: <ManageDocument /> },
-      { path: "/mom", element: <Mom /> },
-      { path: "/mom-pro", element: <MomGeneratorPro /> },
-      { path: "/task-management", element: <TaskManagment /> },
-      { path: "/lead-management", element: <LeadManagement /> },
-      { path: "/reports", element: <ReportsPage /> },
-      { path: "/expenses", element: <ExpenseManagement /> },
-      { path: "/calendar", element: <Calendar /> },
+      { path: "/", element: withErrorBoundary(<DashboardPage />) },
+      { path: "/manage-resources", element: withErrorBoundary(<ManageResources />) },
+      { path: "/manage-clients", element: withErrorBoundary(<ManageClients />) },
+      { path: "/manage-projects", element: withErrorBoundary(<ManageProjects />) },
+      { path: "/knowledge-management", element: withErrorBoundary(<SuperAdminKnowledgeManagement />) },
+      { path: "/knowledge/:id", element: withErrorBoundary(<KnowledgeDetailView />) },
+      { path: "/document-viewer", element: withErrorBoundary(<DocumentViewer />) },
+      { path: "/knowledge-management/:projectName", element: withErrorBoundary(<KnowledgeProjectDetail />) },
+      { path: "/manage-knowledge", element: withErrorBoundary(<ManageDocument />) },
+      { path: "/mom", element: withErrorBoundary(<Mom />) },
+      { path: "/mom-pro", element: withErrorBoundary(<MomGeneratorPro />) },
+      { path: "/task-management", element: withErrorBoundary(<TaskManagment />) },
+      { path: "/lead-management", element: withErrorBoundary(<LeadManagement />) },
+      { path: "/reports", element: withErrorBoundary(<ReportsPage />) },
+      { path: "/expenses", element: withErrorBoundary(<ExpenseManagement />) },
+      { path: "/calendar", element: withErrorBoundary(<Calendar />) },
       {
         path: "/settings",
-        element: <Settings />,
+        element: withErrorBoundary(<Settings />),
         children: [
           { index: true, element: <Navigate to="add-hierarchy" replace /> },
-          { path: "add-hierarchy", element: <AddHierarchy /> },
-          { path: "project-settings", element: <ProjectSettings /> },
-          { path: "status-settings", element: <StatusSettings /> },
-          { path: "theme", element: <PortalThemeSettings /> },
-          { path: "profile", element: <PortalProfileSettings /> },
+          { path: "add-hierarchy", element: withErrorBoundary(<AddHierarchy />) },
+          { path: "project-settings", element: withErrorBoundary(<ProjectSettings />) },
+          { path: "status-settings", element: withErrorBoundary(<StatusSettings />) },
+          { path: "theme", element: withErrorBoundary(<PortalThemeSettings />) },
+          { path: "profile", element: withErrorBoundary(<PortalProfileSettings />) },
         ],
       },
     ],
@@ -271,10 +273,12 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <AuthProvider>
-      <ThemeProvider>
-        <RouterProvider router={router} />
-      </ThemeProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <ThemeProvider>
+          <RouterProvider router={router} />
+        </ThemeProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );

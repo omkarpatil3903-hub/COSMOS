@@ -55,6 +55,7 @@ import { getPriorityBadge, getStatusBadge } from "../../utils/colorMaps";
 import UserAvatar from "./UserAvatar";
 
 import { useAuthContext } from "../../context/AuthContext";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 const statusIcons = {
   "To-Do": <FaClipboardList />,
@@ -75,6 +76,7 @@ const TaskListItem = ({
   activeUsers,
 }) => {
   const { user: currentUser } = useAuthContext();
+  const { barColor, selectedTextClass, selectedBgClass } = useThemeStyles();
 
   // Calculate personalized status
   const displayStatus = (() => {
@@ -131,7 +133,7 @@ const TaskListItem = ({
               )}
               {displayStatus === "Done" && task.completionComment && (
                 <p
-                  className="mt-1 text-xs italic text-indigo-700 line-clamp-1"
+                  className={`mt-1 text-xs italic ${selectedTextClass} line-clamp-1`}
                   title={task.completionComment}
                 >
                   💬 {task.completionComment}
@@ -308,11 +310,11 @@ const TaskListItem = ({
               </span>
               <div className="flex-1 max-w-xs bg-gray-200 rounded-full h-2">
                 <div
-                  className="bg-indigo-600 h-2 rounded-full transition-all"
+                  className={`${barColor} h-2 rounded-full transition-all`}
                   style={{ width: `${task.progressPercent || 0}%` }}
                 />
               </div>
-              <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">
+              <span className={`text-xs font-semibold ${selectedTextClass} whitespace-nowrap`}>
                 {task.progressPercent || 0}%
               </span>
             </div>
@@ -322,7 +324,7 @@ const TaskListItem = ({
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               onClick={() => onView(task)}
-              className="rounded-md bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-200"
+              className={`rounded-md ${selectedBgClass} px-3 py-1 text-xs font-medium ${selectedTextClass} transition hover:opacity-80`}
             >
               View
             </button>

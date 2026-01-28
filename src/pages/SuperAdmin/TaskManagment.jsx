@@ -85,7 +85,7 @@ const tsToISO = (v) => {
 
 function TasksManagement({ onlyMyManagedProjects = false }) {
   const { user } = useAuthContext();
-  const { buttonClass, iconColor, barColor } = useThemeStyles();
+  const { buttonClass, iconColor, barColor, gradientClass } = useThemeStyles();
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
@@ -1456,7 +1456,23 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
   const counts = useMemo(() => {
     const c = { "To-Do": 0, "In Progress": 0, Done: 0 };
     filtered.forEach((t) => {
-      if (c[t.status] !== undefined) c[t.status] += 1;
+      const x = String(t.status || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (x === "done" || x === "completed" || x === "complete") {
+        c.Done += 1;
+      } else if (
+        x === "inprogress" ||
+        x === "inreview" ||
+        x === "review" ||
+        x === "qa" ||
+        x === "testing" ||
+        x === "verified" ||
+        x.includes("progress")
+      ) {
+        c["In Progress"] += 1;
+      } else {
+        // Default all other statuses (Backlog, To-Do, To Do, Open, custom steps) to To-Do
+        c["To-Do"] += 1;
+      }
     });
     return c;
   }, [filtered]);
@@ -1470,13 +1486,29 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
   // removed unused overdueTasks to satisfy lint
 
   // Calculate global overdue tasks (ignoring current filters) for the persistent banner
+  // BUT still respects the onlyMyManagedProjects constraint for managers
   const globalOverdueTasks = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
+    const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    // Get managed project IDs if filtering for manager
+    let managedProjectIds = null;
+    if (onlyMyManagedProjects) {
+      const currentUser = auth.currentUser;
+      managedProjectIds = projects
+        .filter(p => p.projectManagerId === currentUser?.uid)
+        .map(p => p.id);
+    }
+
     return tasks.filter(
-      (t) =>
-        !t.archived && t.dueDate && t.dueDate < today && t.status !== "Done"
+      (t) => {
+        // Manager Project Filter - only count tasks from managed projects
+        if (managedProjectIds && !managedProjectIds.includes(t.projectId)) return false;
+
+        return !t.archived && t.dueDate && t.dueDate < today && norm(t.status) !== "done";
+      }
     );
-  }, [tasks]);
+  }, [tasks, onlyMyManagedProjects, projects]);
 
   // Active users list for assignment/reassignment UIs
   const activeUsers = useMemo(() => users.filter(isUserActive), [users]);
@@ -2033,7 +2065,7 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
               </div>
               <div className="h-3 w-full overflow-hidden rounded-full border border-subtle bg-surface [.dark_&]:bg-white/5 [.dark_&]:border-white/10">
                 <div
-                  className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-500"
+                  className={`h-full bg-gradient-to-r ${gradientClass} transition-all duration-500`}
                   style={{ width: `${progressPct}%` }}
                 />
               </div>

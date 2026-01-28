@@ -26,7 +26,7 @@ import { useThemeStyles } from "../../hooks/useThemeStyles";
 export default function EmployeeReports() {
   const { user, userData } = useAuthContext();
   const uid = user?.uid || userData?.uid;
-  const { gradientClass } = useThemeStyles();
+  const { gradientClass, barColor, buttonClass, iconColor, hoverAccentClass } = useThemeStyles();
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -651,7 +651,7 @@ Generated on: ${formatDateToDDMMYYYY(
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-indigo-200 dark:border-indigo-800 border-t-indigo-600"></div>
+          <div className={`inline-block h-8 w-8 animate-spin rounded-full border-4 border-gray-200 dark:border-gray-700 border-t-current ${iconColor}`}></div>
           <p className="mt-2 text-gray-600 dark:text-gray-400">Loading reports...</p>
         </div>
       </div>
@@ -761,7 +761,7 @@ Generated on: ${formatDateToDDMMYYYY(
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                 <div
-                  className="bg-indigo-600 h-3 rounded-full transition-all"
+                  className={`${barColor} h-3 rounded-full transition-all`}
                   style={{ width: `${taskCompletionRate}%` }}
                 ></div>
               </div>
@@ -1216,7 +1216,7 @@ Generated on: ${formatDateToDDMMYYYY(
                         <p className="text-xs text-gray-500 mb-1">
                           Format: Area | Activity | Outcome
                         </p>
-                        // ...existing code...
+                        {/* // ...existing code... */}
                         <VoiceInput
                           as="textarea"
                           value={reportData.objective}
@@ -1229,7 +1229,7 @@ Generated on: ${formatDateToDDMMYYYY(
                           className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-24"
                           placeholder="Marketing | Launched Campaign | 20% Growth"
                         />
-                        // ...existing code...
+                        {/* // ...existing code... */}
                       </div>
                     )}
 
@@ -1403,7 +1403,7 @@ Generated on: ${formatDateToDDMMYYYY(
                   <Button
                     onClick={generateReportContent}
                     disabled={generatingReport}
-                    className="flex items-center justify-center gap-2 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl shadow-sm transition-all"
+                    className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl shadow-sm transition-all ${buttonClass}`}
                   >
                     {generatingReport ? (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1428,7 +1428,7 @@ Generated on: ${formatDateToDDMMYYYY(
                         onClick={generatePDF}
                         disabled={generatingReport}
                         type="button"
-                        className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-full shadow-sm transition-all text-sm font-medium"
+                        className={`flex items-center justify-center gap-2 disabled:bg-gray-400 px-6 py-2 rounded-full shadow-sm transition-all text-sm font-medium ${buttonClass}`}
                       >
                         {generatingReport ? (
                           <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1442,7 +1442,7 @@ Generated on: ${formatDateToDDMMYYYY(
                         onClick={handleShare}
                         disabled={generatingReport}
                         type="button"
-                        className="flex items-center justify-center gap-2 bg-white dark:bg-transparent border-2 border-indigo-600 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 disabled:opacity-50 px-6 py-2 rounded-full shadow-sm transition-all text-sm font-medium"
+                        className={`flex items-center justify-center gap-2 bg-white dark:bg-transparent border-2 border-current disabled:opacity-50 px-6 py-2 rounded-full shadow-sm transition-all text-sm font-medium ${iconColor} ${hoverAccentClass}`}
                       >
                         <FaShareAlt className="h-4 w-4" />
                         Share

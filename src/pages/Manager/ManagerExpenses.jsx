@@ -35,13 +35,13 @@ import {
     updateExpense,
     deleteExpense,
     uploadReceipt,
-    createExpense
+    createExpense,
+    markExpensePaid
 } from "../../services/expenseService";
 import toast from "react-hot-toast";
 import { EXPENSE_CATEGORIES, getStatusColorClass } from "../../config/expenseConfig";
 import ExpenseDetailModal from "../../components/expenses/ExpenseDetailModal";
-import ExpenseFormModal from "../../components/expenses/ExpenseFormModal";
-import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
+import ConfirmationModal from "../../components/ConfirmationModal";
 import DocumentPreviewModal from "../../components/documents/DocumentPreviewModal";
 
 export default function ManagerExpenses() {
@@ -59,11 +59,13 @@ export default function ManagerExpenses() {
     const [page, setPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
 
-    // Edit/Delete State
-    const [editingExpense, setEditingExpense] = useState(null);
-    const [isSaving, setIsSaving] = useState(false);
-    const [deletingExpense, setDeletingExpense] = useState(null);
-    const [isDeleting, setIsDeleting] = useState(false);
+    // Approve confirmation state
+    const [approvingExpense, setApprovingExpense] = useState(null);
+    const [isApproving, setIsApproving] = useState(false);
+
+    // Mark Paid confirmation state
+    const [markingPaidExpense, setMarkingPaidExpense] = useState(null);
+    const [isMarkingPaid, setIsMarkingPaid] = useState(false);
 
     // Get projects managed by current user
     useEffect(() => {
@@ -142,23 +144,38 @@ export default function ManagerExpenses() {
         const total = teamExpenses.length;
         const submitted = teamExpenses.filter((e) => e.status === "Submitted").length;
         const approved = teamExpenses.filter((e) => e.status === "Approved").length;
+        const paid = teamExpenses.filter((e) => e.status === "Paid").length;
         const approvedAmount = teamExpenses
             .filter((e) => e.status === "Approved")
             .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-        return { total, submitted, approved, approvedAmount };
+        const paidAmount = teamExpenses
+            .filter((e) => e.status === "Paid")
+            .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+        return { total, submitted, approved, paid, approvedAmount, paidAmount };
     }, [teamExpenses]);
 
-    const handleApprove = async (id) => {
+    // Open approve confirmation modal
+    const handleOpenApprove = (expense) => {
+        setApprovingExpense(expense);
+    };
+
+    // Confirm single approve
+    const handleConfirmApprove = async () => {
+        if (!approvingExpense) return;
+        setIsApproving(true);
         try {
-            await approveExpense(id, {
+            await approveExpense(approvingExpense.id, {
                 uid: user?.uid,
                 name: userData?.name,
                 email: user?.email,
             });
             toast.success("Expense approved");
+            setApprovingExpense(null);
         } catch (err) {
             console.error("Failed to approve expense", err);
             toast.error("Failed to approve expense");
+        } finally {
+            setIsApproving(false);
         }
     };
 
@@ -167,70 +184,49 @@ export default function ManagerExpenses() {
         setRejectReason("");
     };
 
-
-
-    const handleEdit = (expense) => {
-        setEditingExpense(expense);
-    };
-
-    const handleSave = async (formData) => {
-        if (!user?.uid) return;
-        setIsSaving(true);
+    /**
+     * Confirms rejection of an expense with the provided reason.
+     * Calls rejectExpense service and shows appropriate toast notification.
+     */
+    const handleConfirmReject = async () => {
+        if (!rejectingId) return;
         try {
-            let receiptUrl = null;
-            if (formData.receipt) {
-                receiptUrl = await uploadReceipt(formData.receipt, user.uid);
-            }
-
-            const payload = {
-                ...formData,
-                amount: Number(formData.amount),
-            };
-            // Remove complex objects or file objects from payload
-            delete payload.receipt;
-
-            if (receiptUrl) {
-                payload.receiptUrl = receiptUrl;
-            }
-
-            // For manager, we are likely just updating details, not creating new ones usually?
-            // But if we reuse this for creation later, we can check editingExpense.
-
-            if (editingExpense) {
-                await updateExpense(editingExpense.id, payload);
-                toast.success("Expense updated");
-            } else {
-                // Fallback if we ever use this for creation
-                // await createExpense({ ...payload, employeeId: user.uid, ... });
-            }
-
-            setEditingExpense(null);
+            await rejectExpense(
+                rejectingId,
+                { uid: user?.uid, name: userData?.name, email: user?.email },
+                rejectReason || "Rejected by manager"
+            );
+            toast.success("Expense rejected");
+            setRejectingId(null);
+            setRejectReason("");
         } catch (err) {
-            console.error("Failed to save expense", err);
-            toast.error("Failed to save expense");
-        } finally {
-            setIsSaving(false);
+            console.error("Failed to reject expense", err);
+            toast.error("Failed to reject expense");
         }
     };
 
-    const handleDeleteClick = (expense) => {
-        setDeletingExpense(expense);
+    // Open mark paid confirmation modal
+    const handleOpenMarkPaid = (expense) => {
+        setMarkingPaidExpense(expense);
     };
 
-    const handleConfirmDelete = async () => {
-        if (!deletingExpense) return;
-        setIsDeleting(true);
+    // Confirm single mark paid
+    const handleConfirmMarkPaid = async () => {
+        if (!markingPaidExpense) return;
+        setIsMarkingPaid(true);
         try {
-            await deleteExpense(deletingExpense.id);
-            toast.success("Expense deleted");
-            setDeletingExpense(null);
+            await markExpensePaid(markingPaidExpense.id);
+            toast.success("Marked as paid");
+            setMarkingPaidExpense(null);
         } catch (err) {
-            console.error("Failed to delete expense", err);
-            toast.error("Failed to delete expense");
+            console.error("Failed to mark paid", err);
+            toast.error("Failed to mark as paid");
         } finally {
-            setIsDeleting(false);
+            setIsMarkingPaid(false);
         }
     };
+
+
 
 
 
@@ -335,7 +331,7 @@ export default function ManagerExpenses() {
             />
 
             {/* Stats Cards */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
                 <div className="bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-white/10 border-l-4 border-l-indigo-500 p-4">
                     <div className="flex items-center justify-between">
                         <div>
@@ -373,6 +369,20 @@ export default function ManagerExpenses() {
                         </div>
                     </div>
                 </div>
+
+                <div className="bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-sm border border-gray-200 [.dark_&]:border-white/10 border-l-4 border-l-purple-500 p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-purple-600 [.dark_&]:text-purple-400">
+                                Paid (₹{stats.paidAmount.toFixed(0)})
+                            </p>
+                            <p className="text-3xl font-bold text-purple-900 [.dark_&]:text-purple-300 mt-1">{stats.paid}</p>
+                        </div>
+                        <div className="w-12 h-12 rounded-full bg-purple-200/50 [.dark_&]:bg-purple-500/20 flex items-center justify-center">
+                            <FaMoneyBillWave className="text-purple-600 [.dark_&]:text-purple-400 text-xl" />
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Filters */}
@@ -401,6 +411,7 @@ export default function ManagerExpenses() {
                             <option value="all">All Statuses</option>
                             <option value="Submitted">Pending</option>
                             <option value="Approved">Approved</option>
+                            <option value="Paid">Paid</option>
                             <option value="Rejected">Rejected</option>
                         </select>
                     </div>
@@ -494,7 +505,7 @@ export default function ManagerExpenses() {
                                     <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Document</th>
                                     <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Status</th>
                                     <th className="px-6 py-3 text-center text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Approval</th>
-                                    <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 [.dark_&]:text-gray-400 uppercase">Actions</th>
+                                    {/* Actions column header removed */}
                                 </tr>
                             </thead>
                             <tbody className="bg-white [.dark_&]:bg-[#181B2A] divide-y divide-gray-200 [.dark_&]:divide-white/10">
@@ -576,7 +587,7 @@ export default function ManagerExpenses() {
                                                 <div className="flex justify-center gap-2">
                                                     <Button
                                                         size="xs"
-                                                        onClick={(ev) => { ev.stopPropagation(); handleApprove(e.id); }}
+                                                        onClick={(ev) => { ev.stopPropagation(); handleOpenApprove(e); }}
                                                         className="bg-emerald-600 hover:bg-emerald-700 text-white border-transparent"
                                                     >
                                                         Approve
@@ -591,17 +602,17 @@ export default function ManagerExpenses() {
                                                     </Button>
                                                 </div>
                                             )}
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button size="xs" variant="ghost" onClick={(ev) => { ev.stopPropagation(); handleEdit(e); }} title="Edit">
-                                                    <FaEdit />
+                                            {e.status === "Approved" && (
+                                                <Button
+                                                    size="xs"
+                                                    onClick={(ev) => { ev.stopPropagation(); handleOpenMarkPaid(e); }}
+                                                    className="bg-purple-600 hover:bg-purple-700 text-white border-transparent"
+                                                >
+                                                    Mark Paid
                                                 </Button>
-                                                <Button size="xs" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={(ev) => { ev.stopPropagation(); handleDeleteClick(e); }} title="Delete">
-                                                    <FaTrash />
-                                                </Button>
-                                            </div>
+                                            )}
                                         </td>
+                                        {/* Actions column removed as Managers cannot edit/delete employee expenses */}
                                     </tr>
                                 ))}
                             </tbody>
@@ -659,38 +670,41 @@ export default function ManagerExpenses() {
                 )
             }
 
-            {/* Edit Modal */}
-            <ExpenseFormModal
-                isOpen={!!editingExpense}
-                onClose={() => setEditingExpense(null)}
-                onSubmit={handleSave}
-                initialData={editingExpense}
-                projects={projects}
-                isSubmitting={isSaving}
-                title="Edit Expense"
-            />
 
-            {/* Delete Confirmation Modal */}
-            {deletingExpense && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                    <DeleteConfirmationModal
-                        onClose={() => setDeletingExpense(null)}
-                        onConfirm={handleConfirmDelete}
-                        itemType="Expense"
-                        itemTitle={deletingExpense.title}
-                        title="Delete Expense"
-                        message="Are you sure you want to delete this expense? This action cannot be undone."
-                        confirmText="Delete Expense"
-                        isDeleting={isDeleting}
-                    />
-                </div>
-            )}
 
             <DocumentPreviewModal
                 open={!!viewingReceipt}
                 onClose={() => setViewingReceipt(null)}
                 doc={viewingReceipt}
                 showMetadata={false}
+            />
+
+            {/* Approve Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={!!approvingExpense}
+                onClose={() => setApprovingExpense(null)}
+                onConfirm={handleConfirmApprove}
+                title="Approve Expense"
+                description="Are you sure you want to approve this expense? This will mark it ready for payment."
+                itemTitle={approvingExpense?.title}
+                itemSubtitle={`₹${approvingExpense?.amount?.toFixed?.(2) || approvingExpense?.amount} · ${approvingExpense?.employeeName || 'Unknown'}`}
+                confirmLabel="Approve"
+                variant="success"
+                isLoading={isApproving}
+            />
+
+            {/* Mark Paid Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={!!markingPaidExpense}
+                onClose={() => setMarkingPaidExpense(null)}
+                onConfirm={handleConfirmMarkPaid}
+                title="Mark as Paid"
+                description="Are you sure you want to mark this expense as paid? This confirms the reimbursement has been processed."
+                itemTitle={markingPaidExpense?.title}
+                itemSubtitle={`₹${markingPaidExpense?.amount?.toFixed?.(2) || markingPaidExpense?.amount} · ${markingPaidExpense?.employeeName || 'Unknown'}`}
+                confirmLabel="Mark Paid"
+                variant="purple"
+                isLoading={isMarkingPaid}
             />
         </div >
     );

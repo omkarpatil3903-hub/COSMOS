@@ -39,6 +39,7 @@ import {
   FaChartBar,
 } from "react-icons/fa";
 import TaskGroup from "../../components/TaskManagment/TaskGroup";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 // Circular Progress Component
 const CircularProgress = ({ percentage, size = 16, strokeWidth = 2 }) => {
@@ -79,6 +80,7 @@ const CircularProgress = ({ percentage, size = 16, strokeWidth = 2 }) => {
 export default function ClientTasks() {
   const { user, userData } = useAuthContext();
   const location = useLocation();
+  const { barColor, buttonClass, ringClass, hoverBorderClass, iconColor, selectedTextClass } = useThemeStyles();
   const uid = user?.uid || userData?.uid;
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -396,9 +398,8 @@ export default function ClientTasks() {
       );
 
       // Create organized storage path: uploads/clientId/clientName/taskName/
-      const storagePath = `uploads/${uid}/${clientName}/${taskName}/${Date.now()}_${
-        file.name
-      }`;
+      const storagePath = `uploads/${uid}/${clientName}/${taskName}/${Date.now()}_${file.name
+        }`;
       const imageRef = ref(storage, storagePath);
 
       // Upload the image
@@ -581,8 +582,8 @@ export default function ClientTasks() {
     return filteredTasks.filter((t) => {
       const dueStr = t?.dueDate
         ? (t.dueDate?.toDate
-            ? t.dueDate.toDate().toISOString().slice(0, 10)
-            : String(t.dueDate).slice(0, 10))
+          ? t.dueDate.toDate().toISOString().slice(0, 10)
+          : String(t.dueDate).slice(0, 10))
         : "";
       return norm(t.status) !== "done" && dueStr && todayStr && dueStr === todayStr;
     });
@@ -612,13 +613,12 @@ export default function ClientTasks() {
         </h4>
         {task.priority && (
           <span
-            className={`ml-2 px-2 py-1 text-xs font-medium rounded ${
-              task.priority === "High"
+            className={`ml-2 px-2 py-1 text-xs font-medium rounded ${task.priority === "High"
                 ? "bg-red-100 text-red-800"
                 : task.priority === "Medium"
-                ? "bg-yellow-100 text-yellow-800"
-                : "bg-green-100 text-green-800"
-            }`}
+                  ? "bg-yellow-100 text-yellow-800"
+                  : "bg-green-100 text-green-800"
+              }`}
           >
             {task.priority}
           </span>
@@ -651,13 +651,12 @@ export default function ClientTasks() {
         )}
         <div className="flex items-center gap-2">
           <span
-            className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-              task.dueDate &&
-              task.status !== "Done" &&
-              task.dueDate < new Date().toISOString().slice(0, 10)
+            className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium ${task.dueDate &&
+                task.status !== "Done" &&
+                task.dueDate < new Date().toISOString().slice(0, 10)
                 ? "bg-red-100 text-red-700"
                 : "bg-blue-100 text-blue-700"
-            }`}
+              }`}
           >
             <FaCalendarAlt className="text-current" />
             <span className="font-medium">Due:</span>
@@ -690,11 +689,11 @@ export default function ClientTasks() {
             <span className="text-xs font-medium text-gray-600">Progress:</span>
             <div className="flex-1 bg-gray-200 rounded-full h-2">
               <div
-                className="bg-indigo-600 h-2 rounded-full transition-all"
+                className={`${barColor} h-2 rounded-full transition-all`}
                 style={{ width: `${task.progressPercent || 0}%` }}
               />
             </div>
-            <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">
+            <span className={`text-xs font-semibold ${selectedTextClass} whitespace-nowrap`}>
               {task.progressPercent || 0}%
             </span>
             <input
@@ -716,7 +715,7 @@ export default function ClientTasks() {
             />
             <button
               onClick={() => commitProgress(task.id)}
-              className="ml-2 px-2 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-700"
+              className={`ml-2 px-2 py-1 text-xs rounded ${buttonClass}`}
             >
               Update
             </button>
@@ -727,7 +726,7 @@ export default function ClientTasks() {
       <select
         value={task.status || (effectiveStatuses[0] || "To-Do")}
         onChange={(e) => handleStatusChange(task.id, e.target.value)}
-        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className={`w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none ${ringClass}`}
       >
         {effectiveStatuses.map((s) => (
           <option key={s} value={s}>{s}</option>
@@ -794,7 +793,7 @@ export default function ClientTasks() {
               placeholder="Search tasks by title or description..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none ${ringClass}`}
               spellCheck="true"
             />
           </div>
@@ -812,7 +811,7 @@ export default function ClientTasks() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                className={`px-3 py-2 border border-gray-300 rounded-lg focus:outline-none ${ringClass} text-sm`}
               >
                 <option value="All Status">All Status</option>
                 {effectiveStatuses.map((s) => (
@@ -823,7 +822,7 @@ export default function ClientTasks() {
               <select
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                className={`px-3 py-2 border border-gray-300 rounded-lg focus:outline-none ${ringClass} text-sm`}
               >
                 <option value="All Priority">All Priority</option>
                 <option value="High">High</option>
@@ -834,7 +833,7 @@ export default function ClientTasks() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                className={`px-3 py-2 border border-gray-300 rounded-lg focus:outline-none ${ringClass} text-sm`}
               >
                 <option value="Sort by Due Date">Sort by Due Date</option>
                 <option value="Sort by Priority">Sort by Priority</option>
@@ -862,22 +861,20 @@ export default function ClientTasks() {
               <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 ml-auto">
                 <button
                   onClick={() => setView("list")}
-                  className={`p-2 rounded transition-colors ${
-                    view === "list"
-                      ? "bg-white text-indigo-600 shadow"
+                  className={`p-2 rounded transition-colors ${view === "list"
+                      ? `bg-white ${iconColor} shadow`
                       : "text-gray-600 hover:text-gray-900"
-                  }`}
+                    }`}
                   title="List View"
                 >
                   <FaList className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setView("board")}
-                  className={`p-2 rounded transition-colors ${
-                    view === "board"
-                      ? "bg-white text-indigo-600 shadow"
+                  className={`p-2 rounded transition-colors ${view === "board"
+                      ? `bg-white ${iconColor} shadow`
                       : "text-gray-600 hover:text-gray-900"
-                  }`}
+                    }`}
                   title="Kanban View"
                 >
                   <FaTh className="w-4 h-4" />
@@ -933,13 +930,12 @@ export default function ClientTasks() {
                     {/* Priority Badge */}
                     {task.priority && (
                       <span
-                        className={`px-2 py-1 text-xs font-medium rounded ${
-                          task.priority === "High"
+                        className={`px-2 py-1 text-xs font-medium rounded ${task.priority === "High"
                             ? "bg-red-100 text-red-700"
                             : task.priority === "Medium"
-                            ? "bg-orange-100 text-orange-700"
-                            : "bg-green-100 text-green-700"
-                        }`}
+                              ? "bg-orange-100 text-orange-700"
+                              : "bg-green-100 text-green-700"
+                          }`}
                       >
                         {task.priority}
                       </span>
@@ -1057,13 +1053,12 @@ export default function ClientTasks() {
                     {/* Priority Badge */}
                     {task.priority && (
                       <span
-                        className={`px-2 py-1 text-xs font-medium rounded ${
-                          task.priority === "High"
+                        className={`px-2 py-1 text-xs font-medium rounded ${task.priority === "High"
                             ? "bg-red-100 text-red-700"
                             : task.priority === "Medium"
-                            ? "bg-orange-100 text-orange-700"
-                            : "bg-green-100 text-green-700"
-                        }`}
+                              ? "bg-orange-100 text-orange-700"
+                              : "bg-green-100 text-green-700"
+                          }`}
                       >
                         {task.priority}
                       </span>
@@ -1225,13 +1220,12 @@ export default function ClientTasks() {
                     {/* Priority Badge */}
                     {task.priority && (
                       <span
-                        className={`px-2 py-1 text-xs font-medium rounded ${
-                          task.priority === "High"
+                        className={`px-2 py-1 text-xs font-medium rounded ${task.priority === "High"
                             ? "bg-red-100 text-red-700"
                             : task.priority === "Medium"
-                            ? "bg-orange-100 text-orange-700"
-                            : "bg-green-100 text-green-700"
-                        }`}
+                              ? "bg-orange-100 text-orange-700"
+                              : "bg-green-100 text-green-700"
+                          }`}
                       >
                         {task.priority}
                       </span>
@@ -1319,7 +1313,7 @@ export default function ClientTasks() {
                       onChange={(e) =>
                         handleStatusChange(task.id, e.target.value)
                       }
-                      className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className={`w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none ${ringClass}`}
                     >
                       {effectiveStatuses.map((s) => (
                         <option key={s} value={s}>{s}</option>
@@ -1386,255 +1380,18 @@ export default function ClientTasks() {
             );
           })}
           {false && (
-          <div className="space-y-6">
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-800">
-                  Active Tasks ({activeTasks.length})
-                </h3>
-              </div>
-              <div className="space-y-3">
-                {activeTasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:shadow-sm transition-all bg-white relative"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 pr-32 min-w-0">
-                        <div className="flex items-start gap-3 mb-2">
-                          <h4 className="font-semibold text-gray-900 flex-1 min-w-0">
-                            <span
-                              className="block truncate"
-                              title={
-                                task.title || task.taskName || "Untitled Task"
-                              }
-                            >
-                              {task.title || task.taskName || "Untitled Task"}
-                            </span>
-                          </h4>
-                        </div>
-
-                        {/* Right corner badges */}
-                        <div className="absolute top-4 right-4 flex flex-wrap items-center justify-end gap-2 max-w-[280px]">
-                          {/* Priority */}
-                          {task.priority && (
-                            <span
-                              className={`px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${
-                                task.priority === "High"
-                                  ? "bg-red-100 text-red-800 border border-red-200"
-                                  : task.priority === "Medium"
-                                  ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                                  : "bg-green-100 text-green-800 border border-green-200"
-                              }`}
-                            >
-                              <FaFlag className="text-xs" />
-                              {task.priority}
-                            </span>
-                          )}
-
-                          {/* Status */}
-                          {task.status === "In Progress" ? (
-                            <span className="px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 bg-blue-100 text-blue-800 border border-blue-200">
-                              <CircularProgress
-                                percentage={task.progressPercent || 0}
-                                size={12}
-                                strokeWidth={2}
-                              />
-                              In Progress
-                            </span>
-                          ) : task.status === "Done" ? (
-                            <span className="px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 bg-green-100 text-green-800 border border-green-200">
-                              <FaCheck className="text-xs" />
-                              Done
-                            </span>
-                          ) : (
-                            <span className="px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 bg-gray-100 text-gray-800 border border-gray-200">
-                              <FaClock className="text-xs" />
-                              To-Do
-                            </span>
-                          )}
-
-                          {/* Due Date */}
-                          {task.dueDate && (
-                            <span
-                              className={`px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${
-                                task.dueDate &&
-                                task.status !== "Done" &&
-                                task.dueDate <
-                                  new Date().toISOString().slice(0, 10)
-                                  ? "bg-red-100 text-red-800 border border-red-200"
-                                  : "bg-red-100 text-red-800 border border-red-200"
-                              }`}
-                            >
-                              <FaCalendarAlt className="text-xs" />
-                              Due: {new Date(task.dueDate).toLocaleDateString()}
-                            </span>
-                          )}
-
-                          {/* Assigned Date */}
-                          {task.assignedDate && (
-                            <span className="px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-200">
-                              <FaCalendarAlt className="text-xs" />
-                              Assigned:{" "}
-                              {new Date(task.assignedDate).toLocaleDateString()}
-                            </span>
-                          )}
-
-                          {/* Overdue */}
-                          {task.dueDate &&
-                            task.status !== "Done" &&
-                            task.dueDate <
-                              new Date().toISOString().slice(0, 10) && (
-                              <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700 border border-red-200">
-                                Overdue
-                              </span>
-                            )}
-                        </div>
-
-                        <p
-                          className="text-sm text-gray-600 mb-3 line-clamp-2"
-                          title={task.description || "No description"}
-                        >
-                          {task.description || "No description"}
-                        </p>
-
-                        <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
-                          {task.dueDate && (
-                            <span className="flex items-center">
-                              <FaClock className="mr-1" />
-                              Due: {new Date(task.dueDate).toLocaleDateString()}
-                            </span>
-                          )}
-                          {task.projectName && (
-                            <span className="text-indigo-600">
-                              📁 {task.projectName}
-                            </span>
-                          )}
-                        </div>
-
-                        {task.status === "In Progress" && (
-                          <>
-                            <div className="mt-2 flex items-center gap-2">
-                              <span className="text-xs font-medium text-gray-600">
-                                Progress:
-                              </span>
-                              <div className="flex-1 max-w-xs bg-gray-200 rounded-full h-2">
-                                <div
-                                  className="bg-indigo-600 h-2 rounded-full transition-all"
-                                  style={{
-                                    width: `${task.progressPercent || 0}%`,
-                                  }}
-                                />
-                              </div>
-                              <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">
-                                {task.progressPercent || 0}%
-                              </span>
-                            </div>
-                            <div className="mt-2 flex items-center gap-2">
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="1"
-                                value={
-                                  progressDrafts[task.id] ??
-                                  (task.progressPercent || 0)
-                                }
-                                onChange={(e) =>
-                                  setProgressDrafts((prev) => ({
-                                    ...prev,
-                                    [task.id]: e.target.value,
-                                  }))
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter")
-                                    commitProgress(task.id);
-                                }}
-                                className="w-16 px-2 py-1 text-xs border border-gray-300 rounded"
-                              />
-                              <button
-                                onClick={() => commitProgress(task.id)}
-                                className="px-2 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                              >
-                                Update
-                              </button>
-                            </div>
-                          </>
-                        )}
-
-                        {/* Upload Image Icon */}
-                        <div className="mt-3 flex items-center justify-between">
-                          <button
-                            onClick={() => handleOpenImageUpload(task.id)}
-                            className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
-                            title="Upload Image"
-                          >
-                            <FaUpload className="text-sm" />
-                          </button>
-                          {task.images && task.images.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {task.images.slice(0, 4).map((img, index) => (
-                                <a
-                                  key={index}
-                                  href={img.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-blue-600 hover:underline bg-blue-50 px-2 py-1 rounded truncate max-w-[140px]"
-                                  title={img.name}
-                                >
-                                  🖼️ {img.name.substring(0, 18)}...
-                                </a>
-                              ))}
-                              {task.images.length > 4 && (
-                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                  +{task.images.length - 4} more
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-3">
-                          <label className="text-xs font-medium text-gray-700">
-                            Status:
-                          </label>
-                          <select
-                            value={task.status || (effectiveStatuses[0] || "To-Do")}
-                            onChange={(e) =>
-                              handleStatusChange(task.id, e.target.value)
-                            }
-                            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          >
-                            {effectiveStatuses.map((s) => (
-                              <option key={s} value={s}>{s}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-800">
-                  Completed ({completedTasks.length})
-                </h3>
-                <button
-                  onClick={() => setShowCompleted((s) => !s)}
-                  className="text-xs text-indigo-600 hover:text-indigo-700"
-                >
-                  {showCompleted ? "Hide" : "Show"}
-                </button>
-              </div>
-              {showCompleted && (
+            <div className="space-y-6">
+              <div>
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-gray-800">
+                    Active Tasks ({activeTasks.length})
+                  </h3>
+                </div>
                 <div className="space-y-3">
-                  {completedTasks.map((task) => (
+                  {activeTasks.map((task) => (
                     <div
                       key={task.id}
-                      className="p-4 border border-gray-200 rounded-lg bg-white relative"
+                      className={`p-4 border border-gray-200 rounded-lg ${hoverBorderClass} hover:shadow-sm transition-all bg-white relative`}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 pr-32 min-w-0">
@@ -1656,31 +1413,53 @@ export default function ClientTasks() {
                             {/* Priority */}
                             {task.priority && (
                               <span
-                                className={`px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${
-                                  task.priority === "High"
+                                className={`px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${task.priority === "High"
                                     ? "bg-red-100 text-red-800 border border-red-200"
                                     : task.priority === "Medium"
-                                    ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                                    : "bg-green-100 text-green-800 border border-green-200"
-                                }`}
+                                      ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                                      : "bg-green-100 text-green-800 border border-green-200"
+                                  }`}
                               >
                                 <FaFlag className="text-xs" />
                                 {task.priority}
                               </span>
                             )}
 
-                            {/* Status - Done */}
-                            <span className="px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 bg-green-100 text-green-800 border border-green-200">
-                              <FaCheck className="text-xs" />
-                              Done
-                            </span>
+                            {/* Status */}
+                            {task.status === "In Progress" ? (
+                              <span className="px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 bg-blue-100 text-blue-800 border border-blue-200">
+                                <CircularProgress
+                                  percentage={task.progressPercent || 0}
+                                  size={12}
+                                  strokeWidth={2}
+                                />
+                                In Progress
+                              </span>
+                            ) : task.status === "Done" ? (
+                              <span className="px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 bg-green-100 text-green-800 border border-green-200">
+                                <FaCheck className="text-xs" />
+                                Done
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 bg-gray-100 text-gray-800 border border-gray-200">
+                                <FaClock className="text-xs" />
+                                To-Do
+                              </span>
+                            )}
 
                             {/* Due Date */}
                             {task.dueDate && (
-                              <span className="px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 bg-red-100 text-red-800 border border-red-200">
+                              <span
+                                className={`px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${task.dueDate &&
+                                    task.status !== "Done" &&
+                                    task.dueDate <
+                                    new Date().toISOString().slice(0, 10)
+                                    ? "bg-red-100 text-red-800 border border-red-200"
+                                    : "bg-red-100 text-red-800 border border-red-200"
+                                  }`}
+                              >
                                 <FaCalendarAlt className="text-xs" />
-                                Due:{" "}
-                                {new Date(task.dueDate).toLocaleDateString()}
+                                Due: {new Date(task.dueDate).toLocaleDateString()}
                               </span>
                             )}
 
@@ -1689,55 +1468,267 @@ export default function ClientTasks() {
                               <span className="px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-200">
                                 <FaCalendarAlt className="text-xs" />
                                 Assigned:{" "}
-                                {new Date(
-                                  task.assignedDate
-                                ).toLocaleDateString()}
+                                {new Date(task.assignedDate).toLocaleDateString()}
                               </span>
                             )}
+
+                            {/* Overdue */}
+                            {task.dueDate &&
+                              task.status !== "Done" &&
+                              task.dueDate <
+                              new Date().toISOString().slice(0, 10) && (
+                                <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700 border border-red-200">
+                                  Overdue
+                                </span>
+                              )}
                           </div>
 
                           <p
-                            className="text-sm text-gray-600 mb-2 line-clamp-2"
+                            className="text-sm text-gray-600 mb-3 line-clamp-2"
                             title={task.description || "No description"}
                           >
                             {task.description || "No description"}
                           </p>
-                          {task.completionComment && (
-                            <p
-                              className="text-xs italic text-indigo-700 mb-1 line-clamp-1"
-                              title={task.completionComment}
-                            >
-                              💬 {task.completionComment}
-                            </p>
-                          )}
-                          <div className="text-xs text-gray-500">
-                            Completed on{" "}
-                            {(
-                              task.completedAt?.toDate?.() ||
-                              new Date(task.completedAt)
-                            ).toLocaleDateString()}
+
+                          <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+                            {task.dueDate && (
+                              <span className="flex items-center">
+                                <FaClock className="mr-1" />
+                                Due: {new Date(task.dueDate).toLocaleDateString()}
+                              </span>
+                            )}
+                            {task.projectName && (
+                              <span className="text-indigo-600">
+                                📁 {task.projectName}
+                              </span>
+                            )}
                           </div>
-                          <div className="mt-2">
+
+                          {task.status === "In Progress" && (
+                            <>
+                              <div className="mt-2 flex items-center gap-2">
+                                <span className="text-xs font-medium text-gray-600">
+                                  Progress:
+                                </span>
+                                <div className="flex-1 max-w-xs bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className="bg-indigo-600 h-2 rounded-full transition-all"
+                                    style={{
+                                      width: `${task.progressPercent || 0}%`,
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-xs font-semibold text-indigo-600 whitespace-nowrap">
+                                  {task.progressPercent || 0}%
+                                </span>
+                              </div>
+                              <div className="mt-2 flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="1"
+                                  value={
+                                    progressDrafts[task.id] ??
+                                    (task.progressPercent || 0)
+                                  }
+                                  onChange={(e) =>
+                                    setProgressDrafts((prev) => ({
+                                      ...prev,
+                                      [task.id]: e.target.value,
+                                    }))
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter")
+                                      commitProgress(task.id);
+                                  }}
+                                  className="w-16 px-2 py-1 text-xs border border-gray-300 rounded"
+                                />
+                                <button
+                                  onClick={() => commitProgress(task.id)}
+                                  className="px-2 py-1 text-xs rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                                >
+                                  Update
+                                </button>
+                              </div>
+                            </>
+                          )}
+
+                          {/* Upload Image Icon */}
+                          <div className="mt-3 flex items-center justify-between">
                             <button
-                              onClick={() => handleViewTaskDetails(task)}
-                              className="rounded-md bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-200"
+                              onClick={() => handleOpenImageUpload(task.id)}
+                              className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors"
+                              title="Upload Image"
                             >
-                              View Task
+                              <FaUpload className="text-sm" />
                             </button>
+                            {task.images && task.images.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {task.images.slice(0, 4).map((img, index) => (
+                                  <a
+                                    key={index}
+                                    href={img.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 hover:underline bg-blue-50 px-2 py-1 rounded truncate max-w-[140px]"
+                                    title={img.name}
+                                  >
+                                    🖼️ {img.name.substring(0, 18)}...
+                                  </a>
+                                ))}
+                                {task.images.length > 4 && (
+                                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                    +{task.images.length - 4} more
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 mt-3">
+                            <label className="text-xs font-medium text-gray-700">
+                              Status:
+                            </label>
+                            <select
+                              value={task.status || (effectiveStatuses[0] || "To-Do")}
+                              onChange={(e) =>
+                                handleStatusChange(task.id, e.target.value)
+                              }
+                              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                              {effectiveStatuses.map((s) => (
+                                <option key={s} value={s}>{s}</option>
+                              ))}
+                            </select>
                           </div>
                         </div>
                       </div>
                     </div>
                   ))}
-                  {completedTasks.length === 0 && (
-                    <div className="text-center text-gray-500 text-sm py-4">
-                      No completed tasks
-                    </div>
-                  )}
                 </div>
-              )}
+              </div>
+
+              <div>
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-gray-800">
+                    Completed ({completedTasks.length})
+                  </h3>
+                  <button
+                    onClick={() => setShowCompleted((s) => !s)}
+                    className="text-xs text-indigo-600 hover:text-indigo-700"
+                  >
+                    {showCompleted ? "Hide" : "Show"}
+                  </button>
+                </div>
+                {showCompleted && (
+                  <div className="space-y-3">
+                    {completedTasks.map((task) => (
+                      <div
+                        key={task.id}
+                        className="p-4 border border-gray-200 rounded-lg bg-white relative"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 pr-32 min-w-0">
+                            <div className="flex items-start gap-3 mb-2">
+                              <h4 className="font-semibold text-gray-900 flex-1 min-w-0">
+                                <span
+                                  className="block truncate"
+                                  title={
+                                    task.title || task.taskName || "Untitled Task"
+                                  }
+                                >
+                                  {task.title || task.taskName || "Untitled Task"}
+                                </span>
+                              </h4>
+                            </div>
+
+                            {/* Right corner badges */}
+                            <div className="absolute top-4 right-4 flex flex-wrap items-center justify-end gap-2 max-w-[280px]">
+                              {/* Priority */}
+                              {task.priority && (
+                                <span
+                                  className={`px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${task.priority === "High"
+                                      ? "bg-red-100 text-red-800 border border-red-200"
+                                      : task.priority === "Medium"
+                                        ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                                        : "bg-green-100 text-green-800 border border-green-200"
+                                    }`}
+                                >
+                                  <FaFlag className="text-xs" />
+                                  {task.priority}
+                                </span>
+                              )}
+
+                              {/* Status - Done */}
+                              <span className="px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 bg-green-100 text-green-800 border border-green-200">
+                                <FaCheck className="text-xs" />
+                                Done
+                              </span>
+
+                              {/* Due Date */}
+                              {task.dueDate && (
+                                <span className="px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 bg-red-100 text-red-800 border border-red-200">
+                                  <FaCalendarAlt className="text-xs" />
+                                  Due:{" "}
+                                  {new Date(task.dueDate).toLocaleDateString()}
+                                </span>
+                              )}
+
+                              {/* Assigned Date */}
+                              {task.assignedDate && (
+                                <span className="px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 bg-purple-100 text-purple-800 border border-purple-200">
+                                  <FaCalendarAlt className="text-xs" />
+                                  Assigned:{" "}
+                                  {new Date(
+                                    task.assignedDate
+                                  ).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+
+                            <p
+                              className="text-sm text-gray-600 mb-2 line-clamp-2"
+                              title={task.description || "No description"}
+                            >
+                              {task.description || "No description"}
+                            </p>
+                            {task.completionComment && (
+                              <p
+                                className="text-xs italic text-indigo-700 mb-1 line-clamp-1"
+                                title={task.completionComment}
+                              >
+                                💬 {task.completionComment}
+                              </p>
+                            )}
+                            <div className="text-xs text-gray-500">
+                              Completed on{" "}
+                              {(
+                                task.completedAt?.toDate?.() ||
+                                new Date(task.completedAt)
+                              ).toLocaleDateString()}
+                            </div>
+                            <div className="mt-2">
+                              <button
+                                onClick={() => handleViewTaskDetails(task)}
+                                className="rounded-md bg-indigo-100 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-200"
+                              >
+                                View Task
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {completedTasks.length === 0 && (
+                      <div className="text-center text-gray-500 text-sm py-4">
+                        No completed tasks
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
           )}
         </Card>
       )}
@@ -1785,25 +1776,23 @@ export default function ClientTasks() {
                     </h3>
                     <div className="mt-1 flex items-center gap-2">
                       <span
-                        className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${
-                          selectedTaskForDetails.status === "Done"
+                        className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${selectedTaskForDetails.status === "Done"
                             ? "bg-green-100 text-green-800"
                             : selectedTaskForDetails.status === "In Progress"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
                       >
                         <span>{selectedTaskForDetails.status}</span>
                       </span>
                       {selectedTaskForDetails.priority && (
                         <span
-                          className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${
-                            selectedTaskForDetails.priority === "High"
+                          className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${selectedTaskForDetails.priority === "High"
                               ? "bg-red-100 text-red-800"
                               : selectedTaskForDetails.priority === "Medium"
-                              ? "bg-orange-100 text-orange-800"
-                              : "bg-green-100 text-green-800"
-                          }`}
+                                ? "bg-orange-100 text-orange-800"
+                                : "bg-green-100 text-green-800"
+                            }`}
                         >
                           <span>{selectedTaskForDetails.priority}</span>
                         </span>
@@ -1868,8 +1857,8 @@ export default function ClientTasks() {
                   <p className="mt-1 text-gray-900">
                     {selectedTaskForDetails.assignedDate
                       ? new Date(
-                          selectedTaskForDetails.assignedDate
-                        ).toLocaleDateString()
+                        selectedTaskForDetails.assignedDate
+                      ).toLocaleDateString()
                       : "—"}
                   </p>
                 </div>
@@ -1881,8 +1870,8 @@ export default function ClientTasks() {
                   <p className="mt-1 text-gray-900">
                     {selectedTaskForDetails.dueDate
                       ? new Date(
-                          selectedTaskForDetails.dueDate
-                        ).toLocaleDateString()
+                        selectedTaskForDetails.dueDate
+                      ).toLocaleDateString()
                       : "No due date"}
                   </p>
                 </div>
@@ -1896,9 +1885,9 @@ export default function ClientTasks() {
                   <p className="mt-1 text-gray-900">
                     {selectedTaskForDetails.completedAt
                       ? new Date(
-                          selectedTaskForDetails.completedAt.toDate?.() ||
-                            selectedTaskForDetails.completedAt
-                        ).toLocaleDateString()
+                        selectedTaskForDetails.completedAt.toDate?.() ||
+                        selectedTaskForDetails.completedAt
+                      ).toLocaleDateString()
                       : "—"}
                   </p>
                 </div>
