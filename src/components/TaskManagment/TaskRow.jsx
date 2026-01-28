@@ -98,11 +98,19 @@ const TaskRow = ({
     return (
         <div
             onClick={() => onView(task)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onView(task);
+                }
+            }}
             className={`group grid ${showActions
                 ? "grid-cols-[30px_1fr_180px_100px_100px_80px_110px_80px]"
                 : "grid-cols-[30px_1fr_180px_100px_100px_80px_110px]"
                 } items-center gap-4 border-b border-gray-100 [.dark_&]:border-white/10 py-3 px-4 hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors cursor-pointer text-sm ${isSelected ? "bg-indigo-50 [.dark_&]:bg-indigo-900/20" : ""
-                }`}
+                } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500`}
         >
             {/* Col 1: Selection Checkbox */}
             <div onClick={(e) => e.stopPropagation()}>

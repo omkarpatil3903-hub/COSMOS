@@ -65,7 +65,20 @@ function Card({ title, icon, children, actions, className = "", tone = "surface"
   return (
     <div
       {...props}
-      className={`${toneClass} rounded-xl border border-subtle shadow-soft transition-colors duration-200 max-w-full overflow-hidden ${className}`}
+      role={props.onClick ? "button" : undefined}
+      tabIndex={props.onClick ? 0 : undefined}
+      onKeyDown={
+        props.onClick
+          ? (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              props.onClick(e);
+            }
+          }
+          : undefined
+      }
+      className={`${toneClass} rounded-xl border border-subtle shadow-soft transition-colors duration-200 max-w-full overflow-hidden ${props.onClick ? "cursor-pointer focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none" : ""
+        } ${className}`}
     >
       {/* Card Header */}
       {(title || icon || actions) && (

@@ -125,8 +125,16 @@ const TaskGroup = ({
             >
                 <div className="flex items-center w-full">
                     <div
-                        className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 w-full"
+                        className="flex items-center gap-2 cursor-pointer select-none px-3 py-2 w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
                         onClick={() => setIsOpen(!isOpen)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setIsOpen(!isOpen);
+                            }
+                        }}
                     >
                         <span className="text-gray-400 text-xs">
                             {isOpen ? <FaCaretDown /> : <FaCaretRight />}
@@ -325,7 +333,15 @@ const TaskGroup = ({
                     {onOpenCreate && (
                         <div
                             onClick={onOpenCreate}
-                            className="flex items-center gap-2 px-10 py-2 text-sm text-gray-400 [.dark_&]:text-gray-500 hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 hover:bg-indigo-50 [.dark_&]:hover:bg-indigo-900/20 cursor-pointer transition-colors border-t border-gray-50 [.dark_&]:border-white/5"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    onOpenCreate();
+                                }
+                            }}
+                            className="flex items-center gap-2 px-10 py-2 text-sm text-gray-400 [.dark_&]:text-gray-500 hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 hover:bg-indigo-50 [.dark_&]:hover:bg-indigo-900/20 cursor-pointer transition-colors border-t border-gray-50 [.dark_&]:border-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
                         >
                             <FaPlus className="text-xs" />
                             <span>New Task</span>

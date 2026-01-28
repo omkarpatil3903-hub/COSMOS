@@ -453,16 +453,21 @@ function MainLayout() {
         <div className="flex items-center justify-between gap-4 shrink-0">
           {!isCollapsed && (
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="h-14 w-14 rounded-full bg-gradient-to-br from-teal-400 to-teal-500 p-[2px] shadow-lg">
-                  <div className="h-full w-full rounded-full bg-white p-1">
-                    <img
-                      src="/cosmos logo.png"
-                      alt="Cosmos Logo"
-                      className="h-full w-full object-cover rounded-full"
-                    />
+              <div className="flex flex-col items-center">
+                <div className="relative">
+                  <div className="h-14 w-14 rounded-full bg-gradient-to-br from-teal-400 to-teal-500 p-[2px] shadow-lg">
+                    <div className="h-full w-full rounded-full bg-white p-1">
+                      <img
+                        src="/cosmos logo.png"
+                        alt="Cosmos Logo"
+                        className="h-full w-full object-cover rounded-full"
+                      />
+                    </div>
                   </div>
                 </div>
+                <p className="mt-1 text-[10px] text-content-tertiary font-medium">
+                  Ver. {version}
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium text-content-tertiary">
@@ -478,7 +483,7 @@ function MainLayout() {
           <button
             type="button"
             onClick={handleToggleSidebar}
-            className="hidden items-center justify-center rounded-full border border-subtle p-2 text-content-secondary transition hover:text-content-primary lg:flex"
+            className="hidden items-center justify-center rounded-full border border-subtle p-2 text-content-secondary transition hover:text-content-primary cursor-pointer lg:flex"
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <FaChevronLeft
@@ -491,7 +496,7 @@ function MainLayout() {
           <button
             type="button"
             onClick={handleToggleMobileNav}
-            className="flex items-center justify-center rounded-full border border-subtle p-2 text-content-secondary transition hover:text-content-primary lg:hidden"
+            className="flex items-center justify-center rounded-full border border-subtle p-2 text-content-secondary transition hover:text-content-primary cursor-pointer lg:hidden"
             aria-label="Close navigation"
           >
             <FaTimes className="h-4 w-4" aria-hidden="true" />
@@ -500,7 +505,7 @@ function MainLayout() {
 
         {/* Panel Switcher for role hierarchy access */}
         <div className="mt-4 shrink-0">
-          <PanelSwitcher isCollapsed={isCollapsed} />
+          <PanelSwitcher isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
         </div>
 
         <nav className="mt-4 flex flex-1 flex-col gap-1 overflow-y-auto scrollbar-thin">
@@ -549,7 +554,7 @@ function MainLayout() {
         <div className="mt-auto pt-8 shrink-0">
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100 cursor-pointer"
             title={isCollapsed ? "Logout" : ""}
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
@@ -558,12 +563,7 @@ function MainLayout() {
             {!isCollapsed && <span>Logout</span>}
           </button>
 
-          {/* Version Display */}
-          {!isCollapsed && (
-            <div className="mt-1 px-3 mb-[-10px] text-xs text-content-tertiary text-center">
-              COSMOS | Version {version}
-            </div>
-          )}
+
         </div>
       </aside>
 
@@ -587,7 +587,7 @@ function MainLayout() {
             <button
               type="button"
               onClick={handleToggleMobileNav}
-              className="flex items-center gap-2 rounded-full border border-subtle px-3 py-2 text-sm font-medium text-content-secondary transition hover:text-content-primary"
+              className="flex items-center gap-2 rounded-full border border-subtle px-3 py-2 text-sm font-medium text-content-secondary transition hover:text-content-primary cursor-pointer"
               aria-label="Open navigation"
             >
               <FaBars className="h-4 w-4" aria-hidden="true" />

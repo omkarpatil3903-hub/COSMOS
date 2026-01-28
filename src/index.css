@@ -138,6 +138,7 @@
         -webkit-font-smoothing: antialiased;
         text-rendering: optimizeLegibility;
         font-feature-settings: "cv11", "ss01";
+        cursor: default;
     }
 
     h1,
@@ -161,6 +162,12 @@
     a:hover,
     a:focus-visible {
         color: var(--color-brand-700);
+    }
+
+    button,
+    select,
+    option {
+        cursor: pointer;
     }
 
     button:focus-visible,
