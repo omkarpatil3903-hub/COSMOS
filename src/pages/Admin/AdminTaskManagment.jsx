@@ -84,7 +84,7 @@ const tsToISO = (v) => {
 
 function TasksManagement() {
   const { user } = useAuthContext();
-  const { iconColor, buttonClass } = useThemeStyles();
+  const { iconColor, buttonClass, barColor, gradientClass } = useThemeStyles();
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
@@ -1366,7 +1366,24 @@ function TasksManagement() {
   const counts = useMemo(() => {
     const c = { "To-Do": 0, "In Progress": 0, Done: 0 };
     filtered.forEach((t) => {
-      if (c[t.status] !== undefined) c[t.status] += 1;
+      const x = String(t.status || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (x === "done" || x === "completed" || x === "complete") {
+        c.Done += 1;
+      } else if (
+        x === "inprogress" ||
+        x === "inreview" ||
+        x === "review" ||
+        x === "qa" ||
+        x === "testing" ||
+        x === "verified" ||
+        x.includes("progress")
+      ) {
+        c["In Progress"] += 1;
+      } else {
+        // Default all other statuses (Backlog, To-Do, Open, custom steps) to To-Do
+        // or check explicitly if you prefer strictness, but for KPIs catching all is usually better
+        c["To-Do"] += 1;
+      }
     });
     return c;
   }, [filtered]);
@@ -1382,9 +1399,14 @@ function TasksManagement() {
   // Calculate global overdue tasks (ignoring current filters) for the persistent banner
   const globalOverdueTasks = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
+    const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const isDone = (s) => {
+      const n = norm(s);
+      return n === "done" || n === "completed" || n === "complete";
+    };
     return tasks.filter(
       (t) =>
-        !t.archived && t.dueDate && t.dueDate < today && t.status !== "Done"
+        !t.archived && t.dueDate && t.dueDate < today && !isDone(t.status)
     );
   }, [tasks]);
 
@@ -1943,7 +1965,7 @@ function TasksManagement() {
               </div>
               <div className="h-3 w-full overflow-hidden rounded-full border border-subtle bg-surface">
                 <div
-                  className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-500"
+                  className={`h-full bg-gradient-to-r ${gradientClass} transition-all duration-500`}
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
@@ -1958,7 +1980,7 @@ function TasksManagement() {
           {/* Filters Section */}
           <div className="border-b border-gray-100 pb-4 mb-4">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1 h-5 bg-indigo-600 rounded-full"></div>
+              <div className={`w-1 h-5 ${barColor} rounded-full`}></div>
               <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
                 Filters
               </h3>

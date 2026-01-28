@@ -105,8 +105,7 @@ import {
 import toast from "react-hot-toast";
 import { EXPENSE_CATEGORIES, getStatusColorClass } from "../../config/expenseConfig";
 import ExpenseDetailModal from "./ExpenseDetailModal";
-import ExpenseFormModal from "./ExpenseFormModal";
-import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
+import ConfirmationModal from "../../components/ConfirmationModal";
 import DocumentPreviewModal from "../../components/documents/DocumentPreviewModal";
 
 
@@ -134,11 +133,17 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
 
     const [projects, setProjects] = useState([]);
 
-    // Edit/Delete State
-    const [editingExpense, setEditingExpense] = useState(null);
-    const [isSaving, setIsSaving] = useState(false);
-    const [deletingExpense, setDeletingExpense] = useState(null);
-    const [isDeleting, setIsDeleting] = useState(false);
+
+
+    // Confirmation modal states
+    const [approvingExpense, setApprovingExpense] = useState(null);
+    const [isApproving, setIsApproving] = useState(false);
+    const [markingPaidExpense, setMarkingPaidExpense] = useState(null);
+    const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+    const [showBulkApproveModal, setShowBulkApproveModal] = useState(false);
+    const [isBulkApproving, setIsBulkApproving] = useState(false);
+    const [showBulkPayModal, setShowBulkPayModal] = useState(false);
+    const [isBulkPaying, setIsBulkPaying] = useState(false);
 
     // Fetch all projects for the dropdown
     useEffect(() => {
@@ -197,10 +202,11 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
             );
         }
 
-        if (fromDate && !activeStatFilter) {
+        // Apply date filters (work alongside stat filters)
+        if (fromDate) {
             result = result.filter((e) => e.date && e.date >= fromDate);
         }
-        if (toDate && !activeStatFilter) {
+        if (toDate) {
             result = result.filter((e) => e.date && e.date <= toDate);
         }
 
@@ -252,13 +258,24 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
         return { total, submitted, approved, paid, approvedAmount, paidAmount };
     }, [expenses]);
 
-    const handleApprove = async (id) => {
+    // Open approve confirmation modal
+    const handleOpenApprove = (expense) => {
+        setApprovingExpense(expense);
+    };
+
+    // Confirm single approve
+    const handleConfirmApprove = async () => {
+        if (!approvingExpense) return;
+        setIsApproving(true);
         try {
-            await approveExpense(id, { uid: user?.uid, name: userData?.name, email: user?.email });
+            await approveExpense(approvingExpense.id, { uid: user?.uid, name: userData?.name, email: user?.email });
             toast.success("Expense approved");
+            setApprovingExpense(null);
         } catch (err) {
             console.error("Failed to approve expense", err);
             toast.error("Failed to approve expense");
+        } finally {
+            setIsApproving(false);
         }
     };
 
@@ -284,75 +301,29 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
         }
     };
 
-    const handleMarkPaid = async (id) => {
+    // Open mark paid confirmation modal
+    const handleOpenMarkPaid = (expense) => {
+        setMarkingPaidExpense(expense);
+    };
+
+    // Confirm single mark paid
+    const handleConfirmMarkPaid = async () => {
+        if (!markingPaidExpense) return;
+        setIsMarkingPaid(true);
         try {
-            await markExpensePaid(id);
+            await markExpensePaid(markingPaidExpense.id);
             toast.success("Marked as paid");
+            setMarkingPaidExpense(null);
         } catch (err) {
             console.error("Failed to mark paid", err);
             toast.error("Failed to mark as paid");
-        }
-    };
-
-
-    const handleDeleteClick = (expense) => {
-        setDeletingExpense(expense);
-    };
-
-    const handleConfirmDelete = async () => {
-        if (!deletingExpense) return;
-        setIsDeleting(true);
-        try {
-            await deleteExpense(deletingExpense.id);
-            toast.success("Expense deleted");
-            setDeletingExpense(null);
-            // Local state update handled by subscription usually, but if needed:
-            // setExpenses((prev) => prev.filter((e) => e.id !== deletingExpense.id));
-        } catch (err) {
-            console.error("Failed to delete expense", err);
-            toast.error("Failed to delete expense");
         } finally {
-            setIsDeleting(false);
+            setIsMarkingPaid(false);
         }
     };
 
-    const handleEdit = (expense) => {
-        setEditingExpense(expense);
-    };
 
-    const handleSave = async (formData) => {
-        if (!user?.uid) return;
-        setIsSaving(true);
-        try {
-            let receiptUrl = null;
-            if (formData.receipt) {
-                receiptUrl = await uploadReceipt(formData.receipt, user.uid);
-            }
 
-            const payload = {
-                ...formData,
-                amount: Number(formData.amount),
-            };
-            delete payload.receipt;
-
-            if (receiptUrl) {
-                payload.receiptUrl = receiptUrl;
-            }
-
-            if (editingExpense) {
-                await updateExpense(editingExpense.id, payload);
-                toast.success("Expense updated");
-            }
-            // Else create logic if we ever add 'Create' button here
-
-            setEditingExpense(null);
-        } catch (err) {
-            console.error("Failed to save expense", err);
-            toast.error("Failed to save expense");
-        } finally {
-            setIsSaving(false);
-        }
-    };
 
     const handleSelectAll = (e) => {
         if (e.target.checked) {
@@ -368,27 +339,35 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
         );
     };
 
-    const handleBulkApprove = async () => {
-        if (!window.confirm(`Approve ${selectedIds.length} expenses?`)) return;
+    // Confirm bulk approve
+    const handleConfirmBulkApprove = async () => {
+        setIsBulkApproving(true);
         try {
             await Promise.all(selectedIds.map((id) => approveExpense(id, { uid: user?.uid, name: userData?.name, email: user?.email })));
             toast.success("Selected expenses approved");
             setSelectedIds([]);
+            setShowBulkApproveModal(false);
         } catch (err) {
             console.error("Bulk approve failed", err);
             toast.error("Failed to approve selected");
+        } finally {
+            setIsBulkApproving(false);
         }
     };
 
-    const handleBulkPay = async () => {
-        if (!window.confirm(`Mark ${selectedIds.length} expenses as paid?`)) return;
+    // Confirm bulk mark paid
+    const handleConfirmBulkPay = async () => {
+        setIsBulkPaying(true);
         try {
             await Promise.all(selectedIds.map((id) => markExpensePaid(id)));
             toast.success("Selected expenses marked paid");
             setSelectedIds([]);
+            setShowBulkPayModal(false);
         } catch (err) {
             console.error("Bulk pay failed", err);
             toast.error("Failed to mark selected paid");
+        } finally {
+            setIsBulkPaying(false);
         }
     };
 
@@ -433,7 +412,7 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                         disabled={filtered.length === 0}
                     >
                         <FaUpload className="h-3 w-3" />
-                        Export Excel
+                        Export CSV
                     </Button>
                 }
             />
@@ -562,10 +541,10 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                         <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
                             {selectedIds.length} selected
                         </span>
-                        <Button size="sm" onClick={handleBulkApprove}>
+                        <Button size="sm" onClick={() => setShowBulkApproveModal(true)}>
                             Approve Selected
                         </Button>
-                        <Button size="sm" variant="secondary" onClick={handleBulkPay}>
+                        <Button size="sm" variant="secondary" onClick={() => setShowBulkPayModal(true)}>
                             Mark Paid
                         </Button>
                     </div>
@@ -865,7 +844,7 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                                     <>
                                                         <Button
                                                             size="xs"
-                                                            onClick={(ev) => { ev.stopPropagation(); handleApprove(e.id); }}
+                                                            onClick={(ev) => { ev.stopPropagation(); handleOpenApprove(e); }}
                                                             className="bg-green-600 hover:bg-green-700 text-white border-transparent"
                                                         >
                                                             Approve
@@ -883,7 +862,7 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                                 {e.status === "Approved" && (
                                                     <Button
                                                         size="xs"
-                                                        onClick={(ev) => { ev.stopPropagation(); handleMarkPaid(e.id); }}
+                                                        onClick={(ev) => { ev.stopPropagation(); handleOpenMarkPaid(e); }}
                                                         className="bg-purple-600 hover:bg-purple-700 text-white border-transparent"
                                                     >
                                                         Mark Paid
@@ -891,24 +870,7 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <div className="flex justify-end gap-2 items-center">
-                                                <button
-                                                    onClick={(ev) => { ev.stopPropagation(); handleEdit(e); }}
-                                                    className="text-gray-400 hover:text-blue-600 transition-colors p-1"
-                                                    title="Edit"
-                                                >
-                                                    <FaEdit />
-                                                </button>
-                                                <button
-                                                    onClick={(ev) => { ev.stopPropagation(); handleDeleteClick(e); }}
-                                                    className="text-gray-400 hover:text-red-600 transition-colors p-1"
-                                                    title="Delete"
-                                                >
-                                                    <FaTrash />
-                                                </button>
-                                            </div>
-                                        </td>
+                                        {/* Actions column removed as Admins cannot edit/delete employee expenses */}
                                     </tr>
                                 ))}
                             </tbody>
@@ -989,38 +951,67 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                     useDarkMode={useDarkMode}
                 />
             )}
-            {/* Edit Modal */}
-            <ExpenseFormModal
-                isOpen={!!editingExpense}
-                onClose={() => setEditingExpense(null)}
-                onSubmit={handleSave}
-                initialData={editingExpense}
-                projects={projects}
-                isSubmitting={isSaving}
-                title="Edit Expense"
-            />
 
-            {/* Delete Confirmation Modal */}
-            {deletingExpense && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                    <DeleteConfirmationModal
-                        onClose={() => setDeletingExpense(null)}
-                        onConfirm={handleConfirmDelete}
-                        itemType="Expense"
-                        itemTitle={deletingExpense.title}
-                        title="Delete Expense"
-                        description="Are you sure you want to delete this expense record?"
-                        isLoading={isDeleting}
-                        confirmLabel="Delete Expense"
-                    />
-                </div>
-            )}
 
             <DocumentPreviewModal
                 open={!!viewingReceipt}
                 onClose={() => setViewingReceipt(null)}
                 doc={viewingReceipt}
                 showMetadata={false}
+            />
+
+            {/* Approve Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={!!approvingExpense}
+                onClose={() => setApprovingExpense(null)}
+                onConfirm={handleConfirmApprove}
+                title="Approve Expense"
+                description="Are you sure you want to approve this expense? This will mark it ready for payment."
+                itemTitle={approvingExpense?.title}
+                itemSubtitle={`₹${approvingExpense?.amount?.toFixed?.(2) || approvingExpense?.amount} · ${approvingExpense?.employeeName || 'Unknown'}`}
+                confirmLabel="Approve"
+                variant="success"
+                isLoading={isApproving}
+            />
+
+            {/* Mark Paid Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={!!markingPaidExpense}
+                onClose={() => setMarkingPaidExpense(null)}
+                onConfirm={handleConfirmMarkPaid}
+                title="Mark as Paid"
+                description="Are you sure you want to mark this expense as paid? This confirms the reimbursement has been processed."
+                itemTitle={markingPaidExpense?.title}
+                itemSubtitle={`₹${markingPaidExpense?.amount?.toFixed?.(2) || markingPaidExpense?.amount} · ${markingPaidExpense?.employeeName || 'Unknown'}`}
+                confirmLabel="Mark Paid"
+                variant="purple"
+                isLoading={isMarkingPaid}
+            />
+
+            {/* Bulk Approve Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showBulkApproveModal}
+                onClose={() => setShowBulkApproveModal(false)}
+                onConfirm={handleConfirmBulkApprove}
+                title="Approve Selected Expenses"
+                description="Are you sure you want to approve all selected expenses? This action will mark them ready for payment."
+                count={selectedIds.length}
+                confirmLabel="Approve All"
+                variant="success"
+                isLoading={isBulkApproving}
+            />
+
+            {/* Bulk Mark Paid Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showBulkPayModal}
+                onClose={() => setShowBulkPayModal(false)}
+                onConfirm={handleConfirmBulkPay}
+                title="Mark Selected as Paid"
+                description="Are you sure you want to mark all selected expenses as paid? This confirms reimbursements have been processed."
+                count={selectedIds.length}
+                confirmLabel="Mark All Paid"
+                variant="purple"
+                isLoading={isBulkPaying}
             />
         </div>
     );

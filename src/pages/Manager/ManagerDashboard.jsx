@@ -111,11 +111,25 @@ export default function ManagerDashboard() {
 
         // Firestore 'in' query has a limit of 10, so we fetch all and filter
         const unsub = onSnapshot(collection(db, "tasks"), (snap) => {
-            const allTasks = snap.docs.map((d) => ({
-                id: d.id,
-                ...d.data(),
-                dueDate: d.data().dueDate?.toDate?.() || null,
-            }));
+            const allTasks = snap.docs.map((d) => {
+                const data = d.data();
+                // Handle both Firestore Timestamp and ISO string formats
+                let dueDate = null;
+                if (data.dueDate) {
+                    if (typeof data.dueDate.toDate === 'function') {
+                        dueDate = data.dueDate.toDate();
+                    } else if (typeof data.dueDate === 'string') {
+                        dueDate = new Date(data.dueDate);
+                    } else if (data.dueDate instanceof Date) {
+                        dueDate = data.dueDate;
+                    }
+                }
+                return {
+                    id: d.id,
+                    ...data,
+                    dueDate,
+                };
+            });
             const filtered = allTasks.filter((t) => projectIds.includes(t.projectId));
             setTasks(filtered);
             setLoading(false);
@@ -411,13 +425,17 @@ export default function ManagerDashboard() {
 
         // Check for overdue tasks in managed projects
         const overdueTasks = tasks.filter((task) => {
+            if (!task.dueDate) return false; // No due date = not overdue
             if (["done", "completed", "complete"].includes((task.status || "").toLowerCase())) return false;
-            const dueDate = task.dueDate?.toDate?.() || new Date(task.dueDate);
+            // dueDate is already converted to Date object in the tasks effect
+            const dueDate = task.dueDate instanceof Date ? task.dueDate : new Date(task.dueDate);
+            if (isNaN(dueDate.getTime())) return false; // Invalid date = not overdue
             return dueDate < now;
         });
 
         overdueTasks.forEach((task) => {
-            const dueDate = task.dueDate?.toDate?.() || new Date(task.dueDate);
+            // dueDate is already validated and converted in the filter above
+            const dueDate = task.dueDate instanceof Date ? task.dueDate : new Date(task.dueDate);
             const daysOverdue = Math.ceil((now - dueDate) / (1000 * 60 * 60 * 24));
 
             newNotifications.push({

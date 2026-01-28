@@ -794,13 +794,20 @@ const EmployeeTasks = () => {
   ];
 
 
+  // Helper for consistent status comparison
+  const normalizeStatus = (s) => String(s || "To-Do").toLowerCase().replace(/[^a-z0-9]/g, "");
+
   // Calculate task statistics
   const stats = {
+    // Use normalization helper to handle case variants like "To-Do" vs "TO DO"
     total: baseTasks.length,
-    completed: baseTasks.filter((t) => t.status === "Done").length,
-    inProgress: baseTasks.filter((t) => t.status === "In Progress").length,
+    completed: baseTasks.filter((t) => normalizeStatus(t.status) === "done").length,
+    inProgress: baseTasks.filter((t) => {
+      const s = normalizeStatus(t.status);
+      return s !== "done" && s !== "todo";
+    }).length,
     overdue: baseTasks.filter((t) => {
-      if (t.status === "Done") return false;
+      if (normalizeStatus(t.status) === "done") return false;
       const dueDate = t.dueDate?.toDate?.() || new Date(t.dueDate);
       return dueDate < new Date();
     }).length,
@@ -818,12 +825,17 @@ const EmployeeTasks = () => {
       }
       // Status filter
       let statusMatch = true;
+      const normStatus = normalizeStatus(task.status);
+
       if (statusFilter === "all") {
         statusMatch = true;
       } else if (statusFilter === "pending") {
-        statusMatch = task.status !== "Done";
+        statusMatch = normStatus !== "done";
+      } else if (statusFilter === "active") {
+        statusMatch = normStatus !== "done" && normStatus !== "todo";
       } else {
-        statusMatch = task.status === statusFilter;
+        const normFilter = normalizeStatus(statusFilter);
+        statusMatch = normStatus === normFilter;
       }
 
       // Priority filter
@@ -970,8 +982,10 @@ const EmployeeTasks = () => {
                 <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">To-Do</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-white">
                   {
-                    baseTasks.filter((t) => t.status === "To-Do" || !t.status)
-                      .length
+                    baseTasks.filter((t) => {
+                      const s = normalizeStatus(t.status);
+                      return s === "todo";
+                    }).length
                   }
                 </p>
               </div>
@@ -985,7 +999,7 @@ const EmployeeTasks = () => {
         {/* In Progress Card */}
         <div
           onClick={() => {
-            setStatusFilter("In Progress");
+            setStatusFilter("active");
             setViewMode("all");
             setPriorityFilter("all");
             setProjectFilter("all");
@@ -1634,6 +1648,7 @@ const EmployeeTasks = () => {
           canDelete={selectedTask.source === "self"}
           canArchive={selectedTask.source === "self"}
           canEdit={selectedTask.source === "self"}
+          canTrackTime={true}
         />
       )}
       <AddReminderModal

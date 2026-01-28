@@ -36,6 +36,7 @@
 
 import React, { useState } from "react";
 import { FaTimes, FaPlus } from "react-icons/fa";
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 const TAG_COLORS = [
     "bg-blue-100 text-blue-700 border-blue-200 [.dark_&]:bg-blue-900/30 [.dark_&]:text-blue-300 [.dark_&]:border-blue-700/30",
@@ -49,6 +50,7 @@ const TAG_COLORS = [
 ];
 
 const TagInput = ({ tags = [], onAdd, onRemove, placeholder = "Add tag...", readOnly = false }) => {
+    const { iconColor, hoverAccentClass, ringClass } = useThemeStyles();
     const [inputValue, setInputValue] = useState("");
     const [isAdding, setIsAdding] = useState(false);
 
@@ -111,12 +113,12 @@ const TagInput = ({ tags = [], onAdd, onRemove, placeholder = "Add tag...", read
                                 }
                             }}
                             placeholder={placeholder}
-                            className="px-2 py-1 text-xs border border-gray-300 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] rounded-md focus:outline-none focus:border-indigo-500 w-32 text-gray-900 [.dark_&]:text-white"
+                            className={`px-2 py-1 text-xs border border-gray-300 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] rounded-md focus:outline-none ${ringClass} w-32 text-gray-900 [.dark_&]:text-white`}
                             autoFocus
                         />
                         <button
                             onClick={handleAdd}
-                            className="p-1 text-indigo-600 [.dark_&]:text-indigo-400 hover:bg-indigo-50 [.dark_&]:hover:bg-indigo-900/20 rounded transition-colors"
+                            className={`p-1 ${iconColor} ${hoverAccentClass} rounded transition-colors`}
                         >
                             <FaPlus className="text-xs" />
                         </button>
@@ -124,7 +126,7 @@ const TagInput = ({ tags = [], onAdd, onRemove, placeholder = "Add tag...", read
                 ) : (
                     <button
                         onClick={() => setIsAdding(true)}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-500 [.dark_&]:text-gray-400 hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 hover:bg-indigo-50 [.dark_&]:hover:bg-indigo-900/20 border border-dashed border-gray-300 [.dark_&]:border-white/10 hover:border-indigo-400 rounded-full transition-all"
+                        className={`inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-500 [.dark_&]:text-gray-400 ${hoverAccentClass} border border-dashed border-gray-300 [.dark_&]:border-white/10 rounded-full transition-all`}
                     >
                         <FaPlus className="text-[10px]" />
                         Add tag

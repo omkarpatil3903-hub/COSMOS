@@ -88,52 +88,29 @@ const EmployeeExpenses = () => {
   }, [user?.uid]);
 
   // Fetch projects assigned to employee
+  // Fetch projects assigned to employee
   useEffect(() => {
     if (!user?.uid) return;
 
-    // Get tasks assigned to this employee to find their projects
-    const tasksQuery = query(
-      collection(db, "tasks"),
-      where("assigneeId", "==", user.uid)
+    // Fetch projects where the user is listed in assigneeIds
+    const q = query(
+      collection(db, "projects"),
+      where("assigneeIds", "array-contains", user.uid)
     );
 
-    const unsubTasks = onSnapshot(tasksQuery, (taskSnapshot) => {
-      const taskData = taskSnapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .filter((task) => task.assigneeType === "user");
-
-      // Get unique project IDs from tasks
-      const projectIds = [
-        ...new Set(taskData.map((t) => t.projectId).filter(Boolean)),
-      ];
-
-      if (projectIds.length > 0) {
-        // Get projects
-        const projectsQuery = query(
-          collection(db, "projects"),
-          where("__name__", "in", projectIds)
-        );
-
-        const unsubProjects = onSnapshot(projectsQuery, (projectSnapshot) => {
-          const projectData = projectSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setProjects(projectData);
-          setAssignedProjects(projectData);
-        });
-
-        return () => {
-          unsubProjects();
-          unsubTasks();
-        };
-      } else {
-        setProjects([]);
-        setAssignedProjects([]);
-      }
+    const unsub = onSnapshot(q, (snapshot) => {
+      const projectData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setProjects(projectData);
+      setAssignedProjects(projectData);
+    }, (error) => {
+      console.error("Failed to fetch assigned projects:", error);
+      toast.error("Failed to load projects");
     });
 
-    return () => unsubTasks();
+    return () => unsub();
   }, [user?.uid]);
 
   const filtered = useMemo(() => {
@@ -178,6 +155,34 @@ const EmployeeExpenses = () => {
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Constants for file validation
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+
+  /**
+   * Validates and handles receipt file selection.
+   * Enforces max 5MB size and image/PDF file types only.
+   */
+  const handleReceiptChange = (file) => {
+    if (!file) return;
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      setErrors((prev) => ({ ...prev, receipt: 'File size must be less than 5MB' }));
+      return;
+    }
+
+    // Validate file type
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      setErrors((prev) => ({ ...prev, receipt: 'Only images (JPEG, PNG, GIF, WebP) and PDF files are allowed' }));
+      return;
+    }
+
+    // Clear any previous receipt error and set the file
+    setErrors((prev) => ({ ...prev, receipt: null }));
+    handleChange('receipt', file);
   };
 
   const resetForm = () => {
@@ -572,7 +577,7 @@ const EmployeeExpenses = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <div className="flex justify-end items-center gap-2">
-                          {(e.status === "Draft" || e.status === "Rejected" || e.status === "Submitted") && (
+                          {(e.status === "Draft" || e.status === "Rejected") && (
                             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(ev) => ev.stopPropagation()}>
                               <Button
                                 size="xs"
@@ -823,17 +828,26 @@ const EmployeeExpenses = () => {
                           accept="image/*,application/pdf"
                           className="sr-only"
                           onChange={(e) =>
-                            handleChange("receipt", e.target.files[0])
+                            handleReceiptChange(e.target.files[0])
                           }
                         />
                       </label>
                       <p className="pl-1">or drag and drop</p>
                     </div>
-                    <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">
-                      {form.receipt
-                        ? form.receipt.name
-                        : "PNG, JPG, PDF up to 1MB"}
-                    </p>
+                    {form.receipt ? (
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-2 font-medium">
+                        Selected: {form.receipt.name}
+                      </p>
+                    ) : (
+                      <p className="text-xs leading-5 text-gray-500 dark:text-gray-400 mt-2">
+                        Max 5MB · Images or PDF only
+                      </p>
+                    )}
+                    {errors.receipt && (
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-2 font-medium">
+                        {errors.receipt}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
