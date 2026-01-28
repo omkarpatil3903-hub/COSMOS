@@ -62,25 +62,30 @@ const ICON_MAP = {
     FaBriefcase: FaBriefcase,
 };
 
-function PanelSwitcher({ isCollapsed = false }) {
+function PanelSwitcher({ isCollapsed = false, setIsCollapsed }) {
     const navigate = useNavigate();
     const location = useLocation();
     const { accessiblePanels } = useAuthContext();
     const { accent, mode } = useTheme();
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const wasCollapsedRef = useRef(false);
 
     // Close dropdown when clicking outside
-    // IMPORTANT: This hook must be called before any early returns (Rules of Hooks)
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                // If we auto-expanded and click outside, revert state
+                if (isOpen && wasCollapsedRef.current && setIsCollapsed) {
+                    setIsCollapsed(true);
+                    wasCollapsedRef.current = false;
+                }
                 setIsOpen(false);
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    }, [isOpen, setIsCollapsed]);
 
     // Only show if user can access more than one panel
     if (!accessiblePanels || accessiblePanels.length <= 1) {
@@ -182,8 +187,42 @@ function PanelSwitcher({ isCollapsed = false }) {
     const accentColors = getAccentColors();
     const isDark = mode === "dark";
 
+    // Check for auto-collapse flag on mount (persisted across layout unmounts)
+    useEffect(() => {
+        const shouldAutoCollapse = localStorage.getItem("cosmos_auto_collapse_sidebar");
+        if (shouldAutoCollapse === "true" && setIsCollapsed) {
+            setIsCollapsed(true);
+            localStorage.removeItem("cosmos_auto_collapse_sidebar");
+        }
+    }, [setIsCollapsed]);
+
+    const handleTriggerClick = () => {
+        if (!isOpen) { // Opening
+            if (isCollapsed && setIsCollapsed) {
+                setIsCollapsed(false);
+                wasCollapsedRef.current = true;
+            } else {
+                wasCollapsedRef.current = false;
+            }
+            setIsOpen(true);
+        } else { // Closing
+            setIsOpen(false);
+            if (wasCollapsedRef.current && setIsCollapsed) {
+                setIsCollapsed(true);
+                wasCollapsedRef.current = false;
+            }
+        }
+    };
+
     const handlePanelSwitch = (panelPath) => {
         setIsOpen(false);
+
+        // If we auto-expanded, set a flag for the NEXT layout to read
+        if (wasCollapsedRef.current) {
+            localStorage.setItem("cosmos_auto_collapse_sidebar", "true");
+            wasCollapsedRef.current = false;
+        }
+
         if (panelPath !== currentPanel) {
             navigate(panelPath);
         }
@@ -209,8 +248,8 @@ function PanelSwitcher({ isCollapsed = false }) {
         <div className="relative" ref={dropdownRef}>
             {/* Trigger Button */}
             <button
-                onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${isDark
+                onClick={handleTriggerClick}
+                className={`flex items-center gap-2 w-full rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 cursor-pointer ${isDark
                     ? "bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10"
                     : `bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200`
                     } ${isCollapsed ? "justify-center" : ""}`}
@@ -271,7 +310,7 @@ function PanelSwitcher({ isCollapsed = false }) {
                                 <button
                                     key={panel.path}
                                     onClick={() => handlePanelSwitch(panel.path)}
-                                    className={`flex items-center gap-3 w-full px-3 py-2.5 text-sm transition-colors ${isActive
+                                    className={`flex items-center gap-3 w-full px-3 py-2.5 text-sm transition-colors cursor-pointer ${isActive
                                         ? isDark
                                             ? `${accentColors.darkBg} ${accentColors.darkText}`
                                             : `${accentColors.bg} ${accentColors.text}`
