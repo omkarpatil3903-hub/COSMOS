@@ -84,9 +84,18 @@ export function calculateNextDueDate(
     case "weekly":
       date.setDate(date.getDate() + interval * 7);
       break;
-    case "monthly":
+    case "monthly": {
+      // BUG FIX #5: Handle month-end overflow (Jan 31 → Feb 28, not Mar 2/3)
+      const currentDay = date.getDate();
       date.setMonth(date.getMonth() + interval);
+
+      // If day changed due to overflow (e.g., Jan 31 → Mar 3)
+      // Set to last day of the intended month
+      if (date.getDate() < currentDay) {
+        date.setDate(0); // Go to last day of previous month (Feb 28/29)
+      }
       break;
+    }
     case "yearly":
       date.setFullYear(date.getFullYear() + interval);
       break;
@@ -239,12 +248,19 @@ export function shouldCreateNextInstance(task) {
   if (task.status !== "Done") return false;
   if (!task.completedAt) return false;
 
-  const dueDate = new Date(task.dueDate);
+  // BUG FIX #1: Calculate NEXT due date first, then check end date
+  const nextDueDate = calculateNextDueDate(
+    task.dueDate,
+    task.recurringPattern,
+    task.recurringInterval,
+    task.skipWeekends
+  );
 
-  // END DATE CHECK: Don't create if past end date
+  // END DATE CHECK: Don't create if NEXT occurrence would be past end date
   if (task.recurringEndType === "date" && task.recurringEndDate) {
     const endDate = new Date(task.recurringEndDate);
-    if (dueDate >= endDate) return false;
+    const nextDate = new Date(nextDueDate);
+    if (nextDate > endDate) return false;
   }
 
   // OCCURRENCE LIMIT CHECK: Don't create if max reached
@@ -286,13 +302,22 @@ export async function shouldCreateNextInstanceAsync(task) {
   if (task.status !== "Done") return false;
   if (!task.completedAt) return false;
 
-  const dueDate = new Date(task.dueDate);
+  // BUG FIX #1: Calculate NEXT due date first, then check end date
+  const nextDueDate = calculateNextDueDate(
+    task.dueDate,
+    task.recurringPattern,
+    task.recurringInterval,
+    task.skipWeekends
+  );
 
+  // END DATE CHECK: Don't create if NEXT occurrence would be past end date
   if (task.recurringEndType === "date" && task.recurringEndDate) {
     const endDate = new Date(task.recurringEndDate);
-    if (dueDate >= endDate) return false;
+    const nextDate = new Date(nextDueDate);
+    if (nextDate > endDate) return false;
   }
 
+  // OCCURRENCE LIMIT CHECK: Query database for accurate count
   if (task.recurringEndType === "after" && task.recurringEndAfter) {
     const maxOccurrences = parseInt(task.recurringEndAfter);
     const seriesId = task.parentRecurringTaskId || task.id;
@@ -320,6 +345,17 @@ export async function shouldCreateNextInstanceAsync(task) {
  */
 export async function createNextRecurringInstance(task) {
   try {
+    // BUG FIX #6: Validate required fields before proceeding
+    if (!task || !task.id) {
+      throw new Error("Task ID is required for recurring instance creation");
+    }
+    if (!task.title || !task.dueDate) {
+      throw new Error("Task title and due date are required for recurring instance");
+    }
+    if (!task.recurringPattern || !task.recurringInterval) {
+      throw new Error("Recurring pattern and interval are required");
+    }
+
     // Calculate next due date
     const nextDueDate = calculateNextDueDate(
       task.dueDate,
@@ -352,18 +388,27 @@ export async function createNextRecurringInstance(task) {
 
       // STEP 2: Build new task data (reset progress, keep recurrence settings)
       const { id, ...restOfTask } = task;
+
+      // BUG FIX #6: Validate essential fields exist
+      if (!restOfTask.assigneeId && (!restOfTask.assigneeIds || restOfTask.assigneeIds.length === 0)) {
+        console.warn("No assignee specified for recurring task, using original assignee");
+      }
+
+      // BUG FIX #2: Generate unique key to help prevent race condition duplicates
+      const uniqueKey = `${seriesId}-${nextDueDate}`;
+
       const newTaskData = {
         title: restOfTask.title,
-        description: restOfTask.description,
-        assigneeId: restOfTask.assigneeId,
-        assigneeType: restOfTask.assigneeType,
+        description: restOfTask.description || "",
+        assigneeId: restOfTask.assigneeId || "",
+        assigneeType: restOfTask.assigneeType || "user",
         assigneeIds: restOfTask.assigneeIds || [],
         assignees: restOfTask.assignees || [],
-        projectId: restOfTask.projectId,
+        projectId: restOfTask.projectId || "",
         assignedDate: new Date().toISOString().slice(0, 10),
         dueDate: nextDueDate,
         visibleFrom: new Date().toISOString().slice(0, 10), // VISIBLE IMMEDIATELY: Employees can see upcoming tasks
-        priority: restOfTask.priority,
+        priority: restOfTask.priority || "Medium",
         status: "To-Do", // RESET: New instance starts as To-Do
         progressPercent: 0,
         createdAt: new Date(),
@@ -371,21 +416,30 @@ export async function createNextRecurringInstance(task) {
         archived: false,
         completionComment: "",
         assigneeStatus: {}, // RESET: Clear individual assignee progress
-        weightage: restOfTask.weightage,
+        weightage: restOfTask.weightage || null,
         // INHERIT: Keep recurrence settings
         isRecurring: restOfTask.isRecurring,
         recurringPattern: restOfTask.recurringPattern,
         recurringInterval: restOfTask.recurringInterval,
-        recurringEndDate: restOfTask.recurringEndDate,
-        recurringEndAfter: restOfTask.recurringEndAfter,
-        recurringEndType: restOfTask.recurringEndType,
+        recurringEndDate: restOfTask.recurringEndDate || "",
+        recurringEndAfter: restOfTask.recurringEndAfter || "",
+        recurringEndType: restOfTask.recurringEndType || "never",
+        skipWeekends: restOfTask.skipWeekends || false,
         parentRecurringTaskId: seriesId, // LINK: Connect to series
         recurringOccurrenceCount: (restOfTask.recurringOccurrenceCount || 0) + 1,
+        // BUG FIX #2: Add unique key field for duplicate detection
+        uniqueRecurringKey: uniqueKey,
       };
 
       // STEP 3: Create new task document
       const newDocRef = doc(collection(db, "tasks"));
       newTaskData.taskId = newDocRef.id;
+
+      // BUG FIX #6: Final validation before transaction
+      if (!newTaskData.dueDate || !newTaskData.title) {
+        throw new Error("Critical fields missing in new task data");
+      }
+
       transaction.set(newDocRef, newTaskData);
 
       console.log("Transaction set called for new task", newDocRef.id);
@@ -393,8 +447,10 @@ export async function createNextRecurringInstance(task) {
     });
 
   } catch (error) {
+    // BUG FIX #6: Proper error logging and propagation
     console.error("Error creating recurring task instance:", error);
-    throw error;
+    console.error("Task data:", { id: task?.id, title: task?.title, pattern: task?.recurringPattern });
+    throw error; // Propagate error up to caller for proper handling
   }
 }
 

@@ -851,20 +851,27 @@ function TasksManagement() {
             };
             if (await shouldCreateNextInstanceAsync(taskForCheck)) {
               const newId = await createNextRecurringInstance(taskForCheck);
-              if (newId && payload.projectId) {
-                try {
-                  await updateProjectProgress(payload.projectId);
-                } catch (err) {
-                  console.warn(
-                    "Failed to refresh project progress for new recurring instance",
-                    err
-                  );
+              if (newId) {
+                toast.success("Next recurring task created!");
+                if (payload.projectId) {
+                  try {
+                    await updateProjectProgress(payload.projectId);
+                  } catch (err) {
+                    console.warn(
+                      "Failed to refresh project progress for new recurring instance",
+                      err
+                    );
+                  }
                 }
+              } else {
+                // null means duplicate or end condition
+                console.log("Recurring task creation skipped (duplicate or end condition)");
               }
             }
           }
         } catch (e) {
-          console.warn("Recurring continuation failed (create)", e);
+          console.error("Recurring continuation failed (create):", e);
+          toast.error(`Failed to create next recurring task: ${e.message}`);
         }
       }
       setShowModal(false);
@@ -1237,20 +1244,26 @@ function TasksManagement() {
         if (await shouldCreateNextInstanceAsync(checkTask)) {
           console.log("Creating next recurring instance (Admin)...");
           const newId = await createNextRecurringInstance(checkTask);
-          console.log("Created next recurring instance (Admin):", newId);
-          if (newId && t?.projectId) {
-            try {
-              await updateProjectProgress(t.projectId);
-            } catch (err) {
-              console.warn(
-                "Failed to refresh project progress for new recurring instance",
-                err
-              );
+          if (newId) {
+            console.log("Created next recurring instance (Admin):", newId);
+            toast.success("Next recurring task created!");
+            if (t?.projectId) {
+              try {
+                await updateProjectProgress(t.projectId);
+              } catch (err) {
+                console.warn(
+                  "Failed to refresh project progress for new recurring instance",
+                  err
+                );
+              }
             }
+          } else {
+            console.log("Recurring task creation skipped (duplicate or end condition)");
           }
         }
       } catch (e) {
-        console.warn("Recurring continuation failed (admin completion)", e);
+        console.error("Recurring continuation failed (admin completion):", e);
+        toast.error(`Failed to create next recurring task: ${e.message}`);
       }
 
       if (t?.projectId) {
