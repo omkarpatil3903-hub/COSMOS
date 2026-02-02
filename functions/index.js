@@ -126,70 +126,100 @@ const { calculateNextDueDate, shouldCreateNextInstance, countSeriesOccurrences }
 /**
  * Scheduled job to check for recurring tasks that need to be generated.
  * Runs daily at 02:00 UTC.
- * This acts as a safety net for the client-side trigger.
+ * 
+ * Handles two scenarios:
+ * 1. Completed tasks (status = "Done") - create next instance as usual
+ * 2. Overdue tasks (dueDate < today, status != "Done") - create next instance to keep schedule on track
+ * 
+ * This ensures recurring tasks continue on schedule even if previous instances aren't completed.
  */
 exports.checkRecurringTasks = onSchedule("0 2 * * *", async (event) => {
     console.log("Starting checkRecurringTasks job...");
     const db = admin.firestore();
+    const today = new Date().toISOString().slice(0, 10);
 
     try {
-        // 1. Find all recurring tasks that are marked as "Done"
+        // Find all recurring tasks (both completed and overdue incomplete)
         const snapshot = await db.collection("tasks")
             .where("isRecurring", "==", true)
-            .where("status", "==", "Done")
             .get();
 
         if (snapshot.empty) {
-            console.log("No completed recurring tasks found.");
+            console.log("No recurring tasks found.");
             return;
         }
 
-        console.log(`Found ${snapshot.size} completed recurring tasks. Checking if next instances exist...`);
+        console.log(`Found ${snapshot.size} recurring tasks. Checking which need new instances...`);
 
-        const results = [];
+        const results = { completed: 0, overdue: 0, skipped: 0 };
 
-        // Process each task sequentially or in parallel chunks
-        // For transactions, sequential is safer to avoid contention if they touch same docs (unlikely here but good practice)
         for (const docSnapshot of snapshot.docs) {
             const task = { id: docSnapshot.id, ...docSnapshot.data() };
 
             try {
-                await db.runTransaction(async (transaction) => {
-                    // 2. Check if we should create a next instance based on logic
-                    const shouldCreate = shouldCreateNextInstance(task);
-                    if (!shouldCreate) return;
+                // Validate that task has a valid dueDate
+                if (!task.dueDate || typeof task.dueDate !== 'string') {
+                    console.log(`⚠️ Skipping task ${task.id}: Missing or invalid dueDate`);
+                    results.skipped++;
+                    continue;
+                }
 
-                    // 2b. Async check for 'after' occurrences limit (inside transaction for consistency if possible, 
-                    // but reading many docs in transaction is expensive. 
-                    // We'll keep it simple: read count. If strictly needed, we'd query inside.
-                    // For now, let's do the count check *before* transaction to save cost, 
-                    // or inside if we want strict correctness. 
-                    // Given the low risk of "after" count race condition (only happens at the very end of series),
-                    // we can keep it outside or inside. Let's put it inside for correctness.)
+                // Validate date format (YYYY-MM-DD)
+                const dateTest = new Date(task.dueDate);
+                if (isNaN(dateTest.getTime())) {
+                    console.log(`⚠️ Skipping task ${task.id}: Invalid date format "${task.dueDate}"`);
+                    results.skipped++;
+                    continue;
+                }
+
+                // Determine if we should create next instance
+                let shouldCreate = false;
+                let reason = "";
+
+                if (task.status === "Done") {
+                    // Scenario 1: Task is completed - create next instance
+                    shouldCreate = shouldCreateNextInstance(task);
+                    reason = "completed";
+                } else if (task.dueDate < today) {
+                    // Scenario 2: Task is overdue - create next instance to stay on schedule
+                    shouldCreate = true;
+                    reason = "overdue";
+                }
+
+                if (!shouldCreate) {
+                    results.skipped++;
+                    continue;
+                }
+
+                await db.runTransaction(async (transaction) => {
+                    // Check end conditions
+                    if (task.recurringEndType === "date" && task.recurringEndDate) {
+                        const endDate = new Date(task.recurringEndDate).toISOString().slice(0, 10);
+                        if (task.dueDate >= endDate) {
+                            console.log(`Task ${task.id} series has ended (date limit reached)`);
+                            return;
+                        }
+                    }
 
                     if (task.recurringEndType === "after" && task.recurringEndAfter) {
                         const maxOccurrences = parseInt(task.recurringEndAfter);
-                        const seriesId = task.parentRecurringTaskId || task.id;
-
-                        // Count query inside transaction? 
-                        // Firestore transactions require all reads before writes.
-                        // Querying a collection in a transaction is supported but can be slow.
-                        // Let's do a direct read of the series parent if we had a counter there.
-                        // Since we don't, we'll rely on the pre-check or just query.
-                        // For safety/cost balance: We will skip the transactional count check here 
-                        // and rely on the unique constraint of (seriesId + dueDate) to prevent duplicates.
-                        // The "extra instance" at the end of a series is less critical than "duplicate instances" every day.
+                        const currentCount = task.recurringOccurrenceCount || 0;
+                        if (currentCount >= maxOccurrences) {
+                            console.log(`Task ${task.id} series has ended (occurrence limit reached)`);
+                            return;
+                        }
                     }
 
-                    // 3. Calculate Next Due Date
+                    // Calculate Next Due Date
                     const nextDueDate = calculateNextDueDate(
                         task.dueDate,
                         task.recurringPattern,
                         task.recurringInterval,
-                        task.skipWeekends
+                        task.skipWeekends,
+                        task.selectedWeekDays // Pass custom working days array
                     );
 
-                    // 4. Check if the next instance ALREADY exists (Transactional Check)
+                    // Check if the next instance ALREADY exists
                     const seriesId = task.parentRecurringTaskId || task.id;
                     const existingQuery = await transaction.get(
                         db.collection("tasks")
@@ -198,23 +228,24 @@ exports.checkRecurringTasks = onSchedule("0 2 * * *", async (event) => {
                     );
 
                     if (!existingQuery.empty) {
-                        return; // Already exists
+                        console.log(`Instance for ${nextDueDate} already exists for series ${seriesId}`);
+                        return;
                     }
 
-                    // 5. Create the new instance
+                    // Create the new instance
                     const { id, ...restOfTask } = task;
                     const newTaskData = {
                         title: restOfTask.title,
-                        description: restOfTask.description,
-                        assigneeId: restOfTask.assigneeId,
-                        assigneeType: restOfTask.assigneeType,
+                        description: restOfTask.description || "",
+                        assigneeId: restOfTask.assigneeId || "",
+                        assigneeType: restOfTask.assigneeType || "user",
                         assigneeIds: restOfTask.assigneeIds || [],
                         assignees: restOfTask.assignees || [],
-                        projectId: restOfTask.projectId,
-                        assignedDate: new Date().toISOString().slice(0, 10),
+                        projectId: restOfTask.projectId || "",
+                        assignedDate: task.dueDate, // Use PREVIOUS due date as assigned date
                         dueDate: nextDueDate,
-                        visibleFrom: nextDueDate,
-                        priority: restOfTask.priority,
+                        visibleFrom: new Date().toISOString().slice(0, 10), // Today
+                        priority: restOfTask.priority || "Medium",
                         status: "To-Do",
                         progressPercent: 0,
                         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -222,28 +253,41 @@ exports.checkRecurringTasks = onSchedule("0 2 * * *", async (event) => {
                         archived: false,
                         completionComment: "",
                         assigneeStatus: {},
-                        weightage: restOfTask.weightage,
-                        isRecurring: restOfTask.isRecurring,
+                        weightage: restOfTask.weightage || null,
+                        isRecurring: true,
                         recurringPattern: restOfTask.recurringPattern,
                         recurringInterval: restOfTask.recurringInterval,
-                        recurringEndDate: restOfTask.recurringEndDate,
-                        recurringEndAfter: restOfTask.recurringEndAfter,
-                        recurringEndType: restOfTask.recurringEndType,
+                        recurringEndDate: restOfTask.recurringEndDate || "",
+                        recurringEndAfter: restOfTask.recurringEndAfter || "",
+                        recurringEndType: restOfTask.recurringEndType || "never",
+                        skipWeekends: restOfTask.skipWeekends || false,
                         parentRecurringTaskId: seriesId,
                         recurringOccurrenceCount: (restOfTask.recurringOccurrenceCount || 0) + 1,
+                        uniqueRecurringKey: `${seriesId}-${nextDueDate}`,
                     };
 
                     const newDocRef = db.collection("tasks").doc();
+                    newTaskData.taskId = newDocRef.id;
                     transaction.set(newDocRef, newTaskData);
-                    console.log(`Created next instance for task ${task.id} (Series: ${seriesId}) due on ${nextDueDate}`);
-                    results.push(task.id);
+
+                    console.log(`✅ Created next instance for task ${task.id} (${reason}) - Series: ${seriesId}, Due: ${nextDueDate}`);
+
+                    if (reason === "completed") {
+                        results.completed++;
+                    } else {
+                        results.overdue++;
+                    }
                 });
             } catch (e) {
-                console.error(`Transaction failed for task ${task.id}:`, e);
+                console.error(`❌ Transaction failed for task ${task.id}:`, e);
             }
         }
 
-        console.log(`Job complete. Created ${results.length} new task instances.`);
+        console.log(`\n📊 Job Summary:`);
+        console.log(`   - From completed tasks: ${results.completed}`);
+        console.log(`   - From overdue tasks: ${results.overdue}`);
+        console.log(`   - Skipped (not ready): ${results.skipped}`);
+        console.log(`   - Total created: ${results.completed + results.overdue}`);
 
     } catch (error) {
         console.error("Error in checkRecurringTasks:", error);

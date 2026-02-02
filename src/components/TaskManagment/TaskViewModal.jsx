@@ -122,6 +122,7 @@ import CompletionCommentModal from "../CompletionCommentModal"; // Adjust path i
 import {
   createNextRecurringInstance,
   shouldCreateNextInstance,
+  shouldCreateNextInstanceAsync,
 } from "../../utils/recurringTasks";
 import { formatDate } from "../../utils/formatDate"; // Import utility
 import { useThemeStyles } from "../../hooks/useThemeStyles";
@@ -505,25 +506,8 @@ const TaskViewModal = ({
           updates.progressPercent = 100;
           updates.completedBy = currentUser?.uid; // Last person to finish
 
-          // Trigger Recurrence (since global task is now done)
-          if (task.isRecurring) {
-            console.log("All assignees done. Triggering recurrence for:", task.id);
-            const dueDate = task.dueDate?.toDate ? task.dueDate.toDate() : new Date(task.dueDate);
-            const completedTaskState = {
-              ...task,
-              dueDate: dueDate,
-              status: "Done",
-              completedAt: new Date(),
-            };
-
-            if (shouldCreateNextInstance(completedTaskState)) {
-              createNextRecurringInstance(completedTaskState)
-                .then(newId => {
-                  if (newId) toast.success("Next recurring task created!");
-                })
-                .catch(err => console.error("Recurrence error:", err));
-            }
-          }
+          // BUG FIX #4: Removed redundant fire-and-forget recurrence trigger
+          // Recurrence creation happens after database update (lines 538-562)
         } else {
           // Not everyone is done, so global status is "In Progress"
           updates.status = "In Progress";
@@ -546,17 +530,23 @@ const TaskViewModal = ({
             const completedTaskState = {
               ...freshData,
               id: task.id,
+              taskId: task.id,
               dueDate: dueDate,
               status: "Done",
               completedAt: new Date(),
             };
 
-            if (shouldCreateNextInstance(completedTaskState)) {
+            if (await shouldCreateNextInstanceAsync(completedTaskState)) {
               try {
                 const newId = await createNextRecurringInstance(completedTaskState);
-                if (newId) toast.success("Next recurring task created!");
+                if (newId) {
+                  toast.success("Next recurring task created!");
+                } else {
+                  console.log("Recurring task creation skipped (duplicate or end condition)");
+                }
               } catch (err) {
                 console.error("Recurrence error:", err);
+                toast.error(`Failed to create next recurring task: ${err.message}`);
               }
             }
           }
@@ -589,46 +579,8 @@ const TaskViewModal = ({
         await updateTask(task.id, updates, col);
       }
 
-      // Handle Recurring Task Creation AFTER update completes
-      if (task.isRecurring) {
-        console.log("Attempting to create next recurring instance for:", task.id);
-
-        // Fetch fresh data from database
-        const freshTaskDoc = await getDoc(doc(db, col || "tasks", task.id));
-        if (freshTaskDoc.exists()) {
-          const freshData = freshTaskDoc.data();
-          const dueDate = freshData.dueDate?.toDate
-            ? freshData.dueDate.toDate()
-            : (freshData.dueDate?.seconds ? new Date(freshData.dueDate.seconds * 1000) : new Date(freshData.dueDate));
-
-          const completedTaskState = {
-            ...freshData,
-            id: task.id,
-            dueDate: dueDate,
-            status: "Done",
-            completedAt: new Date(),
-          };
-
-          console.log("Completed Task State for Recurrence:", completedTaskState);
-
-          if (shouldCreateNextInstance(completedTaskState)) {
-            try {
-              const newId = await createNextRecurringInstance(completedTaskState);
-              if (newId) {
-                toast.success("Next recurring task created!");
-                console.log("Created new recurring task:", newId);
-              } else {
-                console.warn("createNextRecurringInstance returned null (duplicate or error)");
-              }
-            } catch (recError) {
-              console.error("Failed to create recurring instance:", recError);
-              toast.error("Failed to create next recurring task");
-            }
-          } else {
-            console.warn("shouldCreateNextInstance returned false");
-          }
-        }
-      }
+      // REMOVED: Duplicate recurring task creation block
+      // This was causing race conditions - already handled above in lines 522-550
 
       await logTaskActivity(
         task.id,
@@ -791,8 +743,8 @@ const TaskViewModal = ({
               completedAt: new Date(),
             };
 
-            const shouldCreate = shouldCreateNextInstance(completedTaskState);
-            console.log("shouldCreateNextInstance result:", shouldCreate);
+            const shouldCreate = await shouldCreateNextInstanceAsync(completedTaskState);
+            console.log("shouldCreateNextInstanceAsync result:", shouldCreate);
 
             if (shouldCreate) {
               try {
@@ -806,9 +758,10 @@ const TaskViewModal = ({
                 }
               } catch (err) {
                 console.error("Failed to create recurring instance in QuickUpdate:", err);
+                toast.error(`Failed to create next recurring task: ${err.message}`);
               }
             } else {
-              console.warn("shouldCreateNextInstance returned false. Check task criteria (end date, max occurrences, etc).");
+              console.warn("shouldCreateNextInstanceAsync returned false. Check task criteria (end date, max occurrences, etc).");
             }
           } else {
             console.log("Task is not recurring, skipping creation.");
@@ -934,15 +887,39 @@ const TaskViewModal = ({
   };
 
   const getUserDisplayName = (item) => {
+    // First try the stored userName (already in the activity)
+    if (item.userName && item.userName !== "System" && item.userName !== "Unknown") {
+      return item.userName;
+    }
+
+    // Fallback: Look up user by userId from users/clients arrays
+    if (item.userId) {
+      const userDetails = getUserDetails(item.userId);
+      if (userDetails && userDetails.name) {
+        return userDetails.name;
+      }
+    }
+
+    // Last resort fallback
     return item.userName || "Unknown";
   };
 
   const getUserDetails = (userId) => {
     if (!userId || userId === "system") return { name: "System", avatar: null };
+
     const user = users.find(u => u.id === userId);
-    if (user) return user;
+    if (user) {
+      return {
+        ...user,
+        name: user.displayName || user.name || "Unknown User"
+      };
+    }
+
     const client = clients.find(c => c.id === userId);
-    if (client) return { ...client, name: client.clientName };
+    if (client) {
+      return { ...client, name: client.clientName || "Unknown Client" };
+    }
+
     return { name: "Unknown" };
   };
 

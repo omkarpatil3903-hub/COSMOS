@@ -5,10 +5,11 @@ const admin = require("firebase-admin");
  * @param {string} currentDueDate - YYYY-MM-DD
  * @param {string} pattern - daily, weekly, monthly, yearly
  * @param {number} interval - step size
- * @param {boolean} skipWeekends - whether to skip Sat/Sun
+ * @param {boolean} skipWeekends - whether to skip Sat/Sun (legacy, kept for backward compatibility)
+ * @param {array} selectedWeekDays - array of day indices [0-6] where task should recur (0=Sun, 6=Sat)
  * @returns {string} Next due date in YYYY-MM-DD
  */
-function calculateNextDueDate(currentDueDate, pattern, interval, skipWeekends = false) {
+function calculateNextDueDate(currentDueDate, pattern, interval, skipWeekends = false, selectedWeekDays = null) {
   const date = new Date(currentDueDate);
   const intVal = parseInt(interval) || 1;
 
@@ -29,14 +30,28 @@ function calculateNextDueDate(currentDueDate, pattern, interval, skipWeekends = 
       date.setDate(date.getDate() + intVal);
   }
 
-  // If skipWeekends is enabled, ensure the result is not Saturday or Sunday
-  if (skipWeekends) {
+  // CUSTOM WORKING DAYS: If selectedWeekDays is provided, skip non-working days
+  if (selectedWeekDays && Array.isArray(selectedWeekDays) && selectedWeekDays.length > 0) {
+    let attempts = 0;
+    const maxAttempts = 14; // Prevent infinite loops
+
+    while (attempts < maxAttempts && !selectedWeekDays.includes(date.getDay())) {
+      date.setDate(date.getDate() + 1);
+      attempts++;
+    }
+
+    if (attempts >= maxAttempts) {
+      console.warn(`Could not find valid working day for task. Using calculated date anyway.`);
+    }
+  }
+  // LEGACY: If skipWeekends is enabled (backward compatibility)
+  else if (skipWeekends) {
     const day = date.getDay();
     if (day === 6) {
-      // Saturday -> Monday
+      // Saturday → Monday
       date.setDate(date.getDate() + 2);
     } else if (day === 0) {
-      // Sunday -> Monday
+      // Sunday → Monday
       date.setDate(date.getDate() + 1);
     }
   }
@@ -54,7 +69,7 @@ function shouldCreateNextInstance(task) {
   if (task.status !== "Done") return false;
 
   const dueDate = new Date(task.dueDate);
-  
+
   // Check if current task is completed (sanity check, though status is Done)
   if (!task.completedAt) return false;
 
@@ -67,7 +82,7 @@ function shouldCreateNextInstance(task) {
   // Note: 'after' occurrences check requires async DB lookup, 
   // so we'll handle that in the main processing loop or an async wrapper.
   // This function just checks static properties.
-  
+
   return true;
 }
 
@@ -82,11 +97,11 @@ async function countSeriesOccurrences(seriesId) {
     .collection("tasks")
     .where("parentRecurringTaskId", "==", seriesId)
     .get();
-  
+
   // children + root (if root doesn't have parentRecurringTaskId, it won't be in this query, 
   // but usually we count the series size. 
   // If the root IS the seriesId, we add 1 for the root itself.)
-  return snapshot.size + 1; 
+  return snapshot.size + 1;
 }
 
 module.exports = {

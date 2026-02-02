@@ -35,7 +35,6 @@ import {
 } from "react-icons/fa";
 
 import { db, app, auth } from "../../firebase";
-import { deleteTaskWithRelations } from "../../services/taskService";
 import { updateProjectProgress } from "../../utils/projectProgress";
 import {
   addDoc,
@@ -53,9 +52,8 @@ import {
   where,
 } from "firebase/firestore";
 import { useAuthContext } from "../../context/AuthContext";
-import { logTaskActivity } from "../../services/taskService";
 import { getDatabase, ref as rtdbRef, onValue as onRtdbValue } from "firebase/database";
-
+import { deleteTaskWithRelations, logTaskActivity, completeTaskWithRecurrence } from "../../services/taskService";
 // Determine if a user/resource is active based on common fields
 const isUserActive = (u) => {
   if (!u) return false;
@@ -494,6 +492,8 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
             isRecurring: data.isRecurring || false,
             recurringPattern: data.recurringPattern || "daily",
             recurringInterval: data.recurringInterval || 1,
+            selectedWeekDays: data.selectedWeekDays || null,
+            skipWeekends: data.skipWeekends || false,
             recurringEndDate: data.recurringEndDate || "",
             recurringEndAfter: data.recurringEndAfter || "",
             recurringEndType: data.recurringEndType || "never",
@@ -666,6 +666,8 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
           isRecurring: taskData.isRecurring || false,
           recurringPattern: taskData.recurringPattern || "daily",
           recurringInterval: taskData.recurringInterval || 1,
+          selectedWeekDays: taskData.selectedWeekDays || null,
+          skipWeekends: taskData.skipWeekends || false,
           recurringEndDate: taskData.recurringEndDate || "",
           recurringEndAfter: taskData.recurringEndAfter || "",
           recurringEndType: taskData.recurringEndType || "never",
@@ -888,6 +890,8 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
           isRecurring: taskData.isRecurring || false,
           recurringPattern: taskData.recurringPattern || "daily",
           recurringInterval: taskData.recurringInterval || 1,
+          selectedWeekDays: taskData.selectedWeekDays || null,
+          skipWeekends: taskData.skipWeekends || false,
           recurringEndDate: taskData.recurringEndDate || "",
           recurringEndAfter: taskData.recurringEndAfter || "",
           recurringEndType: taskData.recurringEndType || "never",
@@ -1270,65 +1274,11 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
     }
     try {
       const t = tasks.find((x) => x.id === completionTaskId);
-      const updates = {
-        status: "Done",
-        completedAt: serverTimestamp(),
-        progressPercent: 100,
-        completionComment: comment,
-      };
 
-      // Propagate to all assignees (multi + single fallback)
-      {
-        const targetUids = Array.from(
-          new Set([...(Array.isArray(t?.assigneeIds) ? t.assigneeIds : []), t?.assigneeId].filter(Boolean))
-        );
-        targetUids.forEach((uid) => {
-          updates[`assigneeStatus.${uid}.status`] = "Done";
-          updates[`assigneeStatus.${uid}.progressPercent`] = 100;
-          updates[`assigneeStatus.${uid}.completedAt`] = serverTimestamp();
-          updates[`assigneeStatus.${uid}.completedBy`] = user?.uid || "system";
-          if (comment) updates[`assigneeStatus.${uid}.completionComment`] = comment;
-        });
-      }
+      // Use the centralized completion handler with recurrence support
+      await completeTaskWithRecurrence(t, user, comment, "tasks");
 
-      await updateDoc(doc(db, "tasks", completionTaskId), updates);
-
-      // Log activity for completion
-      logTaskActivity(
-        completionTaskId,
-        "completed",
-        `Marked as done${comment ? `: ${comment}` : ""}`,
-        user
-      );
-
-      console.log("Admin completion updated doc. Checking recurrence for:", t?.id);
-
-      // Attempt to create next recurring instance if applicable
-      try {
-        const checkTask = {
-          ...(t || {}),
-          id: completionTaskId,
-          completedAt: new Date(),
-        };
-        console.log("Checking shouldCreateNextInstanceAsync with:", checkTask);
-        if (await shouldCreateNextInstanceAsync(checkTask)) {
-          console.log("Creating next recurring instance (Admin)...");
-          const newId = await createNextRecurringInstance(checkTask);
-          console.log("Created next recurring instance (Admin):", newId);
-          if (newId && t?.projectId) {
-            try {
-              await updateProjectProgress(t.projectId);
-            } catch (err) {
-              console.warn(
-                "Failed to refresh project progress for new recurring instance",
-                err
-              );
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Recurring continuation failed (admin completion)", e);
-      }
+      console.log("Admin completion updated doc via service. Task:", t?.id);
 
       if (t?.projectId) {
         try {

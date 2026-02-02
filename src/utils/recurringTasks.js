@@ -52,19 +52,21 @@ import { db } from "../firebase";
  * @param {Date|Timestamp|string} currentDueDate - Current due date
  * @param {string} pattern - Recurrence pattern (daily, weekly, monthly, yearly)
  * @param {number} interval - Interval between occurrences
- * @param {boolean} skipWeekends - Whether to skip Saturday/Sunday
+ * @param {boolean} skipWeekends - Whether to skip Saturday/Sunday (legacy)
+ * @param {array} selectedWeekDays - Array of day indices [0-6] where task should recur (0=Sun, 6=Sat)
  * @returns {string} Next due date in YYYY-MM-DD format
  *
  * Business Logic:
  * - Handles Firestore Timestamps, Date objects, and date strings
- * - If skipWeekends is enabled, moves Saturday to Monday (+2 days)
- * - If skipWeekends is enabled, moves Sunday to Monday (+1 day)
+ * - If selectedWeekDays provided, skips days not in the array
+ * - If skipWeekends is enabled (legacy), moves Saturday to Monday (+2 days) and Sunday to Monday (+1 day)
  */
 export function calculateNextDueDate(
   currentDueDate,
   pattern,
   interval,
-  skipWeekends = false
+  skipWeekends = false,
+  selectedWeekDays = null
 ) {
   // NORMALIZE: Convert various date formats to JavaScript Date
   let date;
@@ -84,9 +86,18 @@ export function calculateNextDueDate(
     case "weekly":
       date.setDate(date.getDate() + interval * 7);
       break;
-    case "monthly":
+    case "monthly": {
+      // BUG FIX #5: Handle month-end overflow (Jan 31 → Feb 28, not Mar 2/3)
+      const currentDay = date.getDate();
       date.setMonth(date.getMonth() + interval);
+
+      // If day changed due to overflow (e.g., Jan 31 → Mar 3)
+      // Set to last day of the intended month
+      if (date.getDate() < currentDay) {
+        date.setDate(0); // Go to last day of previous month (Feb 28/29)
+      }
       break;
+    }
     case "yearly":
       date.setFullYear(date.getFullYear() + interval);
       break;
@@ -95,8 +106,22 @@ export function calculateNextDueDate(
       date.setDate(date.getDate() + interval);
   }
 
-  // WEEKEND SKIP: Move to Monday if landing on weekend
-  if (skipWeekends) {
+  // CUSTOM WORKING DAYS: If selectedWeekDays is provided, skip non-working days
+  if (selectedWeekDays && Array.isArray(selectedWeekDays) && selectedWeekDays.length > 0) {
+    let attempts = 0;
+    const maxAttempts = 14; // Prevent infinite loops
+
+    while (attempts < maxAttempts && !selectedWeekDays.includes(date.getDay())) {
+      date.setDate(date.getDate() + 1);
+      attempts++;
+    }
+
+    if (attempts >= maxAttempts) {
+      console.warn('Could not find valid working day for recurring task. Using calculated date.');
+    }
+  }
+  // LEGACY: WEEKEND SKIP - Move to Monday if landing on weekend
+  else if (skipWeekends) {
     const day = date.getDay();
     if (day === 6) {
       // Saturday → Monday
@@ -239,12 +264,20 @@ export function shouldCreateNextInstance(task) {
   if (task.status !== "Done") return false;
   if (!task.completedAt) return false;
 
-  const dueDate = new Date(task.dueDate);
+  // BUG FIX #1: Calculate NEXT due date first, then check end date
+  const nextDueDate = calculateNextDueDate(
+    task.dueDate,
+    task.recurringPattern,
+    task.recurringInterval,
+    task.skipWeekends,
+    task.selectedWeekDays // Custom working days
+  );
 
-  // END DATE CHECK: Don't create if past end date
+  // END DATE CHECK: Don't create if NEXT occurrence would be past end date
   if (task.recurringEndType === "date" && task.recurringEndDate) {
     const endDate = new Date(task.recurringEndDate);
-    if (dueDate >= endDate) return false;
+    const nextDate = new Date(nextDueDate);
+    if (nextDate > endDate) return false;
   }
 
   // OCCURRENCE LIMIT CHECK: Don't create if max reached
@@ -282,23 +315,68 @@ export async function countSeriesOccurrences(seriesId) {
  * @returns {Promise<boolean>} True if next instance should be created
  */
 export async function shouldCreateNextInstanceAsync(task) {
-  if (!task?.isRecurring) return false;
-  if (task.status !== "Done") return false;
-  if (!task.completedAt) return false;
+  console.log('🔍 shouldCreateNextInstanceAsync: Checking task:', {
+    id: task?.id,
+    title: task?.title,
+    isRecurring: task?.isRecurring,
+    status: task?.status,
+    completedAt: task?.completedAt,
+    dueDate: task?.dueDate,
+    recurringPattern: task?.recurringPattern,
+    recurringInterval: task?.recurringInterval
+  });
 
-  const dueDate = new Date(task.dueDate);
-
-  if (task.recurringEndType === "date" && task.recurringEndDate) {
-    const endDate = new Date(task.recurringEndDate);
-    if (dueDate >= endDate) return false;
+  if (!task?.isRecurring) {
+    console.log('❌ FAILED: task.isRecurring is false or missing');
+    return false;
   }
 
+  // Normalize status for comparison (handles 'Done', 'DONE', 'done', etc.)
+  const normalizedStatus = (task.status || '').toLowerCase().trim();
+  if (normalizedStatus !== "done") {
+    console.log('❌ FAILED: status is not Done, current:', task.status);
+    return false;
+  }
+
+  if (!task.completedAt) {
+    console.log('❌ FAILED: completedAt is missing');
+    return false;
+  }
+
+  // BUG FIX #1: Calculate NEXT due date first, then check end date
+  const nextDueDate = calculateNextDueDate(
+    task.dueDate,
+    task.recurringPattern,
+    task.recurringInterval,
+    task.skipWeekends,
+    task.selectedWeekDays // Custom working days
+  );
+
+  console.log('✅ Calculated nextDueDate:', nextDueDate);
+
+  // END DATE CHECK: Don't create if NEXT occurrence would be past end date
+  if (task.recurringEndType === "date" && task.recurringEndDate) {
+    const endDate = new Date(task.recurringEndDate);
+    const nextDate = new Date(nextDueDate);
+    if (nextDate > endDate) {
+      console.log('❌ FAILED: nextDate > endDate');
+      return false;
+    }
+  }
+
+  // OCCURRENCE LIMIT CHECK: Query database for accurate count
   if (task.recurringEndType === "after" && task.recurringEndAfter) {
     const maxOccurrences = parseInt(task.recurringEndAfter);
     const seriesId = task.parentRecurringTaskId || task.id;
     const count = await countSeriesOccurrences(seriesId);
-    if (count >= maxOccurrences) return false;
+    console.log('✅ Occurrence count:', count, '/', maxOccurrences);
+    if (count >= maxOccurrences) {
+      console.log('❌ FAILED: count >= maxOccurrences');
+      return false;
+    }
   }
+
+  console.log('✅ All checks passed! Should create next instance');
   return true;
 }
 
@@ -320,12 +398,24 @@ export async function shouldCreateNextInstanceAsync(task) {
  */
 export async function createNextRecurringInstance(task) {
   try {
+    // BUG FIX #6: Validate required fields before proceeding
+    if (!task || !task.id) {
+      throw new Error("Task ID is required for recurring instance creation");
+    }
+    if (!task.title || !task.dueDate) {
+      throw new Error("Task title and due date are required for recurring instance");
+    }
+    if (!task.recurringPattern || !task.recurringInterval) {
+      throw new Error("Recurring pattern and interval are required");
+    }
+
     // Calculate next due date
     const nextDueDate = calculateNextDueDate(
       task.dueDate,
       task.recurringPattern,
       task.recurringInterval,
-      task.skipWeekends
+      task.skipWeekends,
+      task.selectedWeekDays // Custom working days
     );
 
     const seriesId = task.parentRecurringTaskId || task.id;
@@ -352,18 +442,28 @@ export async function createNextRecurringInstance(task) {
 
       // STEP 2: Build new task data (reset progress, keep recurrence settings)
       const { id, ...restOfTask } = task;
+
+      // BUG FIX #6: Validate essential fields exist
+      if (!restOfTask.assigneeId && (!restOfTask.assigneeIds || restOfTask.assigneeIds.length === 0)) {
+        console.warn("No assignee specified for recurring task, using original assignee");
+      }
+
+      // BUG FIX #2: Generate unique key to help prevent race condition duplicates
+      const uniqueKey = `${seriesId}-${nextDueDate}`;
+
       const newTaskData = {
         title: restOfTask.title,
-        description: restOfTask.description,
-        assigneeId: restOfTask.assigneeId,
-        assigneeType: restOfTask.assigneeType,
+        description: restOfTask.description || "",
+        assigneeId: restOfTask.assigneeId || "",
+        assigneeType: restOfTask.assigneeType || "user",
         assigneeIds: restOfTask.assigneeIds || [],
         assignees: restOfTask.assignees || [],
-        projectId: restOfTask.projectId,
-        assignedDate: new Date().toISOString().slice(0, 10),
+        projectId: restOfTask.projectId || "",
+        // ASSIGNED DATE: For daily tasks, use same as dueDate. For others, use previous dueDate.
+        assignedDate: restOfTask.recurringPattern === "daily" ? nextDueDate : task.dueDate,
         dueDate: nextDueDate,
-        visibleFrom: new Date().toISOString().slice(0, 10), // VISIBLE IMMEDIATELY: Employees can see upcoming tasks
-        priority: restOfTask.priority,
+        visibleFrom: new Date().toISOString().slice(0, 10), // MUST BE TODAY: Used for task list filtering
+        priority: restOfTask.priority || "Medium",
         status: "To-Do", // RESET: New instance starts as To-Do
         progressPercent: 0,
         createdAt: new Date(),
@@ -371,21 +471,31 @@ export async function createNextRecurringInstance(task) {
         archived: false,
         completionComment: "",
         assigneeStatus: {}, // RESET: Clear individual assignee progress
-        weightage: restOfTask.weightage,
+        weightage: restOfTask.weightage || null,
         // INHERIT: Keep recurrence settings
         isRecurring: restOfTask.isRecurring,
         recurringPattern: restOfTask.recurringPattern,
         recurringInterval: restOfTask.recurringInterval,
-        recurringEndDate: restOfTask.recurringEndDate,
-        recurringEndAfter: restOfTask.recurringEndAfter,
-        recurringEndType: restOfTask.recurringEndType,
+        recurringEndDate: restOfTask.recurringEndDate || "",
+        recurringEndAfter: restOfTask.recurringEndAfter || "",
+        recurringEndType: restOfTask.recurringEndType || "never",
+        selectedWeekDays: restOfTask.selectedWeekDays || null, // INHERIT: Custom working days
+        skipWeekends: restOfTask.skipWeekends || false,
         parentRecurringTaskId: seriesId, // LINK: Connect to series
         recurringOccurrenceCount: (restOfTask.recurringOccurrenceCount || 0) + 1,
+        // BUG FIX #2: Add unique key field for duplicate detection
+        uniqueRecurringKey: uniqueKey,
       };
 
       // STEP 3: Create new task document
       const newDocRef = doc(collection(db, "tasks"));
       newTaskData.taskId = newDocRef.id;
+
+      // BUG FIX #6: Final validation before transaction
+      if (!newTaskData.dueDate || !newTaskData.title) {
+        throw new Error("Critical fields missing in new task data");
+      }
+
       transaction.set(newDocRef, newTaskData);
 
       console.log("Transaction set called for new task", newDocRef.id);
@@ -393,8 +503,10 @@ export async function createNextRecurringInstance(task) {
     });
 
   } catch (error) {
+    // BUG FIX #6: Proper error logging and propagation
     console.error("Error creating recurring task instance:", error);
-    throw error;
+    console.error("Task data:", { id: task?.id, title: task?.title, pattern: task?.recurringPattern });
+    throw error; // Propagate error up to caller for proper handling
   }
 }
 
