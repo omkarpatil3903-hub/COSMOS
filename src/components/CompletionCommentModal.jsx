@@ -31,7 +31,7 @@
  * Last Modified: 2026-01-10
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Card from "./Card";
 import Button from "./Button";
 
@@ -47,14 +47,35 @@ function CompletionCommentModal({
   maxLength = 300,
 }) {
   const [comment, setComment] = useState(defaultComment || "");
+  const textareaRef = useRef(null);
 
   useEffect(() => {
     setComment(defaultComment || "");
   }, [defaultComment, open]);
 
+  // Auto-focus textarea when modal opens
+  useEffect(() => {
+    if (open && textareaRef.current) {
+      // Small delay to ensure modal is fully rendered
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
+    }
+  }, [open]);
+
   const tooShort = (comment || "").trim().length < minLength;
   const tooLong = (comment || "").length > maxLength;
   const invalid = tooShort || tooLong;
+
+  // Handle Enter key to submit (Ctrl+Enter or Command+Enter)
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      if (!invalid) {
+        onSubmit(comment);
+      }
+    }
+  };
 
   if (!open) return null;
 
@@ -70,11 +91,13 @@ function CompletionCommentModal({
         <div className="p-6">
           <h3 className="text-lg font-semibold mb-2 text-gray-900 [.dark_&]:text-white">{title}</h3>
           <p className="text-sm text-gray-500 [.dark_&]:text-gray-400 mb-4">
-            You can add a brief comment about the completion.
+            You can add a brief comment about the completion. <span className="text-xs text-indigo-600 [.dark_&]:text-indigo-400">(Press Ctrl+Enter to submit)</span>
           </p>
           <textarea
+            ref={textareaRef}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
+            onKeyDown={handleKeyDown}
             rows={4}
             placeholder={placeholder}
             maxLength={maxLength}
@@ -115,3 +138,4 @@ function CompletionCommentModal({
 }
 
 export default CompletionCommentModal;
+

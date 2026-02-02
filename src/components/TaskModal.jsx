@@ -46,6 +46,9 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Button from "./Button";
+import RecurringPresets, { PRESETS } from "./RecurringPresets";
+import RecurrencePreview from "./RecurrencePreview";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import toast from "react-hot-toast";
 import VoiceInput from "./Common/VoiceInput";
 import { validateTaskForm } from "../utils/formBuilders";
@@ -187,10 +190,18 @@ function TaskModal({
   const [recurringEndType, setRecurringEndType] = useState("never");
   const [recurringEndDate, setRecurringEndDate] = useState("");
   const [recurringEndAfter, setRecurringEndAfter] = useState("");
-  const [selectedWeekDays, setSelectedWeekDays] = useState([
-    0, 1, 2, 3, 4, 5, 6,
-  ]); // All days default
+  const [selectedWeekDays, setSelectedWeekDays] = useState(() => {
+    // Initialize based on taskToEdit if editing
+    if (taskToEdit?.selectedWeekDays && Array.isArray(taskToEdit.selectedWeekDays)) {
+      return taskToEdit.selectedWeekDays;
+    } else if (taskToEdit?.skipWeekends) {
+      return [1, 2, 3, 4, 5]; // Mon-Fri for legacy tasks
+    }
+    return [1, 2, 3, 4, 5]; // Default to Mon-Fri (Daily preset default)
+  });
   const [isCustomDays, setIsCustomDays] = useState(false);
+  const [skipWeekends, setSkipWeekends] = useState(false); // Phase 4: Skip weekends
+  const [selectedPreset, setSelectedPreset] = useState(null); // Track selected preset
   const [previewDates, setPreviewDates] = useState([]);
 
   // OKR state
@@ -328,14 +339,41 @@ function TaskModal({
       setAssignedDate(taskToEdit.assignedDate || "");
       setDueDate(taskToEdit.dueDate || "");
 
-      if (taskToEdit.taskType === "recurring") {
+      // Check if task is recurring using isRecurring field (not taskType)
+      if (taskToEdit.isRecurring || taskToEdit.taskType === "recurring") {
         setTaskType("recurring");
+      } else {
+        setTaskType("one-time");
       }
+
       setRecurringPattern(taskToEdit.recurringPattern || "daily");
       setRecurringInterval(taskToEdit.recurringInterval || 1);
       setRecurringEndType(taskToEdit.recurringEndType || "never");
       setRecurringEndDate(taskToEdit.recurringEndDate || "");
       setRecurringEndAfter(String(taskToEdit.recurringEndAfter || ""));
+      setSkipWeekends(taskToEdit.skipWeekends || false);
+
+      // Detect and set the appropriate preset based on existing settings
+      if (taskToEdit.isRecurring || taskToEdit.taskType === "recurring") {
+        const pattern = taskToEdit.recurringPattern || "daily";
+        const interval = taskToEdit.recurringInterval || 1;
+        const hasCustomDays = taskToEdit.selectedWeekDays && Array.isArray(taskToEdit.selectedWeekDays);
+
+        // Match preset based on pattern and interval
+        if (pattern === "daily" && interval === 1) {
+          // Daily preset - regardless of which days are selected
+          setSelectedPreset("daily-weekdays");
+        } else if (pattern === "weekly" && interval === 1) {
+          // Weekly preset
+          setSelectedPreset("weekly");
+        } else if (pattern === "monthly" && interval === 1) {
+          // Monthly preset
+          setSelectedPreset("monthly");
+        } else {
+          // Custom pattern (interval > 1 or other patterns)
+          setSelectedPreset("custom");
+        }
+      }
 
       // Map legacy skipWeekends to selectedWeekDays if needed
       if (taskToEdit.selectedWeekDays) {
@@ -429,6 +467,24 @@ function TaskModal({
     isEdit,
   ]);
 
+  // Handler for preset selection (Phase 2)
+  const handlePresetSelect = (preset) => {
+    setSelectedPreset(preset.id);
+
+    if (preset.custom) {
+      // Custom preset - don't auto-configure, let user set manually
+      return;
+    }
+
+    // Auto-configure based on preset
+    const config = preset.config;
+    setRecurringPattern(config.pattern);
+    setRecurringInterval(config.interval);
+    setSkipWeekends(config.skipWeekends || false); // Add skipWeekends configuration
+    setIsCustomDays(config.customDays);
+    setSelectedWeekDays(config.selectedWeekDays);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -486,8 +542,8 @@ function TaskModal({
         isRecurring && recurringEndType === "after"
           ? Number(recurringEndAfter)
           : undefined,
-      selectedWeekDays:
-        isRecurring && isCustomDays ? selectedWeekDays : undefined,
+      skipWeekends: isRecurring ? skipWeekends : undefined,
+      selectedWeekDays: isRecurring ? selectedWeekDays : undefined, // Always save for recurring tasks
       okrObjectiveIndex:
         typeof okrObjectiveIndex === "number" ? okrObjectiveIndex : undefined,
       okrKeyResultIndices: okrKeyResultIndices,
@@ -807,8 +863,267 @@ function TaskModal({
                     )}
                   </div>
 
-                  {/* Dates */}
+
+                  {/* ========== RECURRING TOGGLE - Moved to TOP ========== */}
+                  <div className="flex items-center justify-between bg-gray-50 [.dark_&]:bg-white/5 p-3 rounded-xl border border-gray-100 [.dark_&]:border-white/10">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`p-1.5 rounded-lg ${isRecurring
+                          ? "bg-indigo-600 text-white"
+                          : "bg-gray-200 text-gray-500"
+                          }`}
+                      >
+                        <MdReplayCircleFilled className="text-lg" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-gray-900 [.dark_&]:text-white">
+                          Recurring Task?
+                        </h4>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={isRecurring}
+                        onChange={(e) =>
+                          setTaskType(e.target.checked ? "recurring" : "one-time")
+                        }
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                  </div>
+
+                  {/* ========== RECURRING OPTIONS PANEL ========== */}
+                  {isRecurring && (
+                    <div className="p-4 bg-white [.dark_&]:bg-[#1F2234] rounded-xl border border-gray-200 [.dark_&]:border-white/10 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
+
+                      {/* FIRST OCCURRENCE DATE - Moved INSIDE recurring panel */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 [.dark_&]:text-gray-300 mb-1.5">
+                          First Occurrence Date *
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="date"
+                            value={dueDate}
+                            onChange={(e) => {
+                              setDueDate(e.target.value);
+                              if (errors.dueDate)
+                                setErrors((prev) => ({ ...prev, dueDate: "" }));
+                            }}
+                            className={`block w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2.5 text-sm text-gray-900 [.dark_&]:text-white shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-600 ${errors.dueDate ? "ring-red-300 bg-red-50" : ""
+                              }`}
+                          />
+                        </div>
+                        {errors.dueDate && (
+                          <p className="mt-1 text-xs text-red-600">
+                            {errors.dueDate}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* PHASE 2: Preset Selector */}
+                      <RecurringPresets
+                        selected={selectedPreset}
+                        onSelect={handlePresetSelect}
+                      />
+
+                      {/* Working Days Selector - Show for Daily preset */}
+                      {selectedPreset === 'daily-weekdays' && (
+                        <div className="space-y-2 pt-3 border-t border-gray-100 [.dark_&]:border-white/10 animate-in fade-in slide-in-from-top-1">
+                          <div className="flex items-center justify-between">
+                            <label className="block text-xs font-semibold text-gray-700 [.dark_&]:text-gray-300">
+                              📅 Working Days
+                            </label>
+                            <span className="text-[10px] text-gray-500">Select days when task should recur</span>
+                          </div>
+
+                          <div className="flex gap-1">
+                            {["S", "M", "T", "W", "T", "F", "S"].map((day, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedWeekDays((prev) =>
+                                    prev.includes(idx)
+                                      ? prev.filter((d) => d !== idx)
+                                      : [...prev, idx]
+                                  );
+                                  setIsCustomDays(true); // Mark as customized
+                                }}
+                                className={`flex-1 h-9 rounded-lg text-xs font-bold flex items-center justify-center transition-all ${selectedWeekDays.includes(idx)
+                                  ? "bg-indigo-600 text-white shadow-sm"
+                                  : "bg-gray-100 [.dark_&]:bg-white/5 text-gray-400 [.dark_&]:text-gray-500 hover:bg-gray-200 [.dark_&]:hover:bg-white/10"
+                                  }`}
+                                title={["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][idx]}
+                              >
+                                {day}
+                              </button>
+                            ))}
+                          </div>
+
+                          <p className="text-[10px] text-gray-500 [.dark_&]:text-gray-400 mt-1">
+                            💡 Tip: Uncheck days that are weekends/holidays for your company
+                          </p>
+                        </div>
+                      )}
+
+                      {/* End Condition - Always visible */}
+                      {selectedPreset === 'custom' && (
+                        <div className="space-y-3 pt-3 border-t border-gray-100 [.dark_&]:border-white/10 animate-in fade-in slide-in-from-top-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs font-semibold text-gray-700 [.dark_&]:text-gray-300">⚙️ Advanced Settings</span>
+                          </div>
+
+                          {/* Repeat Every */}
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              Repeat Every
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                type="number"
+                                min="1"
+                                value={recurringInterval}
+                                onChange={(e) =>
+                                  setRecurringInterval(
+                                    parseInt(e.target.value) || 1
+                                  )
+                                }
+                                className="w-16 rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
+                              />
+                              <select
+                                value={recurringPattern}
+                                onChange={(e) =>
+                                  setRecurringPattern(e.target.value)
+                                }
+                                className="flex-1 rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
+                              >
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="yearly">Yearly</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Custom Weekdays */}
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center justify-between">
+                              <label className="block text-xs font-medium text-gray-500 [.dark_&]:text-gray-400">
+                                Specific Days
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={isCustomDays}
+                                  onChange={(e) => {
+                                    setIsCustomDays(e.target.checked);
+                                    if (!e.target.checked) {
+                                      setSelectedWeekDays([0, 1, 2, 3, 4, 5, 6]);
+                                    }
+                                  }}
+                                  className="rounded border-indigo-300 [.dark_&]:border-white/10 text-indigo-600 focus:ring-indigo-500 h-3 w-3"
+                                />
+                                <span className="text-[10px] text-indigo-600 [.dark_&]:text-indigo-400 font-medium">
+                                  Customize
+                                </span>
+                              </label>
+                            </div>
+
+                            {isCustomDays && (
+                              <div className="flex gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                                {["S", "M", "T", "W", "T", "F", "S"].map(
+                                  (day, idx) => (
+                                    <button
+                                      key={idx}
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedWeekDays((prev) =>
+                                          prev.includes(idx)
+                                            ? prev.filter((d) => d !== idx)
+                                            : [...prev, idx]
+                                        );
+                                      }}
+                                      className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-all ${selectedWeekDays.includes(idx)
+                                        ? "bg-indigo-600 text-white shadow-sm"
+                                        : "bg-gray-100 [.dark_&]:bg-white/5 text-gray-500 [.dark_&]:text-gray-400 hover:bg-gray-200 [.dark_&]:hover:bg-white/10"
+                                        }`}
+                                    >
+                                      {day}
+                                    </button>
+                                  )
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* End Condition - Always visible */}
+                      <div className="space-y-3 pt-3 border-t border-gray-100 [.dark_&]:border-white/10">
+                        <div>
+                          <label className="flex items-center gap-2 text-xs font-medium text-gray-500 mb-1">
+                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
+                            </svg>
+                            Ends
+                          </label>
+                          <select
+                            value={recurringEndType}
+                            onChange={(e) => setRecurringEndType(e.target.value)}
+                            className="w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
+                          >
+                            <option value="never">Never</option>
+                            <option value="date">On Date</option>
+                            <option value="after">After Occurrences</option>
+                          </select>
+                        </div>
+
+                        {recurringEndType === "date" && (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              End Date
+                            </label>
+                            <input
+                              type="date"
+                              value={recurringEndDate}
+                              onChange={(e) =>
+                                setRecurringEndDate(e.target.value)
+                              }
+                              min={dueDate || undefined}
+                              className="w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
+                            />
+                          </div>
+                        )}
+
+                        {recurringEndType === "after" && (
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              Count
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={recurringEndAfter}
+                              onChange={(e) =>
+                                setRecurringEndAfter(e.target.value)
+                              }
+                              placeholder="e.g. 10"
+                              className="w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ========== DATE FIELDS (Non-Recurring Tasks) ========== */}
+                {!isRecurring && (
                   <div className="grid grid-cols-1 gap-4">
+                    {/* Assigned Date */}
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1.5">
                         Assigned Date
@@ -822,6 +1137,8 @@ function TaskModal({
                         />
                       </div>
                     </div>
+
+                    {/* Due Date */}
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1.5">
                         Due Date
@@ -846,7 +1163,7 @@ function TaskModal({
                       )}
                     </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Column 3: Advanced & Subtasks */}
@@ -869,192 +1186,7 @@ function TaskModal({
                   />
                 </div>
 
-                {/* Recurring Toggle */}
-                <div className="flex items-center justify-between bg-gray-50 [.dark_&]:bg-white/5 p-3 rounded-xl border border-gray-100 [.dark_&]:border-white/10">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`p-1.5 rounded-lg ${isRecurring
-                        ? "bg-indigo-600 text-white"
-                        : "bg-gray-200 text-gray-500"
-                        }`}
-                    >
-                      <MdReplayCircleFilled className="text-lg" />
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-gray-900 [.dark_&]:text-white">
-                        Recurring
-                      </h4>
-                    </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={isRecurring}
-                      onChange={(e) =>
-                        setTaskType(e.target.checked ? "recurring" : "one-time")
-                      }
-                    />
-                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </label>
-                </div>
-
-                {/* Recurring Options Panel */}
-                {isRecurring && (
-                  <div className="p-4 bg-white [.dark_&]:bg-[#1F2234] rounded-xl border border-gray-200 [.dark_&]:border-white/10 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="col-span-2">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
-                          Repeat Every
-                        </label>
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            min="1"
-                            value={recurringInterval}
-                            onChange={(e) =>
-                              setRecurringInterval(
-                                parseInt(e.target.value) || 1
-                              )
-                            }
-                            className="w-16 rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
-                          />
-                          <select
-                            value={recurringPattern}
-                            onChange={(e) =>
-                              setRecurringPattern(e.target.value)
-                            }
-                            className="flex-1 rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
-                          >
-                            <option value="daily">Day(s)</option>
-                            <option value="weekly">Week(s)</option>
-                            <option value="monthly">Month(s)</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="col-span-2 flex flex-col gap-2">
-                        <div className="flex items-center justify-between">
-                          <label className="block text-xs font-medium text-gray-500 [.dark_&]:text-gray-400">
-                            Allowed Days
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={isCustomDays}
-                              onChange={(e) => {
-                                setIsCustomDays(e.target.checked);
-                                if (!e.target.checked) {
-                                  setSelectedWeekDays([0, 1, 2, 3, 4, 5, 6]);
-                                }
-                              }}
-                              className="rounded border-indigo-300 [.dark_&]:border-white/10 text-indigo-600 focus:ring-indigo-500 h-3 w-3"
-                            />
-                            <span className="text-[10px] text-indigo-600 [.dark_&]:text-indigo-400 font-medium">
-                              Customize
-                            </span>
-                          </label>
-                        </div>
-
-                        {isCustomDays && (
-                          <div className="flex gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                            {["S", "M", "T", "W", "T", "F", "S"].map(
-                              (day, idx) => (
-                                <button
-                                  key={idx}
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedWeekDays((prev) =>
-                                      prev.includes(idx)
-                                        ? prev.filter((d) => d !== idx)
-                                        : [...prev, idx]
-                                    );
-                                  }}
-                                  className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-all ${selectedWeekDays.includes(idx)
-                                    ? "bg-indigo-600 text-white shadow-sm"
-                                    : "bg-gray-100 [.dark_&]:bg-white/5 text-gray-500 [.dark_&]:text-gray-400 hover:bg-gray-200 [.dark_&]:hover:bg-white/10"
-                                    }`}
-                                >
-                                  {day}
-                                </button>
-                              )
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="col-span-2">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
-                          Ends
-                        </label>
-                        <select
-                          value={recurringEndType}
-                          onChange={(e) => setRecurringEndType(e.target.value)}
-                          className="w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
-                        >
-                          <option value="never">Never</option>
-                          <option value="date">On Date</option>
-                          <option value="after">After Occurrences</option>
-                        </select>
-                      </div>
-
-                      {recurringEndType === "date" && (
-                        <div className="col-span-2">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">
-                            End Date
-                          </label>
-                          <input
-                            type="date"
-                            value={recurringEndDate}
-                            onChange={(e) =>
-                              setRecurringEndDate(e.target.value)
-                            }
-                            min={dueDate || undefined}
-                            className="w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
-                          />
-                        </div>
-                      )}
-
-                      {recurringEndType === "after" && (
-                        <div className="col-span-2">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">
-                            Count
-                          </label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={recurringEndAfter}
-                            onChange={(e) =>
-                              setRecurringEndAfter(e.target.value)
-                            }
-                            placeholder="e.g. 10"
-                            className="w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-sm text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Recurrence Preview */}
-                    {previewDates.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-gray-100">
-                        <label className="block text-xs font-medium text-gray-500 mb-2 flex items-center gap-1">
-                          <FaRegCalendarAlt /> Next 5 Occurrences
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          {previewDates.map((date, idx) => (
-                            <div
-                              key={idx}
-                              className="px-2 py-1 bg-indigo-50 [.dark_&]:bg-indigo-900/20 text-indigo-700 [.dark_&]:text-indigo-400 text-xs rounded-md border border-indigo-100 [.dark_&]:border-indigo-500/20 flex items-center gap-1"
-                            >
-                              <span>{date}</span>
-                              {idx < previewDates.length - 1 && <FaArrowRight className="text-[8px] text-indigo-300" />}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                {/* Recurring section moved to Column 2 (Schedule section) */}
 
                 {/* OKRs */}
                 {projectId && (

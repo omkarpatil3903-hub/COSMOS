@@ -180,13 +180,26 @@ const EmployeeTasks = () => {
     const configured = Array.isArray(statusOptions)
       ? statusOptions.filter(Boolean)
       : [];
-    const present = Array.from(
-      new Set(tasks.map((t) => t.status).filter(Boolean))
-    );
+
+    // Normalize status values before deduplication to handle variants like "TO DO" vs "TO-DO"
+    const normalizeStatus = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    // Create a map to track the FIRST occurrence of each normalized status
+    const statusMap = new Map();
+    tasks.forEach((t) => {
+      if (!t.status) return;
+      const normalized = normalizeStatus(t.status);
+      if (!statusMap.has(normalized)) {
+        statusMap.set(normalized, t.status); // Store original format of first occurrence
+      }
+    });
+
+    const present = Array.from(statusMap.values());
+
     // Merge: keep configured order first, then add any present statuses not configured
-    const has = new Set(configured.map((s) => String(s).toLowerCase()));
+    const has = new Set(configured.map((s) => normalizeStatus(s))); // Use same normalization!
     const extras = present.filter(
-      (s) => !has.has(String(s).toLowerCase())
+      (s) => !has.has(normalizeStatus(s)) // Use same normalization!
     );
     return [...configured, ...extras];
   }, [statusOptions, tasks]);
@@ -704,24 +717,25 @@ const EmployeeTasks = () => {
         });
       }
 
-      // If this is an admin recurring task, create the next instance (same rules as Task Management)
-      // NOTE: For multi-assignee, we might need to decide when to create next instance.
-      // Assuming if ANYONE completes it, or if ALL complete it?
-      // Current logic: if it's recurring and marked done.
-      // For multi-assignee, maybe we only recur if ALL are done? Or if the "main" status is done?
-      // For now, let's keep it simple: if the individual completes it, we don't necessarily recur the whole task unless we update the main status.
-      // But we are NOT updating the main status here anymore for admin tasks.
-      // So recurring logic might need to be revisited.
-      // However, the requirement was "when one assignee marks it done the tasks in other assine panel also gets done".
-      // We fixed that. Now, does the recurring task recur when ONE person finishes? Probably not.
-      // It should probably recur when the "main" task is marked done by Admin, or if we implement logic to check if ALL are done.
-      // For now, I will disable recurring trigger from individual completion to avoid spamming instances.
-
-      /* 
+      // Create next recurring instance if this is a recurring admin task
       if (col === "tasks" && current?.isRecurring) {
-        // ... logic disabled for individual completion to prevent premature recurrence
+        try {
+          const checkTask = {
+            ...current,
+            status: "Done",
+            completedAt: new Date(),
+          };
+
+          if (await shouldCreateNextInstanceAsync(checkTask)) {
+            console.log("Employee panel: Creating next recurring instance...");
+            const newId = await createNextRecurringInstance(checkTask);
+            console.log("Employee panel: Created next recurring instance:", newId);
+            toast.success("Next recurring task created!");
+          }
+        } catch (e) {
+          console.warn("Recurring continuation failed (employee completion)", e);
+        }
       }
-      */
 
       logTaskActivity(
         completionTaskId,

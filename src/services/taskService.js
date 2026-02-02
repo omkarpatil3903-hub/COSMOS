@@ -26,7 +26,7 @@
  * - assigneeStatus: Map of user ID → { isTracking, trackingStartTime, timeSpent }
  * - subtasks: Array of subtask objects (not subcollection for atomic updates)
  *
- * Last Modified: 2026-01-10
+ * Last Modified: 2026-01-30
  */
 
 import {
@@ -47,6 +47,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { tsToDate } from "../utils/dateUtils";
+import { shouldCreateNextInstanceAsync, createNextRecurringInstance } from "../utils/recurringTasks";
 
 // ============================================================================
 // TASK CRUD OPERATIONS
@@ -79,6 +80,11 @@ export const subscribeToTasks = (callback, limitCount = 50) => {
         assigneeType: data.assigneeType || "user",
         status: data.status || "To-Do",
         priority: data.priority || "Medium",
+        isRecurring: data.isRecurring || false,
+        recurringPattern: data.recurringPattern || null,
+        recurringInterval: data.recurringInterval || 1,
+        selectedWeekDays: data.selectedWeekDays || null, // Ensure this is returned!
+        skipWeekends: data.skipWeekends || false,
         dueDate: tsToDate(data.dueDate),
         createdAt: tsToDate(data.createdAt),
         completedAt: tsToDate(data.completedAt),
@@ -576,3 +582,73 @@ export const stopTimeTracking = async (taskId, userId, currentTotalSeconds, star
 
   // Activity logging disabled (Option 2) - uncomment if needed
 };
+
+/**
+ * Complete a task, update all assignee statuses, and trigger recurrence.
+ *
+ * @param {object} task - The full task object (must include id, assigneeIds, etc.)
+ * @param {object} user - The current user object (for logging completedBy)
+ * @param {string} comment - Optional completion comment
+ * @param {string} collectionName - Collection name (default: "tasks")
+ */
+export const completeTaskWithRecurrence = async (task, user, comment = "", collectionName = "tasks") => {
+  if (!task || !task.id) throw new Error("Invalid task provided to completeTaskWithRecurrence");
+
+  const taskRef = doc(db, collectionName, task.id);
+
+  // Use a consistent JS Date for both Firestore and the logic check
+  const timestamp = new Date();
+  const userId = user?.uid || "system";
+
+  // 1. Prepare the main updates
+  const updates = {
+    status: "Done",
+    completedAt: timestamp, // Save as Date object (Firestore converts to Timestamp)
+    progressPercent: 100,
+    completionComment: comment,
+  };
+
+  // 2. Propagate "Done" status to all assignees (Legacy + Multi-assignee support)
+  // This logic is copied from your TaskManagment.jsx to ensure data consistency
+  const targetUids = Array.from(
+    new Set([...(Array.isArray(task.assigneeIds) ? task.assigneeIds : []), task.assigneeId].filter(Boolean))
+  );
+
+  targetUids.forEach((uid) => {
+    updates[`assigneeStatus.${uid}.status`] = "Done";
+    updates[`assigneeStatus.${uid}.progressPercent`] = 100;
+    updates[`assigneeStatus.${uid}.completedAt`] = timestamp;
+    updates[`assigneeStatus.${uid}.completedBy`] = userId;
+    if (comment) updates[`assigneeStatus.${uid}.completionComment`] = comment;
+  });
+
+  // 3. Update Firestore
+  await updateDoc(taskRef, updates);
+
+  // 4. Log the activity
+  await logTaskActivity(
+    task.id,
+    "completed",
+    `Marked as done${comment ? `: ${comment}` : ""}`,
+    user,
+    collectionName
+  );
+  // 5. Handle Recurrence
+  try {
+    // Construct the state of the task *after* it was just marked done
+    const checkTask = {
+      ...task,
+      status: "Done",
+      completedAt: timestamp,
+    };
+
+    // Check if we need to create the next one
+    if (await shouldCreateNextInstanceAsync(checkTask)) {
+      console.log(`Creating next recurring instance for task ${task.id}...`);
+      await createNextRecurringInstance(checkTask);
+    }
+  } catch (err) {
+    console.error("Recurrence generation failed inside service:", err);
+    // We log error but don't throw, because the task *was* successfully marked done
+  }
+}

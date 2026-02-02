@@ -887,15 +887,39 @@ const TaskViewModal = ({
   };
 
   const getUserDisplayName = (item) => {
+    // First try the stored userName (already in the activity)
+    if (item.userName && item.userName !== "System" && item.userName !== "Unknown") {
+      return item.userName;
+    }
+
+    // Fallback: Look up user by userId from users/clients arrays
+    if (item.userId) {
+      const userDetails = getUserDetails(item.userId);
+      if (userDetails && userDetails.name) {
+        return userDetails.name;
+      }
+    }
+
+    // Last resort fallback
     return item.userName || "Unknown";
   };
 
   const getUserDetails = (userId) => {
     if (!userId || userId === "system") return { name: "System", avatar: null };
+
     const user = users.find(u => u.id === userId);
-    if (user) return user;
+    if (user) {
+      return {
+        ...user,
+        name: user.displayName || user.name || "Unknown User"
+      };
+    }
+
     const client = clients.find(c => c.id === userId);
-    if (client) return { ...client, name: client.clientName };
+    if (client) {
+      return { ...client, name: client.clientName || "Unknown Client" };
+    }
+
     return { name: "Unknown" };
   };
 
