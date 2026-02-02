@@ -233,9 +233,7 @@ export default function ProjectSettings() {
         tone="white"
         actions={
           <div className="flex items-center gap-3">
-            <span className="text-sm text-content-secondary">
-              Showing {filtered.length} records
-            </span>
+
             <Button variant="custom" onClick={openCreate} className={`shrink-0 ${buttonClass}`}>
               <FaPlus /> Add Project Level
             </Button>
@@ -259,42 +257,16 @@ export default function ProjectSettings() {
         </label>
       </Card>
 
-      <Card title="Project Level" tone="muted">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-2">
-          <div className="text-sm text-content-secondary">
-            Page {Math.min(page, totalPages)} of {totalPages}
+      <Card
+        title="Project Level"
+        tone="muted"
+        actions={
+          <div className="text-sm font-medium text-gray-500 [.dark_&]:text-gray-400">
+            Showing {filtered.length} records
           </div>
-          <div className="flex items-center gap-3">
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-              className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                className="px-3 py-1"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Prev
-              </Button>
-              <Button
-                variant="secondary"
-                className="px-3 py-1"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        </div>
+        }
+      >
+
 
         <div className="w-full overflow-x-auto rounded-lg border border-subtle shadow-sm">
           <table className="min-w-full divide-y divide-subtle bg-surface">
@@ -375,6 +347,41 @@ export default function ProjectSettings() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mt-4">
+          <div className="text-sm text-content-secondary">
+            Page {Math.min(page, totalPages)} of {totalPages}
+          </div>
+          <div className="flex items-center gap-3">
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                className="px-3 py-1"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Prev
+              </Button>
+              <Button
+                variant="secondary"
+                className="px-3 py-1"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </div>
       </Card>
 

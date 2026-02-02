@@ -54,6 +54,7 @@ const tableHeaders = [
   { key: "fullName", label: "Full Name", sortable: true },
   { key: "email", label: "Email", sortable: true },
   { key: "mobile", label: "Contact NO", sortable: false },
+  { key: "employmentType", label: "Employment Type", sortable: true },
   { key: "resourceType", label: "Resource Type", sortable: true },
   { key: "resourceRole", label: "Resource Role", sortable: true },
   { key: "status", label: "Status", sortable: true },
@@ -782,37 +783,33 @@ function ManageResources() {
             <Card
               title="Search & Actions"
               actions={
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-gray-500">
-                    Showing {filteredResources.length} records
-                  </span>
-                  <Button
-                    variant="custom"
-                    onClick={() => {
-                      setFormData({
-                        fullName: "",
-                        email: "",
-                        mobile: "",
-                        password: "",
-                        resourceType: "In-house",
-                        employmentType: "Full-time",
-                        resourceRole: "",
-                        resourceRoleType: "",
-                        status: "Active",
-                        imageUrl: "",
-                        mustChangePassword: true,
-                      });
-                      setImageFile(null);
-                      setImagePreview(null);
-                      setCreateFieldErrors({});
-                      setShowAddForm(true);
-                    }}
-                    className={`flex items-center justify-center gap-2 ${buttonClass}`}
-                  >
-                    <FaPlus className="h-4 w-4" />
-                    Add Resource
-                  </Button>
-                </div>
+
+                <Button
+                  variant="custom"
+                  onClick={() => {
+                    setFormData({
+                      fullName: "",
+                      email: "",
+                      mobile: "",
+                      password: "",
+                      resourceType: "In-house",
+                      employmentType: "Full-time",
+                      resourceRole: "",
+                      resourceRoleType: "",
+                      status: "Active",
+                      imageUrl: "",
+                      mustChangePassword: true,
+                    });
+                    setImageFile(null);
+                    setImagePreview(null);
+                    setCreateFieldErrors({});
+                    setShowAddForm(true);
+                  }}
+                  className={`flex items-center justify-center gap-2 ${buttonClass}`}
+                >
+                  <FaPlus className="h-4 w-4" />
+                  Add Resource
+                </Button>
               }
             >
               {/* Search & Actions Header */}
@@ -850,8 +847,6 @@ function ManageResources() {
                     <option value="all">All Types</option>
                     <option value="Full-time">Full-time</option>
                     <option value="Part-time">Part-time</option>
-                    <option value="Contract">Contract</option>
-                    <option value="Internship">Internship</option>
                   </select>
                 </div>
 
@@ -898,47 +893,16 @@ function ManageResources() {
               </div>
             </Card>
 
-            <Card title="Resource List">
-              {/* Pagination Controls */}
-              <div className="flex items-center justify-between mb-4">
+            <Card
+              title="Resource List"
+              actions={
                 <div className="text-sm text-gray-500">
-                  Page {currentPage} of {totalPages}
+                  Showing {filteredResources.length} records
                 </div>
-                <div className="flex items-center gap-4">
-                  <select
-                    value={rowsPerPage}
-                    onChange={(e) => {
-                      setRowsPerPage(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                  </select>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      onClick={handlePrevPage}
-                      variant="secondary"
-                      className="px-3 py-1"
-                      disabled={currentPage === 1}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      onClick={handleNextPage}
-                      variant="secondary"
-                      className="px-3 py-1"
-                      disabled={
-                        currentPage === totalPages || !filteredResources.length
-                      }
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              }
+            >
+              {/* Pagination Controls */}
+
 
               <div className="w-full max-h-[65vh] overflow-x-auto overflow-y-auto rounded-lg border border-gray-200 [.dark_&]:border-gray-700 shadow-sm bg-surface-strong">
                 <table className="w-full divide-y divide-gray-200 [.dark_&]:divide-gray-700 bg-surface-strong">
@@ -990,7 +954,7 @@ function ManageResources() {
                     {currentRows.map((resource, index) => (
                       <tr
                         key={resource.id}
-                        className="bg-surface-strong hover:bg-surface-subtle cursor-pointer transition-colors"
+                        className={`bg-surface-strong hover:bg-surface-subtle cursor-pointer transition-colors ${resource.status === "Inactive" ? "opacity-60 bg-gray-50 [.dark_&]:bg-white/5 grayscale-[0.5]" : ""}`}
                         onClick={() => handleView(resource)}
                       >
                         <td className="whitespace-nowrap px-3 py-3 text-sm font-medium text-black [.dark_&]:text-gray-300">
@@ -1035,6 +999,26 @@ function ManageResources() {
                             {/* <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mr-2"></div> */}
                             {resource.mobile}
                           </div>
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-3 text-sm font-medium text-black [.dark_&]:text-gray-300">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold shadow-sm ${resource.employmentType === "Full-time"
+                              ? "bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 border border-purple-300"
+                              : resource.employmentType === "Part-time"
+                                ? "bg-gradient-to-r from-amber-100 to-amber-200 text-amber-800 border border-amber-300"
+                                : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 border border-gray-300"
+                              }`}
+                          >
+                            <div
+                              className={`w-1.5 h-1.5 rounded-full mr-1.5 ${resource.employmentType === "Full-time"
+                                ? "bg-purple-500"
+                                : resource.employmentType === "Part-time"
+                                  ? "bg-amber-500"
+                                  : "bg-gray-500"
+                                }`}
+                            ></div>
+                            {resource.employmentType}
+                          </span>
                         </td>
                         <td className="whitespace-nowrap px-3 py-3 text-sm">
                           <span
@@ -1125,6 +1109,47 @@ function ManageResources() {
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-gray-500">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <div className="flex items-center gap-4">
+                  <select
+                    value={rowsPerPage}
+                    onChange={(e) => {
+                      setRowsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handlePrevPage}
+                      variant="secondary"
+                      className="px-3 py-1"
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      onClick={handleNextPage}
+                      variant="secondary"
+                      className="px-3 py-1"
+                      disabled={
+                        currentPage === totalPages || !filteredResources.length
+                      }
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
               </div>
             </Card>
           </div>

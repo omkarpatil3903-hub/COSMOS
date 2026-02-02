@@ -358,10 +358,13 @@ function MainLayout() {
       "/expenses": "COSMOS | Expense Management",
       "/calendar": "COSMOS | Calendar",
       "/settings": "COSMOS | Settings",
+      "/lead-management": "COSMOS | Lead Management",
       "/settings/add-hierarchy": "COSMOS | Settings | Add Hierarchy",
       "/settings/project-settings": "COSMOS | Settings | Project Level",
       "/settings/status-settings": "COSMOS | Settings | Status",
-      "/lead-management": "COSMOS | Lead Management",
+      "/settings/theme": "COSMOS | Settings | Theme",
+      "/settings/profile": "COSMOS | Settings | Profile",
+
     };
 
     const title = pathToTitle[location.pathname] || "Super Admin Panel";

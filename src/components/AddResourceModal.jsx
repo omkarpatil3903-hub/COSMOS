@@ -268,7 +268,8 @@ function AddResourceModal({
                     value={formData.fullName}
                     placeholder="e.g. Priya Sharma"
                     onChange={(e) => {
-                      const v = e.target.value;
+                      // Allow only alphabetic characters and spaces
+                      const v = e.target.value.replace(/[^a-zA-Z\s]/g, "");
                       setFormData({ ...formData, fullName: v });
                       setErrors((prev) => ({
                         ...prev,

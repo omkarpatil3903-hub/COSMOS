@@ -48,6 +48,7 @@ import { FaPlus, FaCheck, FaTrash } from "react-icons/fa";
 import Button from "../Button";
 import { db, auth } from "../../firebase";
 import { collection, onSnapshot, orderBy, query, where, doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
+import toast from 'react-hot-toast';
 
 import AssigneeSelector from "../AssigneeSelector";
 
@@ -118,7 +119,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     }
   }, [isOpen, initialDoc, allUsersMap]);
 
-  // Determine allowed user IDs for the selected project (project manager + assignees on tasks)
+  // Determine allowed user IDs for the selected project (project manager + task assignees + project members)
   useEffect(() => {
     if (!isOpen || !projectId) {
       setAllowedIds([]);
@@ -126,9 +127,10 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     }
     let taskIds = new Set();
     let managerId = null;
+    let projectAssigneeIds = [];
 
     const recompute = () => {
-      const combined = new Set([...(managerId ? [managerId] : []), ...taskIds]);
+      const combined = new Set([...(managerId ? [managerId] : []), ...taskIds, ...projectAssigneeIds]);
       setAllowedIds(Array.from(combined));
     };
 
@@ -144,10 +146,11 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     const pref = doc(db, "projects", projectId);
     let unsubProject = null;
     try {
-      // Try to keep manager updates live if project changes
+      // Try to keep manager and project members updates live
       unsubProject = onSnapshot(pref, (ds) => {
         const pdata = ds.data() || {};
         managerId = pdata.projectManagerId || null;
+        projectAssigneeIds = pdata.assigneeIds || [];
         recompute();
       });
     } catch {
@@ -155,6 +158,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
       getDoc(pref).then((ds) => {
         const pdata = ds.data() || {};
         managerId = pdata.projectManagerId || null;
+        projectAssigneeIds = pdata.assigneeIds || [];
         recompute();
       });
     }
@@ -176,11 +180,36 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
       list.forEach(u => { map[u.id] = u; });
       setAllUsersMap(map);
 
-
-
       const allowed = new Set(allowedIds);
+
+      // Setup set of IDs that are already assigned to the document (if editing)
+      const existingDocAssignees = new Set();
+      if (initialDoc?.access) {
+        // Collect IDs from both admin and member access arrays
+        const admins = initialDoc.access.admin || [];
+        const members = initialDoc.access.member || [];
+
+        // Handle both ID strings and objects if data structure varies, though usually arrays of strings
+        [...admins, ...members].forEach(item => {
+          if (typeof item === 'string') existingDocAssignees.add(item);
+          else if (item?.id) existingDocAssignees.add(item.id);
+        });
+      }
+
       const mapped = list
-        .filter((u) => (projectId ? allowed.has(u.id) : true))
+        .filter((u) => {
+          if (!projectId) return true;
+
+          const isAssignedToDoc = existingDocAssignees.has(u.id);
+          const isActive = u.status === 'Active';
+          const isInProject = allowed.has(u.id);
+
+          // Show user if:
+          // 1. They are ALREADY assigned to this document (preservation)
+          // OR
+          // 2. They are in the project AND are Active
+          return isAssignedToDoc || (isInProject && isActive);
+        })
         .map((u) => ({
           id: u.id,
           name: u.name || u.fullName || "",
@@ -191,7 +220,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
       setMembers(mapped.filter((x) => x.type === "member" || x.type === "resource"));
     });
     return () => unsub();
-  }, [allowedIds, projectId]);
+  }, [allowedIds, projectId, initialDoc]);
 
   const getUserImage = (uid, name) => {
     if (uid && allUsersMap[uid]?.imageUrl) return allUsersMap[uid].imageUrl;
@@ -256,6 +285,54 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     return Object.keys(e).length === 0;
   };
 
+  // Helper to deep compare arrays
+  const arraysEqual = (a, b) => {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    if (a.length !== b.length) return false;
+    const sortedA = [...a].sort();
+    const sortedB = [...b].sort();
+    return sortedA.every((val, index) => val === sortedB[index]);
+  };
+
+  const isDirty = React.useMemo(() => {
+    if (!initialDoc) {
+      // Create mode: at least name, folder, or file must be present
+      return name.trim().length > 0 || folder.length > 0 || file !== null;
+    }
+
+    // Edit mode
+    const currentName = name.trim();
+    const currentFolder = folder;
+
+    // Access
+    const currentAdmins = selectedAdmin || [];
+    const currentMembers = selectedMember || [];
+
+    // Handle initial access IDs which might be objects or strings (legacy)
+    // usage in useEffect maps them to IDs, so we assume `initialDoc.access` structure might vary
+    // but we can try to rely on what we parsed into state if we had a pure "initialState" hook, 
+    // but here we have to re-derive or trust the raw initialDoc.
+
+    // Let's grab IDs from initialDoc similar to how we did in useEffect
+    const getIds = (list) => {
+      if (!Array.isArray(list)) return [];
+      return list.map(item => (typeof item === 'object' ? item.id : item)).filter(Boolean).sort();
+    };
+
+    const initialAdmins = getIds(initialDoc.access?.admin);
+    const initialMembers = getIds(initialDoc.access?.member);
+
+    const accessChanged = !arraysEqual(currentAdmins, initialAdmins) || !arraysEqual(currentMembers, initialMembers);
+
+    return (
+      currentName !== (initialDoc.name || "") ||
+      currentFolder !== (initialDoc.folder || "") ||
+      file !== null || // If a new file is dropped, it's dirty
+      accessChanged
+    );
+  }, [name, folder, file, selectedAdmin, selectedMember, initialDoc]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
@@ -293,8 +370,16 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
       updatedByUid: auth.currentUser?.uid || "",
       updatedByName: auth.currentUser?.displayName || "",
     };
-    onSubmit && onSubmit(doc);
-    onClose && onClose();
+    try {
+      if (onSubmit) {
+        await onSubmit(doc);
+      }
+      toast.success(initialDoc ? 'Document updated successfully' : 'Document added successfully');
+      onClose && onClose();
+    } catch (error) {
+      console.error('Error submitting document:', error);
+      toast.error('Failed to save document. Please try again.');
+    }
   };
 
   const handleOverlayKeyDown = (e) => {
@@ -519,7 +604,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
 
             <div className="flex justify-end gap-3 pt-2">
               <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button type="submit" variant="custom" className={buttonClass}>{initialDoc ? "Save Changes" : "Add Document"}</Button>
+              <Button type="submit" variant="custom" className={buttonClass}>{initialDoc ? "Update Document" : "Add Document"}</Button>
             </div>
           </form>
         </div>
