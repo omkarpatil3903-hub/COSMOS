@@ -155,9 +155,9 @@ function ManageProjects({ onlyMyManaged = false }) {
         resourceRoleType: String(u.resourceRoleType || "").toLowerCase(),
         status: u.status || "Active",
       }));
-      const managersOnly = normalized; // Show all users instead of filtering by role
+      const managersOnly = normalized.filter((u) => u.status?.toLowerCase() === "active"); // Filter inactive managers
       setManagers(managersOnly);
-      const assignables = normalized.filter((u) => u.status === "Active"); // Show all active users
+      const assignables = normalized.filter((u) => u.status?.toLowerCase() === "active"); // Filter inactive assignees
       setAssigneesOptions(assignables);
     });
     return () => unsub();
@@ -250,9 +250,8 @@ function ManageProjects({ onlyMyManaged = false }) {
     if (!activeStatFilter) {
       if (showCompleted) {
         result = result.filter((p) => p.progress === 100);
-      } else {
-        result = result.filter((p) => p.progress < 100);
       }
+      // Removed the else block to show all projects by default, including completed ones
     }
 
     if (searchTerm) {
@@ -862,12 +861,6 @@ function ManageProjects({ onlyMyManaged = false }) {
             tone="white"
             actions={
               <div className="flex items-center gap-3">
-                <span
-                  className="text-sm font-medium text-content-secondary"
-                  aria-live="polite"
-                >
-                  Showing {filteredProjects.length} records
-                </span>
                 <button
                   onClick={() => setShowCompleted(!showCompleted)}
                   className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${showCompleted
@@ -945,48 +938,8 @@ function ManageProjects({ onlyMyManaged = false }) {
               title="Project List"
               tone="muted"
               actions={
-                <div className="flex items-center gap-3">
-                  <span
-                    className="text-sm font-medium text-content-secondary"
-                    aria-live="polite"
-                  >
-                    Page {Math.min(currentPage, totalPages)} of {totalPages}
-                  </span>
-                  <label className="text-sm font-medium text-content-secondary">
-                    Rows per page
-                  </label>
-                  <select
-                    value={rowsPerPage}
-                    onChange={(e) => {
-                      setRowsPerPage(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                  >
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                  </select>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      onClick={handlePrevPage}
-                      variant="secondary"
-                      className="px-3 py-1"
-                      disabled={currentPage === 1}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      onClick={handleNextPage}
-                      variant="secondary"
-                      className="px-3 py-1"
-                      disabled={
-                        currentPage === totalPages || !filteredProjects.length
-                      }
-                    >
-                      Next
-                    </Button>
-                  </div>
+                <div className="text-sm font-medium text-content-secondary">
+                  Showing {filteredProjects.length} records
                 </div>
               }
             >
@@ -1145,6 +1098,50 @@ function ManageProjects({ onlyMyManaged = false }) {
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mt-4">
+                <div className="text-sm font-medium text-content-secondary">
+                  Page {Math.min(currentPage, totalPages)} of {totalPages}
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="text-sm font-medium text-content-secondary">
+                    Rows per page
+                  </label>
+                  <select
+                    value={rowsPerPage}
+                    onChange={(e) => {
+                      setRowsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handlePrevPage}
+                      variant="secondary"
+                      className="px-3 py-1"
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      onClick={handleNextPage}
+                      variant="secondary"
+                      className="px-3 py-1"
+                      disabled={
+                        currentPage === totalPages || !filteredProjects.length
+                      }
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
               </div>
             </Card>
           ) : (

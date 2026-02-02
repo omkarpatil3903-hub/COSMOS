@@ -9,6 +9,7 @@ import SearchActions from "../../components/SearchActions";
 import Button from "../../components/Button";
 import { FaCalendarAlt, FaClock, FaEdit, FaLightbulb, FaTrash, FaUser } from "react-icons/fa";
 import AddKnowledgeModal from "../../components/knowledge/AddKnowledgeModal";
+import { formatDate } from "../../utils/formatDate";
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 
 export default function SuperAdminKnowledgePage() {
@@ -71,13 +72,10 @@ export default function SuperAdminKnowledgePage() {
       const list = snap.docs.map((d) => {
         const data = d.data() || {};
         const uts = data.updatedAt || data.createdAt;
-        let updated = "";
-        if (uts && typeof uts.toDate === "function") updated = uts.toDate().toLocaleDateString();
-        else if (uts) updated = new Date(uts).toLocaleDateString();
+        const updated = formatDate(uts);
+
         const cts = data.createdAt;
-        let created = "";
-        if (cts && typeof cts.toDate === "function") created = cts.toDate().toLocaleDateString();
-        else if (cts) created = new Date(cts).toLocaleDateString();
+        const created = formatDate(cts);
         return {
           id: d.id,
           title: data.title || "",

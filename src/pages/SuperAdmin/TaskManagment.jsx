@@ -566,7 +566,7 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
             ? `⚠ Task "${dueSoonTasks[0].title}" is due shortly.`
             : `⚠ You have ${dueSoonTasks.length} tasks due within the next 3 days.`;
 
-        toast(message, { duration: 6000, icon: "⏰" });
+        toast(message, { duration: 3000, icon: "⏰" });
         hasCheckedDeadlines.current = true;
       }
     };
@@ -1453,9 +1453,69 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
     return clients.filter((c) => ids.has(c.id));
   }, [filters.project, projects, projectMap, clients, tasks]);
 
+  // Separate filter logic for counts: Apply all filters EXCEPT status
+  const filteredForCounts = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Get managed project IDs if filtering for manager
+    let managedProjectIds = null;
+    if (onlyMyManagedProjects) {
+      const currentUser = auth.currentUser;
+      managedProjectIds = projects
+        .filter(p => p.projectManagerId === currentUser?.uid)
+        .map(p => p.id);
+    }
+
+    return tasks.filter((t) => {
+      const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+      // 0. Manager Project Filter
+      if (managedProjectIds && !managedProjectIds.includes(t.projectId)) return false;
+
+      // 1. Global Visibility Check
+      if (t.visibleFrom && t.visibleFrom > today) return false;
+      if (!filters.showArchived && t.archived) return false;
+
+      // 2. Overdue Check (Skipping for counts to keep main status numbers visible)
+      // if (filters.onlyOverdue) {
+      //   if (!(t.dueDate && t.status !== "Done" && t.dueDate < today)) return false;
+      // }
+
+      // 3. Exact Match Filters (Skipping Status)
+      if (filters.project && t.projectId !== filters.project) return false;
+      if (
+        filters.assigneeType &&
+        (t.assigneeType || "user") !== filters.assigneeType
+      )
+        return false;
+      if (filters.priority && t.priority !== filters.priority) return false;
+      // SKIP STATUS CHECK for counts
+
+      // 4. Assignee ID Check
+      if (filters.assignee) {
+        const [type, id] = filters.assignee.split(":");
+        const matchLegacy = t.assigneeType === type && t.assigneeId === id;
+        const matchArray = t.assigneeIds?.includes(id);
+        if (!matchLegacy && !matchArray) return false;
+      }
+
+      // 5. Search Text
+      if (filters.search) {
+        const s = filters.search.toLowerCase();
+        const project = projectMap[t.projectId];
+        const assignee = userMap[t.assigneeId] || clientMap[t.assigneeId];
+        const searchText = `${t.title} ${t.description} ${project?.name || ""
+          } ${assignee?.name || assignee?.clientName || ""}`.toLowerCase();
+        if (!searchText.includes(s)) return false;
+      }
+
+      return true;
+    });
+  }, [tasks, filters, projectMap, userMap, clientMap, onlyMyManagedProjects, projects]);
+
   const counts = useMemo(() => {
     const c = { "To-Do": 0, "In Progress": 0, Done: 0 };
-    filtered.forEach((t) => {
+    filteredForCounts.forEach((t) => {
       const x = String(t.status || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
       if (x === "done" || x === "completed" || x === "complete") {
         c.Done += 1;
@@ -1470,12 +1530,11 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
       ) {
         c["In Progress"] += 1;
       } else {
-        // Default all other statuses (Backlog, To-Do, To Do, Open, custom steps) to To-Do
         c["To-Do"] += 1;
       }
     });
     return c;
-  }, [filtered]);
+  }, [filteredForCounts]);
 
   const progressPct = useMemo(() => {
     if (filtered.length === 0) return 0;
@@ -1976,7 +2035,10 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card
             onClick={() => applyStatusQuickFilter("To-Do")}
-            className="cursor-pointer hover:bg-surface-subtle [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10"
+            className={`cursor-pointer transition-all duration-200 ${filters.status === "To-Do"
+              ? "ring-2 ring-gray-300 border-gray-500 bg-gray-50 [.dark_&]:bg-[#1e2335] [.dark_&]:border-gray-500 [.dark_&]:ring-gray-600"
+              : "hover:bg-surface-subtle [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10"
+              }`}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -1990,7 +2052,10 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
           </Card>
           <Card
             onClick={() => applyStatusQuickFilter("In Progress")}
-            className="cursor-pointer hover:bg-surface-subtle [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10"
+            className={`cursor-pointer transition-all duration-200 ${filters.status === "In Progress"
+              ? "ring-2 ring-blue-200 border-blue-400 bg-blue-50 [.dark_&]:bg-blue-900/20 [.dark_&]:border-blue-500/50 [.dark_&]:ring-blue-800/30"
+              : "hover:bg-surface-subtle [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10"
+              }`}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -2006,7 +2071,10 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
           </Card>
           <Card
             onClick={() => applyStatusQuickFilter("Done")}
-            className="cursor-pointer hover:bg-surface-subtle [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10"
+            className={`cursor-pointer transition-all duration-200 ${filters.status === "Done"
+              ? "ring-2 ring-green-200 border-green-400 bg-green-50 [.dark_&]:bg-green-900/20 [.dark_&]:border-green-500/50 [.dark_&]:ring-green-800/30"
+              : "hover:bg-surface-subtle [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10"
+              }`}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -2018,9 +2086,11 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
           </Card>
           <Card
             onClick={applyOverdueQuickFilter}
-            className={`cursor-pointer transition-all duration-300 ${globalOverdueTasks.length > 0
-              ? "bg-red-50 border-red-300 ring-2 ring-red-100 ring-offset-2 [.dark_&]:bg-red-900/10 [.dark_&]:border-red-500/30 [.dark_&]:ring-red-900/20"
-              : "hover:bg-surface-subtle [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10"
+            className={`cursor-pointer transition-all duration-300 ${filters.onlyOverdue
+              ? "bg-red-50 border-red-400 ring-2 ring-red-200 ring-offset-2 [.dark_&]:bg-red-900/20 [.dark_&]:border-red-500/50 [.dark_&]:ring-red-800/30"
+              : globalOverdueTasks.length > 0
+                ? "bg-red-50 border-transparent [.dark_&]:bg-red-900/10 [.dark_&]:border-transparent"
+                : "hover:bg-surface-subtle [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10"
               }`}
           >
             <div className="flex items-center justify-between">

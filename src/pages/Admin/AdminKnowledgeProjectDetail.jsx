@@ -6,6 +6,7 @@ import Card from "../../components/Card";
 import { db, storage, auth } from "../../firebase";
 import { collection, onSnapshot, query, where, addDoc, serverTimestamp, doc, getDoc, getDocs, updateDoc, deleteDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject, updateMetadata, getBytes } from "firebase/storage";
+import toast from 'react-hot-toast';
 import { formatDate } from "../../utils/formatDate";
 import DocumentsTable from "../../components/documents/DocumentsTable";
 import GroupedDocumentsView from "../../components/documents/GroupedDocumentsView";
@@ -543,8 +544,10 @@ export default function KnowledgeProjectDetail() {
       await deleteDoc(doc(db, "knowledge", deleteKnTarget.id));
       setShowDeleteKnModal(false);
       setDeleteKnTarget(null);
+      toast.success('Knowledge deleted successfully');
     } catch (e) {
       console.error("Failed to delete knowledge", e);
+      toast.error('Failed to delete knowledge');
     }
   };
 
@@ -724,9 +727,10 @@ export default function KnowledgeProjectDetail() {
 
       setShowDeleteModal(false);
       setDeleteTarget(null);
+      toast.success('Document deleted successfully');
     } catch (e) {
       console.error("Failed to delete document", e);
-      alert("Failed to delete document: " + e.message);
+      toast.error("Failed to delete document: " + e.message);
     } finally {
       setIsDeleting(false);
     }

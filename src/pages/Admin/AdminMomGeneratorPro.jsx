@@ -11,6 +11,7 @@ import {
   FaShareAlt,
   FaFilePdf,
   FaEllipsisV,
+  FaEdit,
   FaTasks,
   FaComments,
   FaMicrophone,
@@ -155,14 +156,21 @@ ${nextSteps}
   `.trim();
 }
 
+const formatDate = (dateStr) => {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString("en-GB");
+};
+
 export default function MomGeneratorPro() {
   const { buttonClass, iconColor, headerIconClass } = useThemeStyles();
   const { accent, mode } = useTheme();
   const activeColor = ACCENT_COLORS[accent] || ACCENT_COLORS.indigo;
 
-  const inputClass = `w-full rounded px-4 py-2.5 text-sm transition-colors focus:ring-2 focus:ring-indigo-500 focus:outline-none border-none ${mode === "dark"
-    ? "bg-gray-900 text-white placeholder-gray-500"
-    : "bg-gray-50 text-gray-900 placeholder-gray-400"
+  const inputClass = `w-full rounded-sm px-4 py-2.5 text-sm transition-colors focus:ring-2 focus:ring-indigo-500 focus:outline-none border ${mode === "dark"
+    ? "bg-gray-900 text-white placeholder-gray-500 border-gray-700"
+    : "bg-gray-50 text-gray-900 placeholder-gray-400 border-gray-300"
     }`;
 
   // Reference data
@@ -195,12 +203,15 @@ export default function MomGeneratorPro() {
   const [inputDiscussions, setInputDiscussions] = useState([]);
   const [newDiscussionTopic, setNewDiscussionTopic] = useState("");
   const [newDiscussionNotes, setNewDiscussionNotes] = useState("");
+  const [editingDiscussionId, setEditingDiscussionId] = useState(null);
 
   // Action items
   const [inputActionItems, setInputActionItems] = useState([]);
   const [newActionTask, setNewActionTask] = useState("");
   const [newActionPerson, setNewActionPerson] = useState(""); // Now stores text instead of userId
   const [newActionDeadline, setNewActionDeadline] = useState("");
+  const [editingActionId, setEditingActionId] = useState(null); // Added editingActionId state
+  const [editingDeadlineIndex, setEditingDeadlineIndex] = useState(null); // For generated table editing
   const [lastGenerateTime, setLastGenerateTime] = useState(0);
 
   // Task conversion state
@@ -294,6 +305,8 @@ export default function MomGeneratorPro() {
           snap.docs.map((d) => ({
             id: d.id,
             name: d.data().projectName || "Unnamed Project",
+            assigneeIds: d.data().assigneeIds || [],
+            projectManagerId: d.data().projectManagerId || "",
           }))
         );
       }
@@ -307,10 +320,14 @@ export default function MomGeneratorPro() {
       query(collection(db, "users"), orderBy("name", "asc")),
       (snap) => {
         setUsers(
-          snap.docs.map((d) => ({
-            id: d.id,
-            name: d.data().name || "Unknown User",
-          }))
+          snap.docs
+            .map((d) => ({
+              id: d.id,
+              name: d.data().name || d.data().fullName || "Unknown",
+              status: d.data().status || "Active", // Default to Active
+            }))
+            // Filter only Active users here to match UI expectations
+            .filter((u) => u.status === "Active")
         );
       }
     );
@@ -386,7 +403,7 @@ export default function MomGeneratorPro() {
           if (uniqueTeam.length > 0 && attendees.length === 0) {
             setAttendees(uniqueTeam);
             toast.success(
-              `Auto-selected ${uniqueTeam.length} team member(s) from project`
+              `Team members auto-selected from project.`
             );
           }
 
@@ -442,20 +459,39 @@ export default function MomGeneratorPro() {
 
   const addDiscussion = () => {
     if (!newDiscussionTopic.trim())
-      return toast.error("Enter discussion topic");
+      return toast.error("Please enter a discussion topic");
     if (!newDiscussionNotes.trim())
-      return toast.error("Enter notes for the topic (notes are required)");
+      return toast.error("Please enter notes for the topic ");
 
-    setInputDiscussions((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        topic: newDiscussionTopic.trim(),
-        notes: newDiscussionNotes.trim(), // REQUIRED
-      },
-    ]);
+    if (editingDiscussionId) {
+      setInputDiscussions((prev) =>
+        prev.map((d) =>
+          d.id === editingDiscussionId
+            ? { ...d, topic: newDiscussionTopic.trim(), notes: newDiscussionNotes.trim() }
+            : d
+        )
+      );
+      setEditingDiscussionId(null);
+      toast.success("Discussion topic updated successfully");
+    } else {
+      setInputDiscussions((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          topic: newDiscussionTopic.trim(),
+          notes: newDiscussionNotes.trim(), // REQUIRED
+        },
+      ]);
+      toast.success("Discussion topic added successfully");
+    }
     setNewDiscussionTopic("");
     setNewDiscussionNotes("");
+  };
+
+  const editDiscussion = (discussion) => {
+    setNewDiscussionTopic(discussion.topic);
+    setNewDiscussionNotes(discussion.notes);
+    setEditingDiscussionId(discussion.id);
   };
 
   const removeDiscussion = (id) => {
@@ -463,23 +499,48 @@ export default function MomGeneratorPro() {
   };
 
   const addActionItem = () => {
-    if (!newActionTask.trim()) return toast.error("Enter task");
+    if (!newActionTask.trim()) return toast.error("Please enter a task description");
     if (!newActionPerson.trim())
-      return toast.error("Enter responsible person name");
-    if (!newActionDeadline) return toast.error("Select deadline");
+      return toast.error("Please specify the responsible person");
+    if (!newActionDeadline) return toast.error("Please select a deadline");
 
-    setInputActionItems((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        task: newActionTask.trim(),
-        responsiblePerson: newActionPerson.trim(), // Direct name
-        deadline: newActionDeadline, // ISO
-      },
-    ]);
+    if (editingActionId) {
+      setInputActionItems((prev) =>
+        prev.map((a) =>
+          a.id === editingActionId
+            ? {
+              ...a,
+              task: newActionTask.trim(),
+              responsiblePerson: newActionPerson.trim(),
+              deadline: newActionDeadline,
+            }
+            : a
+        )
+      );
+      setEditingActionId(null);
+      toast.success("Action plan item updated successfully");
+    } else {
+      setInputActionItems((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          task: newActionTask.trim(),
+          responsiblePerson: newActionPerson.trim(), // Direct name
+          deadline: newActionDeadline, // ISO
+        },
+      ]);
+      toast.success("Action plan item added successfully");
+    }
     setNewActionTask("");
     setNewActionPerson("");
     setNewActionDeadline("");
+  };
+
+  const editActionItem = (action) => {
+    setNewActionTask(action.task);
+    setNewActionPerson(action.responsiblePerson);
+    setNewActionDeadline(action.deadline);
+    setEditingActionId(action.id);
   };
 
   const removeActionItem = (id) => {
@@ -501,7 +562,7 @@ export default function MomGeneratorPro() {
     };
     setComments((prev) => [...prev, comment]);
     setNewComment("");
-    toast.success("Comment added (Save to persist)");
+    toast.success("Comment added. Please save to persist changes");
   };
 
   // Voice-to-text functions
@@ -509,7 +570,7 @@ export default function MomGeneratorPro() {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      toast.error("Voice input not supported in this browser. Try Chrome.");
+      toast.error("Voice input is not supported in this browser. Please use Chrome.");
       return;
     }
 
@@ -543,7 +604,7 @@ export default function MomGeneratorPro() {
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
-    toast.success("Listening... Speak now");
+    toast.success("Voice input active. Please speak now");
   };
 
   const stopVoiceInput = () => {
@@ -707,15 +768,15 @@ export default function MomGeneratorPro() {
 
     setIsGenerated(true);
     setEditSession(true);
-    toast.success("MOM generated");
+    toast.success("MOM generated successfully");
   };
 
   const generateMom = async () => {
-    if (!projectId) return toast.error("Select a project");
-    if (!meetingDate) return toast.error("Enter meeting date");
-    if (!attendees.length) return toast.error("Select at least one attendee");
+    if (!projectId) return toast.error("Please select a project");
+    if (!meetingDate) return toast.error("Please enter the meeting date");
+    if (!attendees.length) return toast.error("Please select at least one attendee");
     if (!inputDiscussions.length)
-      return toast.error("Add at least one discussion topic");
+      return toast.error("Please add at least one discussion topic");
 
     // Ensure notes are present for all topics (mandatory)
     const invalid = inputDiscussions.find((d) => !d.notes?.trim());
@@ -724,7 +785,7 @@ export default function MomGeneratorPro() {
     // Rate limit
     const now = Date.now();
     if (now - lastGenerateTime < 5000) {
-      return toast.error("Please wait before generating again.");
+      return toast.error("Please wait a moment before generating again.");
     }
     setLastGenerateTime(now);
 
@@ -980,7 +1041,7 @@ export default function MomGeneratorPro() {
   const saveMom = async () => {
     if (saveLoading) return;
     if (!isGenerated) return toast.error("Generate MOM first");
-    if (!projectId) return toast.error("Select a project");
+    if (!projectId) return toast.error("Please select a project");
     setSaveLoading(true);
     try {
       // Determine momNo: prefer precomputed ID from generateMom if available; otherwise compute now
@@ -1138,7 +1199,7 @@ export default function MomGeneratorPro() {
           createdByName,
         });
 
-        toast.success(`${momNo} saved successfully!`);
+        toast.success(`${momNo} saved successfully`);
         setMomVersion((v) => v + 1);
         setLastSavedSnapshot(currentSnapshot);
         setEditSession(false);
@@ -1148,7 +1209,7 @@ export default function MomGeneratorPro() {
       }
     } catch (e) {
       console.error(e);
-      toast.error("Save failed");
+      toast.error("Failed to save MOM");
     } finally {
       setSaveLoading(false);
     }
@@ -1158,9 +1219,9 @@ export default function MomGeneratorPro() {
 
   // PDF export using react-pdf
   const handleExportPDF = async () => {
-    if (!isGenerated) return toast.error("Generate MOM first");
+    if (!isGenerated) return toast.error("Please generate the MOM first");
 
-    const toastId = toast.loading("Generating PDF...");
+    const toastId = toast.loading("Generating PDF document...");
 
     try {
       // Convert attendee IDs to names for the PDF
@@ -1208,7 +1269,7 @@ export default function MomGeneratorPro() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.success("PDF Exported!", { id: toastId });
+      toast.success("PDF exported successfully", { id: toastId });
     } catch (error) {
       console.error("PDF Export Error:", error);
       toast.error("Failed to export PDF", { id: toastId });
@@ -1216,7 +1277,7 @@ export default function MomGeneratorPro() {
   };
 
   const handlePrint = () => {
-    if (!isGenerated) return toast.error("Generate MOM first");
+    if (!isGenerated) return toast.error("Please generate the MOM first");
     const printContent = momRef.current;
     if (!printContent) return;
 
@@ -1235,7 +1296,7 @@ export default function MomGeneratorPro() {
 
   // Share (Web Share API or mailto)
   const shareMom = () => {
-    if (!isGenerated) return toast.error("Generate MOM first");
+    if (!isGenerated) return toast.error("Please generate the MOM first");
 
     const projectName = selectedProject?.name || "Project";
     const title = `MoM – ${projectName} (${meetingDate})`;
@@ -1454,7 +1515,7 @@ export default function MomGeneratorPro() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Project *
+                    Project <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={projectId}
@@ -1473,13 +1534,21 @@ export default function MomGeneratorPro() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Date *
+                      Date <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="date"
                       value={meetingDate}
-                      onChange={(e) => setMeetingDate(e.target.value)}
+                      max="9999-12-31"
                       className={inputClass}
+                      onChange={(e) => {
+                        if (
+                          e.target.value &&
+                          e.target.value.split("-")[0].length > 4
+                        )
+                          return;
+                        setMeetingDate(e.target.value);
+                      }}
                     />
                   </div>
                   <div>
@@ -1513,7 +1582,7 @@ export default function MomGeneratorPro() {
                       value={meetingVenue}
                       onChange={(e) => setMeetingVenue(e.target.value)}
                       className={inputClass}
-                      placeholder="e.g., Office of Digi Sahyadri, Sangli"
+                      placeholder="Enter meeting venue (e.g. Office 1)"
                       spellCheck="true"
                     />
                   </div>
@@ -1521,29 +1590,49 @@ export default function MomGeneratorPro() {
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Internal Attendees * (Select multiple)
+                    Internal Attendees <span className="text-red-500">*</span> (Select multiple)
                   </label>
-                  <div
-                    className={`rounded p-3 max-h-44 overflow-y-auto space-y-1 ${mode === "dark" ? "bg-gray-900" : "bg-gray-50"
-                      }`}
-                  >
-                    {users.map((u) => (
-                      <label
-                        key={u.id}
-                        className={`flex items-center gap-2 cursor-pointer p-1 rounded transition-colors ${mode === "dark"
-                          ? "hover:bg-gray-800"
-                          : "hover:bg-gray-200"
-                          }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={attendees.includes(u.id)}
-                          onChange={() => toggleAttendee(u.id)}
-                        />
-                        <span className="text-sm">{u.name}</span>
-                      </label>
-                    ))}
-                  </div>
+                  {projectId ? (
+                    <div
+                      className={`rounded p-3 max-h-44 overflow-y-auto space-y-1 ${mode === "dark" ? "bg-gray-900" : "bg-gray-50"
+                        }`}
+                    >
+                      {users
+                        .filter((u) => {
+                          if (!projectId) return false;
+                          const project = projects.find((p) => p.id === projectId);
+                          if (!project) return false;
+
+                          const isManager = project.projectManagerId === u.id;
+                          const isAssignee = Array.isArray(project.assigneeIds) && project.assigneeIds.includes(u.id);
+
+                          // Debug log only for the first few users to avoid spam
+                          // if (Math.random() < 0.05) console.log("Filtering:", u.name, { isManager, isAssignee, pm: project.projectManagerId, assignees: project.assigneeIds, uid: u.id });
+
+                          return isManager || isAssignee;
+                        })
+                        .map((u) => (
+                          <label
+                            key={u.id}
+                            className={`flex items-center gap-2 cursor-pointer p-1 rounded transition-colors ${mode === "dark"
+                              ? "hover:bg-gray-800"
+                              : "hover:bg-gray-200"
+                              }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={attendees.includes(u.id)}
+                              onChange={() => toggleAttendee(u.id)}
+                            />
+                            <span className="text-sm">{u.name}</span>
+                          </label>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className={`text-sm italic p-3 rounded border border-dashed ${mode === 'dark' ? 'text-gray-400 border-gray-700' : 'text-gray-500 border-gray-300'}`}>
+                      Please select a project to view available attendees.
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1561,7 +1650,7 @@ export default function MomGeneratorPro() {
                         .forEach((name) => saveExternalAttendee(name));
                     }}
                     className={inputClass}
-                    placeholder="e.g., John Doe (Client), Jane Smith (Vendor)"
+                    placeholder="Enter external attendees (e.g. Client Name)"
                     spellCheck="true"
                     list="external-attendees-list"
                   />
@@ -1592,35 +1681,33 @@ export default function MomGeneratorPro() {
                       ))}
                     </div>
                   )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    Click recent names to add, or type new ones
-                  </p>
+
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    MoM Prepared by*
+                    MoM Prepared by <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={momPreparedBy}
                     onChange={(e) => setMomPreparedBy(e.target.value)}
                     className={inputClass}
-                    placeholder="Your name"
+                    placeholder="Enter your name"
                     spellCheck="true"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Meeting Agenda *
+                    Meeting Agenda <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={specialAgenda}
                     onChange={(e) => setSpecialAgenda(e.target.value)}
                     className={inputClass}
-                    placeholder="Enter the meeting agenda items..."
+                    placeholder="Enter meeting agenda items"
                     spellCheck="true"
                   />
                 </div>
@@ -1628,7 +1715,7 @@ export default function MomGeneratorPro() {
             </Card>
 
             {/* Agenda / Discussion topics (Notes REQUIRED) with Drag & Drop */}
-            <Card title="Meeting Agenda & Discussions*">
+            <Card title={<>Meeting Agenda & Discussions <span className="text-red-500">*</span></>}>
               {/* <p className="text-xs text-red-600 -mt-1 mb-3">
                 Enter notes for every topic — notes are mandatory.
               </p> */}
@@ -1641,11 +1728,7 @@ export default function MomGeneratorPro() {
                       {...provided.droppableProps}
                       className="space-y-3"
                     >
-                      {inputDiscussions.length === 0 && (
-                        <div className="text-sm text-gray-500 italic">
-                          No topics added yet
-                        </div>
-                      )}
+
                       {inputDiscussions.map((disc, index) => (
                         <Draggable
                           key={disc.id}
@@ -1671,13 +1754,22 @@ export default function MomGeneratorPro() {
                                     {disc.topic}
                                   </div>
                                 </div>
-                                <button
-                                  onClick={() => removeDiscussion(disc.id)}
-                                  className="text-red-600 hover:text-red-700"
-                                  title="Remove"
-                                >
-                                  <FaTrash className="text-xs" />
-                                </button>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => editDiscussion(disc)}
+                                    className="text-blue-600 hover:text-blue-700"
+                                    title="Edit"
+                                  >
+                                    <FaEdit className="text-xs" />
+                                  </button>
+                                  <button
+                                    onClick={() => removeDiscussion(disc.id)}
+                                    className="text-red-600 hover:text-red-700"
+                                    title="Remove"
+                                  >
+                                    <FaTrash className="text-xs" />
+                                  </button>
+                                </div>
                               </div>
                               <div className="text-xs text-gray-500 mb-2">
                                 Notes entered ({toLines(disc.notes).length}{" "}
@@ -1703,7 +1795,7 @@ export default function MomGeneratorPro() {
                   value={newDiscussionTopic}
                   onChange={(e) => setNewDiscussionTopic(e.target.value)}
                   className={inputClass}
-                  placeholder="Discussion topic (required)..."
+                  placeholder="Enter discussion topic"
                   spellCheck="true"
                 />
                 <div className="relative">
@@ -1712,7 +1804,7 @@ export default function MomGeneratorPro() {
                     onChange={(e) => setNewDiscussionNotes(e.target.value)}
                     className={`${inputClass} resize-vertical pr-12`}
                     rows="3"
-                    placeholder="Notes (required). One point per line. You can also use the microphone button →"
+                    placeholder="Enter discussion notes"
                     spellCheck="true"
                   />
                   <button
@@ -1733,7 +1825,7 @@ export default function MomGeneratorPro() {
                     variant="custom"
                     className={buttonClass}
                   >
-                    <FaPlus /> Add Topic
+                    {editingDiscussionId ? <FaEdit /> : <FaPlus />} {editingDiscussionId ? "Update Topic" : "Add Topic"}
                   </Button>
                   {isListening && (
                     <span className="text-xs text-red-500 animate-pulse flex items-center gap-1">
@@ -1747,10 +1839,7 @@ export default function MomGeneratorPro() {
 
             {/* Action items with Drag & Drop - Optional (AI generates these) */}
             <Card title="Next Action Plan (Optional - AI will generate)">
-              <p className="text-xs text-gray-500 mb-3">
-                You can skip this section. The AI will automatically extract
-                action items from your discussion notes.
-              </p>
+
               <DragDropContext onDragEnd={onDragEnd}>
                 <Droppable droppableId="actions" type="ACTIONS">
                   {(provided) => (
@@ -1759,12 +1848,7 @@ export default function MomGeneratorPro() {
                       {...provided.droppableProps}
                       className="space-y-3"
                     >
-                      {inputActionItems.length === 0 && (
-                        <div className="text-sm text-gray-500 italic">
-                          No manual action items added — AI will generate from
-                          discussions
-                        </div>
-                      )}
+
                       {inputActionItems.map((a, index) => (
                         <Draggable key={a.id} draggableId={a.id} index={index}>
                           {(drag) => (
@@ -1793,16 +1877,27 @@ export default function MomGeneratorPro() {
                                   <span className="font-semibold">
                                     Deadline:
                                   </span>{" "}
-                                  {new Date(a.deadline).toLocaleDateString()}
+                                  <div className="text-sm text-gray-400 font-mono">
+                                    {formatDate(a.deadline)}
+                                  </div>
                                 </div>
                               </div>
-                              <button
-                                onClick={() => removeActionItem(a.id)}
-                                className="text-red-600 hover:text-red-700"
-                                title="Remove"
-                              >
-                                <FaTrash className="text-xs" />
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => editActionItem(a)}
+                                  className="text-blue-600 hover:text-blue-700"
+                                  title="Edit"
+                                >
+                                  <FaEdit className="text-xs" />
+                                </button>
+                                <button
+                                  onClick={() => removeActionItem(a.id)}
+                                  className="text-red-600 hover:text-red-700"
+                                  title="Remove"
+                                >
+                                  <FaTrash className="text-xs" />
+                                </button>
+                              </div>
                             </div>
                           )}
                         </Draggable>
@@ -1827,7 +1922,7 @@ export default function MomGeneratorPro() {
                   value={newActionPerson}
                   onChange={(e) => setNewActionPerson(e.target.value)}
                   className={inputClass}
-                  placeholder="Responsible person name..."
+                  placeholder="Enter responsible person's name"
                   spellCheck="true"
                 />
                 <div className="flex gap-2">
@@ -1842,7 +1937,7 @@ export default function MomGeneratorPro() {
                     variant="custom"
                     className={`${buttonClass} !px-3`}
                   >
-                    <FaPlus /> Add
+                    {editingActionId ? <><FaEdit /> Update</> : <><FaPlus /> Add</>}
                   </Button>
                 </div>
               </div>
@@ -2204,20 +2299,37 @@ export default function MomGeneratorPro() {
                           className="px-4 py-2"
                           style={{ border: "1px solid #000000" }}
                         >
-                          <input
-                            type="date"
-                            value={a.deadline || ""}
-                            onChange={(e) => {
-                              setActionItems((prev) =>
-                                prev.map((item, idx) =>
-                                  idx === i
-                                    ? { ...item, deadline: e.target.value }
-                                    : item
+                          {editingDeadlineIndex === i ? (
+                            <input
+                              type="date"
+                              autoFocus
+                              value={a.deadline || ""}
+                              max="9999-12-31"
+                              onChange={(e) => {
+                                if (
+                                  e.target.value &&
+                                  e.target.value.split("-")[0].length > 4
                                 )
-                              );
-                            }}
-                            className="w-full bg-transparent focus:outline-none focus:ring-1 focus:ring-indigo-300 rounded px-1 text-sm"
-                          />
+                                  return;
+                                setActionItems((prev) =>
+                                  prev.map((item, idx) =>
+                                    idx === i
+                                      ? { ...item, deadline: e.target.value }
+                                      : item
+                                  )
+                                );
+                              }}
+                              onBlur={() => setEditingDeadlineIndex(null)}
+                              className="w-full bg-transparent focus:outline-none focus:ring-1 focus:ring-indigo-300 rounded px-1 text-sm"
+                            />
+                          ) : (
+                            <div
+                              onClick={() => setEditingDeadlineIndex(i)}
+                              className="cursor-pointer hover:bg-gray-100 p-1 rounded min-h-[24px]"
+                            >
+                              {formatDate(a.deadline) || "Set Date"}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}

@@ -89,7 +89,7 @@ const LeadFormModal = ({
                     date: initialData.date || "",
                     customerName: initialData.customerName || "",
                     contactNumber: initialData.contactNumber || "",
-                    email: initialData.email || "",
+                    email: (initialData.email || "").toLowerCase(),
                     companyName: initialData.companyName || "",
                     address: initialData.address || "",
                     productOfInterest: initialData.productOfInterest || "",
@@ -101,7 +101,7 @@ const LeadFormModal = ({
                     notes: initialData.notes || "",
                     followUpDate: initialData.followUpDate || "",
                     assignedTo: initialData.assignedTo || "",
-                    potentialValue: initialData.potentialValue || "",
+                    potentialValue: initialData.potentialValue !== undefined && initialData.potentialValue !== null ? initialData.potentialValue : "",
                 });
             } else {
                 // Reset to defaults for add mode
@@ -142,10 +142,19 @@ const LeadFormModal = ({
         }
         if (field === "potentialValue") {
             if (value < 0) return;
+            // Remove leading zeros (e.g. 05 -> 5, 00 -> 0)
+            // But keep "0" if it's just "0", and allow empty string
+            if (value.startsWith('0') && value.length > 1) {
+                value = String(Number(value));
+            }
         }
         if (field === "customerName") {
             // Allow only alphabets and spaces
             if (/[^a-zA-Z\s]/.test(value)) return;
+        }
+
+        if (field === "email") {
+            value = value.toLowerCase();
         }
 
         setFormData((prev) => ({ ...prev, [field]: value }));
