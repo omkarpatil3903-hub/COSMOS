@@ -60,7 +60,6 @@ const useGlobalLeadReminders = () => {
         if (hasChecked.current) return;
 
         const checkFollowups = async () => {
-            console.log("🔔 Global Reminder Hook: Checking...");
             try {
                 // Use collectionGroup to query all followups across all leads
                 // significantly more efficient than iterating through leads
@@ -70,7 +69,6 @@ const useGlobalLeadReminders = () => {
                 );
 
                 const snapshot = await getDocs(q);
-                console.log(`🔔 Global Reminder Hook: Found ${snapshot.size} pending follow-ups`);
 
                 const allFollowups = [];
                 // We need to fetch the parent lead data for names
@@ -143,7 +141,6 @@ const useGlobalLeadReminders = () => {
                     }
                 }
 
-                console.log(`🔔 Global Reminder Hook: ${overdue.length} overdue, ${dueToday.length} today`);
 
                 // Enrich with lead names
                 const enrichLeads = async (list) => {

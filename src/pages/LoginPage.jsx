@@ -5,7 +5,16 @@ import { version } from "../../package.json";
 import loginBgVideo from "../assets/loginbg.mp4";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth, db } from "../firebase";
-import { getDoc, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  getDoc,
+  doc,
+  setDoc,
+  serverTimestamp,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 import toast from "react-hot-toast";
 import {
   FaShieldAlt,
@@ -34,13 +43,15 @@ function LoginPage() {
   const friendlyAuthError = (code) => {
     switch (code) {
       case "auth/invalid-email":
-        return "Invalid email address. Please check and try again.";
+        return "Please enter a valid email";
       case "auth/user-disabled":
         return "This account has been disabled. Contact your administrator.";
       case "auth/user-not-found":
-        return "No account found with this email.";
+        return "Please enter a valid email";
       case "auth/wrong-password":
-        return "Incorrect password. Please try again.";
+        return "Please enter valid password";
+      case "auth/invalid-credential":
+        return "Please enter valid password";
       case "auth/too-many-requests":
         return "Too many attempts. Please wait a bit and try again.";
       case "auth/network-request-failed":
@@ -50,14 +61,60 @@ function LoginPage() {
     }
   };
 
+  const checkEmailExists = async (emailToCheck) => {
+    try {
+      const emailQuery = emailToCheck.toLowerCase();
+
+      // Check in users collection
+      const usersRef = collection(db, "users");
+      const qUsers = query(usersRef, where("email", "==", emailQuery));
+      const usersSnapshot = await getDocs(qUsers);
+      if (!usersSnapshot.empty) return true;
+
+      // Check in clients collection
+      const clientsRef = collection(db, "clients");
+      const qClients = query(clientsRef, where("email", "==", emailQuery));
+      const clientsSnapshot = await getDocs(qClients);
+      if (!clientsSnapshot.empty) return true;
+
+      return false;
+    } catch (error) {
+      console.warn("Error checking email existence:", error);
+      // Fail safe: If checking fails (e.g. security rules), allow proceed to auth
+      return true;
+    }
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMsg("");
     setLoading(true);
 
     try {
-      const emailTrimmed = email.trim();
+      if (!email || !password) {
+        setLoading(false);
+        setErrorMsg("Please complete all required fields before continuing");
+        toast.error("Please complete all required fields before continuing");
+        return;
+      }
+
+
+
+      const emailTrimmed = email.trim().toLowerCase();
       const passwordTrimmed = password;
+
+      // Pre-check if email exists in system to provide specific error
+      const emailExists = await checkEmailExists(emailTrimmed);
+      if (!emailExists) {
+        // Special case for Super Admin recovery email which might not be in DB yet
+        if (emailTrimmed.toLowerCase() !== "admin@gmail.com") {
+          setLoading(false);
+          setErrorMsg("Please enter a valid email");
+          toast.error("Please enter a valid email");
+          return;
+        }
+      }
+
       console.log("Attempting login for:", emailTrimmed);
 
       const cred = await signInWithEmailAndPassword(
@@ -274,7 +331,7 @@ function LoginPage() {
                   required
                   autoComplete="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value.toLowerCase())}
                   className="w-full pl-10 px-3 py-2 border border-white/20 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-400 text-white bg-slate-700/50"
                   placeholder="you@example.com"
                 />

@@ -411,12 +411,6 @@ function ManageClients() {
           title="Search & Actions"
           actions={
             <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-content-secondary">
-                Showing {filteredClients.length} records
-              </span>
-              <span className="text-sm font-medium text-content-secondary">
-                Showing {filteredClients.length} records
-              </span>
               <Button onClick={() => { setShowAddForm(true); setFormErrors({}); }} variant="custom" className={`flex items-center justify-center gap-2 ${buttonClass}`}>
                 <FaPlus className="h-4 w-4" /> Add Client
               </Button>
@@ -443,45 +437,16 @@ function ManageClients() {
           </div>
         </Card>
 
-        <Card title="Client List">
+        <Card
+          title="Client List"
+          actions={
+            <div className="text-sm font-medium text-content-secondary">
+              Showing {filteredClients.length} records
+            </div>
+          }
+        >
           {/* Pagination Controls */}
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-4">
-            <div className="text-sm text-content-secondary">
-              Page {Math.min(currentPage, totalPages)} of {totalPages}
-            </div>
-            <div className="flex items-center gap-3">
-              <select
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm"
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-              <div className="flex gap-2">
-                <Button
-                  onClick={handlePrevPage}
-                  variant="secondary"
-                  disabled={currentPage === 1}
-                  className="px-3 py-1"
-                >
-                  Prev
-                </Button>
-                <Button
-                  onClick={handleNextPage}
-                  variant="secondary"
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1"
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          </div>
+
 
           {/* Client Table */}
           <div className="w-full overflow-x-auto rounded-lg border border-gray-200 [.dark_&]:border-white/10 shadow-sm">
@@ -533,6 +498,45 @@ function ManageClients() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mt-4">
+            <div className="text-sm text-content-secondary">
+              Page {Math.min(currentPage, totalPages)} of {totalPages}
+            </div>
+            <div className="flex items-center gap-3">
+              <select
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handlePrevPage}
+                  variant="secondary"
+                  disabled={currentPage === 1}
+                  className="px-3 py-1"
+                >
+                  Prev
+                </Button>
+                <Button
+                  onClick={handleNextPage}
+                  variant="secondary"
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           </div>
         </Card>
       </div>

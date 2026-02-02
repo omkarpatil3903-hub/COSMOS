@@ -49,8 +49,21 @@ import Button from "./Button";
 import toast from "react-hot-toast";
 import VoiceInput from "./Common/VoiceInput";
 import { validateTaskForm } from "../utils/formBuilders";
-import { MdReplayCircleFilled } from "react-icons/md";
-import { FaTimes, FaRegCalendarAlt, FaArrowRight } from "react-icons/fa";
+import {
+  MdReplayCircleFilled,
+  MdAddTask,
+} from "react-icons/md";
+import {
+  FaTimes,
+  FaArrowRight,
+  FaRegCalendarAlt,
+  FaLayerGroup,
+  FaCalendarAlt,
+  FaListUl,
+  FaPlus,
+  FaEdit,
+} from "react-icons/fa";
+import { useThemeStyles } from "../hooks/useThemeStyles";
 import { calculateNextDueDate } from "../utils/recurringTasks";
 import { useTheme } from "../context/ThemeContext";
 
@@ -121,6 +134,7 @@ function TaskModal({
   statuses = [],
   isManager = false, // New prop to identify manager role
 }) {
+  const { buttonClass, iconColor } = useThemeStyles();
   const { accent } = useTheme();
 
   // Calculate disabled assignee IDs (prevent removing existing assignees for managers)
@@ -454,6 +468,32 @@ function TaskModal({
       return;
     }
 
+    // Additional Mandatory Fields Validation
+    if (!priority) {
+      toast.error("Priority is required");
+      return;
+    }
+    if (!status) {
+      toast.error("Status is required");
+      return;
+    }
+    if (!assignedDate) {
+      toast.error("Assigned Date is required");
+      return;
+    }
+
+    // Validate OKR fields if project is selected (since OKRs depend on project)
+    if (projectId) {
+      if (typeof okrObjectiveIndex !== "number") {
+        toast.error("OKR Objective is required");
+        return;
+      }
+      if (!okrKeyResultIndices || okrKeyResultIndices.length === 0) {
+        toast.error("At least one Key Result is required");
+        return;
+      }
+    }
+
     // Build assigneeIds array for employee queries
     const assigneeIds = assigneesSelected
       .filter((a) => a.type === "user")
@@ -522,19 +562,20 @@ function TaskModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-[90vw] xl:max-w-7xl max-h-[90vh] flex flex-col bg-white/95 [.dark_&]:bg-[#181B2A]/95 backdrop-blur-sm rounded-2xl shadow-2xl shadow-indigo-500/20 overflow-hidden border border-white/20 [.dark_&]:border-white/10"
+        className="relative w-full max-w-[90vw] xl:max-w-7xl max-h-[90vh] flex flex-col bg-white [.dark_&]:bg-[#181B2A] rounded-2xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header - Clean Style */}
-        <div className="shrink-0 px-6 py-4 border-b border-gray-100/50 [.dark_&]:border-white/10 bg-white/80 [.dark_&]:bg-[#181B2A]/80 backdrop-blur-md flex items-center justify-between z-10">
+        <div className="shrink-0 px-6 py-4 border-b border-gray-100 [.dark_&]:border-white/10 bg-gray-50/50 [.dark_&]:bg-[#181B2A] backdrop-blur-md flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <div
-              className={`p-2 rounded-lg ${isEdit
-                ? `${themeStyles.iconBg} ${themeStyles.iconText}`
-                : "bg-gray-100 text-gray-500"
-                }`}
+              className={`p-2 rounded-lg ${themeStyles.iconBg} ${themeStyles.iconText}`}
             >
-              <MdReplayCircleFilled className="text-xl" />
+              {isEdit ? (
+                <FaEdit className="text-xl" />
+              ) : (
+                <MdAddTask className="text-xl" />
+              )}
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-800 [.dark_&]:text-white tracking-tight">
@@ -566,13 +607,16 @@ function TaskModal({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Column 1: Details & Classification */}
               <div className="space-y-6">
-                <h3 className="text-sm font-bold text-gray-700 [.dark_&]:text-gray-300 flex items-center gap-2 uppercase tracking-wider">
-                  Details & Classification
-                </h3>
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
+                  <FaLayerGroup className={`${iconColor} [.dark_&]:text-opacity-80`} />
+                  <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
+                    Details & Classification
+                  </h3>
+                </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                    Task Title
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">
+                    Task Title <span className="text-red-500">*</span>
                   </label>
                   <VoiceInput
                     value={title}
@@ -582,7 +626,7 @@ function TaskModal({
                         setErrors((prev) => ({ ...prev, title: "" }));
                     }}
                     placeholder="Enter task title..."
-                    className={`block w-full rounded-xl border-0 bg-gray-50 [.dark_&]:bg-white/5 px-4 py-3 text-sm font-semibold text-gray-900 [.dark_&]:text-white shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all ${errors.title
+                    className={`block w-full rounded-xl border-0 bg-white [.dark_&]:bg-white/5 px-4 py-3 text-sm  text-gray-900 [.dark_&]:text-white shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all ${errors.title
                       ? "ring-red-300 focus:ring-red-500 bg-red-50"
                       : ""
                       }`}
@@ -595,7 +639,7 @@ function TaskModal({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">
                     Description
                   </label>
                   <VoiceInput
@@ -604,14 +648,14 @@ function TaskModal({
                     onChange={(e) => setDescription(e.target.value)}
                     rows={6}
                     placeholder="Add a detailed description..."
-                    className="block w-full rounded-xl border-0 bg-gray-50 [.dark_&]:bg-white/5 px-4 py-3 text-sm text-gray-700 [.dark_&]:text-gray-300 shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all resize-none"
+                    className="block w-full rounded-xl border-0 bg-white [.dark_&]:bg-white/5 px-4 py-3 text-sm text-gray-700 [.dark_&]:text-gray-300 shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 transition-all resize-none"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                      Project
+                    <label className="block text-xs font-bold text-gray-800 mb-1.5">
+                      Project <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={projectId}
@@ -641,8 +685,8 @@ function TaskModal({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                      Priority
+                    <label className="block text-xs font-bold text-gray-800 mb-1.5">
+                      Priority <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={priority}
@@ -656,8 +700,8 @@ function TaskModal({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                      Status
+                    <label className="block text-xs font-bold text-gray-800 mb-1.5">
+                      Status <span className="text-red-500">*</span>
                     </label>
                     <div className="flex items-center gap-2">
                       <select
@@ -694,12 +738,18 @@ function TaskModal({
 
               {/* Column 2: Assignment & Schedule */}
               <div className="space-y-6">
-                <h3 className="text-sm font-bold text-gray-700 [.dark_&]:text-gray-300 flex items-center gap-2 uppercase tracking-wider">
-                  Assignment & Schedule
-                </h3>
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
+                  <FaCalendarAlt className={`${iconColor} [.dark_&]:text-opacity-80`} />
+                  <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
+                    Assignment & Schedule
+                  </h3>
+                </div>
 
                 <div className="space-y-4">
                   {/* Assignee Type Toggle */}
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">
+                    Assignee <span className="text-red-500">*</span>
+                  </label>
                   {!isManager && (
                     <div className="flex bg-gray-100 [.dark_&]:bg-white/5 p-1 rounded-lg">
                       <button
@@ -810,8 +860,8 @@ function TaskModal({
                   {/* Dates */}
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                        Assigned Date
+                      <label className="block text-xs font-bold text-gray-800 mb-1.5">
+                        Assigned Date <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
                         <input
@@ -823,7 +873,7 @@ function TaskModal({
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      <label className="block text-xs font-bold text-gray-800 mb-1.5">
                         Due Date
                       </label>
                       <div className="relative">
@@ -851,19 +901,32 @@ function TaskModal({
 
               {/* Column 3: Advanced & Subtasks */}
               <div className="space-y-6">
-                <h3 className="text-sm font-bold text-gray-700 [.dark_&]:text-gray-300 flex items-center gap-2 uppercase tracking-wider">
-                  Advanced & Subtasks
-                </h3>
+                <div className="flex items-center gap-2 pb-2 border-b border-gray-100 [.dark_&]:border-white/10">
+                  <FaListUl className={`${iconColor} [.dark_&]:text-opacity-80`} />
+                  <h3 className="text-sm font-bold text-gray-900 [.dark_&]:text-white uppercase tracking-wide">
+                    Advanced & Subtasks
+                  </h3>
+                </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                  <label className="block text-xs font-bold text-gray-800 mb-1.5">
                     Weightage (Points)
                   </label>
                   <input
                     type="number"
                     min="0"
                     value={weightage}
-                    onChange={(e) => setWeightage(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!val || Number(val) >= 0) {
+                        setWeightage(val);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (["-", "+", "e", "E"].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     placeholder="e.g. 5"
                     className="block w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2.5 text-sm text-gray-900 [.dark_&]:text-white shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
                   />
@@ -904,7 +967,7 @@ function TaskModal({
                   <div className="p-4 bg-white [.dark_&]:bg-[#1F2234] rounded-xl border border-gray-200 [.dark_&]:border-white/10 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="col-span-2">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                        <label className="block text-xs font-bold text-gray-800 mb-1">
                           Repeat Every
                         </label>
                         <div className="flex gap-2">
@@ -935,7 +998,7 @@ function TaskModal({
 
                       <div className="col-span-2 flex flex-col gap-2">
                         <div className="flex items-center justify-between">
-                          <label className="block text-xs font-medium text-gray-500 [.dark_&]:text-gray-400">
+                          <label className="block text-xs font-bold text-gray-800 [.dark_&]:text-gray-400">
                             Allowed Days
                           </label>
                           <label className="flex items-center gap-2 cursor-pointer">
@@ -984,7 +1047,7 @@ function TaskModal({
                       </div>
 
                       <div className="col-span-2">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                        <label className="block text-xs font-bold text-gray-800 mb-1">
                           Ends
                         </label>
                         <select
@@ -1000,7 +1063,7 @@ function TaskModal({
 
                       {recurringEndType === "date" && (
                         <div className="col-span-2">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                          <label className="block text-xs font-bold text-gray-800 mb-1">
                             End Date
                           </label>
                           <input
@@ -1017,7 +1080,7 @@ function TaskModal({
 
                       {recurringEndType === "after" && (
                         <div className="col-span-2">
-                          <label className="block text-xs font-medium text-gray-500 mb-1">
+                          <label className="block text-xs font-bold text-gray-800 mb-1">
                             Count
                           </label>
                           <input
@@ -1037,7 +1100,7 @@ function TaskModal({
                     {/* Recurrence Preview */}
                     {previewDates.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-gray-100">
-                        <label className="block text-xs font-medium text-gray-500 mb-2 flex items-center gap-1">
+                        <label className="block text-xs font-bold text-gray-800 mb-2 flex items-center gap-1">
                           <FaRegCalendarAlt /> Next 5 Occurrences
                         </label>
                         <div className="flex flex-wrap gap-2">
@@ -1064,8 +1127,8 @@ function TaskModal({
                     </h4>
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
-                          Objective
+                        <label className="block text-xs font-bold text-gray-800 mb-1">
+                          Objective <span className="text-red-500">*</span>
                         </label>
                         <select
                           value={
@@ -1095,8 +1158,8 @@ function TaskModal({
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
-                          Key Results
+                        <label className="block text-xs font-bold text-gray-800 mb-1">
+                          Key Results <span className="text-red-500">*</span>
                         </label>
                         <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg border border-gray-200 [.dark_&]:border-white/10 p-2 max-h-24 overflow-y-auto">
                           {(() => {
@@ -1236,11 +1299,11 @@ function TaskModal({
 
                           {/* Expanded Details */}
                           {isExpanded && (
-                            <div className="px-3 pb-3 pt-1 border-t border-gray-100 [.dark_&]:border-white/10 bg-gray-50/50 [.dark_&]:bg-white/5 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
+                            <div className="px-3 pb-3 pt-1 border-t border-gray-100 [.dark_&]:border-white/10 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
                               <div className="grid grid-cols-3 gap-2">
                                 {/* Due Date */}
                                 <div>
-                                  <label className="block text-[10px] font-medium text-gray-500 mb-1">Due Date</label>
+                                  <label className="block text-[10px] font-bold text-gray-800 mb-1">Due Date</label>
                                   <input
                                     type="date"
                                     value={st.dueDate || ''}
@@ -1254,7 +1317,7 @@ function TaskModal({
                                 </div>
                                 {/* Assignee */}
                                 <div>
-                                  <label className="block text-[10px] font-medium text-gray-500 mb-1">Assignee</label>
+                                  <label className="block text-[10px] font-bold text-gray-800 mb-1">Assignee</label>
                                   <select
                                     value={st.assigneeId || ''}
                                     onChange={(e) => {
@@ -1272,7 +1335,7 @@ function TaskModal({
                                 </div>
                                 {/* Priority */}
                                 <div>
-                                  <label className="block text-[10px] font-medium text-gray-500 mb-1">Priority</label>
+                                  <label className="block text-[10px] font-bold text-gray-800 mb-1">Priority</label>
                                   <div className="flex gap-1">
                                     {['Low', 'Medium', 'High'].map((p) => (
                                       <button
@@ -1296,7 +1359,7 @@ function TaskModal({
                               </div>
                               {/* Description */}
                               <div>
-                                <label className="block text-[10px] font-medium text-gray-500 mb-1">Description</label>
+                                <label className="block text-[10px] font-bold text-gray-800 mb-1">Description</label>
                                 <textarea
                                   value={st.description || ''}
                                   onChange={(e) => {
@@ -1312,7 +1375,7 @@ function TaskModal({
                               {/* Dependencies */}
                               {subtasks.length > 1 && (
                                 <div>
-                                  <label className="block text-[10px] font-medium text-gray-500 mb-1">
+                                  <label className="block text-[10px] font-bold text-gray-800 mb-1">
                                     Depends On <span className="text-gray-400">(must complete first)</span>
                                   </label>
                                   <div className="flex flex-wrap gap-1">
@@ -1364,15 +1427,200 @@ function TaskModal({
                       );
                     })}
 
-                    {/* Add New Subtask - Quick Add with Inline Icons */}
                     <div className="mt-3 pt-3 border-t border-gray-200 [.dark_&]:border-white/10">
-                      <div className="flex items-center gap-2">
-                        <VoiceInput
-                          value={newSubtask}
-                          onChange={(e) => setNewSubtask(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
+                      <div className="flex flex-col gap-2">
+                        <div className="w-full">
+                          <VoiceInput
+                            value={newSubtask}
+                            onChange={(e) => setNewSubtask(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                if (newSubtask.trim()) {
+                                  const newId = Math.random().toString(36).slice(2);
+                                  setSubtasks([
+                                    ...subtasks,
+                                    {
+                                      id: newId,
+                                      title: newSubtask.trim(),
+                                      description: "",
+                                      dueDate: newSubtaskDueDate,
+                                      assigneeId: newSubtaskAssigneeId,
+                                      priority: newSubtaskPriority,
+                                      order: Date.now(),
+                                      completed: false,
+                                      createdAt: new Date().toISOString(),
+                                      completedAt: null,
+                                      completedBy: null,
+                                    },
+                                  ]);
+                                  setNewSubtask("");
+                                  setNewSubtaskDueDate(null);
+                                  setNewSubtaskAssigneeId(null);
+                                  setNewSubtaskPriority("Medium");
+                                }
+                              }
+                            }}
+                            placeholder="Add a subtask..."
+                            className="w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2 text-xs text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600 shadow-sm"
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          {/* Quick Option Icons */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            {/* Due Date Icon */}
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowQuickDatePicker(!showQuickDatePicker);
+                                  setShowQuickAssigneePicker(false);
+                                  setShowQuickPriorityPicker(false);
+                                }}
+                                className={`p-2 rounded-lg transition-all ${newSubtaskDueDate ? 'bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-900/30 [.dark_&]:text-indigo-400' : 'hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-gray-400 hover:text-gray-600'}`}
+                                title="Set due date"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                              </button>
+                              {showQuickDatePicker && (
+                                <>
+                                  <div className="fixed inset-0 z-10" onClick={() => setShowQuickDatePicker(false)} />
+                                  <div className="absolute bottom-full left-0 mb-2 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-200 [.dark_&]:border-white/10 p-3 z-20 animate-in fade-in zoom-in-95 duration-100">
+                                    <label className="block text-[10px] font-medium text-gray-500 mb-1">Due Date</label>
+                                    <input
+                                      type="date"
+                                      value={newSubtaskDueDate || ''}
+                                      onChange={(e) => {
+                                        setNewSubtaskDueDate(e.target.value || null);
+                                        setShowQuickDatePicker(false);
+                                      }}
+                                      className="w-36 rounded border-0 bg-gray-50 [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-xs text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
+                                      autoFocus
+                                    />
+                                    {newSubtaskDueDate && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setNewSubtaskDueDate(null);
+                                          setShowQuickDatePicker(false);
+                                        }}
+                                        className="w-full mt-1 text-[10px] text-red-500 hover:text-red-600"
+                                      >
+                                        Clear
+                                      </button>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Assignee Icon */}
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowQuickAssigneePicker(!showQuickAssigneePicker);
+                                  setShowQuickDatePicker(false);
+                                  setShowQuickPriorityPicker(false);
+                                }}
+                                className={`p-2 rounded-lg transition-all ${newSubtaskAssigneeId ? 'bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-900/30 [.dark_&]:text-indigo-400' : 'hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-gray-400 hover:text-gray-600'}`}
+                                title="Assign to"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                              </button>
+                              {showQuickAssigneePicker && (
+                                <>
+                                  <div className="fixed inset-0 z-10" onClick={() => setShowQuickAssigneePicker(false)} />
+                                  <div className="absolute bottom-full left-0 mb-2 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-200 [.dark_&]:border-white/10 p-2 z-20 w-48 max-h-48 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+                                    <label className="block text-[10px] font-medium text-gray-500 mb-1 px-1">Assign to</label>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setNewSubtaskAssigneeId(null);
+                                        setShowQuickAssigneePicker(false);
+                                      }}
+                                      className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-gray-100 [.dark_&]:hover:bg-white/10 ${!newSubtaskAssigneeId ? 'bg-indigo-50 text-indigo-600 [.dark_&]:bg-indigo-900/20 [.dark_&]:text-indigo-400' : 'text-gray-600 [.dark_&]:text-gray-300'}`}
+                                    >
+                                      Unassigned
+                                    </button>
+                                    {assignees.map((a) => (
+                                      <button
+                                        key={a.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setNewSubtaskAssigneeId(a.id);
+                                          setShowQuickAssigneePicker(false);
+                                        }}
+                                        className={`w-full text-left px-2 py-1.5 text-xs rounded flex items-center gap-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 ${newSubtaskAssigneeId === a.id ? 'bg-indigo-50 text-indigo-600 [.dark_&]:bg-indigo-900/20 [.dark_&]:text-indigo-400' : 'text-gray-600 [.dark_&]:text-gray-300'}`}
+                                      >
+                                        <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 text-[9px] font-bold flex items-center justify-center">
+                                          {a.name?.charAt(0)?.toUpperCase()}
+                                        </span>
+                                        {a.name}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Priority Icon */}
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowQuickPriorityPicker(!showQuickPriorityPicker);
+                                  setShowQuickDatePicker(false);
+                                  setShowQuickAssigneePicker(false);
+                                }}
+                                className={`p-2 rounded-lg transition-all ${newSubtaskPriority === 'High' ? 'bg-red-100 text-red-600 [.dark_&]:bg-red-900/30 [.dark_&]:text-red-400' :
+                                  newSubtaskPriority === 'Low' ? 'bg-blue-100 text-blue-600 [.dark_&]:bg-blue-900/30 [.dark_&]:text-blue-400' :
+                                    'hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-gray-400 hover:text-gray-600'
+                                  }`}
+                                title="Set priority"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                                </svg>
+                              </button>
+                              {showQuickPriorityPicker && (
+                                <>
+                                  <div className="fixed inset-0 z-10" onClick={() => setShowQuickPriorityPicker(false)} />
+                                  <div className="absolute bottom-full left-0 mb-2 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-200 [.dark_&]:border-white/10 p-2 z-20 animate-in fade-in zoom-in-95 duration-100">
+                                    <label className="block text-[10px] font-medium text-gray-500 mb-1 px-1">Priority</label>
+                                    <div className="flex gap-1">
+                                      {['Low', 'Medium', 'High'].map((p) => (
+                                        <button
+                                          key={p}
+                                          type="button"
+                                          onClick={() => {
+                                            setNewSubtaskPriority(p);
+                                            setShowQuickPriorityPicker(false);
+                                          }}
+                                          className={`px-3 py-1.5 text-[10px] font-medium rounded transition-all ${newSubtaskPriority === p
+                                            ? p === 'High' ? 'bg-red-500 text-white' : p === 'Low' ? 'bg-blue-500 text-white' : 'bg-indigo-500 text-white'
+                                            : 'bg-gray-100 [.dark_&]:bg-white/10 text-gray-500 hover:bg-gray-200 [.dark_&]:hover:bg-white/20'
+                                            }`}
+                                        >
+                                          {p}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          <Button
+                            type="button"
+                            variant="custom"
+                            onClick={() => {
                               if (newSubtask.trim()) {
                                 const newId = Math.random().toString(36).slice(2);
                                 setSubtasks([
@@ -1396,194 +1644,12 @@ function TaskModal({
                                 setNewSubtaskAssigneeId(null);
                                 setNewSubtaskPriority("Medium");
                               }
-                            }
-                          }}
-                          placeholder="Add a subtask..."
-                          className="flex-1 rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2 text-xs text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600 shadow-sm"
-                        />
-
-                        {/* Quick Option Icons */}
-                        <div className="flex items-center gap-1">
-                          {/* Due Date Icon */}
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowQuickDatePicker(!showQuickDatePicker);
-                                setShowQuickAssigneePicker(false);
-                                setShowQuickPriorityPicker(false);
-                              }}
-                              className={`p-2 rounded-lg transition-all ${newSubtaskDueDate ? 'bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-900/30 [.dark_&]:text-indigo-400' : 'hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-gray-400 hover:text-gray-600'}`}
-                              title="Set due date"
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                            </button>
-                            {showQuickDatePicker && (
-                              <>
-                                <div className="fixed inset-0 z-10" onClick={() => setShowQuickDatePicker(false)} />
-                                <div className="absolute bottom-full right-0 mb-2 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-200 [.dark_&]:border-white/10 p-3 z-20 animate-in fade-in zoom-in-95 duration-100">
-                                  <label className="block text-[10px] font-medium text-gray-500 mb-1">Due Date</label>
-                                  <input
-                                    type="date"
-                                    value={newSubtaskDueDate || ''}
-                                    onChange={(e) => {
-                                      setNewSubtaskDueDate(e.target.value || null);
-                                      setShowQuickDatePicker(false);
-                                    }}
-                                    className="w-36 rounded border-0 bg-gray-50 [.dark_&]:bg-[#181B2A] px-2 py-1.5 text-xs text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
-                                    autoFocus
-                                  />
-                                  {newSubtaskDueDate && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setNewSubtaskDueDate(null);
-                                        setShowQuickDatePicker(false);
-                                      }}
-                                      className="w-full mt-1 text-[10px] text-red-500 hover:text-red-600"
-                                    >
-                                      Clear
-                                    </button>
-                                  )}
-                                </div>
-                              </>
-                            )}
-                          </div>
-
-                          {/* Assignee Icon */}
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowQuickAssigneePicker(!showQuickAssigneePicker);
-                                setShowQuickDatePicker(false);
-                                setShowQuickPriorityPicker(false);
-                              }}
-                              className={`p-2 rounded-lg transition-all ${newSubtaskAssigneeId ? 'bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-900/30 [.dark_&]:text-indigo-400' : 'hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-gray-400 hover:text-gray-600'}`}
-                              title="Assign to"
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                              </svg>
-                            </button>
-                            {showQuickAssigneePicker && (
-                              <>
-                                <div className="fixed inset-0 z-10" onClick={() => setShowQuickAssigneePicker(false)} />
-                                <div className="absolute bottom-full right-0 mb-2 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-200 [.dark_&]:border-white/10 p-2 z-20 w-48 max-h-48 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
-                                  <label className="block text-[10px] font-medium text-gray-500 mb-1 px-1">Assign to</label>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setNewSubtaskAssigneeId(null);
-                                      setShowQuickAssigneePicker(false);
-                                    }}
-                                    className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-gray-100 [.dark_&]:hover:bg-white/10 ${!newSubtaskAssigneeId ? 'bg-indigo-50 text-indigo-600 [.dark_&]:bg-indigo-900/20 [.dark_&]:text-indigo-400' : 'text-gray-600 [.dark_&]:text-gray-300'}`}
-                                  >
-                                    Unassigned
-                                  </button>
-                                  {assignees.map((a) => (
-                                    <button
-                                      key={a.id}
-                                      type="button"
-                                      onClick={() => {
-                                        setNewSubtaskAssigneeId(a.id);
-                                        setShowQuickAssigneePicker(false);
-                                      }}
-                                      className={`w-full text-left px-2 py-1.5 text-xs rounded flex items-center gap-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 ${newSubtaskAssigneeId === a.id ? 'bg-indigo-50 text-indigo-600 [.dark_&]:bg-indigo-900/20 [.dark_&]:text-indigo-400' : 'text-gray-600 [.dark_&]:text-gray-300'}`}
-                                    >
-                                      <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 text-[9px] font-bold flex items-center justify-center">
-                                        {a.name?.charAt(0)?.toUpperCase()}
-                                      </span>
-                                      {a.name}
-                                    </button>
-                                  ))}
-                                </div>
-                              </>
-                            )}
-                          </div>
-
-                          {/* Priority Icon */}
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowQuickPriorityPicker(!showQuickPriorityPicker);
-                                setShowQuickDatePicker(false);
-                                setShowQuickAssigneePicker(false);
-                              }}
-                              className={`p-2 rounded-lg transition-all ${newSubtaskPriority === 'High' ? 'bg-red-100 text-red-600 [.dark_&]:bg-red-900/30 [.dark_&]:text-red-400' :
-                                newSubtaskPriority === 'Low' ? 'bg-blue-100 text-blue-600 [.dark_&]:bg-blue-900/30 [.dark_&]:text-blue-400' :
-                                  'hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-gray-400 hover:text-gray-600'
-                                }`}
-                              title="Set priority"
-                            >
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
-                              </svg>
-                            </button>
-                            {showQuickPriorityPicker && (
-                              <>
-                                <div className="fixed inset-0 z-10" onClick={() => setShowQuickPriorityPicker(false)} />
-                                <div className="absolute bottom-full right-0 mb-2 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-200 [.dark_&]:border-white/10 p-2 z-20 animate-in fade-in zoom-in-95 duration-100">
-                                  <label className="block text-[10px] font-medium text-gray-500 mb-1 px-1">Priority</label>
-                                  <div className="flex gap-1">
-                                    {['Low', 'Medium', 'High'].map((p) => (
-                                      <button
-                                        key={p}
-                                        type="button"
-                                        onClick={() => {
-                                          setNewSubtaskPriority(p);
-                                          setShowQuickPriorityPicker(false);
-                                        }}
-                                        className={`px-3 py-1.5 text-[10px] font-medium rounded transition-all ${newSubtaskPriority === p
-                                          ? p === 'High' ? 'bg-red-500 text-white' : p === 'Low' ? 'bg-blue-500 text-white' : 'bg-indigo-500 text-white'
-                                          : 'bg-gray-100 [.dark_&]:bg-white/10 text-gray-500 hover:bg-gray-200 [.dark_&]:hover:bg-white/20'
-                                          }`}
-                                      >
-                                        {p}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
+                            }}
+                            className={`whitespace-nowrap text-xs px-4 py-2 text-white rounded-lg transition-colors shrink-0 ${themeStyles.button}`}
+                          >
+                            Add
+                          </Button>
                         </div>
-
-                        <Button
-                          type="button"
-                          variant="custom"
-                          onClick={() => {
-                            if (newSubtask.trim()) {
-                              const newId = Math.random().toString(36).slice(2);
-                              setSubtasks([
-                                ...subtasks,
-                                {
-                                  id: newId,
-                                  title: newSubtask.trim(),
-                                  description: "",
-                                  dueDate: newSubtaskDueDate,
-                                  assigneeId: newSubtaskAssigneeId,
-                                  priority: newSubtaskPriority,
-                                  order: Date.now(),
-                                  completed: false,
-                                  createdAt: new Date().toISOString(),
-                                  completedAt: null,
-                                  completedBy: null,
-                                },
-                              ]);
-                              setNewSubtask("");
-                              setNewSubtaskDueDate(null);
-                              setNewSubtaskAssigneeId(null);
-                              setNewSubtaskPriority("Medium");
-                            }
-                          }}
-                          className={`whitespace-nowrap text-xs px-4 py-2 text-white rounded-lg transition-colors ${themeStyles.button}`}
-                        >
-                          Add
-                        </Button>
                       </div>
 
                       {/* Selected Options Preview */}
@@ -1619,7 +1685,7 @@ function TaskModal({
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 px-8 py-5 bg-gray-50 [.dark_&]:bg-[#181B2A] border-t border-gray-100 [.dark_&]:border-white/10 flex items-center justify-between">
+        <div className="shrink-0 px-8 py-5 bg-gray-50/50 [.dark_&]:bg-[#181B2A] border-t border-gray-100 [.dark_&]:border-white/10 flex items-center justify-between">
           <div className="text-xs text-gray-500 font-medium">
             {hasChanges ? "Unsaved changes" : "No changes made"}
           </div>
@@ -1638,7 +1704,7 @@ function TaskModal({
               disabled={!!taskToEdit && !hasChanges}
               className={`px-8 text-white rounded-lg transition-colors ${themeStyles.button} ${!!taskToEdit && !hasChanges ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {taskToEdit ? "Save Changes" : "Create Task"}
+              {isEdit ? "Update Task" : "Create Task"}
             </Button>
           </div>
         </div>

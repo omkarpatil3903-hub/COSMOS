@@ -54,6 +54,7 @@ import Button from "../Button";
 import { db, storage, auth } from "../../firebase";
 import { collection, onSnapshot, orderBy, query, where, doc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import toast from 'react-hot-toast';
 import VoiceInput from "../Common/VoiceInput";
 import AssigneeSelector from "../AssigneeSelector";
 
@@ -217,6 +218,7 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
       const allowed = new Set(allowedIds);
       const allUsers = list
         .filter((u) => (projectId ? allowed.has(u.id) : true))
+        .filter((u) => u.status === "Active") // Filter for active users
         .map((u) => ({
           id: u.id,
           name: u.name || u.fullName || "",
@@ -393,6 +395,55 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
     }
   };
 
+  // Helper to deep compare arrays
+  const arraysEqual = (a, b) => {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    if (a.length !== b.length) return false;
+    const sortedA = [...a].sort();
+    const sortedB = [...b].sort();
+    return sortedA.every((val, index) => val === sortedB[index]);
+  };
+
+  const isDirty = React.useMemo(() => {
+    if (!initialItem) {
+      // Create mode: at least title, description, or file must be present
+      return title.trim().length > 0 || description.trim().length > 0 || documents.some(d => d.file !== null);
+    }
+
+    // Edit mode
+    const currentTitle = title.trim();
+    const currentDesc = description.trim();
+
+    const currentLinks = links.map(l => l.trim()).filter(l => l !== "").sort();
+    const initialLinksRaw = initialItem.links || (initialItem.link ? [initialItem.link] : []);
+    const initialLinks = (Array.isArray(initialLinksRaw) ? initialLinksRaw : Object.values(initialLinksRaw))
+      .map(l => (typeof l === 'string' ? l : l.url || '')).filter(Boolean).sort();
+    const linksChanged = !arraysEqual(currentLinks, initialLinks);
+
+    // Docs comparison
+    const hasNewFile = documents.some(d => d.file !== null);
+    const initialDocs = initialItem.documents || [];
+    const docsCountChanged = documents.length !== initialDocs.length;
+    // Also check displayName changes if needed? For now just file/count
+    const docsChanged = hasNewFile || docsCountChanged;
+
+    const currentAdmins = selectedAdmin || [];
+    const currentMembers = selectedMember || [];
+    const initialAdmins = initialItem.access?.admin || [];
+    const initialMembers = initialItem.access?.member || [];
+
+    const accessChanged = !arraysEqual(currentAdmins, initialAdmins) || !arraysEqual(currentMembers, initialMembers);
+
+    return (
+      currentTitle !== (initialItem.title || "") ||
+      currentDesc !== (initialItem.description || "") ||
+      linksChanged ||
+      docsChanged ||
+      accessChanged
+    );
+  }, [title, description, links, documents, selectedAdmin, selectedMember, initialItem]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
@@ -494,11 +545,14 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
         payload.createdByName = initialItem.createdByName;
       }
 
-      onSubmit && onSubmit(payload);
+      if (onSubmit) {
+        await onSubmit(payload);
+      }
+      toast.success(initialItem ? 'Knowledge updated successfully' : 'Knowledge created successfully');
       onClose && onClose();
     } catch (error) {
       console.error('Error submitting knowledge:', error);
-      alert('Failed to upload documents. Please try again.');
+      toast.error('Failed to save knowledge. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -718,8 +772,13 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
 
             <div className="flex justify-end gap-3 pt-2">
               <Button type="button" variant="ghost" onClick={onClose} disabled={uploading}>Cancel</Button>
-              <Button type="submit" variant="custom" className={buttonClass} disabled={uploading}>
-                {uploading ? "Uploading..." : initialItem ? "Save Changes" : "+ Add Knowledge"}
+              <Button
+                type="submit"
+                variant="custom"
+                className={`${buttonClass} disabled:opacity-50 disabled:cursor-not-allowed`}
+                disabled={uploading || !isDirty}
+              >
+                {uploading ? "Uploading..." : initialItem ? "Update Knowledge" : "+ Add Knowledge"}
               </Button>
             </div>
           </form>

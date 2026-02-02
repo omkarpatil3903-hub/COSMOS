@@ -38,7 +38,16 @@
  */
 
 import React from 'react';
-import { FaPlus } from 'react-icons/fa';
+import {
+    FaPlus,
+    FaFlag,
+    FaExclamationTriangle,
+    FaBullhorn,
+    FaIndustry,
+    FaBoxOpen,
+    FaTag,
+    FaPhoneAlt
+} from 'react-icons/fa';
 import { HiXMark } from 'react-icons/hi2';
 
 const AddSettingModal = ({
@@ -78,29 +87,45 @@ const AddSettingModal = ({
         }
     };
 
+    const getIcon = () => {
+        switch (settingType) {
+            case "status": return <FaFlag className="text-lg" />;
+            case "priority": return <FaExclamationTriangle className="text-lg" />;
+            case "source": return <FaBullhorn className="text-lg" />;
+            case "sector": return <FaIndustry className="text-lg" />;
+            case "productCategory": return <FaBoxOpen className="text-lg" />;
+            case "product": return <FaTag className="text-lg" />;
+            default: return <FaPhoneAlt className="text-lg" />;
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
             <div
                 className="bg-white [.dark_&]:bg-[#181B2A] rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 [.dark_&]:border-white/10">
-                    <h2 className="text-lg font-bold text-gray-900 [.dark_&]:text-white flex items-center gap-2">
-                        <FaPlus className={iconColor} />
-                        Add New {getTitle()}
-                    </h2>
+                {/* Header - Centered & Professional */}
+                <div className="flex items-center justify-between px-6 pt-6 pb-2">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
+                            {getIcon()}
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-900 [.dark_&]:text-white">
+                            Add New {getTitle()}
+                        </h2>
+                    </div>
                     <button
                         onClick={onClose}
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 rounded-full"
+                        className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 p-2 rounded-full transition-all"
                     >
                         <HiXMark className="h-5 w-5" />
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="p-6">
-                    <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-2">
+                <div className="px-6 py-4">
+                    <label className="block text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300 mb-2">
                         {getLabel()}
                     </label>
                     <input
@@ -112,8 +137,8 @@ const AddSettingModal = ({
                             if (/[^a-zA-Z\s]/.test(val)) return;
                             setNewSettingValue(val);
                         }}
-                        placeholder={`Enter ${settingType}...`}
-                        className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-3 px-4 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder={`Enter ${settingType.toLowerCase()}...`}
+                        className={`w-full rounded-xl border-2 border-blue-500/50 bg-white [.dark_&]:bg-[#181B2A] py-3 px-4 text-base text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-500/20 transition-all shadow-sm`}
                         onKeyPress={(e) => {
                             if (e.key === "Enter") {
                                 onAdd();
@@ -123,20 +148,19 @@ const AddSettingModal = ({
                     />
                 </div>
 
-                {/* Footer */}
-                <div className="flex gap-3 px-6 py-4 border-t border-gray-100 [.dark_&]:border-white/10">
-                    <button
-                        onClick={onAdd}
-                        className={`flex-1 ${buttonClass} px-4 py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors`}
-                    >
-                        <FaPlus />
-                        Add
-                    </button>
+                {/* Footer - Buttons Right & Smaller */}
+                <div className="flex items-center justify-end gap-3 px-6 pb-6 pt-2">
                     <button
                         onClick={onClose}
-                        className="flex-1 bg-gray-200 hover:bg-gray-300 [.dark_&]:bg-gray-700 [.dark_&]:hover:bg-gray-600 text-gray-700 [.dark_&]:text-gray-200 px-4 py-3 rounded-lg text-sm font-medium transition-colors"
+                        className="bg-gray-100 hover:bg-gray-200 [.dark_&]:bg-white/5 [.dark_&]:hover:bg-white/10 text-gray-700 [.dark_&]:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                     >
                         Cancel
+                    </button>
+                    <button
+                        onClick={onAdd}
+                        className={`${buttonClass} px-5 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors shadow-md shadow-blue-500/20`}
+                    >
+                        Add
                     </button>
                 </div>
             </div>

@@ -183,7 +183,14 @@ const LeadList = ({
                     </div>
                 )}
 
-                <Card title="Leads List">
+                <Card
+                    title="Leads List"
+                    actions={
+                        <div className="text-sm font-medium text-gray-500 [.dark_&]:text-gray-400">
+                            Showing {filteredLeads?.length || 0} records
+                        </div>
+                    }
+                >
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-surface-subtle [.dark_&]:bg-slate-800/60 border-b border-subtle">
@@ -631,6 +638,8 @@ const LeadList = ({
                 {/* Grouped Lead Lists */}
                 {groupedStatuses.map((status) => {
                     const statusLeads = filteredLeads.filter((l) => l.status?.toLowerCase() === status.toLowerCase());
+
+                    if (statusLeads.length === 0) return null;
 
                     return (
                         <LeadGroup

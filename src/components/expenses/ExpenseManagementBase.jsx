@@ -89,6 +89,7 @@ import {
     FaEdit,
     FaTrash,
     FaExternalLinkAlt,
+    FaEye,
 } from "react-icons/fa";
 import { useTheme } from "../../context/ThemeContext";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
@@ -144,6 +145,8 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
     const [isBulkApproving, setIsBulkApproving] = useState(false);
     const [showBulkPayModal, setShowBulkPayModal] = useState(false);
     const [isBulkPaying, setIsBulkPaying] = useState(false);
+    const [deletingExpense, setDeletingExpense] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Fetch all projects for the dropdown
     useEffect(() => {
@@ -175,8 +178,12 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
     }, []);
 
     useEffect(() => {
+        // Map "Pending" filter to "Approved" status in Firestore
+        // User requested: "Pending" should show "status is approved but didnt mark as paid"
+        const queryStatus = (statusFilter === "all") ? null : (statusFilter === "Pending" ? "Approved" : statusFilter);
+
         const unsub = subscribeToAllExpenses(
-            statusFilter === "all" ? null : statusFilter,
+            queryStatus,
             (items) => {
                 setExpenses(items);
                 setLoading(false);
@@ -190,6 +197,8 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
 
         if (activeStatFilter === "submitted") {
             result = result.filter((e) => e.status === "Submitted");
+        } else if (activeStatFilter === "Pending") {
+            result = result.filter((e) => e.status === "Approved");
         } else if (activeStatFilter === "approved") {
             result = result.filter((e) => e.status === "Approved");
         } else if (activeStatFilter === "paid") {
@@ -249,13 +258,19 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
         const submitted = expenses.filter((e) => e.status === "Submitted").length;
         const approved = expenses.filter((e) => e.status === "Approved").length;
         const paid = expenses.filter((e) => e.status === "Paid").length;
+
+        const totalAmount = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+        const submittedAmount = expenses
+            .filter((e) => e.status === "Submitted")
+            .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
         const approvedAmount = expenses
             .filter((e) => e.status === "Approved")
             .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
         const paidAmount = expenses
             .filter((e) => e.status === "Paid")
             .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-        return { total, submitted, approved, paid, approvedAmount, paidAmount };
+
+        return { total, submitted, approved, paid, totalAmount, submittedAmount, approvedAmount, paidAmount };
     }, [expenses]);
 
     // Open approve confirmation modal
@@ -319,6 +334,27 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
             toast.error("Failed to mark as paid");
         } finally {
             setIsMarkingPaid(false);
+        }
+    };
+
+    // Open delete confirmation modal
+    const handleOpenDelete = (expense) => {
+        setDeletingExpense(expense);
+    };
+
+    // Confirm single delete
+    const handleConfirmDelete = async () => {
+        if (!deletingExpense) return;
+        setIsDeleting(true);
+        try {
+            await deleteExpense(deletingExpense.id);
+            toast.success("Expense deleted permanently");
+            setDeletingExpense(null);
+        } catch (err) {
+            console.error("Failed to delete expense", err);
+            toast.error("Failed to delete expense");
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -418,7 +454,7 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
             />
 
             {/* Stats Cards */}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
                 <div
                     onClick={() => {
                         setActiveStatFilter(null);
@@ -433,7 +469,9 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                     <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-indigo-500 p-4 hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Total</p>
+                                <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                                    Total  (₹{stats.totalAmount.toFixed(2)})
+                                </p>
                                 <p className="text-3xl font-bold text-content-primary mt-1">
                                     {stats.total}
                                 </p>
@@ -500,6 +538,34 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                         </div>
                     </div>
                 </div>
+
+                <div
+                    onClick={() => {
+                        setActiveStatFilter("Pending");
+                        setSearchQuery("");
+                        setCategoryFilter("all");
+                        setFromDate("");
+                        setToDate("");
+                        setStatusFilter("all");
+                    }}
+                    className="cursor-pointer"
+                >
+                    <div className="bg-surface rounded-lg shadow-sm border border-subtle border-l-4 border-l-amber-500 p-4 hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                                    Pending (₹{stats.approvedAmount.toFixed(2)})
+                                </p>
+                                <p className="text-3xl font-bold text-content-primary mt-1">
+                                    {stats.approved}
+                                </p>
+                            </div>
+                            <div className="w-12 h-12 rounded-full bg-amber-200/50 dark:bg-amber-900/50 flex items-center justify-center">
+                                <FaHourglassHalf className="text-amber-600 dark:text-amber-400 text-xl" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Filters Card */}
@@ -509,9 +575,7 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                         <h2 className="text-lg font-semibold text-content-primary">
                             Search & Actions
                         </h2>
-                        <span className="text-sm text-content-tertiary">
-                            Showing {filtered.length} records
-                        </span>
+
                     </div>
                     <hr className="border-subtle" />
                 </div>
@@ -569,6 +633,7 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                 className="w-full text-sm border border-subtle rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 py-2 px-3 bg-surface text-content-primary shadow-sm"
                             >
                                 <option value="all">All Statuses</option>
+                                <option value="Pending">Pending</option>
                                 <option value="Draft">Draft</option>
                                 <option value="Submitted">Submitted</option>
                                 <option value="Approved">Approved</option>
@@ -662,42 +727,11 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                     title="Expense List"
                     tone="muted"
                     actions={
-                        <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-content-secondary">
-                                Page {page} of {totalPages}
-                            </span>
-                            <label className="text-sm font-medium text-content-secondary">
-                                Rows per page
-                            </label>
-                            <select
-                                value={rowsPerPage}
-                                onChange={(e) => setRowsPerPage(Number(e.target.value))}
-                                className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                            >
-                                <option value={10}>10</option>
-                                <option value={25}>25</option>
-                                <option value={50}>50</option>
-                            </select>
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    onClick={handlePrevPage}
-                                    variant="secondary"
-                                    className="px-3 py-1"
-                                    disabled={page === 1}
-                                >
-                                    Previous
-                                </Button>
-                                <Button
-                                    onClick={handleNextPage}
-                                    variant="secondary"
-                                    className="px-3 py-1"
-                                    disabled={page === totalPages}
-                                >
-                                    Next
-                                </Button>
-                            </div>
+                        <div className="text-sm font-medium text-gray-500 [.dark_&]:text-gray-400">
+                            Showing {filtered.length} records
                         </div>
                     }
+
                 >
                     <div className="overflow-x-auto rounded-xl border border-subtle shadow-sm">
                         <table className="min-w-full divide-y divide-subtle">
@@ -741,7 +775,7 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                     <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                         Approval
                                     </th>
-                                    <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-content-secondary uppercase tracking-wider">
+                                    <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-content-secondary uppercase tracking-wider">
                                         Actions
                                     </th>
                                 </tr>
@@ -834,8 +868,8 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                             )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(e.status, useDarkMode)}`}>
-                                                {e.status || "Unknown"}
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColorClass(e.status === 'Paid' ? 'Approved' : e.status, useDarkMode)}`}>
+                                                {e.status === 'Paid' ? 'Approved' : (e.status || "Unknown")}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
@@ -863,18 +897,71 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                                                     <Button
                                                         size="xs"
                                                         onClick={(ev) => { ev.stopPropagation(); handleOpenMarkPaid(e); }}
-                                                        className="bg-purple-600 hover:bg-purple-700 text-white border-transparent"
+                                                        className="bg-purple-600 hover:bg-purple-700 text-white border-transparent !py-1 !px-3 !text-xs"
                                                     >
                                                         Mark Paid
                                                     </Button>
                                                 )}
+                                                {e.status === "Paid" && (
+                                                    <span className="text-xs font-medium text-purple-600 dark:text-purple-400 flex items-center gap-1 bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded-full">
+                                                        <FaCheckCircle /> Paid
+                                                    </span>
+                                                )}
                                             </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                            <button
+                                                onClick={(ev) => { ev.stopPropagation(); handleOpenDelete(e); }}
+                                                className="text-gray-500 hover:text-red-600 transition-colors p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                                                title="Delete Expense"
+                                            >
+                                                <FaTrash className="text-base" />
+                                            </button>
                                         </td>
                                         {/* Actions column removed as Admins cannot edit/delete employee expenses */}
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mt-4">
+                        <div className="text-sm font-medium text-content-secondary">
+                            Page {page} of {totalPages}
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <label className="text-sm font-medium text-content-secondary">
+                                Rows per page
+                            </label>
+                            <select
+                                value={rowsPerPage}
+                                onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                                className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                            >
+                                <option value={10}>10</option>
+                                <option value={25}>25</option>
+                                <option value={50}>50</option>
+                            </select>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    onClick={handlePrevPage}
+                                    variant="secondary"
+                                    className="px-3 py-1"
+                                    disabled={page === 1}
+                                >
+                                    Previous
+                                </Button>
+                                <Button
+                                    onClick={handleNextPage}
+                                    variant="secondary"
+                                    className="px-3 py-1"
+                                    disabled={page === totalPages}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 </Card>
             )}
@@ -1013,7 +1100,20 @@ export default function ExpenseManagementBase({ buttonClass = "", useDarkMode = 
                 variant="purple"
                 isLoading={isBulkPaying}
             />
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={!!deletingExpense}
+                onClose={() => setDeletingExpense(null)}
+                onConfirm={handleConfirmDelete}
+                title="Delete Expense"
+                description="Are you sure you want to delete this expense? This action cannot be undone."
+                itemTitle={deletingExpense?.title}
+                itemSubtitle={`₹${deletingExpense?.amount?.toFixed?.(2) || deletingExpense?.amount} · ${deletingExpense?.employeeName || 'Unknown'}`}
+                confirmLabel="Delete Permanently"
+                variant="danger"
+                isLoading={isDeleting}
+            />
         </div>
     );
 }
-

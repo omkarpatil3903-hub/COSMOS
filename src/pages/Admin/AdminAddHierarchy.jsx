@@ -105,6 +105,7 @@ export default function AddHierarchy() {
       );
     }
     setOpen(false);
+    setEditing(null);
     setValue("");
   };
 
@@ -209,6 +210,8 @@ export default function AddHierarchy() {
       { replace: true }
     );
     setOpen(true);
+    setEditing(null);
+    setValue("");
   };
 
   const handleRowClick = (item) => {
@@ -232,9 +235,7 @@ export default function AddHierarchy() {
         tone="white"
         actions={
           <div className="flex items-center gap-3">
-            <span className="text-sm text-content-secondary">
-              Showing {filtered.length} records
-            </span>
+
             <Button variant="custom" onClick={openCreate} className={`shrink-0 ${buttonClass}`}>
               <FaPlus /> Add Hierarchy
             </Button>
@@ -258,42 +259,16 @@ export default function AddHierarchy() {
         </label>
       </Card>
 
-      <Card title="Hierarchy List" tone="muted">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-2">
-          <div className="text-sm text-content-secondary">
-            Page {Math.min(page, totalPages)} of {totalPages}
+      <Card
+        title="Hierarchy List"
+        tone="muted"
+        actions={
+          <div className="text-sm font-medium text-gray-500 [.dark_&]:text-gray-400">
+            Showing {filtered.length} records
           </div>
-          <div className="flex items-center gap-3">
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-              className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                className="px-3 py-1"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-              >
-                Prev
-              </Button>
-              <Button
-                variant="secondary"
-                className="px-3 py-1"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        </div>
+        }
+      >
+
 
         <div className="w-full overflow-x-auto rounded-lg border border-subtle shadow-sm">
           <table className="min-w-full divide-y divide-subtle bg-surface">
@@ -382,13 +357,50 @@ export default function AddHierarchy() {
             </tbody>
           </table>
         </div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mt-4">
+          <div className="text-sm text-content-secondary">
+            Page {Math.min(page, totalPages)} of {totalPages}
+          </div>
+          <div className="flex items-center gap-3">
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="rounded-lg border border-subtle bg-surface px-3 py-2 text-sm text-content-primary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                className="px-3 py-1"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Prev
+              </Button>
+              <Button
+                variant="secondary"
+                className="px-3 py-1"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </div>
       </Card>
 
       {open && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/30">
           <div className="w-full max-w-2xl rounded-2xl bg-surface shadow-2xl">
             <div className="flex items-center justify-between px-6 pt-6">
-              <h3 className="text-xl font-semibold text-content-primary">Create Hierarchy</h3>
+              <h3 className="text-xl font-semibold text-content-primary">
+                {editing ? "Edit Hierarchy" : "Create Hierarchy"}
+              </h3>
               <button
                 onClick={close}
                 className="text-content-tertiary hover:text-content-primary"
@@ -464,7 +476,13 @@ export default function AddHierarchy() {
                 Cancel
               </Button>
               <Button onClick={save} disabled={saving} variant="custom" className={buttonClass}>
-                {saving ? "Saving..." : "Save"}
+                {saving
+                  ? editing
+                    ? "Updating..."
+                    : "Saving..."
+                  : editing
+                    ? "Update"
+                    : "Save"}
               </Button>
             </div>
           </div>

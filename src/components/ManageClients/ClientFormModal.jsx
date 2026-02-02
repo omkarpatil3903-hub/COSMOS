@@ -73,6 +73,8 @@ import {
 import Button from "../Button";
 import VoiceInput from "../Common/VoiceInput";
 
+import toast from "react-hot-toast";
+
 const ClientFormModal = ({
     isOpen,
     onClose,
@@ -158,7 +160,18 @@ const ClientFormModal = ({
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        const nextValue = name === "email" ? value.toLowerCase() : value;
+        let nextValue = value;
+
+        if (name === "email") {
+            nextValue = value.toLowerCase();
+        } else if (name === "contactNo") {
+            // Allow only numbers and limit to 10 digits
+            nextValue = value.replace(/[^0-9]/g, "").slice(0, 10);
+        } else if (name === "noOfEmployees") {
+            // Allow only non-negative numbers
+            nextValue = value.replace(/[^0-9]/g, "");
+        }
+
         setFormData((prev) => ({ ...prev, [name]: nextValue }));
         if (errors[name]) {
             onClearError(name);
@@ -167,6 +180,13 @@ const ClientFormModal = ({
 
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        // Validate Contact Number
+        if (formData.contactNo.length !== 10) {
+            toast.error("Contact number must be exactly 10 digits");
+            return;
+        }
+
         // Basic validation logic passed up or handled here
         // For brevity, assuming parent handles complex validation or we add it here
         onSubmit(formData);
@@ -231,7 +251,7 @@ const ClientFormModal = ({
                                         value={formData.companyName}
                                         onChange={handleChange}
                                         className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
-                                        placeholder="e.g. Acme Corp"
+                                        placeholder="Enter company name"
                                         required
                                     />
                                 </div>
@@ -244,7 +264,7 @@ const ClientFormModal = ({
                                         value={formData.clientName}
                                         onChange={handleChange}
                                         className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
-                                        placeholder="e.g. John Doe"
+                                        placeholder="Enter client name"
                                         required
                                     />
                                 </div>
@@ -260,7 +280,7 @@ const ClientFormModal = ({
                                             value={formData.email}
                                             readOnly
                                             className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-gray-800/50 py-2.5 px-4 text-sm text-gray-500 [.dark_&]:text-gray-400 cursor-not-allowed focus:outline-none transition-all duration-200"
-                                            placeholder="john@example.com"
+                                            placeholder="Enter email address"
                                         />
                                     ) : (
                                         <input
@@ -269,7 +289,7 @@ const ClientFormModal = ({
                                             value={formData.email}
                                             onChange={handleChange}
                                             className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
-                                            placeholder="john@example.com"
+                                            placeholder="Enter email address"
                                             required
                                         />
                                     )}
@@ -285,7 +305,7 @@ const ClientFormModal = ({
                                         value={formData.contactNo}
                                         onChange={handleChange}
                                         className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
-                                        placeholder="Enter 10 digit Mobile No"
+                                        placeholder="Enter contact number"
                                         required
                                     />
                                 </div>
@@ -310,7 +330,7 @@ const ClientFormModal = ({
                                         value={formData.typeOfBusiness}
                                         onChange={handleChange}
                                         className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
-                                        placeholder="e.g. Software Development"
+                                        placeholder="Enter type of business"
                                         required
                                     />
                                 </div>
@@ -320,12 +340,13 @@ const ClientFormModal = ({
                                         No. of Employees
                                     </label>
                                     <input
-                                        type="number"
+                                        type="text"
+                                        inputMode="numeric"
                                         name="noOfEmployees"
                                         value={formData.noOfEmployees}
                                         onChange={handleChange}
                                         className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200"
-                                        placeholder="e.g. 50"
+                                        placeholder="Enter no. of employees"
                                     />
                                 </div>
                                 <div className="space-y-1.5">
@@ -340,7 +361,7 @@ const ClientFormModal = ({
                                         onChange={handleChange}
                                         rows="5"
                                         className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200 resize-none"
-                                        placeholder="Enter full business address..."
+                                        placeholder="Enter full business address"
                                         required
                                     />
                                 </div>
@@ -412,7 +433,7 @@ const ClientFormModal = ({
                                                 value={formData.password}
                                                 onChange={handleChange}
                                                 className={`w-full rounded-lg border ${errors.password ? "border-red-500" : "border-gray-200 [.dark_&]:border-white/10"} bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 pr-10 text-sm text-gray-900 [.dark_&]:text-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20 focus:outline-none transition-all duration-200`}
-                                                placeholder={mode === "add" ? "••••••••" : "Leave blank to keep current"}
+                                                placeholder={mode === "add" ? "Enter password" : "Leave blank to keep current"}
                                                 required={mode === "add"}
                                             />
                                             <button
@@ -462,7 +483,7 @@ const ClientFormModal = ({
                     </Button>
                     <Button type="submit" variant="custom" disabled={isSubmitting} onClick={handleSubmit} className={`shadow-lg ${buttonClass}`}>
                         {isSubmitting && <FaSpinner className="animate-spin mr-2" />}
-                        {mode === "add" ? "Create Account" : "Save Changes"}
+                        {mode === "add" ? "Create Account" : "Update Client"}
                     </Button>
                 </div>
             </div>

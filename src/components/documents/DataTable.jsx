@@ -74,25 +74,7 @@ function DataTable({
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-3 text-sm text-content-secondary [.dark_&]:text-gray-400">
-        <div>
-          Page {clampedPage} of {totalPages}
-        </div>
-        <div className="flex items-center gap-2">
-          <span>Rows per page</span>
-          <select
-            className="rounded-md border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1 text-sm [.dark_&]:text-white"
-            value={rowsPerPage}
-            onChange={(e) => onRowsPerPageChange && onRowsPerPageChange(parseInt(e.target.value, 10))}
-          >
-            {[5, 10, 25, 50].map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-          <Button variant="secondary" onClick={handlePrev}>Previous</Button>
-          <Button variant="secondary" onClick={handleNext}>Next</Button>
-        </div>
-      </div>
+
 
       <div className="w-full overflow-x-auto rounded-lg border border-gray-200 [.dark_&]:border-white/10">
         <table className="w-full bg-white [.dark_&]:bg-[#181B2A] divide-y divide-gray-200 [.dark_&]:divide-white/5">
@@ -152,6 +134,29 @@ function DataTable({
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mt-4 text-sm text-content-secondary [.dark_&]:text-gray-400">
+        <div>
+          Page {clampedPage} of {totalPages}
+        </div>
+        <div className="flex items-center gap-3">
+          <span>Rows per page</span>
+          <select
+            className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1 text-sm [.dark_&]:text-white"
+            value={rowsPerPage}
+            onChange={(e) => onRowsPerPageChange && onRowsPerPageChange(parseInt(e.target.value, 10))}
+          >
+            {[5, 10, 25, 50].map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={handlePrev}>Previous</Button>
+            <Button variant="secondary" onClick={handleNext}>Next</Button>
+          </div>
+        </div>
       </div>
     </div>
   );

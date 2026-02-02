@@ -148,6 +148,7 @@ function LeadManagement() {
           borderLeft: 'border-l-purple-500 [.dark_&]:border-l-purple-400',
           bgLight: 'bg-purple-100 [.dark_&]:bg-purple-500/20',
           textTitle: 'text-purple-900 [.dark_&]:text-white',
+          tabActive: 'border-purple-600 text-purple-600 [.dark_&]:text-purple-400 bg-purple-50 [.dark_&]:bg-purple-900/20',
         };
       case 'blue':
         return {
@@ -158,6 +159,7 @@ function LeadManagement() {
           borderLeft: 'border-l-sky-500 [.dark_&]:border-l-sky-400',
           bgLight: 'bg-sky-100 [.dark_&]:bg-sky-500/20',
           textTitle: 'text-sky-900 [.dark_&]:text-white',
+          tabActive: 'border-sky-600 text-sky-600 [.dark_&]:text-sky-400 bg-sky-50 [.dark_&]:bg-sky-900/20',
         };
       case 'pink':
         return {
@@ -168,6 +170,7 @@ function LeadManagement() {
           borderLeft: 'border-l-pink-500 [.dark_&]:border-l-pink-400',
           bgLight: 'bg-pink-100 [.dark_&]:bg-pink-500/20',
           textTitle: 'text-pink-900 [.dark_&]:text-white',
+          tabActive: 'border-pink-600 text-pink-600 [.dark_&]:text-pink-400 bg-pink-50 [.dark_&]:bg-pink-900/20',
         };
       case 'violet':
         return {
@@ -178,6 +181,7 @@ function LeadManagement() {
           borderLeft: 'border-l-violet-500 [.dark_&]:border-l-violet-400',
           bgLight: 'bg-violet-100 [.dark_&]:bg-violet-500/20',
           textTitle: 'text-violet-900 [.dark_&]:text-white',
+          tabActive: 'border-violet-600 text-violet-600 [.dark_&]:text-violet-400 bg-violet-50 [.dark_&]:bg-violet-900/20',
         };
       case 'orange':
         return {
@@ -188,6 +192,7 @@ function LeadManagement() {
           borderLeft: 'border-l-amber-500 [.dark_&]:border-l-amber-400',
           bgLight: 'bg-amber-100 [.dark_&]:bg-amber-500/20',
           textTitle: 'text-amber-900 [.dark_&]:text-white',
+          tabActive: 'border-amber-600 text-amber-600 [.dark_&]:text-amber-400 bg-amber-50 [.dark_&]:bg-amber-900/20',
         };
       case 'teal':
         return {
@@ -198,6 +203,7 @@ function LeadManagement() {
           borderLeft: 'border-l-teal-500 [.dark_&]:border-l-teal-400',
           bgLight: 'bg-teal-100 [.dark_&]:bg-teal-500/20',
           textTitle: 'text-teal-900 [.dark_&]:text-white',
+          tabActive: 'border-teal-600 text-teal-600 [.dark_&]:text-teal-400 bg-teal-50 [.dark_&]:bg-teal-900/20',
         };
       case 'bronze':
         return {
@@ -208,6 +214,7 @@ function LeadManagement() {
           borderLeft: 'border-l-amber-600 [.dark_&]:border-l-amber-500',
           bgLight: 'bg-amber-100 [.dark_&]:bg-amber-500/20',
           textTitle: 'text-amber-900 [.dark_&]:text-white',
+          tabActive: 'border-amber-600 text-amber-600 [.dark_&]:text-amber-400 bg-amber-50 [.dark_&]:bg-amber-900/20',
         };
       case 'mint':
         return {
@@ -218,16 +225,18 @@ function LeadManagement() {
           borderLeft: 'border-l-emerald-500 [.dark_&]:border-l-emerald-400',
           bgLight: 'bg-emerald-100 [.dark_&]:bg-emerald-500/20',
           textTitle: 'text-emerald-900 [.dark_&]:text-white',
+          tabActive: 'border-emerald-600 text-emerald-600 [.dark_&]:text-emerald-400 bg-emerald-50 [.dark_&]:bg-emerald-900/20',
         };
       case 'black':
         return {
-          ring: 'ring-blue-500',
-          inputBg: 'bg-blue-50 [.dark_&]:bg-blue-900/20',
-          inputBorder: 'border-blue-300 [.dark_&]:border-blue-600',
-          iconColor: 'text-blue-600 [.dark_&]:text-blue-400',
-          borderLeft: 'border-l-blue-500 [.dark_&]:border-l-blue-400',
-          bgLight: 'bg-blue-100 [.dark_&]:bg-blue-500/20',
-          textTitle: 'text-blue-900 [.dark_&]:text-white',
+          ring: 'ring-gray-800',
+          inputBg: 'bg-gray-100 [.dark_&]:bg-gray-900/20',
+          inputBorder: 'border-gray-500 [.dark_&]:border-gray-600',
+          iconColor: 'text-gray-800 [.dark_&]:text-gray-400',
+          borderLeft: 'border-l-gray-800 [.dark_&]:border-l-gray-400',
+          bgLight: 'bg-gray-200 [.dark_&]:bg-gray-500/20',
+          textTitle: 'text-gray-900 [.dark_&]:text-white',
+          tabActive: 'border-gray-800 text-gray-800 [.dark_&]:text-gray-400 bg-gray-100 [.dark_&]:bg-gray-900/20',
         };
       default: // indigo
         return {
@@ -238,6 +247,7 @@ function LeadManagement() {
           borderLeft: 'border-l-indigo-500 [.dark_&]:border-l-indigo-400',
           bgLight: 'bg-indigo-100 [.dark_&]:bg-indigo-500/20',
           textTitle: 'text-indigo-900 [.dark_&]:text-white',
+          tabActive: 'border-indigo-600 text-indigo-600 [.dark_&]:text-indigo-400 bg-indigo-50 [.dark_&]:bg-indigo-900/20',
         };
     }
   };
@@ -362,6 +372,8 @@ function LeadManagement() {
   const [products, setProducts] = useState([]);
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [showAddSettingModal, setShowAddSettingModal] = useState(false);
+  const [showDeleteSettingModal, setShowDeleteSettingModal] = useState(false);
+  const [settingToDelete, setSettingToDelete] = useState(null);
   const [settingType, setSettingType] = useState(""); // 'status', 'priority', 'source', 'followupType', 'sector', 'productCategory', 'product'
   const [newSettingValue, setNewSettingValue] = useState("");
 
@@ -405,6 +417,7 @@ function LeadManagement() {
           followUpDate: data.followUpDate || "",
           assignedTo: data.assignedTo || "",
           assignedToName: data.assignedToName || "",
+          potentialValue: data.potentialValue ?? "",
           createdAt: data.createdAt || null,
 
           // --- Helpers ---
@@ -848,6 +861,14 @@ function LeadManagement() {
   );
 
   // --- Handlers ---
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  };
+
+  const handlePrevPage = () => {
+    setCurrentPage((prev) => Math.max(prev - 1, 1));
+  };
+
   const handleSort = (key) => {
     setSortConfig((prev) => ({
       key,
@@ -1223,51 +1244,71 @@ function LeadManagement() {
       const settingsDoc = await getDoc(settingsDocRef);
       const currentData = settingsDoc.data() || {};
 
+      const normalize = (str) => str.toLowerCase().trim();
+      const normalizedNewValue = normalize(newSettingValue);
+
       let updatedArray = [];
       let fieldName = "";
+      let existingArray = [];
 
       switch (settingType) {
         case "status":
           fieldName = "statuses";
-          updatedArray = [...(currentData.statuses || []), newSettingValue];
-          setLeadStatuses(updatedArray);
+          existingArray = currentData.statuses || [];
           break;
         case "priority":
           fieldName = "priorities";
-          updatedArray = [...(currentData.priorities || []), newSettingValue];
-          setLeadPriorities(updatedArray);
+          existingArray = currentData.priorities || [];
           break;
         case "source":
           fieldName = "sources";
-          updatedArray = [...(currentData.sources || []), newSettingValue];
-          setLeadSources(updatedArray);
+          existingArray = currentData.sources || [];
           break;
         case "sector":
           fieldName = "sectors";
-          updatedArray = [...(currentData.sectors || []), newSettingValue];
-          setSectors(updatedArray);
+          existingArray = currentData.sectors || [];
           break;
         case "productCategory":
           fieldName = "productCategories";
-          updatedArray = [...(currentData.productCategories || []), newSettingValue];
-          setProductCategories(updatedArray);
+          existingArray = currentData.productCategories || [];
           break;
         case "product":
           fieldName = "products";
-          updatedArray = [...(currentData.products || []), newSettingValue];
-          setProducts(updatedArray);
+          existingArray = currentData.products || [];
           break;
         case "followupType":
           fieldName = "followupTypes";
-          updatedArray = [...(currentData.followupTypes || []), newSettingValue];
-          setFollowupTypes(updatedArray);
+          existingArray = currentData.followupTypes || [];
           break;
         default:
           break;
       }
 
+      let settingName = settingType;
+      if (settingType === "productCategory") settingName = "Product Category";
+      else if (settingType === "followupType") settingName = "Follow-up Type";
+      else settingName = settingType.charAt(0).toUpperCase() + settingType.slice(1);
+
+      if (existingArray.some(item => normalize(item) === normalizedNewValue)) {
+        toast.error(`${settingName} "${newSettingValue}" already exists`);
+        return;
+      }
+
+      updatedArray = [...existingArray, newSettingValue];
+
+      // Update Local State based on type
+      switch (settingType) {
+        case "status": setLeadStatuses(updatedArray); break;
+        case "priority": setLeadPriorities(updatedArray); break;
+        case "source": setLeadSources(updatedArray); break;
+        case "sector": setSectors(updatedArray); break;
+        case "productCategory": setProductCategories(updatedArray); break;
+        case "product": setProducts(updatedArray); break;
+        case "followupType": setFollowupTypes(updatedArray); break;
+      }
+
       await updateDoc(settingsDocRef, { [fieldName]: updatedArray });
-      toast.success("Setting added successfully");
+      toast.success(`${settingName} added successfully`);
       setShowAddSettingModal(false);
       setNewSettingValue("");
       setSettingType("");
@@ -1315,8 +1356,14 @@ function LeadManagement() {
     }
   };
 
-  const handleDeleteSetting = async (type, value) => {
-    if (!window.confirm(`Delete "${value}"?`)) return;
+  const handleDeleteSetting = (type, value) => {
+    setSettingToDelete({ type, value });
+    setShowDeleteSettingModal(true);
+  };
+
+  const confirmDeleteSetting = async () => {
+    if (!settingToDelete) return;
+    const { type, value } = settingToDelete;
 
     try {
       const settingsDocRef = doc(db, "leadSettings", "config");
@@ -1367,7 +1414,14 @@ function LeadManagement() {
       }
 
       await updateDoc(settingsDocRef, { [fieldName]: updatedArray });
-      toast.success("Setting deleted successfully");
+      let settingName = type;
+      if (type === "productCategory") settingName = "Product Category";
+      else if (type === "followupType") settingName = "Follow-up Type";
+      else settingName = type.charAt(0).toUpperCase() + type.slice(1);
+
+      toast.success(`${settingName} deleted successfully`);
+      setShowDeleteSettingModal(false);
+      setSettingToDelete(null);
     } catch (error) {
       console.error("Error deleting setting:", error);
       toast.error("Failed to delete setting");
@@ -1393,44 +1447,63 @@ function LeadManagement() {
       const currentData = settingsDoc.data();
 
       let fieldName, updatedArray;
+      let existingArray = [];
+      const normalize = (str) => str.toLowerCase().trim();
+
       switch (type) {
         case "status":
           fieldName = "statuses";
-          updatedArray = (currentData.statuses || []).map(s => s === oldValue ? newValue : s);
-          setLeadStatuses(updatedArray);
+          existingArray = currentData.statuses || [];
           break;
         case "priority":
           fieldName = "priorities";
-          updatedArray = (currentData.priorities || []).map(p => p === oldValue ? newValue : p);
-          setLeadPriorities(updatedArray);
+          existingArray = currentData.priorities || [];
           break;
         case "source":
           fieldName = "sources";
-          updatedArray = (currentData.sources || []).map(s => s === oldValue ? newValue : s);
-          setLeadSources(updatedArray);
+          existingArray = currentData.sources || [];
           break;
         case "sector":
           fieldName = "sectors";
-          updatedArray = (currentData.sectors || []).map(s => s === oldValue ? newValue : s);
-          setSectors(updatedArray);
+          existingArray = currentData.sectors || [];
           break;
         case "productCategory":
           fieldName = "productCategories";
-          updatedArray = (currentData.productCategories || []).map(p => p === oldValue ? newValue : p);
-          setProductCategories(updatedArray);
+          existingArray = currentData.productCategories || [];
           break;
         case "product":
           fieldName = "products";
-          updatedArray = (currentData.products || []).map(p => p === oldValue ? newValue : p);
-          setProducts(updatedArray);
+          existingArray = currentData.products || [];
           break;
         case "followupType":
           fieldName = "followupTypes";
-          updatedArray = (currentData.followupTypes || []).map(t => t === oldValue ? newValue : t);
-          setFollowupTypes(updatedArray);
+          existingArray = currentData.followupTypes || [];
           break;
-        default:
-          return;
+        default: return;
+      }
+
+      if (existingArray.some(item => normalize(item) === normalize(newValue))) {
+        let displayType = type;
+        if (type === "productCategory") displayType = "Product Category";
+        else if (type === "followupType") displayType = "Follow-up Type";
+        else displayType = type.charAt(0).toUpperCase() + type.slice(1);
+
+        toast.error(`${displayType} "${newValue}" already exists`);
+        setEditingItem(null);
+        return;
+      }
+
+      updatedArray = existingArray.map(item => item === oldValue ? newValue : item);
+
+      // Update Local State
+      switch (type) {
+        case "status": setLeadStatuses(updatedArray); break;
+        case "priority": setLeadPriorities(updatedArray); break;
+        case "source": setLeadSources(updatedArray); break;
+        case "sector": setSectors(updatedArray); break;
+        case "productCategory": setProductCategories(updatedArray); break;
+        case "product": setProducts(updatedArray); break;
+        case "followupType": setFollowupTypes(updatedArray); break;
       }
 
       await updateDoc(settingsRef, { [fieldName]: updatedArray });
@@ -1890,68 +1963,72 @@ function LeadManagement() {
             </div>
           </div>
 
-          {/* Toolbar */}
-          <div className="flex flex-wrap items-center gap-4 mt-4">
-            {/* Search */}
-            <div className="relative flex-1 min-w-[200px]">
-              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search leads..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 [.dark_&]:border-gray-600 rounded-lg bg-white [.dark_&]:bg-slate-800 text-gray-900 [.dark_&]:text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              />
-            </div>
+          {/* Search & Actions */}
+          <Card title="Search & Actions">
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+              {/* Search */}
+              <div className="relative w-full md:w-96">
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search leads..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-subtle bg-surface focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
 
-            {/* View Toggle */}
-            <div className="flex bg-surface-subtle [.dark_&]:bg-slate-700/50 p-1 rounded-lg border border-subtle">
-              <button
-                onClick={() => setViewMode("table")}
-                className={`p-2 rounded-md transition-all ${viewMode === "table"
-                  ? `bg-white [.dark_&]:bg-slate-600 shadow ${themeColors.iconColor}`
-                  : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700"
-                  }`}
-                title="Table View"
-              >
-                <FaList />
-              </button>
-              <button
-                onClick={() => setViewMode("kanban")}
-                className={`p-2 rounded-md transition-all ${viewMode === "kanban"
-                  ? `bg-white [.dark_&]:bg-slate-600 shadow ${themeColors.iconColor}`
-                  : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700"
-                  }`}
-                title="Kanban View"
-              >
-                <FaTh />
-              </button>
-              <button
-                onClick={() => setViewMode("grouped")}
-                className={`p-2 rounded-md transition-all ${viewMode === "grouped"
-                  ? `bg-white [.dark_&]:bg-slate-600 shadow ${themeColors.iconColor}`
-                  : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700"
-                  }`}
-                title="Grouped View"
-              >
-                <FaListAlt />
-              </button>
-            </div>
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                {/* View Toggle */}
+                <div className="flex bg-surface-subtle [.dark_&]:bg-slate-700/50 p-1 rounded-lg border border-subtle">
+                  <button
+                    onClick={() => setViewMode("table")}
+                    className={`p-2 rounded-md transition-all ${viewMode === "table"
+                      ? `bg-white [.dark_&]:bg-slate-600 shadow ${themeColors.iconColor}`
+                      : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700"
+                      }`}
+                    title="Table View"
+                  >
+                    <FaList />
+                  </button>
+                  <button
+                    onClick={() => setViewMode("kanban")}
+                    className={`p-2 rounded-md transition-all ${viewMode === "kanban"
+                      ? `bg-white [.dark_&]:bg-slate-600 shadow ${themeColors.iconColor}`
+                      : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700"
+                      }`}
+                    title="Kanban View"
+                  >
+                    <FaTh />
+                  </button>
+                  <button
+                    onClick={() => setViewMode("grouped")}
+                    className={`p-2 rounded-md transition-all ${viewMode === "grouped"
+                      ? `bg-white [.dark_&]:bg-slate-600 shadow ${themeColors.iconColor}`
+                      : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700"
+                      }`}
+                    title="Grouped View"
+                  >
+                    <FaListAlt />
+                  </button>
+                </div>
 
-            {/* Create Lead Button */}
-            <Button
-              variant="custom"
-              onClick={() => {
-                resetForm();
-                setSelectedLead(null);
-                setShowAddForm(true);
-              }}
-              className={buttonClass}
-            >
-              <FaPlus className="mr-2" />
-              Create Lead
-            </Button>
-          </div>
+                {/* Create Lead Button */}
+                <Button
+                  variant="custom"
+                  onClick={() => {
+                    resetForm();
+                    setSelectedLead(null);
+                    setShowAddForm(true);
+                  }}
+                  className={buttonClass}
+                >
+                  <FaPlus className="mr-2" />
+                  Create Lead
+                </Button>
+              </div>
+            </div>
+          </Card>
 
           {/* Content */}
           <LeadList
@@ -1988,6 +2065,44 @@ function LeadManagement() {
               setShowAddForm(true);
             }}
           />
+
+          {/* Pagination Controls */}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mt-4 text-sm text-gray-500 [.dark_&]:text-gray-400">
+            <div>
+              Page {Math.min(currentPage, totalPages)} of {totalPages}
+            </div>
+            <div className="flex items-center gap-3">
+              <span>Rows per page</span>
+              <select
+                className="rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+              >
+                {[10, 25, 50].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages || filteredLeads.length === 0}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -2052,7 +2167,7 @@ function LeadManagement() {
           <div className="space-y-6 mt-6">
             <div className="bg-white [.dark_&]:bg-slate-800/60 rounded-xl border border-gray-200 [.dark_&]:border-white/10 p-6">
               <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-indigo-100 [.dark_&]:bg-indigo-500/20 text-indigo-600 [.dark_&]:text-indigo-400 rounded-xl">
+                <div className={`p-3 rounded-xl ${themeColors.bgLight} ${themeColors.iconColor}`}>
                   <FaCog className="h-6 w-6" />
                 </div>
                 <div>
@@ -2070,7 +2185,7 @@ function LeadManagement() {
                 <button
                   onClick={() => setActiveSettingsTab('lead')}
                   className={`px-6 py-3 font-medium text-sm transition-all border-b-2 ${activeSettingsTab === 'lead'
-                    ? 'border-blue-600 text-blue-600 [.dark_&]:text-blue-400 bg-blue-50 [.dark_&]:bg-blue-900/20'
+                    ? themeColors.tabActive
                     : 'border-transparent text-gray-600 [.dark_&]:text-gray-400 hover:text-gray-900 [.dark_&]:hover:text-white hover:bg-gray-50 [.dark_&]:hover:bg-slate-700/50'
                     }`}
                 >
@@ -2091,7 +2206,7 @@ function LeadManagement() {
                 <button
                   onClick={() => setActiveSettingsTab('followup')}
                   className={`px-6 py-3 font-medium text-sm transition-all border-b-2 ${activeSettingsTab === 'followup'
-                    ? 'border-indigo-600 text-indigo-600 [.dark_&]:text-indigo-400 bg-indigo-50 [.dark_&]:bg-indigo-900/20'
+                    ? themeColors.tabActive
                     : 'border-transparent text-gray-600 [.dark_&]:text-gray-400 hover:text-gray-900 [.dark_&]:hover:text-white hover:bg-gray-50 [.dark_&]:hover:bg-slate-700/50'
                     }`}
                 >
@@ -2143,6 +2258,7 @@ function LeadManagement() {
                         inputBorder: themeColors.inputBorder
                       }}
                       usageCounts={settingsUsageStats.status}
+                      buttonClass={buttonClass}
                     />
 
                     {/* Lead Priorities */}
@@ -2173,6 +2289,7 @@ function LeadManagement() {
                         inputBorder: themeColors.inputBorder
                       }}
                       usageCounts={settingsUsageStats.priority}
+                      buttonClass={buttonClass}
                     />
 
                     {/* Lead Sources */}
@@ -2203,6 +2320,7 @@ function LeadManagement() {
                         inputBorder: themeColors.inputBorder
                       }}
                       usageCounts={settingsUsageStats.source}
+                      buttonClass={buttonClass}
                     />
                   </>
                 )}
@@ -2238,6 +2356,7 @@ function LeadManagement() {
                         inputBorder: themeColors.inputBorder
                       }}
                       usageCounts={settingsUsageStats.followupType}
+                      buttonClass={buttonClass}
                     />
                   </>
                 )}
@@ -2720,6 +2839,22 @@ function LeadManagement() {
         iconColor={themeColors.iconColor}
       />
 
+      {/* Delete Setting Confirmation Modal */}
+      {showDeleteSettingModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteSettingModal(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <DeleteConfirmationModal
+              title={`Delete ${settingToDelete?.type === 'productCategory' ? 'Category' : settingToDelete?.type === 'followupType' ? 'Follow-up Type' : settingToDelete?.type?.charAt(0).toUpperCase() + settingToDelete?.type?.slice(1)}`}
+              message={`Are you sure you want to delete "${settingToDelete?.value}"? This action cannot be undone.`}
+              onConfirm={confirmDeleteSetting}
+              onClose={() => setShowDeleteSettingModal(false)}
+              itemTitle={settingToDelete?.value}
+              itemType={settingToDelete?.type}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Lead Form Modal - Add Mode */}
       <LeadFormModal
         isOpen={showAddForm}
@@ -2744,7 +2879,9 @@ function LeadManagement() {
       />
 
       {/* Lead Form Modal - Edit Mode */}
+      {/* Lead Form Modal - Edit Mode */}
       <LeadFormModal
+        key={selectedLead ? `edit-${selectedLead.id}` : 'edit-modal'}
         isOpen={showEditForm}
         onClose={() => {
           setShowEditForm(false);

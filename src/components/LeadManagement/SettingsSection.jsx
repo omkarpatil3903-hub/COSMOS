@@ -199,7 +199,8 @@ const SettingsSection = ({
     emptyMessage,
     emptySuggestions,
     colors = {}, // Object to override default colors: { ring, inputBg, inputBorder, item }
-    usageCounts = {}
+    usageCounts = {},
+    buttonClass = "bg-blue-600 hover:bg-blue-700"
 }) => {
     return (
         <div className="bg-gray-50 [.dark_&]:bg-slate-700/30 rounded-xl p-5 border border-gray-200 [.dark_&]:border-white/10 h-full flex flex-col">
@@ -211,7 +212,7 @@ const SettingsSection = ({
                 <button
                     onClick={onAdd}
                     type="button"
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors"
+                    className={`px-3 py-1.5 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors ${buttonClass}`}
                 >
                     <FaPlus className="text-xs" />
                     Add {title.endsWith('s') ? title.slice(0, -1) : 'Item'}
