@@ -185,18 +185,19 @@ const EmployeeDashboard = () => {
       (snapshot) => {
         console.log("Tasks fetched:", snapshot.docs.length);
         const taskData = snapshot.docs
-          .map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            status:
-              (doc.data().status === "In Review"
-                ? "In Progress"
-                : doc.data().status) || "To-Do",
-          }))
-          // Filter by assigneeType in client-side
-          .filter((task) => task.assigneeType === "user")
-          // Auto-expire tasks after 12 hours based on createdAt (server time)
-          .filter((task) => !isTaskExpired(task));
+          .map((doc) => {
+            const data = doc.data();
+            console.log("Task assigneeType:", data.assigneeType, "for task:", data.title);
+            return {
+              id: doc.id,
+              ...data,
+              status:
+                (data.status === "In Review"
+                  ? "In Progress"
+                  : data.status) || "To-Do",
+            };
+          });
+        // Removed auto-expire filter - tasks shouldn't disappear after 12 hours
 
         console.log("Tasks after filtering:", taskData.length);
 
