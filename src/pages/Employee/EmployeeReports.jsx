@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import PageHeader from "../../components/PageHeader";
 import { useAuthContext } from "../../context/useAuthContext";
 import { db } from "../../firebase";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, documentId } from "firebase/firestore";
 import {
   FaChartBar,
   FaDownload,
@@ -19,8 +19,9 @@ import {
 import { FaWandMagicSparkles } from "react-icons/fa6";
 import VoiceInput from "../../components/Common/VoiceInput";
 import toast from "react-hot-toast";
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
+
+import { pdf } from "@react-pdf/renderer";
+import EmployeeReportPdfDocument from "../../components/EmployeeReportPdfDocument";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 export default function EmployeeReports() {
@@ -28,7 +29,6 @@ export default function EmployeeReports() {
   const uid = user?.uid || userData?.uid;
   const { gradientClass, barColor, buttonClass, iconColor, hoverAccentClass } = useThemeStyles();
   const [tasks, setTasks] = useState([]);
-  const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportType, setReportType] = useState("Daily"); // "Daily" or "Weekly"
@@ -79,6 +79,7 @@ export default function EmployeeReports() {
       collection(db, "tasks"),
       where("assigneeId", "==", uid)
     );
+
     const unsubT = onSnapshot(qTasks, (snap) => {
       const allTasks = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
@@ -86,33 +87,101 @@ export default function EmployeeReports() {
       setTasks(allTasks);
       setLoading(false);
     });
-    // Fetch projects where employee has tasks
-    const projectIds = new Set();
-    const unsubTasksForProjects = onSnapshot(qTasks, (snap) => {
-      snap.docs.forEach((doc) => {
-        const projectId = doc.data().projectId;
-        if (projectId) projectIds.add(projectId);
-      });
-
-      if (projectIds.size > 0) {
-        const qProjects = query(
-          collection(db, "projects"),
-          where("__name__", "in", Array.from(projectIds))
-        );
-        const unsubP = onSnapshot(qProjects, (projectSnap) => {
-          setProjects(projectSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        });
-        return () => unsubP();
-      } else {
-        setProjects([]);
-      }
-    });
 
     return () => {
       unsubT();
-      unsubTasksForProjects();
     };
   }, [uid]);
+
+  // State for different project sources
+  const [projectsFromTasks, setProjectsFromTasks] = useState([]);
+  const [managerProjects, setManagerProjects] = useState([]);
+  const [teamProjects, setTeamProjects] = useState([]);
+
+  // Fetch projects where user is manager
+  useEffect(() => {
+    if (!uid) return;
+
+    const q = query(
+      collection(db, "projects"),
+      where("projectManagerId", "==", uid)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setManagerProjects(list);
+    });
+
+    return () => unsub();
+  }, [uid]);
+
+  // Fetch projects where user is in assigneeIds
+  useEffect(() => {
+    if (!uid) return;
+
+    const q = query(
+      collection(db, "projects"),
+      where("assigneeIds", "array-contains", uid)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setTeamProjects(list);
+    });
+
+    return () => unsub();
+  }, [uid]);
+
+  // Fetch projects based on task projectIds (for projects not covered by above queries)
+  const projectUnsubsRef = useRef([]);
+  useEffect(() => {
+    // Cleanup previous listeners
+    projectUnsubsRef.current.forEach((fn) => {
+      try { typeof fn === "function" && fn(); } catch { }
+    });
+    projectUnsubsRef.current = [];
+
+    const ids = Array.from(new Set(tasks.map((t) => t.projectId).filter(Boolean)));
+    if (ids.length === 0) {
+      setProjectsFromTasks([]);
+      return;
+    }
+
+    // Chunk into groups of 10 for Firestore 'in' operator limit
+    const chunks = [];
+    for (let i = 0; i < ids.length; i += 10) chunks.push(ids.slice(i, i + 10));
+
+    const aggregate = new Map();
+    chunks.forEach((chunk) => {
+      const q = query(collection(db, "projects"), where(documentId(), "in", chunk));
+      const unsub = onSnapshot(q, (snap) => {
+        snap.docs.forEach((d) => {
+          aggregate.set(d.id, { id: d.id, ...d.data() });
+        });
+        const list = ids.map((id) => aggregate.get(id)).filter(Boolean);
+        setProjectsFromTasks(list);
+      });
+      projectUnsubsRef.current.push(unsub);
+    });
+
+    return () => {
+      projectUnsubsRef.current.forEach((fn) => {
+        try { typeof fn === "function" && fn(); } catch { }
+      });
+      projectUnsubsRef.current = [];
+    };
+  }, [tasks]);
+
+  // Combine all project sources into a single unique list
+  const projects = useMemo(() => {
+    const allProjectsMap = new Map();
+    [...projectsFromTasks, ...managerProjects, ...teamProjects].forEach(project => {
+      if (project?.id) {
+        allProjectsMap.set(project.id, project);
+      }
+    });
+    return Array.from(allProjectsMap.values());
+  }, [projectsFromTasks, managerProjects, teamProjects]);
 
   // Calculate statistics
   const totalProjects = projects.length;
@@ -141,6 +210,17 @@ export default function EmployeeReports() {
     (t) => t.priority === "Medium"
   ).length;
   const lowPriorityTasks = tasks.filter((t) => t.priority === "Low").length;
+
+  // Extract unique clients from employee's projects for dropdown
+  const uniqueClients = useMemo(() => {
+    const clientSet = new Set();
+    projects.forEach((project) => {
+      if (project.clientName) {
+        clientSet.add(project.clientName);
+      }
+    });
+    return Array.from(clientSet).sort();
+  }, [projects]);
 
   // Today's tasks
   const today = new Date();
@@ -400,118 +480,28 @@ Generated on: ${formatDateToDDMMYYYY(
   };
 
   // Helper to generate PDF Blob
-  const getPDFBlob = async () => {
-    const element = document.getElementById("report-preview");
-    if (!element) return null;
-
-    try {
-      // Clone the element to avoid modifying the original
-      const clonedElement = element.cloneNode(true);
-
-      // Remove all style attributes from elements to avoid oklch issues
-      const removeOklchStyles = (el) => {
-        // Remove the style attribute entirely to let html2canvas use defaults
-        el.removeAttribute("style");
-
-        // Remove classes that might have problematic styles
-        el.removeAttribute("class");
-
-        // Process all children
-        el.querySelectorAll("*").forEach((child) => {
-          child.removeAttribute("style");
-          child.removeAttribute("class");
-        });
-      };
-
-      removeOklchStyles(clonedElement);
-
-      // Add basic CSS to a style tag for the cloned element
-      const styleTag = document.createElement("style");
-      styleTag.textContent = `
-        body { margin: 0; padding: 0; }
-        * { 
-          color: #000; 
-          background-color: transparent;
-          font-family: 'Times New Roman', Times, serif;
-        }
-        table { border-collapse: collapse; width: 100%; }
-        td, th { border: 1px solid #000; padding: 8px; text-align: left; }
-        th { background-color: #f0f0f0; font-weight: bold; }
-        h1 { font-size: 24px; margin: 10px 0; }
-        h2 { font-size: 18px; margin: 8px 0; }
-        h3 { font-size: 14px; margin: 6px 0; }
-        p { margin: 4px 0; line-height: 1.6; }
-        div { page-break-inside: avoid; }
-      `;
-      clonedElement.insertBefore(styleTag, clonedElement.firstChild);
-
-      // Create a temporary container
-      const tempContainer = document.createElement("div");
-      tempContainer.style.position = "fixed";
-      tempContainer.style.left = "-9999px";
-      tempContainer.style.top = "-9999px";
-      tempContainer.style.width = "210mm";
-      tempContainer.appendChild(clonedElement);
-      document.body.appendChild(tempContainer);
-
-      const canvas = await html2canvas(clonedElement, {
-        scale: 2,
-        logging: false,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: "#ffffff",
-        ignoreElements: (element) => {
-          // Ignore style tags and script tags
-          return element.tagName === "STYLE" || element.tagName === "SCRIPT";
-        },
-      });
-
-      // Clean up
-      document.body.removeChild(tempContainer);
-
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-
-      pdf.addImage(
-        imgData,
-        "PNG",
-        0,
-        0,
-        pdfWidth,
-        (imgHeight * pdfWidth) / imgWidth
-      );
-
-      return pdf.output("blob");
-    } catch (error) {
-      console.error("Error in getPDFBlob:", error);
-      throw error;
-    }
-  };
-
-  // Generate PDF using html2canvas
+  // Generate PDF utilizing EmployeeReportPdfDocument
   const generatePDF = async () => {
     try {
       setGeneratingReport(true);
-      const pdfBlob = await getPDFBlob();
-      if (!pdfBlob) {
-        toast.error("Report preview not found");
-        return;
-      }
+
+      const blob = await pdf(
+        <EmployeeReportPdfDocument
+          reportType={reportType}
+          data={reportData}
+          tasks={tasks}
+          tasksCompletedToday={tasksCompletedToday}
+        />
+      ).toBlob();
 
       const filename =
         reportType === "Daily"
-          ? `Daily_Report_${reportData.reportDate.replace(/\//g, "-")}_${reportData.employeeName
-          }.pdf`
+          ? `Daily_Report_${reportData.reportDate.replace(/\//g, "-")}_${reportData.employeeName}.pdf`
           : reportType === "Weekly"
-            ? `Weekly_Report_${reportData.weekNumber.replace(/\s/g, "_")}_${reportData.employeeName
-            }.pdf`
-            : `Monthly_Report_${reportData.monthName.replace(/\s/g, "_")}_${reportData.employeeName
-            }.pdf`;
+            ? `Weekly_Report_${reportData.weekNumber.replace(/\s/g, "_")}_${reportData.employeeName}.pdf`
+            : `Monthly_Report_${reportData.monthName.replace(/\s/g, "_")}_${reportData.employeeName}.pdf`;
 
-      const url = URL.createObjectURL(pdfBlob);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = filename;
@@ -555,7 +545,15 @@ Generated on: ${formatDateToDDMMYYYY(
       if (navigator.canShare && navigator.share) {
         setGeneratingReport(true);
         try {
-          const pdfBlob = await getPDFBlob();
+          const pdfBlob = await pdf(
+            <EmployeeReportPdfDocument
+              reportType={reportType}
+              data={reportData}
+              tasks={tasks}
+              tasksCompletedToday={tasksCompletedToday}
+            />
+          ).toBlob();
+
           if (pdfBlob) {
             const file = new File([pdfBlob], filename, {
               type: "application/pdf",
@@ -1027,7 +1025,7 @@ Generated on: ${formatDateToDDMMYYYY(
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Client Name
                       </label>
-                      <VoiceInput
+                      <select
                         value={reportData.clientName}
                         onChange={(e) =>
                           setReportData((prev) => ({
@@ -1035,15 +1033,21 @@ Generated on: ${formatDateToDDMMYYYY(
                             clientName: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
-                        placeholder="e.g. Acme Corp"
-                      />
+                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      >
+                        <option value="">Select Client</option>
+                        {uniqueClients.map((client) => (
+                          <option key={client} value={client}>
+                            {client}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Project Name
                       </label>
-                      <VoiceInput
+                      <select
                         value={reportData.projectName}
                         onChange={(e) =>
                           setReportData((prev) => ({
@@ -1051,9 +1055,15 @@ Generated on: ${formatDateToDDMMYYYY(
                             projectName: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
-                        placeholder="e.g. Website Redesign"
-                      />
+                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      >
+                        <option value="">Select Project</option>
+                        {projects.map((project) => (
+                          <option key={project.id} value={project.projectName}>
+                            {project.projectName}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     {reportType === "Daily" ? (
@@ -1452,7 +1462,7 @@ Generated on: ${formatDateToDDMMYYYY(
                 </div>
 
                 {/* Preview Content */}
-                <div className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-y-auto p-4 flex justify-center">
+                <div className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-y-auto p-4 flex justify-center items-start">
                   {/* VISUAL PREVIEW - MATCHING SCREENSHOT */}
                   <div
                     id="report-preview"
@@ -1772,15 +1782,24 @@ Generated on: ${formatDateToDDMMYYYY(
                             <tbody>
                               {tasks
                                 .filter((t) => {
-                                  if (!t.updatedAt) return false;
-                                  const updated = t.updatedAt.toDate
-                                    ? t.updatedAt.toDate()
-                                    : new Date(t.updatedAt);
-                                  const sevenDaysAgo = new Date();
-                                  sevenDaysAgo.setDate(
-                                    sevenDaysAgo.getDate() - 7
-                                  );
-                                  return updated >= sevenDaysAgo;
+                                  // Parse report dates (DD/MM/YYYY)
+                                  if (!reportData.weekStartDate || !reportData.weekEndDate) return false;
+
+                                  const [startDay, startMonth, startYear] = reportData.weekStartDate.split('/').map(Number);
+                                  const [endDay, endMonth, endYear] = reportData.weekEndDate.split('/').map(Number);
+                                  const startDate = new Date(startYear, startMonth - 1, startDay);
+                                  const endDate = new Date(endYear, endMonth - 1, endDay);
+                                  endDate.setHours(23, 59, 59, 999);
+
+                                  let activityDate = null;
+                                  if (t.updatedAt) {
+                                    activityDate = t.updatedAt.toDate ? t.updatedAt.toDate() : new Date(t.updatedAt);
+                                  } else if (t.createdAt) {
+                                    activityDate = t.createdAt.toDate ? t.createdAt.toDate() : new Date(t.createdAt);
+                                  }
+
+                                  if (!activityDate) return false;
+                                  return activityDate >= startDate && activityDate <= endDate;
                                 })
                                 .slice(0, 10)
                                 .map((task, index) => (

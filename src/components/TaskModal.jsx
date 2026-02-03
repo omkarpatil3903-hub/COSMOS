@@ -533,7 +533,11 @@ function TaskModal({
       toast.error("Status is required");
       return;
     }
-    if (!assignedDate) {
+
+    // AUTO-FIX: For recurring tasks, use dueDate as assignedDate since the field is hidden
+    const finalAssignedDate = isRecurring ? dueDate : assignedDate;
+
+    if (!finalAssignedDate) {
       toast.error("Assigned Date is required");
       return;
     }
@@ -567,7 +571,7 @@ function TaskModal({
       assigneeId, // Legacy single assignee
       assignees: assigneesSelected, // New multi-assignee array
       assigneeIds, // Array of user IDs for queries
-      assignedDate,
+      assignedDate: finalAssignedDate, // Use computed value (dueDate for recurring, assignedDate for normal)
       dueDate,
       taskType,
       isRecurring, // Critical fix: Ensure this boolean is passed
@@ -1569,6 +1573,12 @@ function TaskModal({
                               if (e.key === "Enter") {
                                 e.preventDefault();
                                 if (newSubtask.trim()) {
+                                  // Validate assignee is selected
+                                  if (!newSubtaskAssigneeId) {
+                                    toast.error("Please assign someone to this subtask");
+                                    return;
+                                  }
+
                                   const newId = Math.random().toString(36).slice(2);
                                   setSubtasks([
                                     ...subtasks,
@@ -1594,8 +1604,35 @@ function TaskModal({
                               }
                             }}
                             placeholder="Add a subtask..."
-                            className="w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2 text-xs text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600 shadow-sm"
+                            className="w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2.5 text-xs text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600 shadow-sm"
                           />
+
+                          {/* Helper text and selected assignee display */}
+                          <div className="flex items-center justify-between mt-1.5 px-1">
+                            {newSubtaskAssigneeId ? (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] text-gray-500 [.dark_&]:text-gray-400">Assigned to:</span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 [.dark_&]:bg-indigo-900/20 text-indigo-700 [.dark_&]:text-indigo-300 text-[10px] font-medium">
+                                  <span className="w-3.5 h-3.5 rounded-full bg-indigo-200 [.dark_&]:bg-indigo-700 text-indigo-700 [.dark_&]:text-indigo-200 text-[8px] font-bold flex items-center justify-center">
+                                    {assignees.find(a => a.id === newSubtaskAssigneeId)?.name?.charAt(0)?.toUpperCase() || '?'}
+                                  </span>
+                                  {assignees.find(a => a.id === newSubtaskAssigneeId)?.name || 'Unknown'}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <svg className="w-3 h-3 text-red-500 [.dark_&]:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-[10px] text-red-500 [.dark_&]:text-red-400 font-medium">
+                                  Assignee required
+                                </span>
+                              </div>
+                            )}
+                            <span className="text-[10px] text-gray-400 [.dark_&]:text-gray-500">
+                              Press <kbd className="px-1 py-0.5 bg-gray-100 [.dark_&]:bg-white/10 rounded text-[9px] font-mono">Enter</kbd> to add
+                            </span>
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-between">
@@ -1658,12 +1695,21 @@ function TaskModal({
                                   setShowQuickDatePicker(false);
                                   setShowQuickPriorityPicker(false);
                                 }}
-                                className={`p-2 rounded-lg transition-all ${newSubtaskAssigneeId ? 'bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-900/30 [.dark_&]:text-indigo-400' : 'hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-gray-400 hover:text-gray-600'}`}
-                                title="Assign to"
+                                className={`relative p-2 rounded-lg transition-all ${newSubtaskAssigneeId
+                                  ? 'bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-900/30 [.dark_&]:text-indigo-400'
+                                  : 'bg-red-50 text-red-500 hover:bg-red-100 [.dark_&]:bg-red-900/20 [.dark_&]:text-red-400 [.dark_&]:hover:bg-red-900/30'
+                                  }`}
+                                title="Assign to (Required)"
                               >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
+                                {/* Required indicator */}
+                                {!newSubtaskAssigneeId && (
+                                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                                    *
+                                  </span>
+                                )}
                               </button>
                               {showQuickAssigneePicker && (
                                 <>
@@ -1680,22 +1726,31 @@ function TaskModal({
                                     >
                                       Unassigned
                                     </button>
-                                    {assignees.map((a) => (
-                                      <button
-                                        key={a.id}
-                                        type="button"
-                                        onClick={() => {
-                                          setNewSubtaskAssigneeId(a.id);
-                                          setShowQuickAssigneePicker(false);
-                                        }}
-                                        className={`w-full text-left px-2 py-1.5 text-xs rounded flex items-center gap-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 ${newSubtaskAssigneeId === a.id ? 'bg-indigo-50 text-indigo-600 [.dark_&]:bg-indigo-900/20 [.dark_&]:text-indigo-400' : 'text-gray-600 [.dark_&]:text-gray-300'}`}
-                                      >
-                                        <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 text-[9px] font-bold flex items-center justify-center">
-                                          {a.name?.charAt(0)?.toUpperCase()}
-                                        </span>
-                                        {a.name}
-                                      </button>
-                                    ))}
+                                    {assignees
+                                      .filter(u => {
+                                        if (projectId) {
+                                          const proj = projects.find(p => p.id === projectId);
+                                          // Only show users who are in the project's assigneeIds
+                                          return proj?.assigneeIds?.includes(u.id);
+                                        }
+                                        return true;
+                                      })
+                                      .map((a) => (
+                                        <button
+                                          key={a.id}
+                                          type="button"
+                                          onClick={() => {
+                                            setNewSubtaskAssigneeId(a.id);
+                                            setShowQuickAssigneePicker(false);
+                                          }}
+                                          className={`w-full text-left px-2 py-1.5 text-xs rounded flex items-center gap-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 ${newSubtaskAssigneeId === a.id ? 'bg-indigo-50 text-indigo-600 [.dark_&]:bg-indigo-900/20 [.dark_&]:text-indigo-400' : 'text-gray-600 [.dark_&]:text-gray-300'}`}
+                                        >
+                                          <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 text-[9px] font-bold flex items-center justify-center">
+                                            {a.name?.charAt(0)?.toUpperCase()}
+                                          </span>
+                                          {a.name}
+                                        </button>
+                                      ))}
                                   </div>
                                 </>
                               )}
@@ -1753,29 +1808,38 @@ function TaskModal({
                             type="button"
                             variant="custom"
                             onClick={() => {
-                              if (newSubtask.trim()) {
-                                const newId = Math.random().toString(36).slice(2);
-                                setSubtasks([
-                                  ...subtasks,
-                                  {
-                                    id: newId,
-                                    title: newSubtask.trim(),
-                                    description: "",
-                                    dueDate: newSubtaskDueDate,
-                                    assigneeId: newSubtaskAssigneeId,
-                                    priority: newSubtaskPriority,
-                                    order: Date.now(),
-                                    completed: false,
-                                    createdAt: new Date().toISOString(),
-                                    completedAt: null,
-                                    completedBy: null,
-                                  },
-                                ]);
-                                setNewSubtask("");
-                                setNewSubtaskDueDate(null);
-                                setNewSubtaskAssigneeId(null);
-                                setNewSubtaskPriority("Medium");
+                              if (!newSubtask.trim()) {
+                                toast.error("Subtask title is required");
+                                return;
                               }
+
+                              // Validate assignee is selected
+                              if (!newSubtaskAssigneeId) {
+                                toast.error("Please assign someone to this subtask");
+                                return;
+                              }
+
+                              const newId = Math.random().toString(36).slice(2);
+                              setSubtasks([
+                                ...subtasks,
+                                {
+                                  id: newId,
+                                  title: newSubtask.trim(),
+                                  description: "",
+                                  dueDate: newSubtaskDueDate,
+                                  assigneeId: newSubtaskAssigneeId,
+                                  priority: newSubtaskPriority,
+                                  order: Date.now(),
+                                  completed: false,
+                                  createdAt: new Date().toISOString(),
+                                  completedAt: null,
+                                  completedBy: null,
+                                },
+                              ]);
+                              setNewSubtask("");
+                              setNewSubtaskDueDate(null);
+                              setNewSubtaskAssigneeId(null);
+                              setNewSubtaskPriority("Medium");
                             }}
                             className={`whitespace-nowrap text-xs px-4 py-2 text-white rounded-lg transition-colors shrink-0 ${themeStyles.button}`}
                           >
