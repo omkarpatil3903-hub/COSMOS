@@ -37,7 +37,7 @@ export default function EmployeeKnowledgePage() {
     }, []);
 
     const handleKnowledgeClick = (knowledgeId) => {
-        navigate(`/knowledge/${knowledgeId}`);
+        navigate(`/employee/knowledge/${knowledgeId}`);
     };
 
     useEffect(() => {
@@ -66,7 +66,9 @@ export default function EmployeeKnowledgePage() {
                     updatedByName: data.updatedByName || "",
                     access: data.access || { admin: [], member: [] },
                     projectId: data.projectId || null,
+                    documents: data.documents || [],
                     link: data.link || "",
+                    thumbnailUrl: data.thumbnailUrl || null,
                 };
             });
             setKnowledge(list);
@@ -210,51 +212,77 @@ export default function EmployeeKnowledgePage() {
                 />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {pageRows.map((k) => (
                     <div
                         key={k.id}
-                        className="relative rounded-xl border border-subtle bg-surface-strong p-6 shadow-soft min-h-[280px]"
+                        className="relative rounded-sm border border-subtle bg-white [.dark_&]:bg-[#181B2A] shadow-soft overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer group"
+                        onClick={() => handleKnowledgeClick(k.id)}
                     >
-                        <div className="flex items-center gap-2 mb-2 pr-2">
-                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-surface-subtle text-violet-400 border border-subtle">
-                                <FaLightbulb className="h-4 w-4" />
-                            </span>
-                            <h3
-                                className="text-lg font-semibold leading-snug text-content-primary truncate max-w-[200px] cursor-pointer hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 transition-colors"
-                                title={k.title}
-                                onClick={() => handleKnowledgeClick(k.id)}
-                            >
-                                {k.title.length > 10 ? `${k.title.substring(0, 10)}...` : k.title}
-                            </h3>
+                        {/* Image Section */}
+                        <div className="relative w-full h-56 bg-white [.dark_&]:bg-gray-800 border-b border-gray-100 [.dark_&]:border-white/5 overflow-hidden">
+                            {k.thumbnailUrl ? (
+                                <img
+                                    src={k.thumbnailUrl}
+                                    alt={k.title}
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                />
+                            ) : (
+                                <div className="w-full h-full bg-violet-50/50 [.dark_&]:bg-violet-900/10 flex items-center justify-center">
+                                    <FaLightbulb className="h-20 w-20 text-violet-200 [.dark_&]:text-violet-500/30" />
+                                </div>
+                            )}
                         </div>
-                        <hr className="my-3 border-t border-subtle" />
-                        <p className="mt-1 mb-3 text-sm md:text-[0.95rem] leading-relaxed text-content-secondary line-clamp-4 whitespace-pre-wrap">
-                            {k.description}
-                        </p>
-                        {k.link && (
-                            <div className="mb-3">
-                                <a href={k.link} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 hover:text-indigo-500 underline truncate block" onClick={e => e.stopPropagation()}>
-                                    {k.link}
-                                </a>
+
+                        {/* Content Section */}
+                        <div className="p-3">
+                            {/* Title */}
+                            <h3
+                                className="text-base font-bold leading-tight text-gray-900 [.dark_&]:text-white mb-0.5 line-clamp-2 hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 transition-colors"
+                                title={k.title}
+                            >
+                                {k.title}
+                            </h3>
+
+                            {/* Description */}
+                            <p className="text-sm leading-snug text-gray-600 [.dark_&]:text-gray-400 line-clamp-2 mb-1">
+                                {k.description || "No description provided"}
+                            </p>
+
+                            {/* Link */}
+                            {k.link && (
+                                <div className="mb-1.5">
+                                    <a
+                                        href={k.link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-indigo-600 [.dark_&]:text-indigo-400 hover:text-indigo-500 underline truncate block"
+                                        onClick={e => e.stopPropagation()}
+                                    >
+                                        {k.link}
+                                    </a>
+                                </div>
+                            )}
+
+                            {/* Metadata Footer */}
+                            <div className="mt-1.5 pt-1.5 border-t border-gray-100 [.dark_&]:border-white/10">
+                                <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 [.dark_&]:text-gray-400">
+                                    {k.createdByName && (
+                                        <span className="inline-flex items-center gap-1.5">
+                                            <FaUser className="w-3 h-3" />
+                                            <span className="font-medium">{k.createdByName}</span>
+                                        </span>
+                                    )}
+                                    {k.created && (
+                                        <span className="inline-flex items-center gap-1.5">
+                                            <FaCalendarAlt className="w-3 h-3" />
+                                            <span>{k.created}</span>
+                                        </span>
+                                    )}
+                                </div>
                             </div>
-                        )}
-                        <hr className="my-3 border-t border-subtle" />
-                        <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-content-secondary">
-                            {k.created && (
-                                <span className="inline-flex items-center gap-1.5">
-                                    <FaCalendarAlt className="w-3.5 h-3.5 text-content-tertiary" />
-                                    <span className="text-content-tertiary">Created</span>
-                                    <span className="font-medium text-content-primary">{k.created}</span>
-                                </span>
-                            )}
-                            {k.createdByName && (
-                                <span className="inline-flex items-center gap-1.5">
-                                    <FaUser className="w-3.5 h-3.5 text-content-tertiary" />
-                                    <span className="text-content-tertiary">By</span>
-                                    <span className="font-medium text-content-primary">{k.createdByName}</span>
-                                </span>
-                            )}
                         </div>
                     </div>
                 ))}

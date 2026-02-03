@@ -1,32 +1,16 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
-import SkeletonRow from "../../components/SkeletonRow";
-import { FaSearch } from "react-icons/fa";
-import { db } from "../../firebase";
-import { auth } from "../../firebase";
-import {
-  collection,
-  onSnapshot,
-  orderBy,
-  query,
-  collectionGroup,
-} from "firebase/firestore";
+import { FaSearch, FaList, FaThLarge, FaSortAmountDown, FaCheck } from "react-icons/fa";
+import { FcFolder } from "react-icons/fc";
+import { db, auth } from "../../firebase";
+import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { formatDate } from "../../utils/formatDate";
-
-const tableHeaders = [
-  { key: "srNo", label: "Sr. No.", sortable: false },
-  { key: "projectName", label: "Project Name", sortable: true },
-  { key: "clientName", label: "Client Name", sortable: true },
-  { key: "projectManagerName", label: "Project Manager", sortable: true },
-  { key: "progress", label: "Progress", sortable: true },
-  { key: "startDate", label: "Start Date", sortable: true },
-  { key: "endDate", label: "End Date", sortable: true },
-];
+import { useThemeStyles } from "../../hooks/useThemeStyles";
 
 export default function Documents({ onlyMyManaged = false, onlyMyAssigned = false, hideHeader = false }) {
+  const { iconColor, hoverAccentClass, hoverBorderClass } = useThemeStyles();
   const navigate = useNavigate();
   const location = useLocation();
   const basePath = location.pathname.startsWith("/manager")
@@ -36,11 +20,13 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
       : location.pathname.startsWith("/admin")
         ? "/admin/knowledge-management"
         : "/knowledge-management";
+
   useEffect(() => {
     if (location.pathname === "/knowledge-management") {
       document.title = "COSMOS | Knowldge Managment";
     }
   }, [location.pathname]);
+
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +36,28 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
     direction: "asc",
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(location.state?.viewMode === "list" ? 10 : 1000); // 10 for list, 1000 for grid (show all)
+  const [viewMode, setViewMode] = useState(location.state?.viewMode || "grid"); // 'grid' | 'list', restore from state
+  const [showSort, setShowSort] = useState(false);
+  const sortRef = useRef(null);
+
+  // Close sort dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (sortRef.current && !sortRef.current.contains(event.target)) {
+        setShowSort(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Restore viewMode from location state when navigating back
+  useEffect(() => {
+    if (location.state?.viewMode) {
+      setViewMode(location.state.viewMode);
+    }
+  }, [location.state?.viewMode]);
 
   // Fetch ALL projects
   useEffect(() => {
@@ -145,27 +152,23 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
     if (!u) return new Set();
 
     const projectIdsSet = new Set();
-
-    // 1. Projects where user is assigned to tasks (primary assignee)
+    // 1. Projects where user is assigned to tasks
     tasks
       .filter((t) => t.assigneeId === u.uid && (t.assigneeType ? t.assigneeType === "user" : true))
       .forEach((t) => {
         if (t.projectId) projectIdsSet.add(t.projectId);
       });
-
     // 2. Projects where user is in multi-assignee tasks
     tasks
       .filter((t) => Array.isArray(t.assigneeIds) && t.assigneeIds.includes(u.uid) && (t.assigneeType ? t.assigneeType === "user" : true))
       .forEach((t) => {
         if (t.projectId) projectIdsSet.add(t.projectId);
       });
-
     // 3. Projects where user is the project manager
     projects
       .filter((p) => p.projectManagerId === u.uid)
       .forEach((p) => projectIdsSet.add(p.id));
-
-    // 4. Projects where user is in the project's assigneeIds array
+    // 4. Projects where user is in assigneeIds
     projects
       .filter((p) => Array.isArray(p.assigneeIds) && p.assigneeIds.includes(u.uid))
       .forEach((p) => projectIdsSet.add(p.id));
@@ -183,16 +186,9 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
     if (searchTerm) {
       const term = searchTerm.trim().toLowerCase();
       result = result.filter((project) => {
-        const statusLabel =
-          project.progress === 0
-            ? "Not Started"
-            : project.progress === 100
-              ? "Completed"
-              : "In Progress";
         return (
           (project.projectName || "").toLowerCase().includes(term) ||
-          (project.clientName || "").toLowerCase().includes(term) ||
-          statusLabel.toLowerCase().includes(term)
+          (project.clientName || "").toLowerCase().includes(term)
         );
       });
     }
@@ -202,12 +198,21 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
       const multiplier = direction === "asc" ? 1 : -1;
 
       result.sort((a, b) => {
-        const aValue = a[key];
-        const bValue = b[key];
+        let aValue = a[key];
+        let bValue = b[key];
+
+        // Handle specific keys if needed
+        if (key === "date") { // Map 'date' to 'createdAt' if not already
+          aValue = a.createdAt;
+          bValue = b.createdAt;
+        }
 
         if (typeof aValue === "number" && typeof bValue === "number") {
           return (aValue - bValue) * multiplier;
         }
+        // Handle dates strings or nulls
+        if (!aValue) return 1 * multiplier;
+        if (!bValue) return -1 * multiplier;
 
         return String(aValue).localeCompare(String(bValue)) * multiplier;
       });
@@ -235,63 +240,13 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
     setCurrentPage((prev) => Math.max(prev - 1, 1));
   };
 
-  const handleSort = (columnKey) => {
-    setSortConfig((prev) => {
-      if (!prev || prev.key !== columnKey) {
-        return { key: columnKey, direction: "asc" };
-      }
-      return {
-        key: columnKey,
-        direction: prev.direction === "asc" ? "desc" : "asc",
-      };
-    });
-  };
-
-  const sortIndicator = (columnKey) => {
-    if (!sortConfig || sortConfig.key !== columnKey) {
-      return null;
-    }
-    return sortConfig.direction === "asc" ? "↑" : "↓";
-  };
-
   if (loading) {
     return (
-      <div>
-        {!hideHeader && (
-          <PageHeader title="Knowledge Management">
-            View all projects as part of organizational knowledge.
-          </PageHeader>
-        )}
-        <div className="space-y-6">
-          <Card title="Search & Actions" tone="muted">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="h-12 rounded-lg bg-surface-strong animate-pulse" />
-              <div className="h-12 rounded-lg bg-surface-strong animate-pulse" />
-            </div>
-          </Card>
-          <Card title="Project List" tone="muted">
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead className="bg-surface-subtle">
-                  <tr>
-                    {tableHeaders.map((header) => (
-                      <th
-                        key={header.key}
-                        className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-content-tertiary"
-                      >
-                        {header.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-subtle">
-                  {Array.from({ length: rowsPerPage }).map((_, index) => (
-                    <SkeletonRow key={index} columns={tableHeaders.length} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="h-40 bg-gray-100 rounded-xl animate-pulse"></div>
+          ))}
         </div>
       </div>
     );
@@ -299,221 +254,293 @@ export default function Documents({ onlyMyManaged = false, onlyMyAssigned = fals
 
   return (
     <div className="space-y-6">
-      {!hideHeader && (
-        <PageHeader title="Knowledge Management">
-          View all projects as part of organizational knowledge.
-        </PageHeader>
-      )}
-
       <Card
-        title="Search"
+        title="Search & Actions"
         tone="muted"
-        actions={
-          <span className="text-sm font-medium text-content-secondary" aria-live="polite">
-            Showing {filteredProjects.length} records
-          </span>
-        }
+        className="overflow-visible"
       >
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-1">
-          <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary">
-            Search by project name, client or status
-            <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-content-tertiary">
-                <FaSearch className="h-4 w-4" aria-hidden="true" />
-              </span>
-              <input
-                type="text"
-                placeholder="e.g. Website Redesign or TechCorp or In Progress"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#1F2234] py-2 pl-9 pr-3 text-sm text-content-primary [.dark_&]:text-white placeholder:text-content-tertiary [.dark_&]:placeholder:text-gray-500 focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                spellCheck="true"
-              />
-            </div>
-          </label>
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-content-tertiary">
+              <FaSearch className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <input
+              type="text"
+              placeholder="Search projects..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#1F2234] py-2 pl-9 pr-3 text-sm text-content-primary [.dark_&]:text-white placeholder:text-content-tertiary focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+            />
+          </div>
+          {/* Sort Dropdown */}
+          <div className="relative" ref={sortRef}>
+            <button
+              onClick={() => setShowSort(!showSort)}
+              className="flex items-center gap-2 px-3 py-2 bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 rounded-lg text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors"
+            >
+              <FaSortAmountDown className="text-gray-400" />
+              <span className="hidden sm:inline">Sort</span>
+            </button>
+
+            {showSort && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 rounded-lg shadow-lg z-20 py-1">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Sort By</div>
+                {[
+                  { label: 'Name', key: 'projectName' },
+                  { label: 'Date', key: 'createdAt' }
+                ].map((option) => (
+                  <button
+                    key={option.key}
+                    onClick={() => {
+                      setSortConfig(prev => ({ ...prev, key: option.key }));
+                      setShowSort(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between ${sortConfig.key === option.key ? 'text-indigo-600 bg-indigo-50 [.dark_&]:bg-indigo-900/20' : 'text-gray-700 [.dark_&]:text-gray-300 hover:bg-gray-50 [.dark_&]:hover:bg-white/5'}`}
+                  >
+                    {option.label}
+                    {sortConfig.key === option.key && <FaCheck className="h-3 w-3" />}
+                  </button>
+                ))}
+                <div className="border-t border-gray-100 [.dark_&]:border-white/10 my-1"></div>
+                <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Order</div>
+                <button
+                  onClick={() => {
+                    setSortConfig(prev => ({ ...prev, direction: 'asc' }));
+                    setShowSort(false);
+                  }}
+                  className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between ${sortConfig.direction === 'asc' ? 'text-indigo-600 bg-indigo-50 [.dark_&]:bg-indigo-900/20' : 'text-gray-700 [.dark_&]:text-gray-300 hover:bg-gray-50 [.dark_&]:hover:bg-white/5'}`}
+                >
+                  Ascending
+                  {sortConfig.direction === 'asc' && <FaCheck className="h-3 w-3" />}
+                </button>
+                <button
+                  onClick={() => {
+                    setSortConfig(prev => ({ ...prev, direction: 'desc' }));
+                    setShowSort(false);
+                  }}
+                  className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between ${sortConfig.direction === 'desc' ? 'text-indigo-600 bg-indigo-50 [.dark_&]:bg-indigo-900/20' : 'text-gray-700 [.dark_&]:text-gray-300 hover:bg-gray-50 [.dark_&]:hover:bg-white/5'}`}
+                >
+                  Descending
+                  {sortConfig.direction === 'desc' && <FaCheck className="h-3 w-3" />}
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 bg-gray-100 [.dark_&]:bg-white/5 rounded-lg p-1 border border-gray-200 [.dark_&]:border-white/10">
+            <button
+              onClick={() => {
+                setViewMode("grid");
+                setRowsPerPage(1000);
+              }}
+              className={`p-2 rounded-md transition-colors ${viewMode === "grid" ? `bg-white [.dark_&]:bg-white/10 shadow-sm ${iconColor}` : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-300"}`}
+              title="Grid View"
+            >
+              <FaThLarge className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => {
+                setViewMode("list");
+                setRowsPerPage(10);
+              }}
+              className={`p-2 rounded-md transition-colors ${viewMode === "list" ? `bg-white [.dark_&]:bg-white/10 shadow-sm ${iconColor}` : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-300"}`}
+              title="List View"
+            >
+              <FaList className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </Card>
 
       <Card
-        title="Project List"
+        title="Projects"
         tone="muted"
         actions={
-          <div className="flex items-center gap-3">
-            <span
-              className="text-sm font-medium text-content-secondary"
-              aria-live="polite"
-            >
-              Page {Math.min(currentPage, totalPages)} of {totalPages}
-            </span>
-            <label className="text-sm font-medium text-content-secondary">
-              Rows per page
-            </label>
-            <select
-              value={rowsPerPage}
-              onChange={(e) => {
-                setRowsPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#1F2234] px-3 py-2 text-sm text-content-primary [.dark_&]:text-white focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={handlePrevPage}
-                variant="secondary"
-                className="px-3 py-1"
-                disabled={currentPage === 1}
-              >
-                Previous
-              </Button>
-              <Button
-                onClick={handleNextPage}
-                variant="secondary"
-                className="px-3 py-1"
-                disabled={currentPage === totalPages || !filteredProjects.length}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+          <span className="text-sm font-medium text-content-secondary">
+            Total {filteredProjects.length} Records
+          </span>
         }
       >
-        <div className="w-full overflow-x-auto rounded-lg border border-gray-200 [.dark_&]:border-white/10 shadow-sm">
-          <table className="min-w-[1100px] w-full divide-y divide-gray-200 [.dark_&]:divide-white/10 bg-white [.dark_&]:bg-[#181B2A]">
-            <caption className="sr-only">
-              Filtered project records with search and pagination controls
-            </caption>
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100 [.dark_&]:from-[#1F2234] [.dark_&]:to-[#1F2234]">
-              <tr>
-                {tableHeaders.map((header) => {
-                  const isActive = sortConfig.key === header.key;
-                  const ariaSort = !header.sortable
-                    ? "none"
-                    : isActive
-                      ? sortConfig.direction === "asc"
-                        ? "ascending"
-                        : "descending"
-                      : "none";
+        {viewMode === "grid" ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-x-2 gap-y-4">
+            {currentRows.map((project) => (
+              <div
+                key={project.id}
+                onClick={() =>
+                  navigate(
+                    `${basePath}/${encodeURIComponent(project.projectName || "")}`,
+                    { state: { fromDocsTab: true, viewMode } }
+                  )
+                }
+                className={`group flex flex-col items-center justify-center py-4 px-1 rounded-lg border border-transparent ${hoverAccentClass} ${hoverBorderClass} transition-all cursor-pointer text-center gap-1 relative`}
+              >
+                <div className="p-3 rounded-full text-6xl group-hover:scale-110 transition-transform">
+                  <FcFolder />
+                </div>
 
-                  return (
-                    <th
-                      key={header.key}
-                      scope="col"
-                      aria-sort={ariaSort}
-                      className="group px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 [.dark_&]:text-gray-300 border-b border-gray-200 [.dark_&]:border-white/10"
-                    >
-                      {header.sortable ? (
-                        <button
-                          type="button"
-                          onClick={() => handleSort(header.key)}
-                          className="flex items-center gap-2 text-left hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 transition-colors duration-200 transform hover:scale-105"
-                        >
-                          <span>{header.label}</span>
-                          <span className="transition-transform duration-200">
-                            {sortIndicator(header.key)}
-                          </span>
-                        </button>
-                      ) : (
-                        <span>{header.label}</span>
-                      )}
-                    </th>
-                  );
-                })}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 [.dark_&]:divide-white/10 bg-white [.dark_&]:bg-[#181B2A]">
-              {currentRows.map((project, index) => (
-                <tr
-                  key={project.id}
-                  className="bg-white [.dark_&]:bg-[#181B2A] hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors cursor-pointer"
-                  onClick={() =>
-                    navigate(
-                      `${basePath}/${encodeURIComponent(project.projectName || "")}`,
-                      { state: { fromDocsTab: true } }
-                    )
-                  }
-                >
-                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-500 [.dark_&]:text-gray-400">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 [.dark_&]:bg-white/10">
-                      {indexOfFirstRow + index + 1}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900 [.dark_&]:text-white">
-                    <span>{project.projectName}</span>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900 [.dark_&]:text-white">
-                    <span>{project.clientName}</span>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-semibold text-gray-900 [.dark_&]:text-white">
-                    <span
-                      title={project.projectManagerName || "-"}
-                      className="block max-w-[160px] truncate"
-                    >
-                      {project.projectManagerName || "-"}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm">
-                    <div className="flex items-center">
-                      <div className="flex-1 bg-gray-200 [.dark_&]:bg-white/10 rounded-full h-3 mr-3 min-w-[120px]">
-                        <div
-                          className={`h-3 rounded-full transition-all duration-300 ${project.progress === 0
-                            ? "bg-gray-400"
-                            : project.progress < 30
-                              ? "bg-red-500"
-                              : project.progress < 70
-                                ? "bg-yellow-500"
-                                : project.progress < 100
-                                  ? "bg-blue-500"
-                                  : "bg-green-500"
-                            }`}
-                          style={{ width: `${project.progress}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 min-w-[40px]">
-                        {project.progress}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 [.dark_&]:text-gray-400">
-                    <div className="flex items-center">
-                      <div className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-2"></div>
-                      {formatDate(project.startDate)}
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 [.dark_&]:text-gray-400">
-                    <div className="flex items-center bg-gray-50 [.dark_&]:bg-white/5 rounded-lg px-3 py-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-red-400 mr-2"></div>
-                      {formatDate(project.endDate)}
-                    </div>
-                  </td>
+                <div className="space-y-0.5">
+                  <h3 className="font-semibold text-gray-900 [.dark_&]:text-white text-sm line-clamp-1 break-all px-2" title={project.projectName}>
+                    {project.projectName}
+                  </h3>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          // LIST VIEW - Table layout similar to Manage Projects
+          <div className="overflow-x-auto rounded-lg border border-gray-200 [.dark_&]:border-white/10">
+            <table className="w-full">
+              <thead className="bg-gray-50 [.dark_&]:bg-white/5 border-b border-gray-100 [.dark_&]:border-white/10">
+                <tr className="text-left text-xs font-bold text-gray-500 [.dark_&]:text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-4">SR. NO.</th>
+                  <th className="px-6 py-4">Project Name</th>
+                  <th className="px-6 py-4">Client Name</th>
+                  <th className="px-6 py-4">Project Manager</th>
+                  <th className="px-6 py-4">Progress</th>
+                  <th className="px-6 py-4">Start Date</th>
+                  <th className="px-6 py-4">End Date</th>
                 </tr>
-              ))}
-              {!currentRows.length && (
-                <tr>
-                  <td
-                    colSpan={tableHeaders.length}
-                    className="px-6 py-16 text-center"
+              </thead>
+              <tbody className="divide-y divide-gray-100 [.dark_&]:divide-white/5 bg-white [.dark_&]:bg-[#181B2A]">
+                {currentRows.map((project, index) => (
+                  <tr
+                    key={project.id}
+                    onClick={() =>
+                      navigate(
+                        `${basePath}/${encodeURIComponent(project.projectName || "")}`,
+                        { state: { fromDocsTab: true, viewMode } }
+                      )
+                    }
+                    className="hover:bg-gray-50 [.dark_&]:hover:bg-white/5 cursor-pointer transition-colors"
                   >
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-r from-gray-100 to-gray-200 [.dark_&]:from-white/5 [.dark_&]:to-white/10 flex items-center justify-center mb-4 animate-pulse">
-                        <FaSearch className="h-6 w-6 text-gray-400" />
+                    {/* SR. NO. */}
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-700 [.dark_&]:text-white">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-50 [.dark_&]:bg-white/5">
+                        {indexOfFirstRow + index + 1}
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-600 [.dark_&]:text-gray-300 mb-2">
-                        No Projects Found
-                      </h3>
-                      <p className="text-sm text-gray-500 [.dark_&]:text-gray-400">
-                        No projects match the selected filters. Adjust your search or try resetting filters.
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                    </td>
+
+                    {/* Project Name */}
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900 [.dark_&]:text-white">
+                      <span>{project.projectName}</span>
+                    </td>
+
+                    {/* Client Name */}
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900 [.dark_&]:text-white">
+                      <span>{project.clientName || '—'}</span>
+                    </td>
+
+                    {/* Project Manager */}
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900 [.dark_&]:text-white">
+                      <span
+                        title={project.projectManagerName || "—"}
+                        className="block max-w-[160px] truncate"
+                      >
+                        {project.projectManagerName || "—"}
+                      </span>
+                    </td>
+
+                    {/* Progress */}
+                    <td className="whitespace-nowrap px-6 py-4 text-sm">
+                      <div className="flex items-center">
+                        <div className="flex-1 bg-gray-200 [.dark_&]:bg-white/10 rounded-full h-3 mr-3 min-w-[120px]">
+                          <div
+                            className={`h-3 rounded-full transition-all duration-300 ${project.progress === 0
+                              ? "bg-gray-400"
+                              : project.progress < 30
+                                ? "bg-red-500"
+                                : project.progress < 70
+                                  ? "bg-yellow-500"
+                                  : project.progress < 100
+                                    ? "bg-blue-500"
+                                    : "bg-green-500"
+                              }`}
+                            style={{ width: `${project.progress}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-medium text-gray-600 [.dark_&]:text-gray-300 min-w-[40px]">
+                          {project.progress}%
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Start Date */}
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 [.dark_&]:text-gray-300">
+                      <div className="flex items-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-gray-400 mr-2"></div>
+                        {formatDate(project.startDate)}
+                      </div>
+                    </td>
+
+                    {/* End Date */}
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 [.dark_&]:text-gray-300">
+                      <div className="flex items-center bg-gray-50 [.dark_&]:bg-white/5 rounded-lg px-3 py-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-red-400 mr-2"></div>
+                        {formatDate(project.endDate)}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {!currentRows.length && (
+          <div className="text-center py-16 bg-white [.dark_&]:bg-[#181B2A] rounded-xl border border-dashed border-gray-300">
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+              <FaSearch className="h-6 w-6 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 [.dark_&]:text-white">No Projects Found</h3>
+            <p className="text-gray-500 text-sm mt-1">Try adjusting your search filters</p>
+          </div>
+        )}
+
+        {/* Bottom Pagination */}
+        {currentRows.length > 0 && viewMode === "list" && (
+          <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100 [.dark_&]:border-white/10">
+            <span className="text-sm font-medium text-content-secondary">
+              Page {currentPage} of {totalPages}
+            </span>
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-content-secondary">
+                Cards per page
+              </label>
+              <select
+                className="rounded-md border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#1F2234] px-2 py-1.5 text-sm [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10));
+                  setCurrentPage(1);
+                }}
+              >
+                {(viewMode === "grid" ? [14, 28, 56] : [10, 20, 50]).map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handlePrevPage}
+                  variant="secondary"
+                  className="px-2 py-1 text-xs"
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  onClick={handleNextPage}
+                  variant="secondary"
+                  className="px-2 py-1 text-xs"
+                  disabled={currentPage === totalPages || !filteredProjects.length}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );

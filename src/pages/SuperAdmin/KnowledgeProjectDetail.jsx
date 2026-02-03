@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { FaArrowLeft, FaRegComment, FaBookOpen, FaFileAlt, FaEdit, FaTrash, FaLightbulb, FaUser, FaCalendarAlt, FaClock, FaChevronUp, FaChevronDown } from "react-icons/fa";
+import { FaArrowLeft, FaRegComment, FaBookOpen, FaFileAlt, FaEdit, FaTrash, FaLightbulb, FaUser, FaCalendarAlt, FaClock, FaChevronUp, FaChevronDown, FaList, FaThLarge, FaTimes, FaSortAmountDown, FaCheck } from "react-icons/fa";
 import Card from "../../components/Card";
 import { db, storage, auth } from "../../firebase";
 import { collection, onSnapshot, query, where, addDoc, serverTimestamp, doc, getDoc, getDocs, updateDoc, deleteDoc } from "firebase/firestore";
@@ -18,7 +18,7 @@ import AddKnowledgeModal from "../../components/knowledge/AddKnowledgeModal";
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 
 export default function KnowledgeProjectDetail() {
-  const { buttonClass, barColor } = useThemeStyles();
+  const { buttonClass, barColor, iconColor } = useThemeStyles();
   const navigate = useNavigate();
   const { projectName } = useParams();
   const location = useLocation();
@@ -55,6 +55,29 @@ export default function KnowledgeProjectDetail() {
   const [showDocDropdown, setShowDocDropdown] = useState(false);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const dropdownButtonRef = React.useRef(null);
+  const [activeFolder, setActiveFolder] = useState(null); // Lifted state for folder navigation
+  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
+
+  // Document Sorting State
+  const [docSort, setDocSort] = useState({ key: "name", direction: "asc" });
+  const [showDocSort, setShowDocSort] = useState(false);
+  const docSortRef = useRef(null);
+
+  // Close sort dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (docSortRef.current && !docSortRef.current.contains(event.target)) {
+        setShowDocSort(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Folder actions state
+  const [folderToEdit, setFolderToEdit] = useState(null);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [folderToDelete, setFolderToDelete] = useState(null);
 
   useEffect(() => {
     const decoded = decodeURIComponent(projectName || "");
@@ -165,12 +188,12 @@ export default function KnowledgeProjectDetail() {
             const data = d.data() || {};
             const ts = data.updatedAt || data.createdAt;
             let updated = "";
-            if (ts && typeof ts.toDate === "function") updated = ts.toDate().toLocaleDateString();
-            else if (ts) updated = new Date(ts).toLocaleDateString();
+            if (ts && typeof ts.toDate === "function") updated = formatDate(ts.toDate());
+            else if (ts) updated = formatDate(ts);
             const cts = data.createdAt;
             let created = "";
-            if (cts && typeof cts.toDate === "function") created = cts.toDate().toLocaleDateString();
-            else if (cts) created = new Date(cts).toLocaleDateString();
+            if (cts && typeof cts.toDate === "function") created = formatDate(cts.toDate());
+            else if (cts) created = formatDate(cts);
 
             return {
               id: d.id,
@@ -277,6 +300,53 @@ export default function KnowledgeProjectDetail() {
     });
   }, [docs, isSuperAdminRoute, currentUserName]);
 
+  const sortedDocs = useMemo(() => {
+    const { key, direction } = docSort;
+    const multiplier = direction === "asc" ? 1 : -1;
+
+    return [...visibleDocs].sort((a, b) => {
+      let aValue = a[key];
+      let bValue = b[key];
+
+      // Handle specific keys
+      // Note: 'name' is directly available
+      if (key === "date") {
+        // Map to createdAt or updatedAt
+        aValue = a.createdAt;
+        bValue = b.createdAt;
+      }
+      if (key === "type") {
+        // Map to fileType or extension
+        // a.fileType might be 'application/pdf', etc.
+        // or we can fallback to filename extension
+        aValue = a.fileType || a.filename?.split('.').pop() || "";
+        bValue = b.fileType || b.filename?.split('.').pop() || "";
+      }
+
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return (aValue - bValue) * multiplier;
+      }
+
+      // Dates might be Firestore Timestamps or strings
+      const getDateVal = (v) => {
+        if (!v) return 0;
+        if (v.toMillis) return v.toMillis();
+        if (v instanceof Date) return v.getTime();
+        return new Date(v).getTime() || 0;
+      }
+
+      if (key === "date") {
+        return (getDateVal(aValue) - getDateVal(bValue)) * multiplier;
+      }
+
+      // Handle strings or nulls
+      if (!aValue) return 1 * multiplier;
+      if (!bValue) return -1 * multiplier;
+
+      return String(aValue).localeCompare(String(bValue)) * multiplier;
+    });
+  }, [visibleDocs, docSort]);
+
   const visibleKnowledge = useMemo(() => {
     if (isSuperAdminRoute) return knowledge;
     const me = String(currentUserName || "").trim().toLowerCase();
@@ -328,17 +398,24 @@ export default function KnowledgeProjectDetail() {
   const knStart = (knClampedPage - 1) * knRowsPerPage;
   const knPageRows = knFilteredSorted.slice(knStart, knStart + knRowsPerPage);
 
-  const title = project?.projectName || "Project";
-  const truncatedTitle = title.length > 18 ? `${title.slice(0, 18)}…` : title;
+  const title = activeFolder || project?.projectName || "Project";
+  const truncatedTitle = title.length > 25 ? `${title.slice(0, 25)}…` : title;
 
   const handleBack = () => {
+    // If inside a folder, go back to folder grid
+    if (activeFolder) {
+      setActiveFolder(null);
+      return;
+    }
+
     if (fromDocsTab) {
       const base = location.pathname.startsWith("/manager")
         ? "/manager/knowledge-management"
         : location.pathname.startsWith("/employee")
           ? "/employee/knowledge-management"
           : "/knowledge-management";
-      navigate(base, { state: { activeTab: "documents" } });
+      // Preserve viewMode from location state
+      navigate(base, { state: { activeTab: "documents", viewMode: location.state?.viewMode } });
       return;
     }
 
@@ -680,7 +757,9 @@ export default function KnowledgeProjectDetail() {
         try {
           await deleteObject(ref(storage, deleteTarget.storagePath));
         } catch (err) {
-          console.error("Failed to delete from storage:", err);
+          if (err.code !== 'storage/object-not-found') {
+            console.warn("Failed to delete from storage:", err);
+          }
         }
       }
 
@@ -700,6 +779,82 @@ export default function KnowledgeProjectDetail() {
     } catch (e) {
       console.error("Failed to delete document", e);
       toast.error("Failed to delete document: " + e.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Folder Action Handlers
+  const handleEditFolder = (folderName) => {
+    setFolderToEdit(folderName);
+    setNewFolderName(folderName);
+  };
+
+  const handleRenameFolder = async () => {
+    if (!folderToEdit || !newFolderName.trim()) return;
+    const oldName = folderToEdit;
+    const newName = newFolderName.trim();
+
+    if (oldName === newName) {
+      setFolderToEdit(null);
+      return;
+    }
+
+    try {
+      const foldersRef = doc(db, "documents", "folders");
+      const foldersSnap = await getDoc(foldersRef);
+
+      if (foldersSnap.exists()) {
+        const data = foldersSnap.data();
+        const list = data.folders || [];
+        const updatedList = list.map(f => {
+          if (typeof f === 'string') return f === oldName ? newName : f;
+          return f.name === oldName ? { ...f, name: newName } : f;
+        });
+        await updateDoc(foldersRef, { folders: updatedList });
+      }
+
+      setFolderToEdit(null);
+      toast.success("Folder renamed successfully");
+
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to rename folder");
+    }
+  };
+
+  const handleDeleteFolder = (folderName) => {
+    setFolderToDelete(folderName);
+  };
+
+  const confirmDeleteFolder = async () => {
+    if (!folderToDelete) return;
+    setIsDeleting(true);
+    try {
+      if (resolvedProjectId) {
+        const folderCol = collection(db, "documents", resolvedProjectId, folderToDelete);
+        const snaps = await getDocs(folderCol);
+
+        const promises = snaps.docs.map(async (d) => {
+          await deleteDoc(d.ref);
+        });
+        await Promise.all(promises);
+      }
+
+      const foldersRef = doc(db, "documents", "folders");
+      const foldersSnap = await getDoc(foldersRef);
+      if (foldersSnap.exists()) {
+        const data = foldersSnap.data();
+        const list = data.folders || [];
+        const updatedList = list.filter(f => (typeof f === 'string' ? f : f.name) !== folderToDelete);
+        await updateDoc(foldersRef, { folders: updatedList });
+      }
+
+      setFolderToDelete(null);
+      toast.success("Folder deleted");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to delete folder");
     } finally {
       setIsDeleting(false);
     }
@@ -788,44 +943,9 @@ export default function KnowledgeProjectDetail() {
             title="Knowledge"
             tone="muted"
             actions={
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-content-secondary">
-                  Page {knClampedPage} of {knTotalPages}
-                </span>
-                <label className="text-sm font-medium text-content-secondary">
-                  Cards per page
-                </label>
-                <select
-                  className="rounded-md border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#1F2234] px-2 py-1.5 text-sm [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={knRowsPerPage}
-                  onChange={(e) => {
-                    setKnRowsPerPage(parseInt(e.target.value, 10));
-                    setKnPage(1);
-                  }}
-                >
-                  {[6, 12, 18].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="secondary"
-                    onClick={() => setKnPage(Math.max(1, knClampedPage - 1))}
-                    disabled={knPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => setKnPage(Math.min(knTotalPages, knClampedPage + 1))}
-                    disabled={knPage === knTotalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
+              <span className="text-sm font-medium text-content-secondary">
+                Total {knFilteredSorted.length} Records
+              </span>
             }
           >
 
@@ -894,6 +1014,46 @@ export default function KnowledgeProjectDetail() {
                 <div className="col-span-full text-center text-sm text-gray-500 [.dark_&]:text-gray-400 py-10">No knowledge found</div>
               )}
             </div>
+            <div className="flex items-center justify-between mt-4">
+              <span className="text-sm font-medium text-content-secondary">
+                Page {knClampedPage} of {knTotalPages}
+              </span>
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-content-secondary">
+                  Cards per page
+                </label>
+                <select
+                  className="rounded-md border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#1F2234] px-2 py-1.5 text-sm [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={knRowsPerPage}
+                  onChange={(e) => {
+                    setKnRowsPerPage(parseInt(e.target.value, 10));
+                    setKnPage(1);
+                  }}
+                >
+                  {[6, 12, 18].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setKnPage(Math.max(1, knClampedPage - 1))}
+                    disabled={knPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => setKnPage(Math.min(knTotalPages, knClampedPage + 1))}
+                    disabled={knPage === knTotalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </div>
           </Card>
 
           <AddKnowledgeModal
@@ -923,79 +1083,126 @@ export default function KnowledgeProjectDetail() {
         </>
       ) : (
         <>
-          <Card title="Search & Actions" tone="muted">
+          <Card title="Search & Actions" tone="muted" className="overflow-visible">
             <SearchActions
               value={docSearch}
               onChange={setDocSearch}
               placeholder="Search by name, location or tag"
-              rightActions={(isSuperAdminRoute || isManagerRoute || isEmployeeRoute || roleType === "admin" || roleType === "member" || roleType === "resource") ? (
-                <div className="relative" ref={dropdownButtonRef}>
-                  <div className={`${buttonClass} flex items-center rounded-lg text-white text-sm font-medium overflow-hidden`}>
-                    {/* Left part - Add Document */}
+              rightActions={
+                <div className="flex items-center gap-3">
+                  {/* Sort Dropdown */}
+                  <div className="relative" ref={docSortRef}>
                     <button
-                      onClick={() => setOpenAddDoc(true)}
-                      className="px-4 py-2 hover:opacity-90 transition-opacity"
+                      onClick={() => setShowDocSort(!showDocSort)}
+                      className="flex items-center gap-2 px-3 py-2 bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 rounded-lg text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors"
                     >
-                      + Add Document
+                      <FaSortAmountDown className="text-gray-400" />
+                      <span className="hidden sm:inline">Sort</span>
                     </button>
 
-                    {/* Divider */}
-                    <div className="h-5 w-px bg-white/30"></div>
+                    {showDocSort && (
+                      <div className="absolute right-0 top-full mt-2 w-48 bg-white [.dark_&]:bg-[#181B2A] border border-gray-200 [.dark_&]:border-white/10 rounded-lg shadow-lg z-20 py-1">
+                        <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Sort By</div>
+                        {[
+                          { label: 'Name', key: 'name' },
+                          { label: 'Date', key: 'date' },
+                          { label: 'Type', key: 'type' }
+                        ].map((option) => (
+                          <button
+                            key={option.key}
+                            onClick={() => {
+                              setDocSort(prev => ({ ...prev, key: option.key }));
+                              setShowDocSort(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between ${docSort.key === option.key ? 'text-indigo-600 bg-indigo-50 [.dark_&]:bg-indigo-900/20' : 'text-gray-700 [.dark_&]:text-gray-300 hover:bg-gray-50 [.dark_&]:hover:bg-white/5'}`}
+                          >
+                            {option.label}
+                            {docSort.key === option.key && <FaCheck className="h-3 w-3" />}
+                          </button>
+                        ))}
+                        <div className="border-t border-gray-100 [.dark_&]:border-white/10 my-1"></div>
+                        <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Order</div>
+                        <button
+                          onClick={() => {
+                            setDocSort(prev => ({ ...prev, direction: 'asc' }));
+                            setShowDocSort(false);
+                          }}
+                          className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between ${docSort.direction === 'asc' ? 'text-indigo-600 bg-indigo-50 [.dark_&]:bg-indigo-900/20' : 'text-gray-700 [.dark_&]:text-gray-300 hover:bg-gray-50 [.dark_&]:hover:bg-white/5'}`}
+                        >
+                          Ascending
+                          {docSort.direction === 'asc' && <FaCheck className="h-3 w-3" />}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDocSort(prev => ({ ...prev, direction: 'desc' }));
+                            setShowDocSort(false);
+                          }}
+                          className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between ${docSort.direction === 'desc' ? 'text-indigo-600 bg-indigo-50 [.dark_&]:bg-indigo-900/20' : 'text-gray-700 [.dark_&]:text-gray-300 hover:bg-gray-50 [.dark_&]:hover:bg-white/5'}`}
+                        >
+                          Descending
+                          {docSort.direction === 'desc' && <FaCheck className="h-3 w-3" />}
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
-                    {/* Right part - Dropdown toggle */}
+                  <div className="flex items-center gap-1 bg-gray-100 [.dark_&]:bg-white/5 rounded-lg p-1 border border-gray-200 [.dark_&]:border-white/10">
                     <button
-                      onClick={() => setShowDocDropdown(!showDocDropdown)}
-                      className="px-2 py-2 hover:opacity-90 transition-opacity"
+                      onClick={() => setViewMode("grid")}
+                      className={`p-2 rounded-md transition-colors ${viewMode === "grid" ? `bg-white [.dark_&]:bg-white/10 shadow-sm ${iconColor}` : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-300"}`}
+                      title="Grid View"
                     >
-                      {showDocDropdown ? (
-                        <FaChevronUp className="h-3 w-3" />
-                      ) : (
-                        <FaChevronDown className="h-3 w-3" />
-                      )}
+                      <FaThLarge className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => setViewMode("list")}
+                      className={`p-2 rounded-md transition-colors ${viewMode === "list" ? `bg-white [.dark_&]:bg-white/10 shadow-sm ${iconColor}` : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-300"}`}
+                      title="List View"
+                    >
+                      <FaList className="h-4 w-4" />
                     </button>
                   </div>
 
-                  {showDocDropdown && (
+                  {(isSuperAdminRoute || isManagerRoute || isEmployeeRoute || roleType === "admin" || roleType === "member" || roleType === "resource") ? (
                     <>
-                      <div
-                        className="fixed inset-0 z-[9998]"
-                        onClick={() => setShowDocDropdown(false)}
-                      ></div>
-                      <div
-                        className={`fixed rounded-lg shadow-lg ${buttonClass} border-none z-[9999]`}
-                        style={{
-                          top: dropdownButtonRef.current ? `${dropdownButtonRef.current.getBoundingClientRect().bottom + 8}px` : '0',
-                          right: dropdownButtonRef.current ? `${window.innerWidth - dropdownButtonRef.current.getBoundingClientRect().right}px` : '0',
-                          width: dropdownButtonRef.current ? `${dropdownButtonRef.current.getBoundingClientRect().width}px` : 'auto'
-                        }}
-                      >
+                      {activeFolder ? (
                         <button
-                          onClick={() => {
-                            setShowFolderModal(true);
-                            setShowDocDropdown(false);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-white hover:opacity-90 rounded-lg transition-opacity font-medium"
+                          onClick={() => setOpenAddDoc(true)}
+                          className={`${buttonClass} px-4 py-2 rounded-lg text-white text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap`}
+                        >
+                          + Add Document
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setShowFolderModal(true)}
+                          className={`${buttonClass} px-4 py-2 rounded-lg text-white text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap`}
                         >
                           + Add Folder
                         </button>
-                      </div>
+                      )}
                     </>
-                  )}
+                  ) : null}
                 </div>
-              ) : null}
+              }
             />
-          </Card>
-          <Card title="Document List" tone="muted">
+          </Card >
+          <Card title={activeFolder ? "Documents" : "Folders"} tone="muted">
             {(() => {
               const canEditDocs = isSuperAdminRoute || isManagerRoute || isEmployeeRoute || roleType === "admin" || roleType === "member" || roleType === "resource";
               const canDeleteDocs = isSuperAdminRoute;
               return (
                 <GroupedDocumentsView
-                  rows={visibleDocs}
+                  rows={sortedDocs}
                   query={docSearch}
-                  showActions={canEditDocs || canDeleteDocs}
+                  showActions={isSuperAdminRoute || isAdmin || roleType === "manager" || roleType === "member" || roleType === "resource"}
                   onEdit={canEditDocs ? handleEditDocument : undefined}
                   onDelete={canDeleteDocs ? handleDeleteDocument : undefined}
+                  activeFolder={activeFolder}
+                  setActiveFolder={setActiveFolder}
+                  viewMode={viewMode}
+                  onEditFolder={canEditDocs ? handleEditFolder : undefined}
+                  onDeleteFolder={canDeleteDocs ? handleDeleteFolder : undefined}
+                  sortConfig={docSort}
                 />
               );
             })()}
@@ -1009,27 +1216,29 @@ export default function KnowledgeProjectDetail() {
             canEditAccess={isSuperAdminRoute || isManagerRoute || roleType === "admin"}
             userRole={isSuperAdminRoute ? "superadmin" : isManagerRoute ? "manager" : isEmployeeRoute ? "employee" : roleType}
           />
-          {showDeleteModal && (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40" onClick={() => !isDeleting && setShowDeleteModal(false)}>
-              <div onClick={(e) => e.stopPropagation()}>
-                <DeleteConfirmationModal
-                  onClose={() => !isDeleting && setShowDeleteModal(false)}
-                  onConfirm={confirmDeleteDocument}
-                  itemType="document"
-                  title="Delete Document"
-                  description={deleteTarget?.folder === "MOMs"
-                    ? "This is a Minutes of Meeting document. Deletion requires confirmation."
-                    : "Are you sure you want to permanently delete this document?"}
-                  itemTitle={deleteTarget?.name}
-                  itemSubtitle={deleteTarget?.filename}
-                  confirmLabel="Delete"
-                  isLoading={isDeleting}
-                  requireTextConfirmation={deleteTarget?.folder === "MOMs"}
-                  confirmationText={deleteTarget?.folder === "MOMs" ? deleteTarget?.name : ""}
-                />
+          {
+            showDeleteModal && (
+              <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40" onClick={() => !isDeleting && setShowDeleteModal(false)}>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <DeleteConfirmationModal
+                    onClose={() => !isDeleting && setShowDeleteModal(false)}
+                    onConfirm={confirmDeleteDocument}
+                    itemType="document"
+                    title="Delete Document"
+                    description={deleteTarget?.folder === "MOMs"
+                      ? "This is a Minutes of Meeting document. Deletion requires confirmation."
+                      : "Are you sure you want to permanently delete this document?"}
+                    itemTitle={deleteTarget?.name}
+                    itemSubtitle={deleteTarget?.filename}
+                    confirmLabel="Delete"
+                    isLoading={isDeleting}
+                    requireTextConfirmation={deleteTarget?.folder === "MOMs"}
+                    confirmationText={deleteTarget?.folder === "MOMs" ? deleteTarget?.name : ""}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )
+          }
         </>
       )}
 
@@ -1038,6 +1247,65 @@ export default function KnowledgeProjectDetail() {
         isOpen={showFolderModal}
         onClose={() => setShowFolderModal(false)}
       />
-    </div>
+
+      {/* Rename Folder Modal */}
+      {folderToEdit && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={() => setFolderToEdit(null)}>
+          <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-2xl w-full max-w-md overflow-hidden transform transition-all"
+            onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 [.dark_&]:border-white/10">
+              <h3 className="text-xl font-semibold text-gray-900 [.dark_&]:text-white">Rename Folder</h3>
+              <button onClick={() => setFolderToEdit(null)} className="text-gray-400 hover:text-gray-600 [.dark_&]:hover:text-gray-300">
+                <FaTimes className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-1.5">Folder Name</label>
+                <input
+                  type="text"
+                  value={newFolderName}
+                  onChange={e => setNewFolderName(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#1F2234] py-2 px-3 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Enter folder name..."
+                  autoFocus
+                  onKeyPress={(e) => e.key === 'Enter' && handleRenameFolder()}
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 p-4 border-t border-gray-200 [.dark_&]:border-white/10">
+              <Button variant="ghost" onClick={() => setFolderToEdit(null)}>Cancel</Button>
+              <Button onClick={handleRenameFolder} disabled={!newFolderName.trim() || newFolderName.trim() === folderToEdit}>Update</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Folder Modal */}
+      {folderToDelete && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          onClick={() => !isDeleting && setFolderToDelete(null)}>
+          <div onClick={e => e.stopPropagation()}>
+            <DeleteConfirmationModal
+              onClose={() => !isDeleting && setFolderToDelete(null)}
+              onConfirm={confirmDeleteFolder}
+              title="Confirm Deletion"
+              description={`Are you sure you want to delete this folder "${folderToDelete}"?`}
+              permanentMessage="This will permanently delete all documents inside this folder. This action cannot be undone."
+              confirmLabel="Delete"
+              isLoading={isDeleting}
+              itemType="folder"
+            />
+          </div>
+        </div>
+      )}
+    </div >
   );
 }

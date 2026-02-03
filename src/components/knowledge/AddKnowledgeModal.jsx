@@ -34,6 +34,8 @@
  * - links: Array of URLs (optional, dynamic add/remove)
  * - documents: Array of file uploads (optional)
  * - access: { admin: [], member: [] } user assignments
+ * - whatYouLearn: Array of strings (optional)
+ * - courseContent: Array of objects { heading: string, points: string[] } (optional)
  *
  * Activity Tracking:
  * - Detects changes in title, description, links, documents, assignees
@@ -43,13 +45,13 @@
  * - Stored in knowledge/{knowledgeId}/ folder
  * - Includes metadata: name, displayName, size, url, storagePath
  *
- * Last Modified: 2026-01-10
+ * Last Modified: 2026-02-03
  */
 
 import React, { useEffect, useState } from "react";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { HiXMark } from "react-icons/hi2";
-import { FaUpload, FaFileAlt, FaTrash, FaPlus } from "react-icons/fa";
+import { FaUpload, FaFileAlt, FaTrash, FaPlus, FaListUl, FaHeading } from "react-icons/fa";
 import Button from "../Button";
 import { db, storage, auth } from "../../firebase";
 import { collection, onSnapshot, orderBy, query, where, doc, getDoc } from "firebase/firestore";
@@ -62,7 +64,12 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
   const { buttonClass } = useThemeStyles();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [thumbnail, setThumbnail] = useState(null); // New state for thumbnail file
+  const [thumbnailPreview, setThumbnailPreview] = useState(null); // Preview URL
   const [links, setLinks] = useState([""]); // Changed from single link to array
+  const [whatYouLearn, setWhatYouLearn] = useState([""]);
+  const [courseContent, setCourseContent] = useState([{ heading: "", points: [""] }]);
+
   const [errors, setErrors] = useState({});
   const [admins, setAdmins] = useState([]);
   const [members, setMembers] = useState([]);
@@ -86,7 +93,13 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
     if (!isOpen) {
       setTitle("");
       setDescription("");
+      setTitle("");
+      setDescription("");
+      setThumbnail(null);
+      setThumbnailPreview(null);
       setLinks([""]);
+      setWhatYouLearn([""]);
+      setCourseContent([{ heading: "", points: [""] }]);
       setErrors({});
       setSelectedAdmin([]);
       setSelectedMember([]);
@@ -117,6 +130,9 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
 
       setTitle(initialItem.title || "");
       setDescription(initialItem.description || "");
+      if (initialItem.thumbnailUrl) {
+        setThumbnailPreview(initialItem.thumbnailUrl);
+      }
 
       // Handle links - support both string URLs and {url, label} objects
       // Also handle if Firestore returns it as object with numeric keys {0: "url1", 1: "url2"}
@@ -144,6 +160,21 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
         console.log('No links found, setting empty');
         setLinks([""]);
       }
+
+      // Handle What You Learn
+      if (Array.isArray(initialItem.whatYouLearn) && initialItem.whatYouLearn.length > 0) {
+        setWhatYouLearn(initialItem.whatYouLearn);
+      } else {
+        setWhatYouLearn([""]);
+      }
+
+      // Handle Course Content
+      if (Array.isArray(initialItem.courseContent) && initialItem.courseContent.length > 0) {
+        setCourseContent(initialItem.courseContent);
+      } else {
+        setCourseContent([{ heading: "", points: [""] }]);
+      }
+
 
       setSelectedAdmin(Array.isArray(initialItem.access?.admin) ? initialItem.access.admin : []);
       setSelectedMember(Array.isArray(initialItem.access?.member) ? initialItem.access.member : []);
@@ -356,6 +387,37 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
     return uploadedDocs;
   };
 
+  const handleThumbnailSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setThumbnail(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setThumbnailPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveThumbnail = () => {
+    setThumbnail(null);
+    setThumbnailPreview(null);
+  };
+
+  const uploadThumbnailToStorage = async (knowledgeId) => {
+    if (!thumbnail) return null;
+    try {
+      const timestamp = Date.now();
+      const storagePath = `knowledge/${knowledgeId}/thumbnail_${timestamp}_${thumbnail.name}`;
+      const storageRef = ref(storage, storagePath);
+      await uploadBytes(storageRef, thumbnail);
+      return await getDownloadURL(storageRef);
+    } catch (error) {
+      console.error("Error uploading thumbnail:", error);
+      return null;
+    }
+  };
+
   const handleAddLink = () => {
     setLinks([...links, ""]);
   };
@@ -373,6 +435,68 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
       setLinks(links.filter((_, i) => i !== index));
     }
   };
+
+  // --- What You Learn Handlers ---
+  const handleAddWhatYouLearn = () => {
+    setWhatYouLearn([...whatYouLearn, ""]);
+  };
+
+  const handleWhatYouLearnChange = (index, value) => {
+    const newItems = [...whatYouLearn];
+    newItems[index] = value;
+    setWhatYouLearn(newItems);
+  };
+
+  const handleDeleteWhatYouLearn = (index) => {
+    if (whatYouLearn.length === 1) {
+      setWhatYouLearn([""]);
+    } else {
+      setWhatYouLearn(whatYouLearn.filter((_, i) => i !== index));
+    }
+  };
+
+  // --- Course Content Handlers ---
+  const handleAddContentSection = () => {
+    setCourseContent([...courseContent, { heading: "", points: [""] }]);
+  };
+
+  const handleContentHeadingChange = (index, value) => {
+    const newContent = [...courseContent];
+    newContent[index].heading = value;
+    setCourseContent(newContent);
+  };
+
+  const handleDeleteContentSection = (index) => {
+    if (courseContent.length === 1) {
+      setCourseContent([{ heading: "", points: [""] }]);
+    } else {
+      setCourseContent(courseContent.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleAddContentPoint = (sectionIndex) => {
+    const newContent = [...courseContent];
+    newContent[sectionIndex].points.push("");
+    setCourseContent(newContent);
+  };
+
+  const handleContentPointChange = (sectionIndex, pointIndex, value) => {
+    const newContent = [...courseContent];
+    newContent[sectionIndex].points[pointIndex] = value;
+    setCourseContent(newContent);
+  };
+
+  const handleDeleteContentPoint = (sectionIndex, pointIndex) => {
+    const newContent = [...courseContent];
+    if (newContent[sectionIndex].points.length === 1) {
+      newContent[sectionIndex].points = [""];
+    } else {
+      newContent[sectionIndex].points = newContent[sectionIndex].points.filter((_, i) => i !== pointIndex);
+    }
+    setCourseContent(newContent);
+  };
+
+
 
   const safeParseDate = (dateInput) => {
     if (!dateInput) return null;
@@ -435,14 +559,28 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
 
     const accessChanged = !arraysEqual(currentAdmins, initialAdmins) || !arraysEqual(currentMembers, initialMembers);
 
+    // WhatYouLearn comparison (simple JSON stringify for deep check or similar logic)
+    const currentLearn = whatYouLearn.map(l => l.trim()).filter(l => l !== "").sort();
+    const initialLearn = (initialItem.whatYouLearn || []).filter(l => l).sort();
+    const learnChanged = !arraysEqual(currentLearn, initialLearn);
+
+    // CourseContent comparison
+    // Simplified check: JSON stringify
+    const currentContentStr = JSON.stringify(courseContent.filter(c => c.heading || c.points.some(p => p)));
+    const initialContentStr = JSON.stringify(initialItem.courseContent || []);
+    const contentChanged = currentContentStr !== initialContentStr;
+
+
     return (
       currentTitle !== (initialItem.title || "") ||
       currentDesc !== (initialItem.description || "") ||
       linksChanged ||
       docsChanged ||
-      accessChanged
+      accessChanged ||
+      learnChanged ||
+      contentChanged
     );
-  }, [title, description, links, documents, selectedAdmin, selectedMember, initialItem]);
+  }, [title, description, links, documents, selectedAdmin, selectedMember, whatYouLearn, courseContent, initialItem]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -454,8 +592,15 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
 
       // Upload documents to Firebase Storage
       const uploadedDocs = await uploadDocumentsToStorage(knowledgeId);
+      const uploadedThumbnailUrl = await uploadThumbnailToStorage(knowledgeId);
 
       const cleanedLinks = links.map(l => l.trim()).filter(l => l !== "");
+      const cleanedWhatYouLearn = whatYouLearn.map(l => l.trim()).filter(l => l !== "");
+      const cleanedCourseContent = courseContent.map(section => ({
+        heading: section.heading.trim(),
+        points: section.points.map(p => p.trim()).filter(p => p !== "")
+      })).filter(section => section.heading !== "" || section.points.length > 0);
+
 
       // --- Activity Log Logic ---
       const changes = [];
@@ -513,6 +658,16 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
           changes.push("Updated assignees");
         }
 
+        // Detect What You Learn changes (simplified)
+        if (JSON.stringify(cleanedWhatYouLearn) !== JSON.stringify(initialItem.whatYouLearn || [])) {
+          changes.push("Updated 'What You Learn' section");
+        }
+
+        // Detect Course Content changes (simplified)
+        if (JSON.stringify(cleanedCourseContent) !== JSON.stringify(initialItem.courseContent || [])) {
+          changes.push("Updated Course Content");
+        }
+
       } else {
         changes.push("Created knowledge entry");
       }
@@ -525,6 +680,9 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
         link: cleanedLinks[0] || "", // Keep 'link' for backward compatibility
         access: { admin: selectedAdmin, member: selectedMember },
         documents: uploadedDocs,
+        thumbnailUrl: uploadedThumbnailUrl || (initialItem?.thumbnailUrl || null), // Preserve existing if not changed
+        whatYouLearn: cleanedWhatYouLearn,
+        courseContent: cleanedCourseContent,
         // Pass activity changes for the parent to save to subcollection
         activityChanges: changes.length > 0 ? changes : ["Updated knowledge entry"],
         // Maintain legacy fields for sorting/filtering outside logic if needed
@@ -584,6 +742,38 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
               {/* Left Column - Title, Description, Link */}
               <div className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-slate-800/40 backdrop-blur-sm p-4 shadow-sm h-full">
                 <div className="space-y-4">
+
+                  {/* Thumbnail Input */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-content-secondary [.dark_&]:text-gray-400">
+                      Thumbnail Image
+                    </label>
+                    <div className="flex items-center gap-4">
+                      {thumbnailPreview ? (
+                        <div className="relative w-24 h-24 rounded-lg overflow-hidden border border-subtle [.dark_&]:border-white/10 group">
+                          <img src={thumbnailPreview} alt="Thumbnail preview" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={handleRemoveThumbnail}
+                            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                          >
+                            <FaTrash className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="w-24 h-24 flex flex-col items-center justify-center border-2 border-dashed border-subtle [.dark_&]:border-white/10 rounded-lg cursor-pointer hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors">
+                          <FaUpload className="h-5 w-5 text-gray-400 mb-1" />
+                          <span className="text-[10px] text-gray-500">Upload</span>
+                          <input type="file" accept="image/*" onChange={handleThumbnailSelect} className="hidden" />
+                        </label>
+                      )}
+                      <div className="text-xs text-gray-500">
+                        <p>Recommended size: 400x300px</p>
+                        <p>Max size: 2MB</p>
+                      </div>
+                    </div>
+                  </div>
+
                   <label className="flex flex-col gap-2 text-sm font-medium text-content-secondary [.dark_&]:text-gray-400">
                     Title *
                     <VoiceInput
@@ -610,7 +800,50 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
                     {errors.description && <span className="text-xs text-red-600">{errors.description}</span>}
                   </label>
 
-                  <div className="flex flex-col gap-2">
+                  {/* What You'll Learn Section */}
+                  <div className="flex flex-col gap-2 pt-2 border-t border-subtle [.dark_&]:border-white/5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-content-secondary [.dark_&]:text-gray-400 flex items-center gap-2">
+                        <FaListUl className="text-indigo-500 w-3 h-3" />
+                        What You'll Learn
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleAddWhatYouLearn}
+                        className={`flex items-center justify-center w-5 h-5 rounded-full ${buttonClass} text-white cursor-pointer hover:shadow-md transition-all`}
+                        title="Add topic"
+                      >
+                        <FaPlus className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 max-h-[150px] overflow-y-auto pr-1 custom-scrollbar">
+                      {whatYouLearn.map((item, index) => (
+                        <div key={index} className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            value={item}
+                            onChange={(e) => handleWhatYouLearnChange(index, e.target.value)}
+                            placeholder="e.g. Advanced State Management"
+                            className="flex-1 rounded-lg border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#181B2A] py-2 px-3 text-sm [.dark_&]:text-white focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100 placeholder-gray-400"
+                          />
+                          {(whatYouLearn.length > 1 || item !== "") && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteWhatYouLearn(index)}
+                              className="text-red-400 hover:text-red-500 p-1.5 hover:bg-red-50 rounded"
+                              title="Remove topic"
+                            >
+                              <FaTrash className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Links Section */}
+                  <div className="flex flex-col gap-2 pt-2 border-t border-subtle [.dark_&]:border-white/5">
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-medium text-content-secondary [.dark_&]:text-gray-400">
                         Links (Optional)
@@ -654,16 +887,87 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
                 </div>
               </div>
 
-              {/* Right Column - Documents */}
-              <div className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-slate-800/40 backdrop-blur-sm p-4 shadow-sm h-full">
-                <div className="space-y-4 h-full flex flex-col">
+              {/* Right Column - Documents & Course Content */}
+              <div className="rounded-lg border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-slate-800/40 backdrop-blur-sm p-4 shadow-sm h-full flex flex-col gap-4">
+
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                  {/* Course Content Section */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium text-content-secondary [.dark_&]:text-gray-400 flex items-center gap-2">
+                        <FaHeading className="text-indigo-500 w-3 h-3" />
+                        Course Content
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleAddContentSection}
+                        className={`flex items-center justify-center gap-1.5 px-2 py-1 rounded-md bg-indigo-50 text-indigo-600 text-xs font-medium hover:bg-indigo-100 transition-colors`}
+                        title="Add Section"
+                      >
+                        <FaPlus className="h-2.5 w-2.5" /> Start New Section
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {courseContent.map((section, sectionIndex) => (
+                        <div key={sectionIndex} className="p-3 bg-gray-50 [.dark_&]:bg-white/5 rounded-lg border border-subtle [.dark_&]:border-white/10">
+                          {/* Section Heading */}
+                          <div className="flex gap-2 items-center mb-2">
+                            <input
+                              type="text"
+                              value={section.heading}
+                              onChange={(e) => handleContentHeadingChange(sectionIndex, e.target.value)}
+                              placeholder="Section Heading (e.g. Introduction)"
+                              className="flex-1 font-medium bg-transparent border-b border-gray-300 [.dark_&]:border-gray-600 py-1 text-sm focus:border-indigo-500 outline-none transition-colors"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteContentSection(sectionIndex)}
+                              className="text-gray-400 hover:text-red-500"
+                              title="Remove Section"
+                            >
+                              <FaTrash className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+
+                          {/* Points */}
+                          <div className="pl-2 space-y-2">
+                            {section.points.map((point, pointIndex) => (
+                              <div key={pointIndex} className="flex gap-2 items-center">
+                                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0 mt-2"></span>
+                                <input
+                                  type="text"
+                                  value={point}
+                                  onChange={(e) => handleContentPointChange(sectionIndex, pointIndex, e.target.value)}
+                                  placeholder="Content point..."
+                                  className="flex-1 text-sm bg-transparent border-none outline-none focus:ring-0 placeholder-gray-400/70"
+                                />
+                                {/* Only show delete if multiple points or not empty */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteContentPoint(sectionIndex, pointIndex)}
+                                  className="text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <HiXMark className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => handleAddContentPoint(sectionIndex)}
+                              className="text-xs text-indigo-500 hover:text-indigo-600 flex items-center gap-1 mt-1 font-medium"
+                            >
+                              <FaPlus className="h-2 w-2" /> Add Point
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Access Section - Right Column */}
                   {canEditAccess && (
-                    <div className="mb-6">
-                      {/* Label is handled inside AssigneeSelector now if passed, or we can keep it here.
-                          The user asked to "add label Assignees", AssigneeSelector has a prop label="Access" by default.
-                          I will pass label="Assignees" to it and remove the external label to avoid duplication.
-                       */}
+                    <div className="mb-2">
                       <AssigneeSelector
                         label="Assignees"
                         users={admins} // admins contains all eligible users
@@ -690,83 +994,87 @@ function AddKnowledgeModal({ isOpen, onClose, onSubmit, initialItem = null, proj
                     </div>
                   )}
                   {/* Document Upload Section */}
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-content-secondary [.dark_&]:text-gray-400">
-                      Documents (Optional)
-                    </label>
-                    <button
-                      type="button"
-                      onClick={handleAddDocumentSlot}
-                      className={`flex items-center justify-center w-6 h-6 rounded-full ${buttonClass} text-white cursor-pointer transition-colors shadow-sm`}
-                      title="Add document field"
-                    >
-                      <FaPlus className="h-3 w-3" />
-                    </button>
-                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium text-content-secondary [.dark_&]:text-gray-400">
+                        Documents (Optional)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleAddDocumentSlot}
+                        className={`flex items-center justify-center w-6 h-6 rounded-full ${buttonClass} text-white cursor-pointer transition-colors shadow-sm`}
+                        title="Add document field"
+                      >
+                        <FaPlus className="h-3 w-3" />
+                      </button>
+                    </div>
 
-                  {/* File List - Fixed height to show 2 items */}
-                  {documents.length > 0 && (
-                    <div className="mt-2 space-y-3 h-[240px] overflow-y-auto pr-1 custom-scrollbar">
-                      {documents.map((doc, index) => (
-                        <div
-                          key={index}
-                          className="flex flex-col gap-2 p-3 rounded-lg bg-gray-50 [.dark_&]:bg-[#1F2234] border border-subtle [.dark_&]:border-white/10"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              {doc.file ? (
-                                <>
-                                  <FaFileAlt className="h-4 w-4 text-indigo-500 flex-shrink-0 mt-0.5" />
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 truncate">
-                                      {doc.name}
-                                    </p>
-                                    <p className="text-[10px] text-gray-400 [.dark_&]:text-gray-500">
-                                      {(doc.size / 1024).toFixed(1)} KB
-                                    </p>
+                    {/* File List */}
+                    {documents.length > 0 && (
+                      <div className="space-y-3">
+                        {documents.map((doc, index) => (
+                          <div
+                            key={index}
+                            className="flex flex-col gap-2 p-3 rounded-lg bg-gray-50 [.dark_&]:bg-[#1F2234] border border-subtle [.dark_&]:border-white/10"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                {doc.file ? (
+                                  <>
+                                    <FaFileAlt className="h-4 w-4 text-indigo-500 flex-shrink-0 mt-0.5" />
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs font-medium text-gray-500 [.dark_&]:text-gray-400 truncate">
+                                        {doc.name}
+                                      </p>
+                                      <p className="text-[10px] text-gray-400 [.dark_&]:text-gray-500">
+                                        {(doc.size / 1024).toFixed(1)} KB
+                                      </p>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="flex-1">
+                                    <input
+                                      type="file"
+                                      accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx"
+                                      onChange={(e) => handleFileSelect(e, index)}
+                                      className="hidden"
+                                      id={`doc-upload-${index}`}
+                                    />
+                                    <label
+                                      htmlFor={`doc-upload-${index}`}
+                                      className="flex items-center justify-center gap-2 w-full rounded-md border border-dashed border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-3 px-3 text-xs cursor-pointer hover:bg-gray-50 [.dark_&]:hover:bg-[#1F2234] transition-colors"
+                                    >
+                                      <FaUpload className="h-3 w-3 text-gray-400" />
+                                      <span className="text-gray-500 [.dark_&]:text-gray-400">Choose file</span>
+                                    </label>
                                   </div>
-                                </>
-                              ) : (
-                                <div className="flex-1">
-                                  <input
-                                    type="file"
-                                    accept=".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx"
-                                    onChange={(e) => handleFileSelect(e, index)}
-                                    className="hidden"
-                                    id={`doc-upload-${index}`}
-                                  />
-                                  <label
-                                    htmlFor={`doc-upload-${index}`}
-                                    className="flex items-center justify-center gap-2 w-full rounded-md border border-dashed border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-3 px-3 text-xs cursor-pointer hover:bg-gray-50 [.dark_&]:hover:bg-[#1F2234] transition-colors"
-                                  >
-                                    <FaUpload className="h-3 w-3 text-gray-400" />
-                                    <span className="text-gray-500 [.dark_&]:text-gray-400">Choose file</span>
-                                  </label>
-                                </div>
-                              )}
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleFileDelete(index)}
+                                className="p-1 rounded hover:bg-red-100 [.dark_&]:hover:bg-red-500/20 text-red-500 transition-colors flex-shrink-0"
+                                title="Remove"
+                              >
+                                <FaTrash className="h-3 w-3" />
+                              </button>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => handleFileDelete(index)}
-                              className="p-1 rounded hover:bg-red-100 [.dark_&]:hover:bg-red-500/20 text-red-500 transition-colors flex-shrink-0"
-                              title="Remove"
-                            >
-                              <FaTrash className="h-3 w-3" />
-                            </button>
+                            <input
+                              type="text"
+                              placeholder="Enter document name (optional)"
+                              value={doc.displayName}
+                              onChange={(e) => handleDocumentNameChange(index, e.target.value)}
+                              className="w-full rounded-lg border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2 px-3 text-xs [.dark_&]:text-white placeholder-gray-400 focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
+                            />
                           </div>
-                          <input
-                            type="text"
-                            placeholder="Enter document name (optional)"
-                            value={doc.displayName}
-                            onChange={(e) => handleDocumentNameChange(index, e.target.value)}
-                            className="w-full rounded-lg border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] py-2 px-3 text-xs [.dark_&]:text-white placeholder-gray-400 focus-visible:border-indigo-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-100"
-                          />
-                        </div>
-                      ))}</div>
-                  )}
+                        ))}</div>
+                    )}
 
 
+                  </div>
                 </div>
+
+
               </div>
             </div>
 

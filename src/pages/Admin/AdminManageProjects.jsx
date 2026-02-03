@@ -93,6 +93,7 @@ function ManageProjects({ onlyMyManaged = false }) {
 
   // Form state
   const [formData, setFormData] = useState({
+    projectId: "",
     projectName: "",
     clientId: "",
     clientName: "",
@@ -117,6 +118,7 @@ function ManageProjects({ onlyMyManaged = false }) {
         const data = d.data();
         return {
           id: d.id,
+          projectId: data.projectId || "",
           projectName: data.projectName || "",
           clientName: data.clientName || "",
           clientId: data.clientId || "",
@@ -406,6 +408,7 @@ function ManageProjects({ onlyMyManaged = false }) {
           .filter(Boolean)
         : [];
       await addDoc(collection(db, "projects"), {
+        projectId: formData.projectId || "",
         projectName: formData.projectName,
         clientName,
         clientId: formData.clientId,
@@ -424,6 +427,7 @@ function ManageProjects({ onlyMyManaged = false }) {
         createdAt: serverTimestamp(),
       });
       setFormData({
+        projectId: "",
         projectName: "",
         clientId: "",
         clientName: "",
@@ -447,6 +451,7 @@ function ManageProjects({ onlyMyManaged = false }) {
     const project = projects.find((p) => p.id === id);
     setSelectedProject(project);
     setFormData({
+      projectId: project.projectId || "",
       projectName: project.projectName,
       clientId: project.clientId || "",
       clientName: project.clientName,
@@ -505,6 +510,7 @@ function ManageProjects({ onlyMyManaged = false }) {
           .filter(Boolean)
         : [];
       await updateDoc(ref, {
+        projectId: formData.projectId || "",
         projectName: formData.projectName,
         clientName,
         clientId: formData.clientId,
@@ -521,6 +527,7 @@ function ManageProjects({ onlyMyManaged = false }) {
         okrs: formData.okrs,
       });
       setFormData({
+        projectId: "",
         projectName: "",
         clientId: "",
         clientName: "",
