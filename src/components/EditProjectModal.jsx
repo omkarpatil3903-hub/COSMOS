@@ -140,6 +140,30 @@ const EditProjectModal = ({
 
                 <div className="space-y-4">
 
+                  {/* Project ID */}
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">
+                      <FaLayerGroup className="text-gray-400" />
+                      Project ID <span className="text-red-500">*</span>
+                    </label>
+                    <VoiceInput
+                      placeholder="e.g. PRJ-2024-001"
+                      value={formData.projectId || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, projectId: e.target.value })
+                      }
+                      className={`w-full rounded-lg border ${editErrors.projectId
+                        ? "border-red-500 focus:ring-red-100"
+                        : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
+                        } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-4 transition-all duration-200`}
+                    />
+                    {editErrors.projectId && (
+                      <p className="text-xs text-red-600 font-medium">
+                        {editErrors.projectId}
+                      </p>
+                    )}
+                  </div>
+
                   {/* Project Name */}
                   <div className="space-y-1.5">
                     <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 [.dark_&]:text-gray-300">

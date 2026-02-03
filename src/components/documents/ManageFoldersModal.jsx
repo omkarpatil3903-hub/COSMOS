@@ -61,21 +61,11 @@ function ManageFoldersModal({ isOpen, onClose }) {
     const { buttonClass } = useThemeStyles();
     const [folders, setFolders] = useState([]);
     const [newFolderName, setNewFolderName] = useState("");
-    const [newFolderColor, setNewFolderColor] = useState("#3B82F6"); // Default blue
     const [editingFolder, setEditingFolder] = useState(null);
     const [editedName, setEditedName] = useState("");
-    const [editedColor, setEditedColor] = useState("");
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [folderToDelete, setFolderToDelete] = useState(null);
     const [deleteConfirmText, setDeleteConfirmText] = useState("");
-
-    // Predefined color palette
-    const colorPalette = [
-        '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16',
-        '#22C55E', '#10B981', '#14B8A6', '#06B6D4', '#0EA5E9',
-        '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#C026D3',
-        '#E11D48', '#DB2777', '#EC4899', '#F43F5E', '#64748B',
-    ];
 
     // Load folders from Firestore
     useEffect(() => {
@@ -120,7 +110,7 @@ function ManageFoldersModal({ isOpen, onClose }) {
 
         try {
             const foldersDocRef = doc(db, "documents", "folders");
-            const newFolder = { name: trimmedName, color: newFolderColor };
+            const newFolder = { name: trimmedName, color: "#3B82F6" };
             const updatedFolders = [...folders, newFolder].sort((a, b) => a.name.localeCompare(b.name));
 
             await setDoc(foldersDocRef, {
@@ -129,7 +119,6 @@ function ManageFoldersModal({ isOpen, onClose }) {
             });
 
             setNewFolderName("");
-            setNewFolderColor("#3B82F6"); // Reset to default
         } catch (error) {
             console.error("Error adding folder:", error);
             alert("Failed to add folder. Please try again.");
@@ -201,7 +190,6 @@ function ManageFoldersModal({ isOpen, onClose }) {
     const handleStartEdit = (folder) => {
         setEditingFolder(folder);
         setEditedName(folder.name);
-        setEditedColor(folder.color);
     };
 
     const handleSaveEdit = async () => {
@@ -217,7 +205,7 @@ function ManageFoldersModal({ isOpen, onClose }) {
             const foldersDocRef = doc(db, "documents", "folders");
             const updatedFolders = folders.map(f =>
                 f.name === editingFolder.name
-                    ? { name: trimmedName, color: editedColor }
+                    ? { ...f, name: trimmedName }
                     : f
             ).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -228,7 +216,6 @@ function ManageFoldersModal({ isOpen, onClose }) {
 
             setEditingFolder(null);
             setEditedName("");
-            setEditedColor("");
         } catch (error) {
             console.error("Error editing folder:", error);
             alert("Failed to edit folder. Please try again.");
@@ -238,7 +225,6 @@ function ManageFoldersModal({ isOpen, onClose }) {
     const handleCancelEdit = () => {
         setEditingFolder(null);
         setEditedName("");
-        setEditedColor("");
     };
 
     if (!isOpen) return null;
@@ -264,19 +250,6 @@ function ManageFoldersModal({ isOpen, onClose }) {
                 <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
                     {/* Add New Folder */}
                     <div className="flex items-center gap-2">
-                        {/* Circular Color Picker (clickable) */}
-                        <label
-                            className="h-10 w-10 rounded-full flex-shrink-0 border-2 border-gray-300 [.dark_&]:border-white/10 cursor-pointer relative overflow-hidden"
-                            style={{ backgroundColor: newFolderColor }}
-                            title="Click to pick color"
-                        >
-                            <input
-                                type="color"
-                                value={newFolderColor}
-                                onChange={(e) => setNewFolderColor(e.target.value)}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
-                        </label>
 
                         {/* Folder Name Input */}
                         <input
@@ -312,19 +285,6 @@ function ManageFoldersModal({ isOpen, onClose }) {
                                     >
                                         {editingFolder?.name === folder.name ? (
                                             <div className="flex-1 flex items-center gap-2">
-                                                {/* Circular Color Picker (clickable) */}
-                                                <label
-                                                    className="h-8 w-8 rounded-full flex-shrink-0 border-2 border-gray-300 [.dark_&]:border-white/10 cursor-pointer relative overflow-hidden"
-                                                    style={{ backgroundColor: editedColor }}
-                                                    title="Click to pick color"
-                                                >
-                                                    <input
-                                                        type="color"
-                                                        value={editedColor}
-                                                        onChange={(e) => setEditedColor(e.target.value)}
-                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                    />
-                                                </label>
 
                                                 {/* Edit Input - Read-only for system folders */}
                                                 <input
@@ -355,12 +315,9 @@ function ManageFoldersModal({ isOpen, onClose }) {
                                         ) : (
                                             <>
                                                 <div className="flex items-center gap-2 flex-1">
-                                                    <div
-                                                        className="h-6 w-6 rounded-full flex-shrink-0 relative flex items-center justify-center"
-                                                        style={{ backgroundColor: folder.color }}
-                                                    >
+                                                    <div className="flex-shrink-0 relative flex items-center justify-center">
                                                         {folder.isSystem && (
-                                                            <FaLock className="h-3 w-3 text-white drop-shadow-md" />
+                                                            <FaLock className="h-3 w-3 text-gray-500 [.dark_&]:text-gray-400 drop-shadow-md" />
                                                         )}
                                                     </div>
                                                     <span className="flex-1 text-sm font-medium text-gray-900 [.dark_&]:text-white" title={folder.name}>

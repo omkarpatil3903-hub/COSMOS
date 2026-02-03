@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { FaBookOpen, FaFileAlt } from "react-icons/fa";
 import PageHeader from "../../components/PageHeader";
 import { useTheme } from "../../context/ThemeContext";
@@ -6,7 +7,9 @@ import EmployeeKnowledgePage from "./EmployeeKnowledgePage";
 import EmployeeDocumentsPage from "./EmployeeDocumentsPage";
 
 export default function EmployeeKnowledgeManagement() {
-  const [activeTab, setActiveTab] = useState("knowledge");
+  const location = useLocation();
+  const defaultTab = location.state?.activeTab || "knowledge";
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const { accent, mode } = useTheme();
 
   const getIconColor = () => {

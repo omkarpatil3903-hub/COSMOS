@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { FaArrowLeft, FaRegComment, FaBookOpen, FaFileAlt, FaEdit, FaTrash, FaLightbulb, FaUser, FaCalendarAlt, FaClock, FaChevronUp, FaChevronDown } from "react-icons/fa";
+import { FaArrowLeft, FaRegComment, FaBookOpen, FaFileAlt, FaEdit, FaTrash, FaLightbulb, FaUser, FaCalendarAlt, FaClock, FaChevronUp, FaChevronDown, FaThLarge, FaList, FaTimes } from "react-icons/fa";
 import Card from "../../components/Card";
 import { db, storage, auth } from "../../firebase";
 import { collection, onSnapshot, query, where, addDoc, serverTimestamp, doc, getDoc, getDocs, updateDoc, deleteDoc } from "firebase/firestore";
@@ -18,7 +18,7 @@ import AddKnowledgeModal from "../../components/knowledge/AddKnowledgeModal";
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal";
 
 export default function KnowledgeProjectDetail() {
-  const { buttonClass, barColor } = useThemeStyles();
+  const { buttonClass, barColor, iconColor } = useThemeStyles();
   const navigate = useNavigate();
   const { projectName } = useParams();
   const location = useLocation();
@@ -55,6 +55,13 @@ export default function KnowledgeProjectDetail() {
   const [deleteKnTarget, setDeleteKnTarget] = useState(null);
   const [showDocDropdown, setShowDocDropdown] = useState(false);
   const [showFolderModal, setShowFolderModal] = useState(false);
+  const [activeFolder, setActiveFolder] = useState(null); // Track which folder is open
+  const [viewMode, setViewMode] = useState("grid"); // 'grid' | 'list'
+
+  // Folder actions state
+  const [folderToEdit, setFolderToEdit] = useState(null);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [folderToDelete, setFolderToDelete] = useState(null);
   const dropdownButtonRef = React.useRef(null);
 
   useEffect(() => {
@@ -278,7 +285,7 @@ export default function KnowledgeProjectDetail() {
 
     // Filter logic
     let filteredDocs = [];
-    if (isSuperAdminRoute || isAdmin || roleType === "admin" || isManagerRoute) {
+    if (isSuperAdminRoute || isAdminRoute || isAdmin || roleType === "admin" || isManagerRoute) {
       filteredDocs = docs;
     } else {
       // For regular employees, check explicit access or ownership
@@ -312,7 +319,7 @@ export default function KnowledgeProjectDetail() {
 
   const visibleKnowledge = useMemo(() => {
     // SuperAdmin, Admin, or Manager should see all knowledge
-    if (isSuperAdminRoute || isAdmin || roleType === "admin" || isManagerRoute) return knowledge;
+    if (isSuperAdminRoute || isAdminRoute || isAdmin || roleType === "admin" || isManagerRoute) return knowledge;
 
     // For regular employees, check explicit access or ownership
     const me = String(currentUserName || "").trim().toLowerCase();
@@ -332,7 +339,7 @@ export default function KnowledgeProjectDetail() {
       if (updatedBy && updatedBy === me) return true;
       return false;
     });
-  }, [knowledge, isSuperAdminRoute, isAdmin, roleType, isManagerRoute, currentUserName]);
+  }, [knowledge, isSuperAdminRoute, isAdminRoute, isAdmin, roleType, isManagerRoute, currentUserName]);
 
   const knFilteredSorted = useMemo(() => {
     const q = knSearch.trim().toLowerCase();
@@ -365,10 +372,17 @@ export default function KnowledgeProjectDetail() {
   const knStart = (knClampedPage - 1) * knRowsPerPage;
   const knPageRows = knFilteredSorted.slice(knStart, knStart + knRowsPerPage);
 
-  const title = project?.projectName || "Project";
+  const title = activeFolder || project?.projectName || "Project";
   const truncatedTitle = title.length > 18 ? `${title.slice(0, 18)}…` : title;
 
   const handleBack = () => {
+    // If currently viewing documents in a folder, go back to folder list
+    if (activeTab === "documentation" && activeFolder) {
+      setActiveFolder(null);
+      return;
+    }
+
+    // Otherwise navigate back to the main knowledge management page
     const base = location.pathname.startsWith("/manager")
       ? "/manager/knowledge-management"
       : location.pathname.startsWith("/employee")
@@ -736,6 +750,82 @@ export default function KnowledgeProjectDetail() {
     }
   };
 
+  // Folder Action Handlers
+  const handleEditFolder = (folderName) => {
+    setFolderToEdit(folderName);
+    setNewFolderName(folderName);
+  };
+
+  const handleRenameFolder = async () => {
+    if (!folderToEdit || !newFolderName.trim()) return;
+    const oldName = folderToEdit;
+    const newName = newFolderName.trim();
+
+    if (oldName === newName) {
+      setFolderToEdit(null);
+      return;
+    }
+
+    try {
+      const foldersRef = doc(db, "documents", "folders");
+      const foldersSnap = await getDoc(foldersRef);
+
+      if (foldersSnap.exists()) {
+        const data = foldersSnap.data();
+        const list = data.folders || [];
+        const updatedList = list.map(f => {
+          if (typeof f === 'string') return f === oldName ? newName : f;
+          return f.name === oldName ? { ...f, name: newName } : f;
+        });
+        await updateDoc(foldersRef, { folders: updatedList });
+      }
+
+      setFolderToEdit(null);
+      toast.success("Folder renamed successfully");
+
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to rename folder");
+    }
+  };
+
+  const handleDeleteFolder = (folderName) => {
+    setFolderToDelete(folderName);
+  };
+
+  const confirmDeleteFolder = async () => {
+    if (!folderToDelete) return;
+    setIsDeleting(true);
+    try {
+      if (resolvedProjectId) {
+        const folderCol = collection(db, "documents", resolvedProjectId, folderToDelete);
+        const snaps = await getDocs(folderCol);
+
+        const promises = snaps.docs.map(async (d) => {
+          await deleteDoc(d.ref);
+        });
+        await Promise.all(promises);
+      }
+
+      const foldersRef = doc(db, "documents", "folders");
+      const foldersSnap = await getDoc(foldersRef);
+      if (foldersSnap.exists()) {
+        const data = foldersSnap.data();
+        const list = data.folders || [];
+        const updatedList = list.filter(f => (typeof f === 'string' ? f : f.name) !== folderToDelete);
+        await updateDoc(foldersRef, { folders: updatedList });
+      }
+
+      setFolderToDelete(null);
+      toast.success("Folder deleted");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to delete folder");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between px-3 py-3 border-b bg-white [.dark_&]:bg-[#181B2A] [.dark_&]:border-white/10 rounded-lg">
@@ -819,44 +909,9 @@ export default function KnowledgeProjectDetail() {
             title="Knowledge"
             tone="muted"
             actions={
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-content-secondary">
-                  Page {knClampedPage} of {knTotalPages}
-                </span>
-                <label className="text-sm font-medium text-content-secondary">
-                  Cards per page
-                </label>
-                <select
-                  className="rounded-md border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#1F2234] px-2 py-1.5 text-sm [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={knRowsPerPage}
-                  onChange={(e) => {
-                    setKnRowsPerPage(parseInt(e.target.value, 10));
-                    setKnPage(1);
-                  }}
-                >
-                  {[6, 12, 18].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="secondary"
-                    onClick={() => setKnPage(Math.max(1, knClampedPage - 1))}
-                    disabled={knPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => setKnPage(Math.min(knTotalPages, knClampedPage + 1))}
-                    disabled={knPage === knTotalPages}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
+              <span className="text-sm font-medium text-content-secondary">
+                Total {knFilteredSorted.length} Records
+              </span>
             }
           >
 
@@ -925,6 +980,44 @@ export default function KnowledgeProjectDetail() {
                 <div className="col-span-full text-center text-sm text-gray-500 [.dark_&]:text-gray-400 py-10">No knowledge found</div>
               )}
             </div>
+            <div className="flex items-center justify-end gap-3 mt-4">
+              <span className="text-sm font-medium text-content-secondary">
+                Page {knClampedPage} of {knTotalPages}
+              </span>
+              <label className="text-sm font-medium text-content-secondary">
+                Cards per page
+              </label>
+              <select
+                className="rounded-md border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#1F2234] px-2 py-1.5 text-sm [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={knRowsPerPage}
+                onChange={(e) => {
+                  setKnRowsPerPage(parseInt(e.target.value, 10));
+                  setKnPage(1);
+                }}
+              >
+                {[6, 12, 18].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => setKnPage(Math.max(1, knClampedPage - 1))}
+                  disabled={knPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setKnPage(Math.min(knTotalPages, knClampedPage + 1))}
+                  disabled={knPage === knTotalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           </Card>
 
           <AddKnowledgeModal
@@ -960,67 +1053,48 @@ export default function KnowledgeProjectDetail() {
               onChange={setDocSearch}
               placeholder="Search by name, location or tag"
               rightActions={
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1 bg-gray-100 [.dark_&]:bg-white/5 rounded-lg p-1 border border-gray-200 [.dark_&]:border-white/10">
+                    <button
+                      onClick={() => setViewMode("grid")}
+                      className={`p-2 rounded-md transition-colors ${viewMode === "grid" ? `bg-white [.dark_&]:bg-white/10 shadow-sm ${iconColor}` : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-300"}`}
+                      title="Grid View"
+                    >
+                      <FaThLarge className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => setViewMode("list")}
+                      className={`p-2 rounded-md transition-colors ${viewMode === "list" ? `bg-white [.dark_&]:bg-white/10 shadow-sm ${iconColor}` : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-300"}`}
+                      title="List View"
+                    >
+                      <FaList className="h-4 w-4" />
+                    </button>
+                  </div>
+
                   {(isSuperAdminRoute || isAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource") && (
-                    <div className="relative" ref={dropdownButtonRef}>
-                      <div className={`${buttonClass} flex items-center rounded-lg text-white text-sm font-medium overflow-hidden`}>
-                        {/* Left part - Add Document */}
+                    <>
+                      {activeFolder ? (
                         <button
                           onClick={() => setOpenAddDoc(true)}
-                          className="px-4 py-2 hover:opacity-90 transition-opacity"
+                          className={`${buttonClass} px-4 py-2 rounded-lg text-white text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap`}
                         >
                           + Add Document
                         </button>
-
-                        {/* Divider */}
-                        <div className="h-5 w-px bg-white/30"></div>
-
-                        {/* Right part - Dropdown toggle */}
+                      ) : (
                         <button
-                          onClick={() => setShowDocDropdown(!showDocDropdown)}
-                          className="px-2 py-2 hover:opacity-90 transition-opacity"
+                          onClick={() => setShowFolderModal(true)}
+                          className={`${buttonClass} px-4 py-2 rounded-lg text-white text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap`}
                         >
-                          {showDocDropdown ? (
-                            <FaChevronUp className="h-3 w-3" />
-                          ) : (
-                            <FaChevronDown className="h-3 w-3" />
-                          )}
+                          + Add Folder
                         </button>
-                      </div>
-
-                      {showDocDropdown && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-[9998]"
-                            onClick={() => setShowDocDropdown(false)}
-                          ></div>
-                          <div
-                            className={`fixed rounded-lg shadow-lg ${buttonClass} border-none z-[9999]`}
-                            style={{
-                              top: dropdownButtonRef.current ? `${dropdownButtonRef.current.getBoundingClientRect().bottom + 8}px` : '0',
-                              right: dropdownButtonRef.current ? `${window.innerWidth - dropdownButtonRef.current.getBoundingClientRect().right}px` : '0',
-                              width: dropdownButtonRef.current ? `${dropdownButtonRef.current.getBoundingClientRect().width}px` : 'auto'
-                            }}
-                          >
-                            <button
-                              onClick={() => {
-                                setShowFolderModal(true);
-                                setShowDocDropdown(false);
-                              }}
-                              className="w-full px-4 py-2 text-left text-sm text-white hover:opacity-90 rounded-lg transition-opacity font-medium"
-                            >
-                              + Add Folder
-                            </button>
-                          </div>
-                        </>
                       )}
-                    </div>
+                    </>
                   )}
                 </div>
               }
             />
           </Card>
-          <Card title="Document List" tone="muted">
+          <Card title={activeFolder ? "Documents" : "Folders"} tone="muted">
             {(() => {
               const canEditDocs = isSuperAdminRoute || isAdminRoute || roleType === "admin" || roleType === "member" || roleType === "resource";
               const canDeleteDocs = isSuperAdminRoute || isAdminRoute;
@@ -1031,6 +1105,11 @@ export default function KnowledgeProjectDetail() {
                   showActions={canEditDocs || canDeleteDocs}
                   onEdit={canEditDocs ? handleEditDocument : undefined}
                   onDelete={canDeleteDocs ? handleDeleteDocument : undefined}
+                  activeFolder={activeFolder}
+                  setActiveFolder={setActiveFolder}
+                  viewMode={viewMode}
+                  onEditFolder={handleEditFolder}
+                  onDeleteFolder={canDeleteDocs ? handleDeleteFolder : undefined}
                 />
               );
             })()}
@@ -1047,6 +1126,66 @@ export default function KnowledgeProjectDetail() {
             isOpen={showFolderModal}
             onClose={() => setShowFolderModal(false)}
           />
+
+          {/* Rename Folder Modal */}
+          {folderToEdit && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+              onClick={() => setFolderToEdit(null)}>
+              <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg shadow-2xl w-full max-w-md overflow-hidden transform transition-all"
+                onClick={e => e.stopPropagation()}>
+
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 [.dark_&]:border-white/10">
+                  <h3 className="text-xl font-semibold text-gray-900 [.dark_&]:text-white">Rename Folder</h3>
+                  <button onClick={() => setFolderToEdit(null)} className="text-gray-400 hover:text-gray-600 [.dark_&]:hover:text-gray-300">
+                    <FaTimes className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Content */}
+                <div className="p-4 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 [.dark_&]:text-gray-300 mb-1.5">Folder Name</label>
+                    <input
+                      type="text"
+                      value={newFolderName}
+                      onChange={e => setNewFolderName(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#1F2234] py-2 px-3 text-sm text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Enter folder name..."
+                      autoFocus
+                      onKeyPress={(e) => e.key === 'Enter' && handleRenameFolder()}
+                    />
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex justify-end gap-3 p-4 border-t border-gray-200 [.dark_&]:border-white/10">
+                  <Button variant="ghost" onClick={() => setFolderToEdit(null)}>Cancel</Button>
+                  <Button onClick={handleRenameFolder} disabled={!newFolderName.trim() || newFolderName.trim() === folderToEdit}>Update</Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Folder Modal */}
+          {folderToDelete && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+              onClick={() => !isDeleting && setFolderToDelete(null)}>
+              <div onClick={e => e.stopPropagation()}>
+                <DeleteConfirmationModal
+                  onClose={() => !isDeleting && setFolderToDelete(null)}
+                  onConfirm={confirmDeleteFolder}
+                  title="Confirm Deletion"
+                  description={`Are you sure you want to delete this folder "${folderToDelete}"?`}
+                  permanentMessage="This will permanently delete all documents inside this folder. This action cannot be undone."
+                  confirmLabel="Delete"
+                  isLoading={isDeleting}
+                  itemType="folder"
+                />
+              </div>
+            </div>
+          )}
+
           {showDeleteModal && (
             <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40" onClick={() => !isDeleting && setShowDeleteModal(false)}>
               <div onClick={(e) => e.stopPropagation()}>

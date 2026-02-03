@@ -62,6 +62,8 @@ import {
   FaUser,
   FaUserEdit,
   FaExclamationTriangle,
+  FaExpand,
+  FaCompress,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 
@@ -78,6 +80,8 @@ function DocumentPreviewModal({
   const { buttonClass } = useThemeStyles();
   const [imageError, setImageError] = useState(false);
   const [iframeError, setIframeError] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   if (!doc) return null;
   const admin = doc.access?.admin || [];
@@ -209,12 +213,12 @@ function DocumentPreviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm ${isFullscreen ? "" : "p-4"}`}
       onClick={onClose}
     >
       <div
-        className={`bg-white [.dark_&]:bg-[#181B2A] rounded-xl shadow-2xl w-full ${!showMetadata ? "max-w-4xl max-h-[90vh]" : variant === "compact" ? "max-w-5xl max-h-[90vh]" : "max-w-7xl max-h-[94vh]"} flex flex-col overflow-hidden`}
-        style={{ maxWidth: !showMetadata ? "800px" : variant === "compact" ? "95vw" : "98vw" }}
+        className={`bg-white [.dark_&]:bg-[#181B2A] ${isFullscreen ? "" : "rounded-xl shadow-2xl"} w-full ${isFullscreen ? "max-w-full max-h-screen h-screen" : !showMetadata || isSidebarCollapsed ? "max-w-4xl max-h-[100vh]" : variant === "compact" ? "max-w-5xl max-h-[90vh]" : "max-w-7xl max-h-[94vh]"} flex flex-col overflow-hidden transition-all duration-300`}
+        style={{ maxWidth: isFullscreen ? "100vw" : !showMetadata || isSidebarCollapsed ? "800px" : variant === "compact" ? "95vw" : "98vw" }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -253,6 +257,28 @@ function DocumentPreviewModal({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Fullscreen Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="p-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 rounded-lg text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-white transition-colors"
+              title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+            >
+              {isFullscreen ? <FaCompress className="w-4 h-4" /> : <FaExpand className="w-4 h-4" />}
+            </button>
+
+            {/* Sidebar Collapse Toggle */}
+            {showMetadata && (
+              <button
+                type="button"
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className="p-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 rounded-lg text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-white transition-colors"
+                title={isSidebarCollapsed ? "Show Sidebar" : "Hide Sidebar"}
+              >
+                {isSidebarCollapsed ? <FaChevronLeft className="w-4 h-4" /> : <FaChevronRight className="w-4 h-4" />}
+              </button>
+            )}
+
             {(hasPreview || doc.filename) && (
               <button
                 type="button"
@@ -278,10 +304,10 @@ function DocumentPreviewModal({
         {/* Content */}
         <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
           {/* Preview Section */}
-          <div className="flex-1 p-6 lg:p-8 overflow-y-auto">
+          <div className={`flex-1 ${isFullscreen ? "p-0" : "p-6 lg:p-8"} overflow-hidden flex flex-col`}>
             <div
-              className={`border-2 ${previewBorderColor} [.dark_&]:border-white/10 rounded-xl bg-gradient-to-br from-gray-50 to-white [.dark_&]:from-[#181B2A] [.dark_&]:to-[#181B2A] overflow-hidden shadow-inner relative`}
-              style={{ minHeight: variant === "compact" ? "65vh" : "72vh", maxHeight: "90vh" }}
+              className={`${isFullscreen ? "" : `border-2 ${previewBorderColor} [.dark_&]:border-white/10 rounded-xl`} bg-gradient-to-br from-gray-50 to-white [.dark_&]:from-[#181B2A] [.dark_&]:to-[#181B2A] overflow-hidden ${isFullscreen ? "" : "shadow-inner"} relative flex-1 flex flex-col`}
+              style={isFullscreen ? {} : { minHeight: variant === "compact" ? "70vh" : "78vh", maxHeight: "90vh" }}
             >
               {/* Navigation Buttons - Top Right Corner */}
               {canNavigate && (
@@ -362,7 +388,6 @@ function DocumentPreviewModal({
                         src={previewUrl}
                         onError={() => setIframeError(true)}
                         className="w-full h-full rounded-lg"
-                        style={{ minHeight: variant === "compact" ? "70vh" : "78vh" }}
                       />
                     )
                   ) : (
@@ -396,8 +421,8 @@ function DocumentPreviewModal({
           </div>
 
           {/* Sidebar */}
-          {showMetadata && (
-            <div className="w-full lg:w-80 bg-gray-50 [.dark_&]:bg-[#1F2234] border-t lg:border-t-0 lg:border-l border-gray-200 [.dark_&]:border-white/10 flex flex-col shrink-0">
+          {showMetadata && !isSidebarCollapsed && (
+            <div className="w-full lg:w-80 bg-gray-50 [.dark_&]:bg-[#1F2234] border-t lg:border-t-0 lg:border-l border-gray-200 [.dark_&]:border-white/10 flex flex-col shrink-0 transition-all duration-300">
               <div className="p-6 space-y-6 overflow-y-auto">
                 {/* Metadata */}
                 <div className="bg-white [.dark_&]:bg-[#181B2A] rounded-lg p-4 shadow-sm border border-gray-200 [.dark_&]:border-white/10">
@@ -547,28 +572,6 @@ function DocumentPreviewModal({
             </div>
           )}
         </div>
-
-        {/* Footer */}
-        {showMetadata && (
-          <div className="px-6 py-4 border-t border-gray-200 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-[#1F2234] flex justify-end gap-3 shrink-0">
-            <Button variant="secondary" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              variant="custom"
-              className={buttonClass}
-              onClick={() => {
-                if (typeof onSave === "function") {
-                  onSave(doc);
-                } else {
-                  onClose();
-                }
-              }}
-            >
-              Save Changes
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   );

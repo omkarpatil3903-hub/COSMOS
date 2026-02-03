@@ -99,7 +99,11 @@ export default function ManagerKnowledgePage() {
           documents: data.documents || [],
           access: data.access || { admin: [], member: [] },
           projectId: data.projectId || null,
+          documents: data.documents || [],
+          access: data.access || { admin: [], member: [] },
+          projectId: data.projectId || null,
           link: data.link || "",
+          thumbnailUrl: data.thumbnailUrl || null,
         };
       });
       setKnowledge(list);
@@ -230,6 +234,8 @@ export default function ManagerKnowledgePage() {
           links: form.links || [],
           access: form.access || { admin: [], member: [] },
           documents: form.documents || [],
+          whatYouLearn: form.whatYouLearn || [],
+          courseContent: form.courseContent || [],
           updatedAt: serverTimestamp(),
           updatedByUid: currentUser?.uid || "",
           updatedByName: currentUser?.displayName || "",
@@ -243,6 +249,8 @@ export default function ManagerKnowledgePage() {
           links: form.links || [],
           access: form.access || { admin: [], member: [] },
           documents: form.documents || [],
+          whatYouLearn: form.whatYouLearn || [],
+          courseContent: form.courseContent || [],
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           createdByUid: currentUser?.uid || "",
@@ -378,80 +386,94 @@ export default function ManagerKnowledgePage() {
         }
       >
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {pageRows.map((k) => {
             const projectName = getProjectName(k.projectId);
             return (
               <div
                 key={k.id}
-                className="relative rounded-xl border border-subtle bg-surface-strong p-6 shadow-soft min-h-[280px]"
+                className="relative rounded-sm border border-subtle bg-white [.dark_&]:bg-[#181B2A] shadow-soft overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer group"
+                onClick={() => handleKnowledgeClick(k.id)}
               >
-                <div className="absolute top-2 right-2 flex items-center gap-2">
-                  <button
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface text-content-secondary shadow-soft hover:bg-surface-subtle"
-                    title="Edit"
-                    onClick={() => handleEdit(k)}
-                  >
-                    <FaEdit className="h-4 w-4" />
-                  </button>
+                {/* Image Section */}
+                <div className="relative w-full h-56 bg-gray-100 [.dark_&]:bg-gray-800 overflow-hidden">
+                  {k.thumbnailUrl ? (
+                    <img
+                      src={k.thumbnailUrl}
+                      alt={k.title}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-violet-100 to-indigo-100 [.dark_&]:from-violet-900/30 [.dark_&]:to-indigo-900/30 flex items-center justify-center">
+                      <FaLightbulb className="h-20 w-20 text-violet-300 [.dark_&]:text-violet-600 opacity-50" />
+                    </div>
+                  )}
+
+                  {/* Project Badge - top left */}
+                  {projectName && (
+                    <div className="absolute top-2 left-2">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-white/90 [.dark_&]:bg-gray-900/90 text-indigo-600 [.dark_&]:text-indigo-400 shadow-md backdrop-blur">
+                        <FaFolderOpen className="h-3 w-3" />
+                        {projectName}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Action Buttons - Show on hover */}
+                  <div className="absolute top-2 right-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 mb-2 pr-16">
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-surface-subtle text-violet-400 border border-subtle">
-                    <FaLightbulb className="h-4 w-4" />
-                  </span>
+
+                {/* Content Section */}
+                <div className="p-3">
+                  {/* Title */}
                   <h3
-                    className="text-lg font-semibold leading-snug text-content-primary truncate max-w-[200px] cursor-pointer hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 transition-colors"
+                    className="text-base font-bold leading-tight text-gray-900 [.dark_&]:text-white mb-0.5 line-clamp-2 hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 transition-colors"
                     title={k.title}
-                    onClick={() => handleKnowledgeClick(k.id)}
                   >
-                    {k.title.length > 20 ? `${k.title.substring(0, 20)}...` : k.title}
+                    {k.title}
                   </h3>
-                </div>
 
-                {/* Project badge */}
-                {projectName && (
-                  <div className="mb-2">
-                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-indigo-50 [.dark_&]:bg-indigo-500/10 text-indigo-600 [.dark_&]:text-indigo-400 border border-indigo-100 [.dark_&]:border-indigo-500/20">
-                      <FaFolderOpen className="h-3 w-3" />
-                      {projectName}
-                    </span>
-                  </div>
-                )}
+                  {/* Description */}
+                  <p className="text-sm leading-snug text-gray-600 [.dark_&]:text-gray-400 line-clamp-2 mb-1">
+                    {k.description || "No description provided"}
+                  </p>
 
-                <hr className="my-3 border-t border-subtle" />
-                <p className="mt-1 mb-3 text-sm md:text-[0.95rem] leading-relaxed text-content-secondary line-clamp-4 whitespace-pre-wrap">
-                  {k.description}
-                </p>
-                {k.link && (
-                  <div className="mb-3">
-                    <a href={k.link} target="_blank" rel="noopener noreferrer" className="text-sm text-indigo-600 hover:text-indigo-500 underline truncate block" onClick={e => e.stopPropagation()}>
-                      {k.link}
-                    </a>
+                  {/* Link */}
+                  {k.link && (
+                    <div className="mb-1.5">
+                      <a
+                        href={k.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-indigo-600 [.dark_&]:text-indigo-400 hover:text-indigo-500 underline truncate block"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        {k.link}
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Metadata Footer */}
+                  <div className="mt-1.5 pt-1.5 border-t border-gray-100 [.dark_&]:border-white/10">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 [.dark_&]:text-gray-400">
+                      {k.createdByName && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <FaUser className="w-3 h-3" />
+                          <span className="font-medium">{k.createdByName}</span>
+                        </span>
+                      )}
+                      {k.created && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <FaCalendarAlt className="w-3 h-3" />
+                          <span>{k.created}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
-                )}
-                <hr className="my-3 border-t border-subtle" />
-                <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-content-secondary">
-                  {k.created && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <FaCalendarAlt className="w-3.5 h-3.5 text-content-tertiary" />
-                      <span className="text-content-tertiary">Created</span>
-                      <span className="font-medium text-content-primary">{k.created}</span>
-                    </span>
-                  )}
-                  {k.createdByName && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <FaUser className="w-3.5 h-3.5 text-content-tertiary" />
-                      <span className="text-content-tertiary">By</span>
-                      <span className="font-medium text-content-primary">{k.createdByName}</span>
-                    </span>
-                  )}
-                  {k.updated && (
-                    <span className="inline-flex items-center gap-1.5">
-                      <FaClock className="w-3.5 h-3.5 text-content-tertiary" />
-                      <span className="text-content-tertiary">Updated</span>
-                      <span className="font-medium text-content-primary">{k.updated}</span>
-                    </span>
-                  )}
                 </div>
               </div>
             );

@@ -265,6 +265,7 @@ export default function MomGeneratorPro() {
         setProjects(
           snap.docs.map((d) => ({
             id: d.id,
+            projectId: d.data().projectId || "",
             name: d.data().projectName || "Unnamed Project",
             assigneeIds: d.data().assigneeIds || [],
             projectManagerId: d.data().projectManagerId || "",
@@ -496,26 +497,40 @@ export default function MomGeneratorPro() {
       setDiscussions(builtDiscussions);
       setActionItems(builtActions);
 
-      // Prefetch next MOM number for header display from documents collection
+      // Prefetch next MOM number for header display from project-specific subcollection
       try {
         let nextNumber = 1;
-        // Query documents collection for existing MOMs
-        const qn = query(collection(db, "documents"), limit(500));
+        // Use the custom projectId field from the selected project, fallback to Firestore doc ID
+        const customProjectId = selectedProject?.projectId || projectId;
+
+        // Query project-specific MOMs subcollection
+        const qn = query(
+          collection(db, "documents", projectId, "MOMs"),
+          orderBy("createdAt", "desc"),
+          limit(100)
+        );
         const snap = await getDocs(qn);
         snap.forEach((d) => {
-          // Document ID itself is the momNo (e.g., MOM_001)
+          // Document ID is the momNo (e.g., ProjectID_001)
           const docId = d.id;
-          const match = docId.match(/MOM_(\d+)/i);
+          // Match pattern: {customProjectId}_(\d+)
+          // We escape customProjectId for regex safety just in case, though doc IDs usually safe
+          const escapedProjectId = customProjectId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`^${escapedProjectId}_(\\d+)$`, "i");
+
+          const match = docId.match(regex);
           if (match) {
             const num = parseInt(match[1], 10);
             if (!isNaN(num) && num >= nextNumber) nextNumber = num + 1;
           }
         });
-        const prefetchedNo = `MOM_${String(nextNumber).padStart(3, "0")}`;
+        const prefetchedNo = `${customProjectId}_${String(nextNumber).padStart(3, "0")}`;
         setMomNoState(prefetchedNo);
       } catch (e) {
         console.error("Failed to precompute MOM number", e);
-        setMomNoState("MOM_001");
+        // Fallback or default
+        const customProjectId = selectedProject?.projectId || projectId;
+        setMomNoState(`${customProjectId}_001`);
       }
 
       setIsGenerated(true);
@@ -539,17 +554,27 @@ export default function MomGeneratorPro() {
     setSaveLoading(true);
     try {
       // Determine momNo: prefer precomputed ID from generateMom if available; otherwise compute now
+      // Determine momNo: prefer precomputed ID from generateMom if available; otherwise compute now
       let momNo = momNoState;
-      if (!momNo) {
+      // Use the custom projectId field from the selected project, fallback to Firestore doc ID
+      const customProjectId = selectedProject?.projectId || projectId;
+
+      // Double check if formatted correctly for *this* project (in case project switched)
+      if (!momNo || !momNo.startsWith(customProjectId)) {
         let nextNumber = 1;
         try {
-          // Query documents collection for existing MOMs
-          const qn = query(collection(db, "documents"), limit(500));
+          // Query project-specific MOMs subcollection
+          const qn = query(
+            collection(db, "documents", projectId, "MOMs"),
+            orderBy("createdAt", "desc"),
+            limit(100)
+          );
           const snap = await getDocs(qn);
           snap.forEach((d) => {
-            // Document ID itself is the momNo (e.g., MOM_001)
             const docId = d.id;
-            const match = docId.match(/MOM_(\d+)/i);
+            const escapedProjectId = customProjectId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`^${escapedProjectId}_(\\d+)$`, "i");
+            const match = docId.match(regex);
             if (match) {
               const num = parseInt(match[1], 10);
               if (!isNaN(num) && num >= nextNumber) nextNumber = num + 1;
@@ -559,7 +584,7 @@ export default function MomGeneratorPro() {
           console.error("Failed to compute next momNo", err);
           nextNumber = 1;
         }
-        momNo = `MOM_${String(nextNumber).padStart(3, "0")}`;
+        momNo = `${customProjectId}_${String(nextNumber).padStart(3, "0")}`;
       }
 
       // Reflect this MOM number in the UI header as the MOM ID

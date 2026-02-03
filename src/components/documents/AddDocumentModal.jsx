@@ -333,9 +333,16 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     );
   }, [name, folder, file, selectedAdmin, selectedMember, initialDoc]);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ... (existing code)
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return; // Prevent double submission
     if (!validate()) return;
+
+    setIsSubmitting(true);
     let fileDataUrl = null;
     if (file) {
       fileDataUrl = await new Promise((resolve, reject) => {
@@ -370,6 +377,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
       updatedByUid: auth.currentUser?.uid || "",
       updatedByName: auth.currentUser?.displayName || "",
     };
+
     try {
       if (onSubmit) {
         await onSubmit(doc);
@@ -379,6 +387,8 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
     } catch (error) {
       console.error('Error submitting document:', error);
       toast.error('Failed to save document. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -604,7 +614,7 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
 
             <div className="flex justify-end gap-3 pt-2">
               <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button type="submit" variant="custom" className={buttonClass}>{initialDoc ? "Update Document" : "Add Document"}</Button>
+              <Button type="submit" variant="custom" className={buttonClass} disabled={!isDirty || isSubmitting}>{isSubmitting ? "Saving..." : (initialDoc ? "Update Document" : "Add Document")}</Button>
             </div>
           </form>
         </div>
