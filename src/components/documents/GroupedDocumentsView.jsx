@@ -119,7 +119,17 @@ function GroupedDocumentsView({
 
     const folderNames = useMemo(() => {
         // Use allFolders if provided (includes empty folders), otherwise derive from groupedDocs
-        let names = allFolders.length > 0 ? allFolders : Object.keys(groupedDocs);
+        let names = allFolders.length > 0 ? [...allFolders] : Object.keys(groupedDocs);
+
+        // Ensure system folders are present
+        const SYSTEM_FOLDERS = ['MOMs', 'Daily Report', 'Weekly Report', 'Monthly Report'];
+        const lowerNames = names.map(n => n.toLowerCase());
+
+        SYSTEM_FOLDERS.forEach(sysFolder => {
+            if (!lowerNames.includes(sysFolder.toLowerCase())) {
+                names.push(sysFolder);
+            }
+        });
 
         if (!sortConfig) return names.sort();
 
@@ -241,8 +251,8 @@ function GroupedDocumentsView({
                                         key={folderName}
                                         className="relative group"
                                     >
-                                        {/* Edit/Delete Buttons - Top Right on Hover */}
-                                        {(onEditFolder || onDeleteFolder) && (
+                                        {/* Edit/Delete Buttons - Top Right on Hover - Hide for System Folders */}
+                                        {(onEditFolder || onDeleteFolder) && !['moms', 'daily report', 'weekly report', 'monthly report'].includes(folderName.toLowerCase()) && (
                                             <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                                 {onEditFolder && (
                                                     <button
@@ -393,35 +403,41 @@ function GroupedDocumentsView({
                                                 {/* ACTIONS */}
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-2">
-                                                        <div className="flex items-center gap-2">
-                                                            {onEditFolder && (
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        onEditFolder(folderName);
-                                                                    }}
-                                                                    className="p-1.5 rounded-full hover:bg-white [.dark_&]:hover:bg-white/10 text-gray-500 [.dark_&]:text-gray-400 hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 transition-colors"
-                                                                    title="Edit Folder"
-                                                                >
-                                                                    <FaEdit className="h-3.5 w-3.5" />
-                                                                </button>
-                                                            )}
-                                                            {onDeleteFolder && (
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        onDeleteFolder(folderName);
-                                                                    }}
-                                                                    className="p-1.5 rounded-full hover:bg-white [.dark_&]:hover:bg-white/10 text-gray-500 [.dark_&]:text-gray-400 hover:text-red-600 [.dark_&]:hover:text-red-400 transition-colors"
-                                                                    title="Delete Folder"
-                                                                >
-                                                                    <FaTrash className="h-3.5 w-3.5" />
-                                                                </button>
-                                                            )}
-                                                            {!onEditFolder && !onDeleteFolder && (
-                                                                <span className="text-xs text-gray-400 [.dark_&]:text-gray-500">—</span>
-                                                            )}
-                                                        </div>
+                                                        {['moms', 'daily report', 'weekly report', 'monthly report'].includes(folderName.toLowerCase()) ? (
+                                                            <div className="flex items-center gap-2 text-gray-400 [.dark_&]:text-gray-500" title="Protected Folder">
+                                                                <span className="text-xs">Protected</span>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                {onEditFolder && (
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            onEditFolder(folderName);
+                                                                        }}
+                                                                        className="p-1.5 rounded-full hover:bg-white [.dark_&]:hover:bg-white/10 text-gray-500 [.dark_&]:text-gray-400 hover:text-indigo-600 [.dark_&]:hover:text-indigo-400 transition-colors"
+                                                                        title="Edit Folder"
+                                                                    >
+                                                                        <FaEdit className="h-3.5 w-3.5" />
+                                                                    </button>
+                                                                )}
+                                                                {onDeleteFolder && (
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            onDeleteFolder(folderName);
+                                                                        }}
+                                                                        className="p-1.5 rounded-full hover:bg-white [.dark_&]:hover:bg-white/10 text-gray-500 [.dark_&]:text-gray-400 hover:text-red-600 [.dark_&]:hover:text-red-400 transition-colors"
+                                                                        title="Delete Folder"
+                                                                    >
+                                                                        <FaTrash className="h-3.5 w-3.5" />
+                                                                    </button>
+                                                                )}
+                                                                {!onEditFolder && !onDeleteFolder && (
+                                                                    <span className="text-xs text-gray-400 [.dark_&]:text-gray-500">—</span>
+                                                                )}
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>

@@ -247,9 +247,10 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
           const folderObj = typeof f === 'string' ? { name: f } : f;
           const folderName = folderObj.name || '';
 
-          // Always exclude MOMs folder - it's a protected system folder
+          // Always exclude MOMs and Report folders - they are protected system folders
           const fName = folderName.toLowerCase().trim();
-          if (fName === 'moms' || fName === 'mom' || fName === 'mom\'s') {
+          const systemFolders = ['moms', 'mom', 'mom\'s', 'daily report', 'weekly report', 'monthly report'];
+          if (systemFolders.includes(fName)) {
             return false;
           }
 

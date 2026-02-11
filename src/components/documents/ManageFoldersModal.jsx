@@ -78,19 +78,77 @@ function ManageFoldersModal({ isOpen, onClose }) {
                 // Handle both old format (array of strings) and new format (array of objects)
                 const folderData = data.folders || data.folderNames || [];
                 const formattedFolders = folderData.map(f => {
+                    // System folders that cannot be modified
+                    const systemFolders = ['moms', 'daily report', 'weekly report', 'monthly report'];
+
                     if (typeof f === 'string') {
                         // Old format: convert to new format with default color
-                        // Mark MOMs as protected folder
-                        const isProtected = f.toLowerCase() === 'moms';
+                        // Mark system folders as protected
+                        const isProtected = systemFolders.includes(f.toLowerCase());
                         return { name: f, color: '#3B82F6', isSystem: isProtected };
                     }
-                    // New format: mark MOMs as protected
-                    const isProtected = f.name && f.name.toLowerCase() === 'moms';
+                    // New format: mark system folders as protected
+                    const isProtected = f.name && systemFolders.includes(f.name.toLowerCase());
                     return { ...f, isSystem: f.isSystem || isProtected };
                 });
+
+                // Sort: System folders first, then remaining folders
+                formattedFolders.sort((a, b) => {
+                    if (a.isSystem && !b.isSystem) return -1;
+                    if (!a.isSystem && b.isSystem) return 1;
+                    return a.name.localeCompare(b.name);
+                });
+
                 setFolders(formattedFolders);
+
+                // Auto-create missing system folders in DB if they don't exist
+                const existingNamesUpper = formattedFolders.map(f => f.name.toUpperCase());
+                const missingSystemFolders = systemFolders.filter(sys => !existingNamesUpper.includes(sys.toUpperCase()));
+
+                if (missingSystemFolders.length > 0) {
+                    const newSystemFolders = missingSystemFolders.map(name => {
+                        const capitalized = name.charAt(0).toUpperCase() + name.slice(1);
+                        // Ensure "Report" is capitalized if present (e.g. Daily Report)
+                        return { name: capitalized.replace(/\b\w/g, c => c.toUpperCase()) };
+                    });
+
+                    // We need to merge with the raw data to preserve other fields if any, 
+                    // but we know we only save {name} now. 
+                    // Let's take the current formattedFolders (which has name/color/isSystem) 
+                    // and just append new ones as {name} objects.
+                    // Actually, we should use the `folderData` (raw) to be safe, 
+                    // but `folderData` might be strings or objects.
+                    // Simplest is to construct the new list from formattedFolders + newSystemFolders
+                    // and strip to {name} for saving.
+
+                    const foldersToSave = [
+                        ...formattedFolders.map(f => ({ name: f.name })),
+                        ...newSystemFolders
+                    ].sort((a, b) => a.name.localeCompare(b.name));
+
+                    // Use a timeout or simple async call to avoid update loop within existing snapshot?
+                    // setDoc is async. It will trigger another snapshot. 
+                    // The next snapshot will have the folders, so `missingSystemFolders` will be empty.
+                    // This terminates the loop.
+                    setDoc(foldersDocRef, {
+                        folders: foldersToSave,
+                        updatedAt: new Date().toISOString()
+                    }).catch(err => console.error("Error creating system folders:", err));
+                }
+
             } else {
                 setFolders([]);
+                // If doc doesn't exist at all, create it with system folders
+                const initialFolders = [
+                    { name: "MOMs" },
+                    { name: "Daily Report" },
+                    { name: "Weekly Report" },
+                    { name: "Monthly Report" }
+                ];
+                setDoc(foldersDocRef, {
+                    folders: initialFolders,
+                    updatedAt: new Date().toISOString()
+                }).catch(err => console.error("Error creating initial folders doc:", err));
             }
         }, (error) => {
             console.error("Error fetching folders:", error);
@@ -110,11 +168,14 @@ function ManageFoldersModal({ isOpen, onClose }) {
 
         try {
             const foldersDocRef = doc(db, "documents", "folders");
-            const newFolder = { name: trimmedName, color: "#3B82F6" };
+            const newFolder = { name: trimmedName };
             const updatedFolders = [...folders, newFolder].sort((a, b) => a.name.localeCompare(b.name));
 
+            // Clean up folders to only save name
+            const foldersToSave = updatedFolders.map(({ name }) => ({ name }));
+
             await setDoc(foldersDocRef, {
-                folders: updatedFolders,
+                folders: foldersToSave,
                 updatedAt: new Date().toISOString()
             });
 
@@ -167,8 +228,11 @@ function ManageFoldersModal({ isOpen, onClose }) {
             const foldersDocRef = doc(db, "documents", "folders");
             const updatedFolders = folders.filter(f => f.name !== folderToDelete.name);
 
+            // Clean up folders to only save name
+            const foldersToSave = updatedFolders.map(({ name }) => ({ name }));
+
             await setDoc(foldersDocRef, {
-                folders: updatedFolders,
+                folders: foldersToSave,
                 updatedAt: new Date().toISOString()
             });
 
@@ -209,8 +273,11 @@ function ManageFoldersModal({ isOpen, onClose }) {
                     : f
             ).sort((a, b) => a.name.localeCompare(b.name));
 
+            // Clean up folders to only save name
+            const foldersToSave = updatedFolders.map(({ name }) => ({ name }));
+
             await setDoc(foldersDocRef, {
-                folders: updatedFolders,
+                folders: foldersToSave,
                 updatedAt: new Date().toISOString()
             });
 
