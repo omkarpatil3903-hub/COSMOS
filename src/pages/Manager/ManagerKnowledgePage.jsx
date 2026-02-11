@@ -99,9 +99,6 @@ export default function ManagerKnowledgePage() {
           documents: data.documents || [],
           access: data.access || { admin: [], member: [] },
           projectId: data.projectId || null,
-          documents: data.documents || [],
-          access: data.access || { admin: [], member: [] },
-          projectId: data.projectId || null,
           link: data.link || "",
           thumbnailUrl: data.thumbnailUrl || null,
         };
@@ -345,44 +342,9 @@ export default function ManagerKnowledgePage() {
         title="Knowledge"
         tone="muted"
         actions={
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-content-secondary">
-              Page {clampedPage} of {totalPages} ({total} items)
-            </span>
-            <label className="text-sm font-medium text-content-secondary">
-              Cards per page
-            </label>
-            <select
-              className="rounded-md border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#1F2234] px-2 py-1.5 text-sm [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              value={rowsPerPage}
-              onChange={(e) => {
-                setRowsPerPage(parseInt(e.target.value, 10));
-                setPage(1);
-              }}
-            >
-              {[6, 12, 18].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => setPage(Math.max(1, clampedPage - 1))}
-                disabled={page === 1}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => setPage(Math.min(totalPages, clampedPage + 1))}
-                disabled={page === totalPages}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+          <span className="text-sm font-medium text-content-secondary">
+            Total {total} Records
+          </span>
         }
       >
 
@@ -492,6 +454,50 @@ export default function ManagerKnowledgePage() {
             </div>
           )}
         </div>
+
+        {/* Bottom Pagination */}
+        {pageRows.length > 0 && (
+          <div className="flex items-center justify-between mt-6 pt-4 border-t border-subtle">
+            <span className="text-sm font-medium text-content-secondary">
+              Page {clampedPage} of {totalPages}
+            </span>
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-content-secondary">
+                Rows per page
+              </label>
+              <select
+                className="rounded-md border border-subtle [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#1F2234] px-2 py-1.5 text-sm [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(parseInt(e.target.value, 10));
+                  setPage(1);
+                }}
+              >
+                {[6, 12, 18].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => setPage(Math.max(1, clampedPage - 1))}
+                  disabled={page === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setPage(Math.min(totalPages, clampedPage + 1))}
+                  disabled={page === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
 
       {openModal && (

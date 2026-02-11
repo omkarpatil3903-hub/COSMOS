@@ -51,6 +51,7 @@ function GroupedDocumentsView({
     onEditFolder,
     onDeleteFolder,
     sortConfig, // { key: 'name', direction: 'asc' }
+    allFolders = [], // All available folders from Firestore
 }) {
     const { hoverAccentClass, hoverBorderClass } = useThemeStyles();
     const [previewDoc, setPreviewDoc] = useState(null);
@@ -117,7 +118,9 @@ function GroupedDocumentsView({
     }, [rows, query]);
 
     const folderNames = useMemo(() => {
-        const names = Object.keys(groupedDocs);
+        // Use allFolders if provided (includes empty folders), otherwise derive from groupedDocs
+        let names = allFolders.length > 0 ? allFolders : Object.keys(groupedDocs);
+
         if (!sortConfig) return names.sort();
 
         const { key, direction } = sortConfig;
@@ -151,7 +154,7 @@ function GroupedDocumentsView({
 
             return a.localeCompare(b) * multiplier;
         });
-    }, [groupedDocs, sortConfig]);
+    }, [groupedDocs, sortConfig, allFolders]);
 
     const handleDownload = async (doc) => {
         const href = doc?.url || doc?.fileDataUrl;
@@ -198,10 +201,17 @@ function GroupedDocumentsView({
 
     // Reset active folder if it becomes invalid (e.g. after deletion)
     useEffect(() => {
-        if (activeFolder && !groupedDocs[activeFolder]) {
-            setActiveFolder(null);
+        if (activeFolder) {
+            // If allFolders is provided, check against it; otherwise check groupedDocs
+            const folderExists = allFolders.length > 0
+                ? allFolders.includes(activeFolder)
+                : groupedDocs[activeFolder] !== undefined;
+
+            if (!folderExists) {
+                setActiveFolder(null);
+            }
         }
-    }, [activeFolder, groupedDocs, setActiveFolder]);
+    }, [activeFolder, groupedDocs, setActiveFolder, allFolders]);
 
     if (folderNames.length === 0) {
         return (
@@ -217,13 +227,13 @@ function GroupedDocumentsView({
                 {/* Back Button REMOVED - Controlled by parent page header */}
 
 
-                {!activeFolder || !groupedDocs[activeFolder] ? (
+                {!activeFolder ? (
                     // FOLDERS VIEW
                     viewMode === "grid" ? (
                         // FOLDER GRID
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-x-2 gap-y-4">
                             {folderNames.map((folderName) => {
-                                const count = groupedDocs[folderName].length;
+                                const count = (groupedDocs[folderName] || []).length;
                                 const folderColor = getFolderColor(folderName);
 
                                 return (
@@ -320,7 +330,7 @@ function GroupedDocumentsView({
                                 </thead>
                                 <tbody className="bg-white [.dark_&]:bg-[#181B2A] divide-y divide-gray-100 [.dark_&]:divide-white/5">
                                     {folderNames.map((folderName, index) => {
-                                        const docs = groupedDocs[folderName];
+                                        const docs = groupedDocs[folderName] || [];
                                         const count = docs.length;
 
                                         // Find most recent created date
@@ -477,6 +487,19 @@ function GroupedDocumentsView({
                                     </div>
                                 </div>
                             ))}
+
+                            {/* Empty folder state */}
+                            {(groupedDocs[activeFolder] || []).length === 0 && (
+                                <div className="col-span-full text-center py-16">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 [.dark_&]:bg-white/5 text-gray-400 mb-4">
+                                        <FaFileAlt className="text-3xl" />
+                                    </div>
+                                    <h3 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white">This folder is empty</h3>
+                                    <p className="text-gray-500 [.dark_&]:text-gray-400 mt-1 max-w-sm mx-auto">
+                                        Upload your first document to get started.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         // TABLE VIEW OF DOCUMENTS IN ACTIVE FOLDER
@@ -594,6 +617,19 @@ function GroupedDocumentsView({
                                     </div>
                                 </div>
                             ))}
+
+                            {/* Empty folder state */}
+                            {(groupedDocs[activeFolder] || []).length === 0 && (
+                                <div className="text-center py-16">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 [.dark_&]:bg-white/5 text-gray-400 mb-4">
+                                        <FaFileAlt className="text-3xl" />
+                                    </div>
+                                    <h3 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white">This folder is empty</h3>
+                                    <p className="text-gray-500 [.dark_&]:text-gray-400 mt-1 max-w-sm mx-auto">
+                                        Upload your first document to get started.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     )
                 )}

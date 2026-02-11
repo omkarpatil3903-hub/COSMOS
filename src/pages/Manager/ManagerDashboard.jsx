@@ -216,9 +216,12 @@ export default function ManagerDashboard() {
         const completedTasks = tasks.filter((t) =>
             ["done", "completed", "complete"].includes((t.status || "").toLowerCase())
         ).length;
-        const inProgressTasks = tasks.filter((t) =>
-            ["in progress", "in-progress"].includes((t.status || "").toLowerCase())
-        ).length;
+        const inProgressTasks = tasks.filter((t) => {
+            const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            const normalized = norm(t.status);
+            // Match "In Progress", "In-Progress", "InProgress", "in progress", etc.
+            return normalized === "inprogress" || normalized === "inreview";
+        }).length;
         const overdueTasks = tasks.filter((t) => {
             const status = (t.status || "").toLowerCase();
             if (["done", "completed", "complete"].includes(status)) return false;

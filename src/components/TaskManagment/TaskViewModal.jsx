@@ -625,11 +625,13 @@ const TaskViewModal = ({
           // Update user's individual status
           if (field === "status") {
             nextUserStatus.status = value;
-            if (value === "Done") {
+            // Normalize for comparison to handle "Done", "DONE", "done", etc.
+            const normalizedStatus = String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            if (normalizedStatus === "done" || normalizedStatus === "completed" || normalizedStatus === "complete") {
               nextUserStatus.completedAt = serverTimestamp();
               nextUserStatus.progressPercent = 100;
               nextUserStatus.completedBy = currentUser?.uid;
-            } else if (value === "In Progress") {
+            } else if (normalizedStatus === "inprogress" || normalizedStatus === "inreview") {
               nextUserStatus.progressPercent = nextUserStatus.progressPercent || 0;
               nextUserStatus.completedAt = null;
             } else {
@@ -638,15 +640,20 @@ const TaskViewModal = ({
             }
           } else if (field === "progressPercent") {
             nextUserStatus.progressPercent = value;
+            // Get the first status from the database options for each state
+            const doneStatus = statuses.find(s => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "") === "done") || "Done";
+            const inProgressStatus = statuses.find(s => ["inprogress", "inreview"].includes(String(s || "").toLowerCase().replace(/[^a-z0-9]/g, ""))) || "In Progress";
+            const todoStatus = statuses.find(s => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "") === "todo") || "To-Do";
+
             if (value === 100) {
-              nextUserStatus.status = "Done";
+              nextUserStatus.status = doneStatus;
               nextUserStatus.completedAt = serverTimestamp();
               nextUserStatus.completedBy = currentUser?.uid;
             } else if (value > 0 && value < 100) {
               // Fix: Revert status if progress is reduced
-              nextUserStatus.status = "In Progress";
+              nextUserStatus.status = inProgressStatus;
             } else {
-              nextUserStatus.status = "To-Do";
+              nextUserStatus.status = todoStatus;
             }
           }
 
@@ -660,21 +667,29 @@ const TaskViewModal = ({
           };
 
           if (currentAssignees.length > 0) {
+            const normalize = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
             const userStatValues = currentAssignees.map(uid => nextAssigneeStatus[uid] || {});
-            const allDone = userStatValues.every(s => s.status === "Done");
-            const anyInProgress = userStatValues.some(s =>
-              s.status === "In Progress" || s.status === "In Review" || s.status === "Done"
-            );
+
+            // Get the actual status values from the database options
+            const doneStatus = statuses.find(s => normalize(s) === "done") || "Done";
+            const inProgressStatus = statuses.find(s => ["inprogress", "inreview"].includes(normalize(s))) || "In Progress";
+            const todoStatus = statuses.find(s => normalize(s) === "todo") || "To-Do";
+
+            const allDone = userStatValues.every(s => normalize(s.status) === "done");
+            const anyInProgress = userStatValues.some(s => {
+              const norm = normalize(s.status);
+              return norm === "inprogress" || norm === "inreview" || norm === "done";
+            });
 
             if (allDone) {
-              updates.status = "Done";
+              updates.status = doneStatus;
               updates.completedAt = serverTimestamp();
               updates.progressPercent = 100;
             } else if (anyInProgress) {
-              updates.status = "In Progress";
+              updates.status = inProgressStatus;
               updates.completedAt = null;
             } else {
-              updates.status = "To-Do";
+              updates.status = todoStatus;
               updates.completedAt = null;
             }
           }
@@ -690,18 +705,20 @@ const TaskViewModal = ({
         // ADMIN OVERRIDE LOGIC:
         // If an Admin changes the status, force update ALL assignees to match.
         if (field === "status" && col === "tasks") {
+          const normalize = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          const normalizedStatus = normalize(value);
           const assigneeIds = task.assigneeIds || [];
           assigneeIds.forEach(uid => {
             const key = `assigneeStatus.${uid}`;
             updates[`${key}.status`] = value;
 
-            if (value === "Done") {
+            if (normalizedStatus === "done" || normalizedStatus === "completed" || normalizedStatus === "complete") {
               updates[`${key}.progressPercent`] = 100;
               updates[`${key}.completedAt`] = serverTimestamp();
               // We don't set completedBy here to avoid confusion, or set it to Admin? 
               // Let's leave completedBy empty or set to Admin ID to show who forced it.
               updates[`${key}.completedBy`] = currentUser?.uid;
-            } else if (value === "In Progress") {
+            } else if (normalizedStatus === "inprogress" || normalizedStatus === "inreview") {
               updates[`${key}.progressPercent`] = 0;
               updates[`${key}.completedAt`] = null;
             } else {
