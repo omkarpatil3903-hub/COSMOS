@@ -45,7 +45,9 @@
  * Last Modified: 2026-01-10
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { doc as firestoreDoc, getDoc } from "firebase/firestore";
+import { db } from "../../firebase";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import Button from "../Button";
 import {
@@ -82,6 +84,52 @@ function DocumentPreviewModal({
   const [iframeError, setIframeError] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  // Store resolved names: { uid: "Name" }
+  const [accessNames, setAccessNames] = useState({});
+
+  useEffect(() => {
+    if (!doc?.access) return;
+    const loadNames = async () => {
+      const uids = new Set([
+        ...(doc.access.admin || []),
+        ...(doc.access.member || [])
+      ]);
+      const mapping = {};
+
+      await Promise.all(Array.from(uids).map(async (uid) => {
+        // If looks like a UID (length > 20), fetch name
+        if (uid && uid.length > 20) {
+          try {
+            const snap = await getDoc(firestoreDoc(db, "users", uid));
+            if (snap.exists()) {
+              const d = snap.data();
+              mapping[uid] = d.name || d.fullName || d.displayName || "Unknown User";
+            } else {
+              mapping[uid] = "Unknown ID";
+            }
+          } catch (e) {
+            console.warn("Failed to fetch user name for uid:", uid);
+            mapping[uid] = uid;
+          }
+        } else {
+          // Assume it's already a name if short or not found
+          mapping[uid] = uid;
+        }
+      }));
+      setAccessNames(mapping);
+    };
+    loadNames();
+  }, [doc]);
+
+  const formatDDMMYYYY = (val) => {
+    if (!val) return "—";
+    const d = val && val.toDate ? val.toDate() : new Date(val);
+    if (isNaN(d.getTime())) return String(val);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   if (!doc) return null;
   const admin = doc.access?.admin || [];
@@ -458,7 +506,9 @@ function DocumentPreviewModal({
                       <FaCalendarAlt className="w-4 h-4 text-gray-400" />
                       <div className="flex-1">
                         <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">Uploaded On</p>
-                        <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">{doc.created}</p>
+                        <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
+                          {formatDDMMYYYY(doc.createdAt || doc.created)}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -479,7 +529,7 @@ function DocumentPreviewModal({
                       <div className="flex-1">
                         <p className="text-xs text-gray-500 [.dark_&]:text-gray-400">Last Updated</p>
                         <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
-                          {doc.updated}
+                          {formatDDMMYYYY(doc.updatedAt || doc.updated)}
                         </p>
                       </div>
                     </div>
@@ -532,9 +582,9 @@ function DocumentPreviewModal({
                               <span
                                 key={`a_${n}`}
                                 className="px-2.5 py-1 rounded-md bg-indigo-50 [.dark_&]:bg-indigo-900/20 border border-indigo-200 [.dark_&]:border-indigo-500/20 text-xs text-indigo-700 [.dark_&]:text-indigo-300 font-medium truncate max-w-[150px]"
-                                title={n}
+                                title={accessNames[n] || n}
                               >
-                                {n}
+                                {accessNames[n] || n}
                               </span>
                             ))}
                           </div>
@@ -557,9 +607,9 @@ function DocumentPreviewModal({
                               <span
                                 key={`m_${n}`}
                                 className="px-2.5 py-1 rounded-md bg-blue-50 [.dark_&]:bg-blue-900/20 border border-blue-200 [.dark_&]:border-blue-500/20 text-xs text-blue-700 [.dark_&]:text-blue-300 font-medium truncate max-w-[150px]"
-                                title={n}
+                                title={accessNames[n] || n}
                               >
-                                {n}
+                                {accessNames[n] || n}
                               </span>
                             ))}
                           </div>

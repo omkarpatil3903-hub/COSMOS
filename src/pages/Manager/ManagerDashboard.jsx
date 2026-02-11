@@ -1077,100 +1077,102 @@ export default function ManagerDashboard() {
                         )}
                     </div>
 
-                    <button
-                        onClick={() => setShowNotifications(!showNotifications)}
-                        className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-gray-200 dark:border-white/10 shadow-sm"
-                    >
-                        <FaBell className="h-5 w-5" />
-                        {notifications.length > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                                {notifications.length > 9 ? "9+" : notifications.length}
-                            </span>
-                        )}
-                    </button>
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowNotifications(!showNotifications)}
+                            className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-gray-200 dark:border-white/10 shadow-sm"
+                        >
+                            <FaBell className="h-5 w-5" />
+                            {notifications.length > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                    {notifications.length > 9 ? "9+" : notifications.length}
+                                </span>
+                            )}
+                        </button>
 
-                    {/* Notifications Dropdown */}
-                    {showNotifications && (
-                        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#1F2234] rounded-lg shadow-lg border border-gray-200 dark:border-white/20 z-50">
-                            <div className="p-4 border-b border-gray-200 dark:border-white/10">
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                                    Notifications
-                                </h3>
-                            </div>
-                            <div className="max-h-96 overflow-y-auto">
-                                {notifications.length === 0 ? (
-                                    <div className="p-4 text-center text-gray-500">
-                                        <FaBell className="h-8 w-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-                                        <p>No new notifications</p>
-                                    </div>
-                                ) : (
-                                    <div className="divide-y divide-gray-100 dark:divide-white/10">
-                                        {notifications.map((notification) => (
-                                            <div
-                                                key={notification.id}
-                                                className="p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer relative group"
-                                                onClick={() => handleNotificationClick(notification)}
-                                            >
-                                                <div className="flex items-start gap-3">
-                                                    <div className="flex-shrink-0">
-                                                        {notification.type === "task" && (
-                                                            <FaTasks className="h-4 w-4 text-blue-500 mt-1" />
-                                                        )}
-                                                        {notification.type === "overdue" && (
-                                                            <FaExclamationTriangle className="h-4 w-4 text-red-500 mt-1" />
-                                                        )}
-                                                        {notification.type === "reminder" && (
-                                                            <FaBell className="h-4 w-4 text-indigo-500 mt-1" />
-                                                        )}
-                                                        {notification.type === "project" && (
-                                                            <FaProjectDiagram className="h-4 w-4 text-purple-500 mt-1" />
-                                                        )}
-                                                    </div>
-                                                    <div className="flex-1 min-w-0 pr-8">
-                                                        <p className="text-sm font-medium text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                                                            {notification.title}
-                                                        </p>
-                                                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                                            {notification.message}
-                                                        </p>
-                                                    </div>
-                                                    <button
-                                                        onClick={(e) => removeNotification(notification.id, e)}
-                                                        className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100"
-                                                        title="Remove notification"
-                                                    >
-                                                        <svg
-                                                            className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-white"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            viewBox="0 0 24 24"
+                        {/* Notifications Dropdown */}
+                        {showNotifications && (
+                            <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-[#1F2234] rounded-lg shadow-lg border border-gray-200 dark:border-white/20 z-50">
+                                <div className="p-4 border-b border-gray-200 dark:border-white/10">
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                        Notifications
+                                    </h3>
+                                </div>
+                                <div className="max-h-96 overflow-y-auto">
+                                    {notifications.length === 0 ? (
+                                        <div className="p-4 text-center text-gray-500">
+                                            <FaBell className="h-8 w-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                                            <p>No new notifications</p>
+                                        </div>
+                                    ) : (
+                                        <div className="divide-y divide-gray-100 dark:divide-white/10">
+                                            {notifications.map((notification) => (
+                                                <div
+                                                    key={notification.id}
+                                                    className="p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer relative group"
+                                                    onClick={() => handleNotificationClick(notification)}
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="flex-shrink-0">
+                                                            {notification.type === "task" && (
+                                                                <FaTasks className="h-4 w-4 text-blue-500 mt-1" />
+                                                            )}
+                                                            {notification.type === "overdue" && (
+                                                                <FaExclamationTriangle className="h-4 w-4 text-red-500 mt-1" />
+                                                            )}
+                                                            {notification.type === "reminder" && (
+                                                                <FaBell className="h-4 w-4 text-indigo-500 mt-1" />
+                                                            )}
+                                                            {notification.type === "project" && (
+                                                                <FaProjectDiagram className="h-4 w-4 text-purple-500 mt-1" />
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0 pr-8">
+                                                            <p className="text-sm font-medium text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                                                {notification.title}
+                                                            </p>
+                                                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                                                {notification.message}
+                                                            </p>
+                                                        </div>
+                                                        <button
+                                                            onClick={(e) => removeNotification(notification.id, e)}
+                                                            className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100"
+                                                            title="Remove notification"
                                                         >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth={2}
-                                                                d="M6 18L18 6M6 6l12 12"
-                                                            />
-                                                        </svg>
-                                                    </button>
+                                                            <svg
+                                                                className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={2}
+                                                                    d="M6 18L18 6M6 6l12 12"
+                                                                />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                {notifications.length > 0 && (
+                                    <div className="p-3 border-t border-gray-200 dark:border-white/10">
+                                        <button
+                                            onClick={clearAllNotifications}
+                                            className="w-full text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium hover:bg-indigo-50 dark:hover:bg-indigo-900/30 py-2 px-3 rounded-md transition-colors"
+                                        >
+                                            Clear All Notifications
+                                        </button>
                                     </div>
                                 )}
                             </div>
-                            {notifications.length > 0 && (
-                                <div className="p-3 border-t border-gray-200 dark:border-white/10">
-                                    <button
-                                        onClick={clearAllNotifications}
-                                        className="w-full text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium hover:bg-indigo-50 dark:hover:bg-indigo-900/30 py-2 px-3 rounded-md transition-colors"
-                                    >
-                                        Clear All Notifications
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
 

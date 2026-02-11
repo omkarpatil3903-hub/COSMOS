@@ -3,8 +3,9 @@ import Card from "../../components/Card";
 import Button from "../../components/Button";
 import PageHeader from "../../components/PageHeader";
 import { useAuthContext } from "../../context/useAuthContext";
-import { db } from "../../firebase";
-import { collection, query, where, onSnapshot, documentId } from "firebase/firestore";
+import { db, storage } from "../../firebase";
+import { collection, query, where, onSnapshot, documentId, addDoc, serverTimestamp } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
   FaChartBar,
   FaDownload,
@@ -15,6 +16,10 @@ import {
   FaFileAlt,
   FaEnvelope,
   FaShareAlt,
+  FaEllipsisV,
+  FaPrint,
+  FaSave,
+  FaFilePdf,
 } from "react-icons/fa";
 import { FaWandMagicSparkles } from "react-icons/fa6";
 import VoiceInput from "../../components/Common/VoiceInput";
@@ -27,10 +32,11 @@ import { useThemeStyles } from "../../hooks/useThemeStyles";
 export default function EmployeeReports() {
   const { user, userData } = useAuthContext();
   const uid = user?.uid || userData?.uid;
-  const { gradientClass, barColor, buttonClass, iconColor, hoverAccentClass } = useThemeStyles();
+  const { gradientClass, barColor, buttonClass, iconColor, hoverAccentClass, ringClass, hoverBorderClass } = useThemeStyles();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showActionMenu, setShowActionMenu] = useState(false);
   const [reportType, setReportType] = useState("Daily"); // "Daily" or "Weekly"
   const [reportData, setReportData] = useState({
     employeeName: "",
@@ -132,6 +138,22 @@ export default function EmployeeReports() {
     return () => unsub();
   }, [uid]);
 
+  // Fetch all admins and superadmins for report access
+  const [admins, setAdmins] = useState([]);
+  useEffect(() => {
+    // We need to fetch users with role 'admin' OR 'superadmin'.
+    // Firestore 'in' query works for this.
+    const q = query(
+      collection(db, "users"),
+      where("role", "in", ["admin", "superadmin"])
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const adminIds = snap.docs.map((d) => d.id);
+      setAdmins(adminIds);
+    });
+    return () => unsub();
+  }, []);
+
   // Fetch projects based on task projectIds (for projects not covered by above queries)
   const projectUnsubsRef = useRef([]);
   useEffect(() => {
@@ -173,15 +195,12 @@ export default function EmployeeReports() {
   }, [tasks]);
 
   // Combine all project sources into a single unique list
+  // MODIFIED: Only show projects where the user is explicitly allocated (in assigneeIds)
   const projects = useMemo(() => {
-    const allProjectsMap = new Map();
-    [...projectsFromTasks, ...managerProjects, ...teamProjects].forEach(project => {
-      if (project?.id) {
-        allProjectsMap.set(project.id, project);
-      }
-    });
-    return Array.from(allProjectsMap.values());
-  }, [projectsFromTasks, managerProjects, teamProjects]);
+    // We strictly return teamProjects as per user request to show only "allocated" projects.
+    // If we wanted to include managed projects or task-based projects, we would merge them here.
+    return teamProjects;
+  }, [teamProjects]);
 
   // Calculate statistics
   const totalProjects = projects.length;
@@ -643,6 +662,92 @@ Generated on: ${formatDateToDDMMYYYY(
     }
   };
 
+  // Save report to Cloud (Firestore + Storage)
+  const handleCloudSave = async () => {
+    if (!reportData.projectName) {
+      toast.error("Please select a project to save the report.");
+      return;
+    }
+
+    const selectedProject = projects.find(p => p.projectName === reportData.projectName);
+    const projectId = selectedProject?.id;
+
+    if (!projectId) {
+      toast.error("Project ID not found. Please try again.");
+      return;
+    }
+
+    setSavingReport(true);
+    try {
+      // 1. Generate PDF Blob
+      const blob = await pdf(
+        <EmployeeReportPdfDocument
+          reportType={reportType}
+          data={reportData}
+          tasks={tasks}
+          tasksCompletedToday={tasksCompletedToday}
+        />
+      ).toBlob();
+
+      // 2. Determine Folder Name
+      let folderName = "General";
+      if (reportType === "Daily") folderName = "Daily Report";
+      else if (reportType === "Weekly") folderName = "Weekly Report";
+      else if (reportType === "Monthly") folderName = "Monthly Report";
+
+      // 3. Construct Filename and Storage Path
+      const timestamp = new Date().getTime();
+      const safeEmployeeName = (userData?.name || "Employee").replace(/[^a-zA-Z0-9]/g, "_");
+      const filename =
+        reportType === "Daily"
+          ? `Daily_Report_${reportData.reportDate.replace(/\//g, "-")}_${safeEmployeeName}.pdf`
+          : reportType === "Weekly"
+            ? `Weekly_Report_${reportData.weekNumber.replace(/\s/g, "_")}_${safeEmployeeName}.pdf`
+            : `Monthly_Report_${reportData.monthName.replace(/\s/g, "_")}_${safeEmployeeName}.pdf`;
+
+      // Storage Path: documents/{projectId}/{folderName}/{filename}
+      // Note: Using a consistent structure helps with organization
+      const storagePath = `documents/${projectId}/${folderName}/${filename}`;
+      const storageRef = ref(storage, storagePath);
+
+      // 4. Upload to Firebase Storage
+      await uploadBytes(storageRef, blob);
+      const downloadUrl = await getDownloadURL(storageRef);
+
+      // 5. Save Metadata to Firestore Project Sub-collection
+      // Path: documents/{projectId}/{folderName}
+      await addDoc(collection(db, "documents", projectId, folderName), {
+        name: filename,
+        folder: folderName,
+        projectId: projectId,
+        projectName: reportData.projectName, // Optional redundancy
+        storagePath: storagePath,
+        url: downloadUrl,
+        type: "application/pdf",
+        size: blob.size,
+        createdAt: serverTimestamp(),
+        createdBy: uid,
+        uploaderName: userData?.name || "Employee",
+        // Tag it as a report for easier filtering if needed later
+        isReport: true,
+        reportType: reportType,
+        access: {
+          admin: Array.from(new Set([...admins, selectedProject.projectManagerId].filter(Boolean))),
+          member: [uid]
+        }
+      });
+
+      toast.success("Report saved to project documents!");
+      // setShowReportModal(false); // User wants to stay on the page
+
+    } catch (error) {
+      console.error("Error saving report to cloud:", error);
+      toast.error("Failed to save report. Please try again.");
+    } finally {
+      setSavingReport(false);
+    }
+  };
+
   // CSV export removed as per requirement. PDF/text/email/share options retained.
 
   if (loading) {
@@ -962,14 +1067,14 @@ Generated on: ${formatDateToDDMMYYYY(
             <div className="flex items-start justify-between gap-3 mb-4 flex-shrink-0">
               <div className="flex flex-col gap-2">
                 <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <FaFileAlt className="h-5 w-5 text-indigo-600" />
+                  <FaWandMagicSparkles className={`h-5 w-5 ${iconColor}`} />
                   Generate Performance Report
                 </h3>
                 <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit">
                   <button
                     onClick={() => setReportType("Daily")}
                     className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${reportType === "Daily"
-                      ? "bg-white dark:bg-[#1e1e2d] text-indigo-600 dark:text-indigo-400 shadow-sm"
+                      ? `bg-white dark:bg-[#1e1e2d] ${iconColor} shadow-sm`
                       : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                       }`}
                   >
@@ -978,7 +1083,7 @@ Generated on: ${formatDateToDDMMYYYY(
                   <button
                     onClick={() => setReportType("Weekly")}
                     className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${reportType === "Weekly"
-                      ? "bg-white dark:bg-[#1e1e2d] text-indigo-600 dark:text-indigo-400 shadow-sm"
+                      ? `bg-white dark:bg-[#1e1e2d] ${iconColor} shadow-sm`
                       : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                       }`}
                   >
@@ -987,7 +1092,7 @@ Generated on: ${formatDateToDDMMYYYY(
                   <button
                     onClick={() => setReportType("Monthly")}
                     className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${reportType === "Monthly"
-                      ? "bg-white dark:bg-[#1e1e2d] text-indigo-600 dark:text-indigo-400 shadow-sm"
+                      ? `bg-white dark:bg-[#1e1e2d] ${iconColor} shadow-sm`
                       : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                       }`}
                   >
@@ -1033,7 +1138,7 @@ Generated on: ${formatDateToDDMMYYYY(
                             clientName: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm focus:ring-2 ${ringClass}`}
                       >
                         <option value="">Select Client</option>
                         {uniqueClients.map((client) => (
@@ -1055,7 +1160,7 @@ Generated on: ${formatDateToDDMMYYYY(
                             projectName: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm focus:ring-2 ${ringClass}`}
                       >
                         <option value="">Select Project</option>
                         {projects.map((project) => (
@@ -1081,7 +1186,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                 dailyHours: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
+                            className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${ringClass}`}
                             placeholder="e.g. 8.0 Hrs"
                           />
                         </div>
@@ -1097,7 +1202,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                 objective: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
+                            className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${ringClass}`}
                             placeholder="Main goal for today"
                           />
                         </div>
@@ -1118,7 +1223,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                   weekNumber: e.target.value,
                                 }))
                               }
-                              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
+                              className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${ringClass}`}
                               placeholder="e.g. Week 42"
                             />
                           </div>
@@ -1135,7 +1240,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                   weeklyHours: e.target.value,
                                 }))
                               }
-                              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
+                              className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${ringClass}`}
                               placeholder="e.g. 40.0 Hrs"
                             />
                           </div>
@@ -1154,7 +1259,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                   weekStartDate: e.target.value,
                                 }))
                               }
-                              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
+                              className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${ringClass}`}
                               placeholder="dd/mm/yyyy"
                             />
                           </div>
@@ -1171,7 +1276,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                   weekEndDate: e.target.value,
                                 }))
                               }
-                              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
+                              className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${ringClass}`}
                               placeholder="dd/mm/yyyy"
                             />
                           </div>
@@ -1192,7 +1297,7 @@ Generated on: ${formatDateToDDMMYYYY(
                               monthName: e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm"
+                          className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 ${ringClass}`}
                           placeholder="e.g. July 2025"
                         />
                       </div>
@@ -1212,7 +1317,7 @@ Generated on: ${formatDateToDDMMYYYY(
                               executiveSummary: e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-24"
+                          className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-24 focus:outline-none focus:ring-2 ${ringClass}`}
                           placeholder="Executive summary of the month..."
                         />
                       </div>
@@ -1236,7 +1341,7 @@ Generated on: ${formatDateToDDMMYYYY(
                               objective: e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-24"
+                          className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-24 focus:outline-none focus:ring-2 ${ringClass}`}
                           placeholder="Marketing | Launched Campaign | 20% Growth"
                         />
                         {/* // ...existing code... */}
@@ -1265,7 +1370,7 @@ Generated on: ${formatDateToDDMMYYYY(
                             obstacles: e.target.value,
                           }))
                         }
-                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
+                        className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20 focus:outline-none focus:ring-2 ${ringClass}`}
                         placeholder={
                           reportType === "Monthly"
                             ? "Risk | Cause | Impact | Plan"
@@ -1288,7 +1393,7 @@ Generated on: ${formatDateToDDMMYYYY(
                               nextActionPlan: e.target.value,
                             }))
                           }
-                          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
+                          className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20 focus:outline-none focus:ring-2 ${ringClass}`}
                           placeholder="What's next..."
                         />
                       </div>
@@ -1307,7 +1412,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                 keyAchievements: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
+                            className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20 focus:outline-none focus:ring-2 ${ringClass}`}
                             placeholder="List key achievements..."
                           />
                         </div>
@@ -1324,7 +1429,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                 urgentActions: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
+                            className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20 focus:outline-none focus:ring-2 ${ringClass}`}
                             placeholder="Urgent items..."
                           />
                         </div>
@@ -1345,7 +1450,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                 keyAchievements: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
+                            className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20 focus:outline-none focus:ring-2 ${ringClass}`}
                             placeholder="List highlights..."
                           />
                         </div>
@@ -1362,7 +1467,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                 learnings: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
+                            className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20 focus:outline-none focus:ring-2 ${ringClass}`}
                             placeholder="Key learnings..."
                           />
                         </div>
@@ -1382,7 +1487,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                 nextMonthObjectives: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
+                            className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20 focus:outline-none focus:ring-2 ${ringClass}`}
                             placeholder="Objective | Key Result"
                           />
                         </div>
@@ -1399,7 +1504,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                 consultantNote: e.target.value,
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20"
+                            className={`w-full rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white px-3 py-2 text-sm h-20 focus:outline-none focus:ring-2 ${ringClass}`}
                             placeholder="Notes..."
                           />
                         </div>
@@ -1413,12 +1518,13 @@ Generated on: ${formatDateToDDMMYYYY(
                   <Button
                     onClick={generateReportContent}
                     disabled={generatingReport}
-                    className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl shadow-sm transition-all ${buttonClass}`}
+                    variant="custom"
+                    className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl shadow-lg transition-all transform active:scale-[0.98] bg-gradient-to-r ${gradientClass} text-white hover:shadow-xl`}
                   >
                     {generatingReport ? (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      <FaFileAlt className="h-4 w-4" />
+                      <FaWandMagicSparkles className="h-4 w-4" />
                     )}
                     Generate Report
                   </Button>
@@ -1434,29 +1540,93 @@ Generated on: ${formatDateToDDMMYYYY(
                   </h3>
                   {reportData.reportContent && (
                     <div className="flex gap-3">
-                      <button
+                      <Button
                         onClick={generatePDF}
                         disabled={generatingReport}
-                        type="button"
-                        className={`flex items-center justify-center gap-2 disabled:bg-gray-400 px-6 py-2 rounded-full shadow-sm transition-all text-sm font-medium ${buttonClass}`}
+                        variant="custom"
+                        className={`flex items-center gap-2 whitespace-nowrap border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#1e1e2d] ${iconColor} shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 ${hoverBorderClass}`}
                       >
                         {generatingReport ? (
-                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <div className="w-3 h-3 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
                         ) : (
-                          <FaDownload className="h-4 w-4" />
+                          <FaDownload />
                         )}
-                        Download PDF
-                      </button>
+                        Download
+                      </Button>
 
-                      <button
-                        onClick={handleShare}
-                        disabled={generatingReport}
-                        type="button"
-                        className={`flex items-center justify-center gap-2 bg-white dark:bg-transparent border-2 border-current disabled:opacity-50 px-6 py-2 rounded-full shadow-sm transition-all text-sm font-medium ${iconColor} ${hoverAccentClass}`}
-                      >
-                        <FaShareAlt className="h-4 w-4" />
-                        Share
-                      </button>
+                      <div className="relative">
+                        <Button
+                          onClick={() => setShowActionMenu(!showActionMenu)}
+                          variant="custom"
+                          disabled={savingReport}
+                          className={`flex items-center gap-2 ${buttonClass}`}
+                        >
+                          {savingReport ? (
+                            <>
+                              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <FaEllipsisV /> Actions
+                            </>
+                          )}
+                        </Button>
+
+                        {showActionMenu && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-[100]"
+                              onClick={() => setShowActionMenu(false)}
+                            />
+                            <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 py-2 z-[101]">
+                              <button
+                                onClick={() => {
+                                  handleCloudSave();
+                                  setShowActionMenu(false);
+                                }}
+                                className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors"
+                              >
+                                <FaSave className={`${iconColor} flex-shrink-0`} />
+                                <span>Save Report</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  generatePDF();
+                                  setShowActionMenu(false);
+                                }}
+                                className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors"
+                              >
+                                <FaFilePdf className={`${iconColor} flex-shrink-0`} />
+                                <span>Export PDF</span>
+                              </button>
+
+                              <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+
+                              <button
+                                onClick={() => {
+                                  handleShare();
+                                  setShowActionMenu(false);
+                                }}
+                                className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors"
+                              >
+                                <FaShareAlt className={`${iconColor} flex-shrink-0`} />
+                                <span>Share</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  window.print();
+                                  setShowActionMenu(false);
+                                }}
+                                className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 text-gray-700 dark:text-gray-200 transition-colors"
+                              >
+                                <FaPrint className={`${iconColor} flex-shrink-0`} />
+                                <span>Print</span>
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

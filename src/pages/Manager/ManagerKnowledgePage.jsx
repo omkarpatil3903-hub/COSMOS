@@ -29,6 +29,7 @@ export default function ManagerKnowledgePage() {
   const [editing, setEditing] = useState(null);
   const [currentUserImage, setCurrentUserImage] = useState(null);
   const [currentUserName, setCurrentUserName] = useState("");
+  const [currentUserUid, setCurrentUserUid] = useState("");
 
   // Fetch current user's profile image and name from users collection
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function ManagerKnowledgePage() {
             const userData = userSnap.data();
             setCurrentUserImage(userData.imageUrl || userData.photoURL || null);
             setCurrentUserName(userData.name || userData.fullName || userData.displayName || currentUser.displayName || "Unknown User");
+            setCurrentUserUid(currentUser.uid);
           }
         } catch (err) {
           console.warn("Could not fetch user data:", err);
@@ -118,26 +120,26 @@ export default function ManagerKnowledgePage() {
     if (!currentUser) return [];
 
     const managedProjectIds = new Set(projects.map((p) => p.id));
+    const myUid = currentUserUid || currentUser.uid;
 
-    return knowledge.filter((k) => {
+    let result = knowledge.filter((k) => {
       // If knowledge is linked to a managed project
       if (k.projectId && managedProjectIds.has(k.projectId)) {
         return true;
       }
 
       // If knowledge was created by the manager
-      if (k.createdByUid === currentUser.uid) {
+      if (k.createdByUid === myUid) {
         return true;
       }
 
       // If manager has explicit access (in admin or member arrays)
-      const hasAdminAccess = (k.access?.admin || []).includes(currentUser.uid);
-      const hasMemberAccess = (k.access?.member || []).includes(currentUser.uid);
-      if (hasAdminAccess || hasMemberAccess) {
-        return true;
-      }
+      const access = k.access || {};
+      const admins = Array.isArray(access.admin) ? access.admin : [];
+      const members = Array.isArray(access.member) ? access.member : [];
 
-      if (hasAdminAccess || hasMemberAccess) {
+      const hasAccess = [...admins, ...members].includes(myUid);
+      if (hasAccess) {
         return true;
       }
 
@@ -148,7 +150,7 @@ export default function ManagerKnowledgePage() {
       return result.filter(k => k.projectId === selectedProject);
     }
     return result;
-  }, [knowledge, projects, selectedProject]);
+  }, [knowledge, projects, selectedProject, currentUserUid]);
 
   // Get project name for a knowledge item
   const getProjectName = (projectId) => {

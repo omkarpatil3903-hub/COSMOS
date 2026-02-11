@@ -39,6 +39,7 @@ export default function KnowledgeProjectDetail() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [roleType, setRoleType] = useState("");
   const [currentUserName, setCurrentUserName] = useState("");
+  const [currentUserUid, setCurrentUserUid] = useState("");
   const [currentUserImage, setCurrentUserImage] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -167,7 +168,12 @@ export default function KnowledgeProjectDetail() {
 
       const folderData = folderSnap.data();
       const folders = folderData.folders || folderData.folderNames || [];
-      const folderNames = folders.map(f => typeof f === 'string' ? f : f.name);
+      const fetchedFolderNames = folders.map(f => typeof f === 'string' ? f : f.name);
+
+      // Ensure system folders are included
+      const SYSTEM_FOLDERS = ['MOMs', 'Daily Report', 'Weekly Report', 'Monthly Report'];
+      const folderNamesSet = new Set([...fetchedFolderNames, ...SYSTEM_FOLDERS]);
+      const folderNames = Array.from(folderNamesSet);
 
       // Store all folder names to pass to GroupedDocumentsView
       setAllFolderNames(folderNames);
@@ -264,6 +270,7 @@ export default function KnowledgeProjectDetail() {
         setCurrentUserName(
           data.name || data.fullName || data.displayName || u.displayName || u.email || ""
         );
+        setCurrentUserUid(u.uid);
         setCurrentUserImage(data.imageUrl || data.photoURL || null);
       } catch {
         setIsAdmin(false);
@@ -289,22 +296,31 @@ export default function KnowledgeProjectDetail() {
   const visibleDocs = useMemo(() => {
     if (isSuperAdminRoute) return docs;
     const me = String(currentUserName || "").trim().toLowerCase();
-    if (!me) return [];
+    const myUid = currentUserUid;
+    // If no user loaded, return empty or wait
+    if (!myUid && !me) return [];
+
     return docs.filter((d) => {
       const access = d.access || {};
       const admins = Array.isArray(access.admin) ? access.admin : [];
       const members = Array.isArray(access.member) ? access.member : [];
-      const inList = [...admins, ...members].some(
-        (n) => String(n || "").trim().toLowerCase() === me
-      );
-      const createdBy = String(d.createdByName || "").trim().toLowerCase();
-      const updatedBy = String(d.updatedByName || "").trim().toLowerCase();
-      if (inList) return true;
-      if (createdBy && createdBy === me) return true;
-      if (updatedBy && updatedBy === me) return true;
+
+      // Check if UID is in the access lists
+      const hasAccess = [...admins, ...members].includes(myUid);
+
+      // Check creator/updater by name or UID (legacy support for Name, preference for UID)
+      const createdByName = String(d.createdByName || "").trim().toLowerCase();
+      const updatedByName = String(d.updatedByName || "").trim().toLowerCase();
+
+      if (hasAccess) return true;
+      if (d.createdByUid && d.createdByUid === myUid) return true;
+      if (createdByName && createdByName === me) return true;
+      if (d.updatedByUid && d.updatedByUid === myUid) return true;
+      if (updatedByName && updatedByName === me) return true;
+
       return false;
     });
-  }, [docs, isSuperAdminRoute, currentUserName]);
+  }, [docs, isSuperAdminRoute, currentUserName, currentUserUid]);
 
   const sortedDocs = useMemo(() => {
     const { key, direction } = docSort;
@@ -356,22 +372,29 @@ export default function KnowledgeProjectDetail() {
   const visibleKnowledge = useMemo(() => {
     if (isSuperAdminRoute) return knowledge;
     const me = String(currentUserName || "").trim().toLowerCase();
-    if (!me) return [];
+    const myUid = currentUserUid;
+    if (!myUid && !me) return [];
+
     return knowledge.filter((k) => {
       const access = k.access || {};
       const admins = Array.isArray(access.admin) ? access.admin : [];
       const members = Array.isArray(access.member) ? access.member : [];
-      const inList = [...admins, ...members].some(
-        (n) => String(n || "").trim().toLowerCase() === me
-      );
-      const createdBy = String(k.createdByName || "").trim().toLowerCase();
-      const updatedBy = String(k.updatedByName || "").trim().toLowerCase();
-      if (inList) return true;
-      if (createdBy && createdBy === me) return true;
-      if (updatedBy && updatedBy === me) return true;
+
+      // Check if UID is in the access lists
+      const hasAccess = [...admins, ...members].includes(myUid);
+
+      const createdByName = String(k.createdByName || "").trim().toLowerCase();
+      const updatedByName = String(k.updatedByName || "").trim().toLowerCase();
+
+      if (hasAccess) return true;
+      if (k.createdByUid && k.createdByUid === myUid) return true;
+      if (createdByName && createdByName === me) return true;
+      if (k.updatedByUid && k.updatedByUid === myUid) return true;
+      if (updatedByName && updatedByName === me) return true;
+
       return false;
     });
-  }, [knowledge, isSuperAdminRoute, currentUserName]);
+  }, [knowledge, isSuperAdminRoute, currentUserName, currentUserUid]);
 
   const knFilteredSorted = useMemo(() => {
     const q = knSearch.trim().toLowerCase();

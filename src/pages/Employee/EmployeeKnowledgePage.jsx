@@ -15,6 +15,7 @@ export default function EmployeeKnowledgePage() {
     const [page, setPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(6);
     const [currentUserName, setCurrentUserName] = useState("");
+    const [currentUserUid, setCurrentUserUid] = useState("");
 
     // Fetch current user's profile
     useEffect(() => {
@@ -27,6 +28,7 @@ export default function EmployeeKnowledgePage() {
                     if (userSnap.exists()) {
                         const userData = userSnap.data();
                         setCurrentUserName(userData.name || userData.fullName || userData.displayName || currentUser.displayName || "");
+                        setCurrentUserUid(currentUser.uid);
                     }
                 } catch (err) {
                     console.warn("Could not fetch user data:", err);
@@ -79,26 +81,25 @@ export default function EmployeeKnowledgePage() {
     const filteredSorted = useMemo(() => {
         // Filter by access
         const me = String(currentUserName || "").trim().toLowerCase();
+        const myUid = currentUserUid;
+
         let list = knowledge.filter((k) => {
-            // If no user loaded yet, maybe show nothing or wait? 
-            // Assuming public or shared logic. 
-            // If restriction applies:
+            // If no user loaded, return empty or wait
+            if (!myUid && !me) return [];
+
             const access = k.access || {};
             const admins = Array.isArray(access.admin) ? access.admin : [];
             const members = Array.isArray(access.member) ? access.member : [];
 
-            // Check ID match could be better but name match is consistent with other files
-            const inList = [...admins, ...members].some(
-                (n) => String(n || "").trim().toLowerCase() === me
-            );
+            // Check if UID is in the access lists
+            const hasAccess = [...admins, ...members].includes(myUid);
 
             const createdBy = String(k.createdByName || "").trim().toLowerCase();
             // If strict access control:
-            if (inList) return true;
+            if (hasAccess) return true;
+            if (k.createdByUid && k.createdByUid === myUid) return true;
             if (createdBy && createdBy === me) return true;
 
-            // Logic from AdminKnowledgeProjectDetail for visibility:
-            // If shared is true? Knowledge doesn't have 'shared' flag usually, relies on access list
             return false;
         });
 
