@@ -672,24 +672,29 @@ const TaskViewModal = ({
 
             // Get the actual status values from the database options
             const doneStatus = statuses.find(s => normalize(s) === "done") || "Done";
-            const inProgressStatus = statuses.find(s => ["inprogress", "inreview"].includes(normalize(s))) || "In Progress";
             const todoStatus = statuses.find(s => normalize(s) === "todo") || "To-Do";
 
             const allDone = userStatValues.every(s => normalize(s.status) === "done");
-            const anyInProgress = userStatValues.some(s => {
-              const norm = normalize(s.status);
-              return norm === "inprogress" || norm === "inreview" || norm === "done";
-            });
+            const allTodo = userStatValues.every(s => normalize(s.status) === "todo");
 
             if (allDone) {
+              // All assignees done → global status is Done
               updates.status = doneStatus;
               updates.completedAt = serverTimestamp();
               updates.progressPercent = 100;
-            } else if (anyInProgress) {
-              updates.status = inProgressStatus;
+            } else if (allTodo) {
+              // All assignees in To-Do → global status is To-Do
+              updates.status = todoStatus;
               updates.completedAt = null;
             } else {
-              updates.status = todoStatus;
+              // Mixed statuses or any custom status → pick the most advanced status
+              // Priority: use any non-"To-Do" status from assignees to reflect actual work state
+              const nonTodoStatus = userStatValues.find(s => normalize(s.status) !== "todo");
+              if (nonTodoStatus && nonTodoStatus.status) {
+                updates.status = nonTodoStatus.status;
+              } else {
+                updates.status = todoStatus;
+              }
               updates.completedAt = null;
             }
           }

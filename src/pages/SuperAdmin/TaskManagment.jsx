@@ -456,13 +456,19 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
               if (data.assigneeStatus && Object.keys(data.assigneeStatus).length > 0) {
                 const values = Object.values(data.assigneeStatus);
                 if (values.length > 0) {
-                  const allDone = values.every((v) => v.status === "Done");
-                  const anyInProgress = values.some((v) => v.status === "In Progress" || v.status === "In Review");
-                  const anyDone = values.some((v) => v.status === "Done");
+                  const normalize = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                  const allDone = values.every((v) => normalize(v.status) === "done");
+                  const allTodo = values.every((v) => normalize(v.status) === "todo");
 
-                  if (allDone) s = "Done";
-                  else if (anyInProgress || anyDone) s = "In Progress";
-                  else s = "To-Do";
+                  if (allDone) {
+                    s = "Done";
+                  } else if (allTodo) {
+                    s = "To-Do";
+                  } else {
+                    // Mixed statuses or custom status - use the first non-"To-Do" status
+                    const nonTodo = values.find((v) => normalize(v.status) !== "todo");
+                    s = nonTodo && nonTodo.status ? nonTodo.status : "To-Do";
+                  }
                 }
               }
               return s;

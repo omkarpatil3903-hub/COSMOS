@@ -87,6 +87,15 @@ function PanelSwitcher({ isCollapsed = false, setIsCollapsed }) {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [isOpen, setIsCollapsed]);
 
+    // Check for auto-collapse flag on mount (persisted across layout unmounts)
+    useEffect(() => {
+        const shouldAutoCollapse = localStorage.getItem("cosmos_auto_collapse_sidebar");
+        if (shouldAutoCollapse === "true" && setIsCollapsed) {
+            setIsCollapsed(true);
+            localStorage.removeItem("cosmos_auto_collapse_sidebar");
+        }
+    }, [setIsCollapsed]);
+
     // Only show if user can access more than one panel
     if (!accessiblePanels || accessiblePanels.length <= 1) {
         return null;
@@ -187,14 +196,7 @@ function PanelSwitcher({ isCollapsed = false, setIsCollapsed }) {
     const accentColors = getAccentColors();
     const isDark = mode === "dark";
 
-    // Check for auto-collapse flag on mount (persisted across layout unmounts)
-    useEffect(() => {
-        const shouldAutoCollapse = localStorage.getItem("cosmos_auto_collapse_sidebar");
-        if (shouldAutoCollapse === "true" && setIsCollapsed) {
-            setIsCollapsed(true);
-            localStorage.removeItem("cosmos_auto_collapse_sidebar");
-        }
-    }, [setIsCollapsed]);
+
 
     const handleTriggerClick = () => {
         if (!isOpen) { // Opening

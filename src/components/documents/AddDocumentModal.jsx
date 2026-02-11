@@ -480,6 +480,19 @@ function AddDocumentModal({ isOpen, onClose, onSubmit, initialDoc = null, projec
                       <span className="text-xs text-content-tertiary">Selected: {file.name}</span>
                     )}
                     {errors.file && <span className="text-xs text-red-600">{errors.file}</span>}
+
+                    {/* Supported File Types Info */}
+                    <div className="mt-2 text-xs text-gray-500 [.dark_&]:text-gray-400 bg-blue-50 [.dark_&]:bg-blue-900/10 border border-blue-200 [.dark_&]:border-blue-800/30 rounded-lg p-2.5">
+                      <div className="flex items-start gap-2">
+                        <svg className="h-4 w-4 text-blue-600 [.dark_&]:text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                        <div>
+                          <p className="font-medium text-blue-700 [.dark_&]:text-blue-300 mb-0.5">Supported file types:</p>
+                          <p className="text-blue-600 [.dark_&]:text-blue-400">All document formats (PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, Images, etc.)</p>
+                        </div>
+                      </div>
+                    </div>
                   </label>
                 </div>
               </div>
