@@ -672,6 +672,7 @@ export default function KnowledgeProjectDetail() {
         if (downloadURL) payload.url = downloadURL;
         if (storagePath) payload.storagePath = storagePath;
         await updateDoc(refDoc, payload);
+        toast.success('Document updated successfully');
         setEditingDoc(null);
         setOpenAddDoc(false);
       } else {
@@ -703,6 +704,7 @@ export default function KnowledgeProjectDetail() {
         const folderCollectionRef = collection(db, "documents", resolvedProjectId, form.folder);
         const docRef = await addDoc(folderCollectionRef, newDocPayload);
 
+        toast.success('Document created successfully');
         setOpenAddDoc(false);
       }
     } catch (e) {
