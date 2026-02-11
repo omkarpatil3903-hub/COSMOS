@@ -62,6 +62,7 @@ export default function KnowledgeProjectDetail() {
   const [folderToEdit, setFolderToEdit] = useState(null);
   const [newFolderName, setNewFolderName] = useState("");
   const [folderToDelete, setFolderToDelete] = useState(null);
+  const [allFolderNames, setAllFolderNames] = useState([]); // All folders from Firestore
   const dropdownButtonRef = React.useRef(null);
 
   useEffect(() => {
@@ -153,22 +154,22 @@ export default function KnowledgeProjectDetail() {
       const folders = folderData.folders || folderData.folderNames || [];
       const folderNames = folders.map(f => typeof f === 'string' ? f : f.name);
 
+      // Store all folder names to pass to GroupedDocumentsView
+      setAllFolderNames(folderNames);
+
       if (folderNames.length === 0) {
         setDocs([]);
         return;
       }
 
-      // Query each folder subcollection and combine results
+      // Use a Map to track documents per folder for better updates
+      const docsMap = new Map();
       const unsubscribers = [];
-      const allDocs = [];
 
       folderNames.forEach((folderName) => {
         const folderCollectionRef = collection(db, "documents", resolvedProjectId, folderName);
         const unsub = onSnapshot(folderCollectionRef, (snap) => {
-          // Remove old docs from this folder
-          const filtered = allDocs.filter(d => d.folder !== folderName);
-
-          // Add new docs from this folder
+          // Update the map with new documents from this folder
           const newDocs = snap.docs.map((d) => {
             const data = d.data() || {};
             const ts = data.updatedAt || data.createdAt;
@@ -206,10 +207,15 @@ export default function KnowledgeProjectDetail() {
             };
           });
 
-          // Combine and update state
-          allDocs.length = 0;
-          allDocs.push(...filtered, ...newDocs);
-          setDocs([...allDocs]);
+          // Update the map for this folder
+          docsMap.set(folderName, newDocs);
+
+          // Flatten all documents from all folders and update state
+          const allDocs = [];
+          docsMap.forEach((docs) => {
+            allDocs.push(...docs);
+          });
+          setDocs(allDocs);
         });
 
         unsubscribers.push(unsub);
@@ -1110,6 +1116,7 @@ export default function KnowledgeProjectDetail() {
                   viewMode={viewMode}
                   onEditFolder={handleEditFolder}
                   onDeleteFolder={canDeleteDocs ? handleDeleteFolder : undefined}
+                  allFolders={allFolderNames}
                 />
               );
             })()}

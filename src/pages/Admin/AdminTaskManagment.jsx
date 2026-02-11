@@ -1674,27 +1674,38 @@ function TasksManagement() {
   );
 
   const inProgressTasks = useMemo(
-    () =>
-      filtered.filter((t) =>
-        (t.status || "").toString().trim().toLowerCase() === "in progress"
-      ),
+    () => {
+      const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      return filtered.filter((t) => {
+        const normalized = norm(t.status);
+        // Match "In Progress", "In-Progress", "InProgress", "in progress", etc.
+        return normalized === "inprogress" || normalized === "inreview";
+      });
+    },
     [filtered]
   );
 
   const todoTasks = useMemo(
-    () =>
-      filtered.filter((t) => {
-        const s = (t.status || "").toString().trim().toLowerCase();
-        return !s || s === "to-do";
-      }),
+    () => {
+      const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      return filtered.filter((t) => {
+        const normalized = norm(t.status);
+        // Match "To-Do", "ToDo", "TODO", "to do", or empty
+        return !normalized || normalized === "todo";
+      });
+    },
     [filtered]
   );
 
   const doneTasks = useMemo(
-    () =>
-      filtered.filter(
-        (t) => (t.status || "").toString().trim().toLowerCase() === "done"
-      ),
+    () => {
+      const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      return filtered.filter((t) => {
+        const normalized = norm(t.status);
+        // Match "Done", "Completed", "Complete", etc.
+        return normalized === "done" || normalized === "completed" || normalized === "complete";
+      });
+    },
     [filtered]
   );
 
@@ -1755,6 +1766,7 @@ function TasksManagement() {
     effectiveStatuses.forEach((s, idx) => {
       const sNorm = normalize(s);
       const tasksForStatus = filtered.filter((t) => normalize(t.status) === sNorm);
+
       const hex = statusColorMap[sNorm];
       map[s] = {
         title: s,
