@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COSMOS ERP - Release Notes 1.05</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 40px;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        @media print {
+            body {
+                max-width: 100%;
+                padding: 0;
+                margin: 20mm;
+            }
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 24pt;
+            margin-bottom: 5px;
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 15px;
+        }
+
+        .header {
+            margin-bottom: 30px;
+            font-size: 11pt;
+            font-weight: bold;
+        }
+
+        .header div {
+            margin-bottom: 3px;
+        }
+
+        h2 {
+            font-size: 14pt;
+            margin-top: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        p,
+        li {
+            font-size: 11pt;
+            line-height: 1.5;
+        }
+
+        ul {
+            margin-top: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 10px;
+            text-align: left;
+            font-size: 10pt;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        strong {
+            font-weight: 700;
+        }
+
+        .footer {
+            margin-top: 50px;
+            border-top: 1px solid #ccc;
+            padding-top: 10px;
+            text-align: center;
+            font-size: 9pt;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>COSMOS ERP</h1>
+
+    <div class="header">
+        <div>Project Name: COSMOS ERP</div>
+        <div>Document Type: Version Control & Release Notes</div>
+        <div>Application Type: Web Application</div>
+        <div>Environment: Production</div>
+        <div>Version: 1.05</div>
+        <div>Release Date: February 11, 2026</div>
+        <div>Release Type: Minor Release / Security Patch</div>
+    </div>
+
+    <h2>1. Purpose of Document</h2>
+    <p>This document records all functional changes, enhancements, and bug fixes implemented in the COSMOS ERP web
+        application. It serves as an official reference for development history, deployment tracking, client
+        communication, and audit purposes.</p>
+
+    <h2>2. Version History</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 15%">Version</th>
+                <th style="width: 15%">Release Type</th>
+                <th style="width: 55%">Summary</th>
+                <th style="width: 15%">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>1.04</td>
+                <td>Bug Fix + Enhancement</td>
+                <td>UI consistency, validations, and usability fixes</td>
+                <td>Released</td>
+            </tr>
+            <tr>
+                <td><strong>1.05</strong></td>
+                <td><strong>Enhancement + Patch</strong></td>
+                <td><strong>Report Visibility, Cloud Saving & Access Control</strong></td>
+                <td><strong>Released</strong></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>3. Executive Summary</h2>
+    <p>This release (1.05) delivers critical improvements to the <strong>Report Generation and Management</strong>
+        modules for both Employees and Managers. The primary updates focus on transitioning from local text-based report
+        saving to a robust, cloud-based PDF storage system with precise access control. Additionally, significant
+        enhancements to <strong>Document Preview</strong> and <strong>Folder Management</strong> ensure better data
+        visibility and security. The update also resolves a bug raised during testing phase.</p>
+
+    <h2>4. Scope of Changes / Functional Enhancements</h2>
+    <p>The following panels and modules were covered in this release:</p>
+    <ul>
+        <li><strong>Employee Panel</strong>: Reporting Module, Document Preview</li>
+        <li><strong>Manager Panel</strong>: Knowledge Management, Report Oversight</li>
+    </ul>
+
+    <h2>5. Detailed Change Log</h2>
+    <p>Significant functional enhancements were introduced to improve report workflow and system integrity:</p>
+    <ul>
+        <li><strong>Cloud-Based Report Saving</strong>: The "Generate Performance Report" feature in employee panel now
+            saves reports
+            directly to the cloud as PDF files instead of local text downloads. This ensures reports
+            are centralized and accessible across devices.</li>
+        <li><strong>Report Access Control Logic</strong>: Fixed a critical bug where system logic was comparing User
+            Names against User IDs, causing invisible reports. The system now strictly uses <strong>User IDs
+                (UIDs)</strong> for all permission checks, ensuring reliable access for Managers and Admins.</li>
+        <li><strong>System Folder Protection</strong>: Implemented protection for critical system folders ("MOMs",
+            "Daily Report", "Weekly Report", "Monthly Report"). These folders:
+            <ul>
+                <li>Are automatically created if missing.</li>
+                <li>Cannot be renamed or deleted by users.</li>
+                <li>Appear at the top of folder lists for easy access.</li>
+                <li>Do not allow manual file uploads (system-generated content only).</li>
+            </ul>
+        </li>
+        <li><strong>Document Preview Enhancement</strong>: The document preview modal now resolves and displays
+            <strong>User Names</strong> (e.g., "John Doe") in the Access Control list instead of raw User IDs.
+        </li>
+        <li><strong>Strict Date Formatting</strong>: Implemented a mandatory <strong>DD/MM/YYYY</strong> date format
+            across the Document Preview modal to ensure consistency for all users regardless of locale settings.</li>
+        <li><strong>Project Allocation Filtering</strong>: The Project Dropdown in the Report Generator now strictly
+            filters to show only <strong>Allocated Projects</strong>, removing confusion from projects where the user is
+            merely an observer or manager but not a contributor.</li>
+    </ul>
+
+    <h2>6. UI/UX Improvements</h2>
+    <p>User interface refinements were made to align with the premium design language:</p>
+    <ul>
+        <li><strong>Dynamic Theming in Reports</strong>: The Report Generator modal nowz dynamically adapts to the user's
+            selected theme (e.g., Orange, Blue), applying consistent gradients and colors to all buttons, toggles, and
+            icons.</li>
+        <li><strong>Action Button Standardization</strong>: Updated the "Actions" dropdown in the Employee Reports page
+            to match the "Generate MOM" options, providing a unified experience.</li>
+        <li><strong>Iconography</strong>: Replaced generic file icons with context-specific "Magic/Generate" icons in
+            the Report modal header.</li>
+        <li><strong>Loading States</strong>: Added visual feedback (spinners) to the "Save Report" action to indicate
+            ongoing cloud operations.</li>
+        <li><strong>Required Indicator</strong>: Added required indicator to all the forms if they are required. </li>
+    </ul>
+
+    <div class="footer">
+        • COSMOS - Enterprise Resouce Planning •
+    </div>
+
+</body>
+
+</html>

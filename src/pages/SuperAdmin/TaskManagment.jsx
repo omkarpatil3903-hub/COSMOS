@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { useLocation } from "react-router-dom";
+import { useSearchParams, useLocation } from "react-router-dom";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import toast from "react-hot-toast";
 import PageHeader from "../../components/PageHeader";
@@ -84,7 +84,9 @@ const tsToISO = (v) => {
 function TasksManagement({ onlyMyManagedProjects = false }) {
   const { user } = useAuthContext();
   const { buttonClass, iconColor, barColor, gradientClass } = useThemeStyles();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tasks, setTasks] = useState([]);
+  const [statsTasks, setStatsTasks] = useState([]); // New state for stats to ignore pagination/date limit
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
@@ -131,8 +133,10 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
     search: "",
     showArchived: false,
     onlyOverdue: false,
+    date: "",
   });
 
+  // Helper to update a single filter
   // Helper to update a single filter
   const updateFilter = (key, value) => {
     setFilters((prev) => {
@@ -141,9 +145,35 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
       if (key === "project" || key === "assigneeType") {
         next.assignee = "";
       }
+      // If we are changing any filter other than date, clear the date filter
+      if (key !== "date") {
+        next.date = "";
+      }
       return next;
     });
+
+    // Also clear date from URL if we are changing something else
+    if (key !== "date") {
+      setSearchParams((prev) => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete("date");
+        return newParams;
+      });
+    }
   };
+
+  // Auto-apply filters from navigation state (e.g. from dashboard red flag click)
+  const location = useLocation();
+  useEffect(() => {
+    const state = location.state;
+    if (state?.date || state?.priority) {
+      setFilters((prev) => ({
+        ...prev,
+        date: state.date || prev.date,
+        priority: state.priority || prev.priority,
+      }));
+    }
+  }, [location.state]);
 
 
 
@@ -325,11 +355,13 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
         search: "",
         showArchived: false,
         onlyOverdue: false,
+        date: "",
       });
+      setSearchParams({});
       setView("list");
       setTimeout(scrollToTasksList, 0);
     },
-    [scrollToTasksList]
+    [scrollToTasksList, setSearchParams]
   );
 
   const applyOverdueQuickFilter = useCallback(() => {
@@ -343,23 +375,28 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
       search: "",
       showArchived: false,
       onlyOverdue: true,
+      date: "",
     }));
+    setSearchParams({});
     setView("list");
     setTimeout(scrollToTasksList, 0);
-  }, [scrollToTasksList]);
+  }, [scrollToTasksList, setSearchParams]);
 
   // Check for overrides via URL query params (e.g. ?filter=overdue)
-  // This is used by the Manager Dashboard "Overdue" card.
-  const location = useLocation();
+
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const filterType = params.get("filter");
+    const filterType = searchParams.get("filter");
 
     if (filterType === "overdue") {
       applyOverdueQuickFilter();
     }
-  }, [location.search, applyOverdueQuickFilter]);
+
+    const dateParam = searchParams.get("date");
+    if (dateParam) {
+      setFilters(prev => ({ ...prev, date: dateParam }));
+    }
+  }, [searchParams, applyOverdueQuickFilter]);
 
   const clearFilters = () => {
     setFilters({
@@ -371,7 +408,9 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
       search: "",
       showArchived: false,
       onlyOverdue: false,
+      date: "",
     });
+    setSearchParams({});
   };
 
   const wipLimits = useMemo(() => ({}), []);
@@ -422,6 +461,10 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
       if (id) {
         constraints.unshift(where("assigneeIds", "array-contains", id));
       }
+    }
+
+    if (filters.date) {
+      constraints.unshift(where("dueDate", "==", filters.date));
     }
 
     const unsubTasks = onSnapshot(
@@ -538,13 +581,65 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
       setClients(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
     });
 
+
+    const unsubStatsTasks = onSnapshot(
+      query(collection(db, "tasks"), orderBy("createdAt", "desc")),
+      (snap) => {
+        const list = snap.docs.map((d) => {
+          const data = d.data() || {};
+          return {
+            id: d.id,
+            title: data.title || "",
+            description: data.description || "",
+            assigneeId: data.assigneeId || "",
+            assigneeType: data.assigneeType || "user",
+            assignees: data.assignees || [],
+            assigneeIds: data.assigneeIds || [],
+            projectId: data.projectId || "",
+            assignedDate: data.assignedDate?.toDate
+              ? data.assignedDate.toDate().toISOString().slice(0, 10)
+              : data.assignedDate || "",
+            dueDate: data.dueDate?.toDate
+              ? data.dueDate.toDate().toISOString().slice(0, 10)
+              : data.dueDate || "",
+            priority: data.priority || "Medium",
+            status: (() => {
+              const raw = (data.status === "In Review" ? "In Progress" : data.status) || (effectiveStatuses[0] || "To-Do");
+              if (Array.isArray(statusOptions) && statusOptions.length) return raw;
+              let s = raw;
+              if (data.assigneeStatus && Object.keys(data.assigneeStatus).length > 0) {
+                const values = Object.values(data.assigneeStatus);
+                if (values.length > 0) {
+                  const normalize = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                  const allDone = values.every((v) => normalize(v.status) === "done");
+                  const allTodo = values.every((v) => normalize(v.status) === "todo");
+                  if (allDone) s = "Done";
+                  else if (allTodo) s = "To-Do";
+                  else {
+                    const nonTodo = values.find((v) => normalize(v.status) !== "todo");
+                    s = nonTodo && nonTodo.status ? nonTodo.status : "To-Do";
+                  }
+                }
+              }
+              return s;
+            })(),
+            createdAt: tsToISO(data.createdAt) || new Date().toISOString(),
+            archived: !!data.archived,
+            visibleFrom: data.visibleFrom, // Needed for filtering
+          };
+        });
+        setStatsTasks(list);
+      }
+    );
+
     return () => {
       unsubTasks();
+      unsubStatsTasks(); // Unsubscribe from stats query
       unsubProjects();
       unsubUsers();
       unsubClients();
     };
-  }, [taskLimit, filters.project, filters.assignee, statusOptions]);
+  }, [taskLimit, filters.project, filters.assignee, statusOptions, filters.date]);
 
   // Ref to track if we've already checked deadlines in this session to prevent spam
   const hasCheckedDeadlines = useRef(false);
@@ -1422,7 +1517,7 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
         .map(p => p.id);
     }
 
-    return tasks.filter((t) => {
+    return statsTasks.filter((t) => {
       const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
       // 0. Manager Project Filter
@@ -1467,7 +1562,7 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
 
       return true;
     });
-  }, [tasks, filters, projectMap, userMap, clientMap, onlyMyManagedProjects, projects]);
+  }, [statsTasks, filters, projectMap, userMap, clientMap, onlyMyManagedProjects, projects]);
 
   const counts = useMemo(() => {
     const c = { "To-Do": 0, "In Progress": 0, Done: 0 };
@@ -1493,10 +1588,10 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
   }, [filteredForCounts]);
 
   const progressPct = useMemo(() => {
-    if (filtered.length === 0) return 0;
-    const done = filtered.filter((t) => t.status === "Done").length;
-    return Math.round((done / filtered.length) * 100);
-  }, [filtered]);
+    if (filteredForCounts.length === 0) return 0;
+    const done = counts.Done; // Reuse the count we already calculated
+    return Math.round((done / filteredForCounts.length) * 100);
+  }, [filteredForCounts, counts]);
 
   // removed unused overdueTasks to satisfy lint
 
@@ -1515,7 +1610,7 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
         .map(p => p.id);
     }
 
-    return tasks.filter(
+    return statsTasks.filter(
       (t) => {
         // Manager Project Filter - only count tasks from managed projects
         if (managedProjectIds && !managedProjectIds.includes(t.projectId)) return false;
@@ -1523,7 +1618,7 @@ function TasksManagement({ onlyMyManagedProjects = false }) {
         return !t.archived && t.dueDate && t.dueDate < today && norm(t.status) !== "done";
       }
     );
-  }, [tasks, onlyMyManagedProjects, projects]);
+  }, [statsTasks, onlyMyManagedProjects, projects]);
 
   // Active users list for assignment/reassignment UIs
   const activeUsers = useMemo(() => users.filter(isUserActive), [users]);

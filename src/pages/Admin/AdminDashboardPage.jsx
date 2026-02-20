@@ -10,6 +10,9 @@ import {
   FaStickyNote,
   FaThumbtack,
   FaPlus,
+  FaFlag,
+  FaChevronUp,
+  FaChevronDown,
 } from "react-icons/fa";
 import { LuNotebookPen, LuAlarmClock } from "react-icons/lu";
 import { db } from "../../firebase";
@@ -21,10 +24,12 @@ import StatCard from "../../components/StatCard";
 import DashboardSkeleton from "../../components/DashboardSkeleton";
 import toast from "react-hot-toast";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
+import { useTheme } from "../../context/ThemeContext";
 function DashboardPage() {
   const navigate = useNavigate();
   const { user, userData } = useAuthContext(); // Get user data for personalization
-  const { iconColor, buttonClass, barColor } = useThemeStyles(); // Get theme icon color and button class
+  const { iconColor, buttonClass, barColor } = useThemeStyles();
+  const { mode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -44,19 +49,12 @@ function DashboardPage() {
   const [remDate, setRemDate] = useState("");
   const [remTime, setRemTime] = useState("");
   const [remDesc, setRemDesc] = useState("");
+  const [showTopNotes, setShowTopNotes] = useState(true);
   const [savingReminder, setSavingReminder] = useState(false);
   const [editingReminderId, setEditingReminderId] = useState(null);
   const quickMenusRef = useRef(null);
 
-  const isTaskExpired = (task) => {
-    const created = task.createdAt;
-    if (!created) return false;
-    const createdDate = created?.toDate ? created.toDate() : new Date(created);
-    const now = new Date();
-    const diffMs = now - createdDate;
-    const twelveHoursMs = 12 * 60 * 60 * 1000;
-    return diffMs >= twelveHoursMs;
-  };
+
 
   // Realtime subscriptions
   useEffect(() => {
@@ -72,10 +70,10 @@ function DashboardPage() {
           status: data.status || "To-Do",
           createdAt: data.createdAt,
           dueDate: data.dueDate || null,
+          priority: data.priority || "",
         };
       });
-      const active = items.filter((t) => !isTaskExpired(t));
-      setTasks(active);
+      setTasks(items);
     });
     const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
       setUsers(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
@@ -755,7 +753,7 @@ function DashboardPage() {
   };
 
   // Calendar component for project events
-  const Calendar = ({ data, title }) => {
+  const Calendar = ({ data, title, tasks = [] }) => {
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth();
     const currentYear = currentDate.getFullYear();
@@ -798,6 +796,29 @@ function DashboardPage() {
       calendarDays.push(day);
     }
 
+    // Get tasks for a specific date
+    const getTasksForDate = (day) => {
+      if (!day) return [];
+      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+      return tasks.filter((task) => {
+        if (!task.dueDate) return false;
+        // Don't count completed tasks
+        if (normalizeStatus(task.status) === "Done") return false;
+
+        let d;
+        if (typeof task.dueDate.toDate === 'function') {
+          d = task.dueDate.toDate();
+        } else {
+          d = new Date(task.dueDate);
+        }
+        if (isNaN(d.getTime())) return false;
+
+        const taskDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        return taskDateStr === dateStr;
+      });
+    };
+
     // Get events for a specific date
     const getEventsForDate = (day) => {
       if (!day) return [];
@@ -822,7 +843,7 @@ function DashboardPage() {
         <h3 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white mb-4">
           {title}
         </h3>
-        <div className="h-64 overflow-hidden">
+        <div className="h-61 overflow-hidden">
           {/* Calendar Header */}
           <div className="mb-3">
             <h4 className="text-center font-semibold text-gray-900 [.dark_&]:text-white">
@@ -846,7 +867,41 @@ function DashboardPage() {
           <div className="grid grid-cols-7 gap-1 text-xs">
             {calendarDays.map((day, index) => {
               const events = getEventsForDate(day);
+              const dayTasks = getTasksForDate(day);
               const hasEvents = events.length > 0;
+              const hasTasks = dayTasks.length > 0;
+
+              // High-priority upcoming tasks (future or today)
+              const hasHighPriorityTasks = day && (() => {
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                const cellDate = new Date(currentYear, currentMonth, day);
+                cellDate.setHours(0, 0, 0, 0);
+                return cellDate >= now && dayTasks.some((t) =>
+                  String(t.priority || "").toLowerCase() === "high"
+                );
+              })();
+
+              // Determine dot color
+              let dotColor = null;
+              if (day) {
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                const cellDate = new Date(currentYear, currentMonth, day);
+                cellDate.setHours(0, 0, 0, 0);
+
+                const diffTime = cellDate - now;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays < 0) {
+                  dotColor = "bg-red-500"; // Overdue
+                } else if (diffDays === 0) {
+                  dotColor = "bg-orange-500"; // Today
+                }
+              }
+
+              // Determine tooltip positioning based on column (0=Sun, 6=Sat)
+              const tooltipPos = index % 7 === 0 ? "left-0 translate-x-1" : index % 7 >= 5 ? "right-0 -translate-x-1" : "left-1/2 -translate-x-1/2";
 
               return (
                 <div
@@ -859,6 +914,41 @@ function DashboardPage() {
                 >
                   {day && (
                     <>
+                      {/* High-priority flag — top-right */}
+                      {hasHighPriorityTasks && (
+                        <div
+                          className="absolute top-0.5 right-0.5 cursor-pointer hover:scale-110 transition-transform z-10 group/flag"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                            navigate("/admin/task-management", { state: { date: dateStr, priority: "High" } });
+                          }}
+                        >
+                          <FaFlag className="text-[7px] sm:text-[9px] md:text-[10px] flex-shrink-0" style={{ color: "#ef4444" }} />
+                          {/* Professional hover card */}
+                          <div className={`pointer-events-none absolute top-full mt-1 hidden group-hover/flag:block z-50 ${index % 7 >= 5 ? "right-0" : "left-1/2 -translate-x-1/2"}`} style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.2))' }}>
+                            <div style={{
+                              backgroundColor: mode === 'dark' ? '#111827' : '#ffffff',
+                              border: `1px solid ${mode === 'dark' ? '#374151' : '#e5e7eb'}`,
+                              borderRadius: '8px',
+                              padding: '8px 10px',
+                              whiteSpace: 'nowrap',
+                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+                            }}>
+                              <div style={{ fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#ef4444', marginBottom: '6px', borderBottom: `1px solid ${mode === 'dark' ? '#374151' : '#e5e7eb'}`, paddingBottom: '4px' }}>
+                                High Priority Task
+                              </div>
+                              <div style={{ fontSize: '10px', color: mode === 'dark' ? '#f3f4f6' : '#111827' }}>
+                                Click to filter tasks by this date
+                              </div>
+                            </div>
+                            {/* Arrow */}
+                            <div style={{ position: 'absolute', bottom: '100%', right: '4px', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderBottom: `5px solid ${mode === 'dark' ? '#374151' : '#e5e7eb'}` }} />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Date number */}
                       <div
                         className={`text-center ${isToday(day)
                           ? "font-bold text-blue-600 [.dark_&]:text-blue-400"
@@ -867,24 +957,82 @@ function DashboardPage() {
                       >
                         {day}
                       </div>
-                      {hasEvents && (
-                        <div className="absolute bottom-0 left-0 right-0 flex justify-center">
-                          <div className="flex gap-0.5">
-                            {events.slice(0, 3).map((event, eventIndex) => (
+
+                      {/* Dots row — absolute bottom, side by side: task dot + events dot */}
+                      {(hasTasks && dotColor || hasEvents) && (
+                        <div className="absolute bottom-0.5 left-0 right-0 flex justify-center items-center gap-1">
+
+                          {/* Task dot: red=overdue, orange=today */}
+                          {hasTasks && dotColor && (
+                            <div className="relative group/taskdot flex-shrink-0">
                               <div
-                                key={eventIndex}
-                                className="w-1 h-1 rounded-full"
-                                style={{ backgroundColor: event.color }}
-                                title={event.title}
-                              ></div>
-                            ))}
-                            {events.length > 3 && (
+                                className="w-1.5 h-1.5 rounded-full cursor-pointer hover:scale-125 transition-transform"
+                                style={{ backgroundColor: dotColor === "bg-red-500" ? "#ef4444" : "#f97316" }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                                  navigate(`/admin/task-management?date=${dateStr}`);
+                                }}
+                              />
+                              {/* Professional hover card */}
+                              <div className={`pointer-events-none absolute bottom-full mb-2 hidden group-hover/taskdot:block z-50 ${tooltipPos}`} style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.2))' }}>
+                                <div style={{
+                                  backgroundColor: mode === 'dark' ? '#111827' : '#ffffff',
+                                  border: `1px solid ${mode === 'dark' ? '#374151' : '#e5e7eb'}`,
+                                  borderRadius: '8px',
+                                  padding: '8px 10px',
+                                  whiteSpace: 'nowrap',
+                                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+                                }}>
+                                  {/* Header */}
+                                  <div style={{ fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: dotColor === "bg-red-500" ? "#ef4444" : "#f97316", marginBottom: '6px', borderBottom: `1px solid ${mode === 'dark' ? '#374151' : '#e5e7eb'}`, paddingBottom: '4px' }}>
+                                    {dayTasks.length} {dayTasks.length === 1 ? 'Task' : 'Tasks'} Due
+                                  </div>
+                                  <div style={{ fontSize: '10px', color: mode === 'dark' ? '#f3f4f6' : '#111827' }}>
+                                    Click to view in Task Management
+                                  </div>
+                                </div>
+                                {/* Arrow */}
+                                <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: `5px solid ${mode === 'dark' ? '#374151' : '#e5e7eb'}` }} />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Events blue dot with hover tooltip */}
+                          {hasEvents && (
+                            <div className="relative group/evtdot flex-shrink-0">
                               <div
-                                className="w-1 h-1 rounded-full bg-gray-400"
-                                title={`+${events.length - 3} more`}
-                              ></div>
-                            )}
-                          </div>
+                                className="w-1.5 h-1.5 rounded-full bg-blue-500 cursor-pointer hover:scale-125 transition-transform"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                                  navigate("/admin/calendar", { state: { date: dateStr } });
+                                }}
+                              />
+                              {/* Professional hover card */}
+                              <div className={`pointer-events-none absolute bottom-full mb-2 hidden group-hover/evtdot:block z-50 ${tooltipPos}`} style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.2))' }}>
+                                <div style={{
+                                  backgroundColor: mode === 'dark' ? '#111827' : '#ffffff',
+                                  border: `1px solid ${mode === 'dark' ? '#374151' : '#e5e7eb'}`,
+                                  borderRadius: '8px',
+                                  padding: '8px 10px',
+                                  whiteSpace: 'nowrap',
+                                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+                                }}>
+                                  {/* Header */}
+                                  <div style={{ fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#3b82f6', marginBottom: '6px', borderBottom: `1px solid ${mode === 'dark' ? '#374151' : '#e5e7eb'}`, paddingBottom: '4px' }}>
+                                    {events.length} {events.length === 1 ? 'Meeting' : 'Meetings'}
+                                  </div>
+                                  <div style={{ fontSize: '10px', color: mode === 'dark' ? '#f3f4f6' : '#111827' }}>
+                                    Click to open Calendar
+                                  </div>
+                                </div>
+                                {/* Arrow */}
+                                <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: `5px solid ${mode === 'dark' ? '#374151' : '#e5e7eb'}` }} />
+                              </div>
+                            </div>
+                          )}
+
                         </div>
                       )}
                     </>
@@ -894,30 +1042,37 @@ function DashboardPage() {
             })}
           </div>
         </div>
-
+        <h5 className="text-sm font-medium text-gray-900 [.dark_&]:text-white mb-3">
+          Upcoming Events
+        </h5>
         {/* Upcoming Events List */}
-        <div className="mt-4 space-y-2 max-h-32 overflow-y-auto">
-          <h5 className="text-sm font-medium text-gray-900 [.dark_&]:text-white">
-            Upcoming Events
-          </h5>
+        <div className="space-y-2 max-h-25 overflow-y-auto mb-6">
+
           {data
-            .filter((event) => new Date(event.date) >= currentDate)
-            .slice(0, 5).length === 0 ? (
+            .filter((event) => {
+              const d = new Date(event.date);
+              return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            })
+            .sort((a, b) => new Date(a.date) - new Date(b.date))
+            .length === 0 ? (
             <div className="text-xs text-gray-500 [.dark_&]:text-gray-400">
-              No upcoming events.
+              No events this month.
             </div>
           ) : (
             data
-              .filter((event) => new Date(event.date) >= currentDate)
-              .slice(0, 5)
+              .filter((event) => {
+                const d = new Date(event.date);
+                return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+              })
+              .sort((a, b) => new Date(a.date) - new Date(b.date))
               .map((event, index) => (
                 <div key={index} className="flex items-center gap-2 text-xs">
                   <div
                     className="w-2 h-2 rounded-full flex-shrink-0"
                     style={{ backgroundColor: event.color }}
                   ></div>
-                  <span className="text-gray-600 [.dark_&]:text-gray-400">
-                    {new Date(event.date).toLocaleDateString("en-US", {
+                  <span className="text-gray-600 [.dark_&]:text-gray-400 whitespace-nowrap flex-shrink-0">
+                    {new Date(event.date).toLocaleDateString("en-GB", {
                       month: "short",
                       day: "numeric",
                     })}
@@ -931,21 +1086,25 @@ function DashboardPage() {
         </div>
 
         {/* Legend */}
-        <div className="mt-3 flex flex-wrap gap-3 text-xs">
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+          <span className="text-[9px] font-semibold uppercase tracking-wide text-gray-400 [.dark_&]:text-gray-500 mr-1">Legend:</span>
           <div className="flex items-center gap-1">
-            <div
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: PRIORITY_HEX.high }}
-            ></div>
-            <span className="text-gray-600 [.dark_&]:text-gray-400">High Priority</span>
+            <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
+            <span className="text-[9px] text-gray-500 [.dark_&]:text-gray-400">Overdue tasks</span>
           </div>
           <div className="flex items-center gap-1">
-            <div
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: TYPE_HEX.meeting }}
-            ></div>
-            <span className="text-gray-600 [.dark_&]:text-gray-400">Meetings</span>
+            <div className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" />
+            <span className="text-[9px] text-gray-500 [.dark_&]:text-gray-400">Due today</span>
           </div>
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+            <span className="text-[9px] text-gray-500 [.dark_&]:text-gray-400">Meetings</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <FaFlag className="text-[8px] flex-shrink-0" style={{ color: "#ef4444" }} />
+            <span className="text-[9px] text-gray-500 [.dark_&]:text-gray-400">High-priority task</span>
+          </div>
+          <span className="text-[9px] text-gray-400 [.dark_&]:text-gray-500 ml-1 italic">Click any dot or flag to navigate</span>
         </div>
       </div>
     );
@@ -1232,19 +1391,14 @@ function DashboardPage() {
                           try {
                             if (editingNoteId) {
                               await updateDoc(doc(db, "notes", editingNoteId), {
-                                title: trimmed,
-                                bodyText: trimmed,
+                                text: trimmed,
                                 updatedAt: serverTimestamp(),
                               });
                             } else {
                               await addDoc(collection(db, "notes"), {
-                                title: trimmed,
-                                bodyText: trimmed,
-                                category: "General",
-                                color: "Yellow",
+                                text: trimmed,
                                 isPinned: false,
                                 userUid: activeUid,
-                                userEmail: activeEmail,
                                 createdAt: serverTimestamp(),
                                 updatedAt: serverTimestamp(),
                               });
@@ -1423,6 +1577,48 @@ function DashboardPage() {
         </span>
       </PageHeader>
 
+      {/* --- Floating Top Right Sticky Notes Section --- */}
+      <div className="fixed top-5 right-8 z-50 flex flex-col items-end pointer-events-none">
+        <div
+          className="flex items-center justify-center w-12 h-12 rounded-full bg-white dark:bg-[#1f2937] shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)] border border-gray-100 dark:border-gray-700 cursor-pointer mb-4 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-1 hover:shadow-[0_6px_16px_rgba(0,0,0,0.12)] pointer-events-auto group"
+          onClick={() => setShowTopNotes(!showTopNotes)}
+          title="Toggle Dashboard Notes"
+        >
+          <FaStickyNote className="text-amber-500 text-lg group-hover:scale-110 transition-transform" />
+        </div>
+
+        {showTopNotes && (
+          <div className="w-80 flex flex-col gap-4 transition-all max-h-[80vh] overflow-y-auto pointer-events-auto custom-scrollbar px-2 pb-4 pt-1">
+            {notes.length === 0 ? (
+              <div className="text-sm text-gray-500 dark:text-gray-400 italic bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm text-center">
+                No sticky notes saved yet. Add one from the quick menu above!
+              </div>
+            ) : (
+              notes.map(note => (
+                <div
+                  key={note.id}
+                  className="relative p-5 rounded-[12px] shadow-[0_4px_14px_rgba(0,0,0,0.08)] transform transition-all hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] border border-amber-200 dark:border-amber-900/60 bg-[#fef3c7] dark:bg-[#422006]"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    {note.isPinned ? <FaThumbtack className="text-amber-600 dark:text-amber-500 w-3.5 h-3.5 transform rotate-45" /> : <div></div>}
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium ml-auto tracking-wider uppercase">
+                      {(() => {
+                        const d = note.updatedAt?.toDate ? note.updatedAt.toDate() : (note.updatedAt ? new Date(note.updatedAt) : null);
+                        if (!d || isNaN(d)) return 'Just now';
+                        return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+                      })()}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words flex-1 leading-relaxed font-normal">
+                    {note.text}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
       {/* --- Stat Cards Section --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div
@@ -1500,7 +1696,7 @@ function DashboardPage() {
           </Card>
 
           <Card className="p-6">
-            <Calendar data={events} title="Project Calendar & Events" />
+            <Calendar data={events} title="Project Calendar & Events" tasks={filteredTasks} />
           </Card>
         </div>
 
