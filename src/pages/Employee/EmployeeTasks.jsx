@@ -1597,7 +1597,6 @@ const EmployeeTasks = () => {
                         selectedIds={selectedIds}
                         onToggleSelect={toggleSelect}
                         onView={(task) => setSelectedTask(task)}
-                        onEdit={handleEditTask}
                         onSetReminder={handleSetReminder}
                         onStatusChange={handleStatusChange}
                         showActions={true}
@@ -1634,7 +1633,6 @@ const EmployeeTasks = () => {
                           selectedIds={selectedIds}
                           onToggleSelect={toggleSelect}
                           onView={(task) => setSelectedTask(task)}
-                          onEdit={handleEditTask}
                           onSetReminder={handleSetReminder}
                           onStatusChange={handleStatusChange}
                           showActions={true}
@@ -1715,7 +1713,7 @@ const EmployeeTasks = () => {
           }}
           canDelete={selectedTask.source === "self"}
           canArchive={selectedTask.source === "self"}
-          canEdit={selectedTask.source === "self"}
+          canEdit={false}
           canTrackTime={true}
         />
       )}

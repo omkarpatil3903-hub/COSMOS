@@ -1127,22 +1127,30 @@ const TaskViewModal = ({
                 {/* Priority */}
                 <div className="relative">
                   <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Priority</label>
-                  <button
-                    onClick={() => setShowPriorityDropdown(!showPriorityDropdown)}
-                    className={`w-full px-3 py-2 rounded-lg text-xs border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] flex items-center justify-between hover:border-indigo-300 transition-colors ${getPriorityBadge(task.priority)}`}
-                  >
-                    <span className="font-medium truncate [.dark_&]:text-white">{task.priority || "Medium"}</span>
-                    <FaChevronDown className="text-[10px] opacity-50 ml-1 shrink-0" />
-                  </button>
-                  {showPriorityDropdown && (
+                  {canEdit ? (
                     <>
-                      <div className="fixed inset-0 z-10" onClick={() => setShowPriorityDropdown(false)}></div>
-                      <div className="absolute top-full left-0 w-32 mt-1 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-100 [.dark_&]:border-white/10 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                        {["Low", "Medium", "High"].map(p => (
-                          <button key={p} onClick={() => { handleQuickUpdate("priority", p); setShowPriorityDropdown(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 [.dark_&]:hover:bg-white/5 text-gray-700 [.dark_&]:text-gray-200">{p}</button>
-                        ))}
-                      </div>
+                      <button
+                        onClick={() => setShowPriorityDropdown(!showPriorityDropdown)}
+                        className={`w-full px-3 py-2 rounded-lg text-xs border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] flex items-center justify-between hover:border-indigo-300 transition-colors ${getPriorityBadge(task.priority)}`}
+                      >
+                        <span className="font-medium truncate [.dark_&]:text-white">{task.priority || "Medium"}</span>
+                        <FaChevronDown className="text-[10px] opacity-50 ml-1 shrink-0" />
+                      </button>
+                      {showPriorityDropdown && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setShowPriorityDropdown(false)}></div>
+                          <div className="absolute top-full left-0 w-32 mt-1 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-xl border border-gray-100 [.dark_&]:border-white/10 z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                            {["Low", "Medium", "High"].map(p => (
+                              <button key={p} onClick={() => { handleQuickUpdate("priority", p); setShowPriorityDropdown(false); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 [.dark_&]:hover:bg-white/5 text-gray-700 [.dark_&]:text-gray-200">{p}</button>
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </>
+                  ) : (
+                    <div className={`w-full px-3 py-2 rounded-lg text-xs border border-gray-200 [.dark_&]:border-white/10 bg-white [.dark_&]:bg-[#181B2A] flex items-center ${getPriorityBadge(task.priority)}`}>
+                      <span className="font-medium truncate [.dark_&]:text-white">{task.priority || "Medium"}</span>
+                    </div>
                   )}
                 </div>
 
@@ -1171,11 +1179,11 @@ const TaskViewModal = ({
                 <div className="relative col-span-1 md:col-span-2 lg:col-span-1">
                   <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Assignees</label>
                   <div className="flex flex-col gap-2">
-                    {/* Avatar Stack for Read-Only View */}
+                    {/* Avatar Stack */}
                     <div
-                      className={`flex items-center -space-x-2 cursor-pointer p-1 rounded-full hover:bg-gray-100 [.dark_&]:hover:bg-white/5 transition-colors w-fit ${localAssigneesResolved.length === 0 ? "pl-2" : ""}`}
-                      onClick={() => setShowAssigneePopover(!showAssigneePopover)}
-                      title="Manage Assignees"
+                      className={`flex items-center -space-x-2 p-1 rounded-full w-fit ${canEdit ? "cursor-pointer hover:bg-gray-100 [.dark_&]:hover:bg-white/5 transition-colors" : "cursor-default"} ${localAssigneesResolved.length === 0 ? "pl-2" : ""}`}
+                      onClick={() => canEdit && setShowAssigneePopover(!showAssigneePopover)}
+                      title={canEdit ? "Manage Assignees" : "Assignees"}
                     >
                       {localAssigneesResolved.length > 0 ? (
                         <>
@@ -1194,15 +1202,21 @@ const TaskViewModal = ({
                               +{localAssigneesResolved.length - 4}
                             </div>
                           )}
-                          <div className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 [.dark_&]:border-gray-600 bg-transparent flex items-center justify-center text-gray-400 ml-2 hover:border-indigo-400 hover:text-indigo-500 transition-colors z-0">
-                            <FaPlus className="text-xs" />
-                          </div>
+                          {canEdit && (
+                            <div className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 [.dark_&]:border-gray-600 bg-transparent flex items-center justify-center text-gray-400 ml-2 hover:border-indigo-400 hover:text-indigo-500 transition-colors z-0">
+                              <FaPlus className="text-xs" />
+                            </div>
+                          )}
                         </>
                       ) : (
-                        <div className="flex items-center gap-2 text-xs text-gray-400">
-                          <div className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 [.dark_&]:border-gray-600 flex items-center justify-center bg-transparent"><FaPlus className="text-xs" /></div>
-                          <span>Add Assignee</span>
-                        </div>
+                        canEdit ? (
+                          <div className="flex items-center gap-2 text-xs text-gray-400">
+                            <div className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 [.dark_&]:border-gray-600 flex items-center justify-center bg-transparent"><FaPlus className="text-xs" /></div>
+                            <span>Add Assignee</span>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-400">No assignees</div>
+                        )
                       )}
                     </div>
                   </div>
