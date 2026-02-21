@@ -150,107 +150,7 @@ function DashboardPage() {
       );
     });
 
-    // Listen for due reminders for SuperAdmin and show persistent toast
-    const uid = userData?.uid || user?.uid;
-    let unsubReminders = null;
-    if (uid) {
-      const qRem = query(
-        collection(db, "reminders"),
-        where("userId", "==", uid),
-        where("status", "==", "pending")
-      );
-      unsubReminders = onSnapshot(qRem, (snapshot) => {
-        const now = new Date();
-        const due = snapshot.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
-          .filter((r) => {
-            const dueAt = r.dueAt?.toDate?.() || new Date(r.dueAt);
-            return dueAt <= now && !r.isRead;
-          });
-
-        due.forEach((r) => {
-          const toastId = `reminder-${r.id}`;
-          const when = r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt);
-          const timeLabel = isNaN(when.getTime())
-            ? ""
-            : when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-          toast.custom((t) => (
-            <div
-              className={`
-                pointer-events-auto w-72 max-w-xs transform transition-all duration-300
-                ${t.visible ? "translate-x-0 opacity-100" : "translate-x-3 opacity-0"}
-              `}
-            >
-              <div className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 rounded-xl p-[2px] shadow-lg">
-                <div
-                  className="bg-white dark:bg-gray-800 rounded-xl px-4 py-3 flex items-center gap-3"
-                  style={{
-                    backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff'
-                  }}
-                >
-                  <div className="flex-1 min-w-0 max-h-16 overflow-y-auto">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <div
-                        className="text-[11px] font-semibold text-indigo-600 tracking-wide uppercase"
-                        style={{
-                          color: mode === 'dark' ? '#818cf8' : '#4f46e5'
-                        }}
-                      >
-                        Reminder
-                      </div>
-                      {timeLabel && (
-                        <div className="ml-2 text-[10px] text-gray-500 font-medium whitespace-nowrap">
-                          {timeLabel}
-                        </div>
-                      )}
-                    </div>
-                    <div
-                      className="text-xs font-medium text-gray-900 dark:text-white break-words leading-snug"
-                      style={{
-                        color: mode === 'dark' ? '#ffffff' : '#111827'
-                      }}
-                    >
-                      {r.title || "Untitled reminder"}
-                    </div>
-                    {r.description && (
-                      <div className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5 break-words leading-snug">
-                        {r.description}
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        await deleteDoc(doc(db, "reminders", r.id));
-                      } catch (e) {
-                        console.error("Failed to delete reminder", e);
-                      }
-                      toast.dismiss(toastId);
-                    }}
-                    className="shrink-0 ml-1 text-gray-400 hover:text-red-500 transition-colors"
-                    aria-label="Dismiss reminder"
-                  >
-                    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                      <path
-                        fillRule="evenodd"
-                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-          ), {
-            id: toastId,
-            duration: Infinity,
-            position: "top-right",
-          });
-        });
-      });
-    }
+    // The reminder toast logic has been extracted to useGlobalReminders hook.
 
     // Mark loading false after first data frames arrive
     const timer = setTimeout(() => setLoading(false), 300);
@@ -260,7 +160,7 @@ function DashboardPage() {
       unsubUsers();
       unsubClients();
       if (unsubEvents) unsubEvents();
-      if (unsubReminders) unsubReminders();
+      // if (unsubReminders) unsubReminders();
       clearTimeout(timer);
     };
   }, []);
@@ -332,79 +232,9 @@ function DashboardPage() {
         return dueAt <= now && !r.isRead && !shownToastsRef.current.has(r.id);
       });
 
-      // Show custom toast for each newly due reminder
+      // Show custom toast for each newly due reminder has been moved to useGlobalReminders hook
       due.forEach((r) => {
-        const toastId = `reminder-${r.id}`;
         shownToastsRef.current.add(r.id);
-        const when = r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt);
-        const timeLabel = isNaN(when.getTime())
-          ? ""
-          : when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-        console.log('Showing reminder toast:', r.title, 'at', timeLabel); // Debug log
-
-        toast.custom(
-          (t) => (
-            <div
-              className={`
-                pointer-events-auto w-72 max-w-xs transform transition-all duration-300
-                ${t.visible ? "translate-x-0 opacity-100" : "translate-x-3 opacity-0"}
-              `}
-            >
-              <div className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 rounded-xl p-[2px] shadow-lg">
-                <div className="bg-white dark:!bg-[#1e1e2d] rounded-xl px-4 py-3 flex items-center gap-3">
-                  <div className="flex-1 min-w-0 max-h-16 overflow-y-auto">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <div className="text-[11px] font-semibold text-indigo-600 dark:!text-indigo-400 tracking-wide uppercase">
-                        Reminder
-                      </div>
-                      {timeLabel && (
-                        <div className="ml-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
-                          {timeLabel}
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-xs font-medium text-gray-900 dark:!text-white break-words leading-snug">
-                      {r.title || "Untitled reminder"}
-                    </div>
-                    {r.description && (
-                      <div className="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5 break-words leading-snug">
-                        {r.description}
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        await deleteDoc(doc(db, "reminders", r.id));
-                        shownToastsRef.current.delete(r.id);
-                      } catch (e) {
-                        console.error("Failed to delete reminder", e);
-                      }
-                      toast.dismiss(toastId);
-                    }}
-                    className="shrink-0 ml-1 text-gray-400 hover:text-red-500 transition-colors"
-                    aria-label="Dismiss reminder"
-                  >
-                    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                      <path
-                        fillRule="evenodd"
-                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-          ),
-          {
-            id: toastId,
-            duration: Infinity,
-            position: "top-right",
-          }
-        );
       });
     };
 
@@ -1475,7 +1305,26 @@ function DashboardPage() {
                         }
                         try {
                           setSavingReminder(true);
+
+                          // Fetch server time to validate
+                          let serverTime = new Date();
+                          try {
+                            const res = await fetch(window.location.origin, { method: 'HEAD' });
+                            const dateHeader = res.headers.get('date');
+                            if (dateHeader) {
+                              serverTime = new Date(dateHeader);
+                            }
+                          } catch (e) {
+                            console.warn("Could not fetch server time, falling back to local time");
+                          }
+
                           const dueAt = new Date(`${remDate}T${remTime}`);
+                          if (dueAt < serverTime) {
+                            toast.error("Reminder date and time cannot be in the past.");
+                            setSavingReminder(false);
+                            return;
+                          }
+
                           if (editingReminderId) {
                             await updateDoc(doc(db, "reminders", editingReminderId), {
                               title: remTitle,
@@ -1513,41 +1362,61 @@ function DashboardPage() {
                         borderColor: mode === 'dark' ? '#374151' : '#e5e7eb'
                       }}
                     >
-                      <input
-                        type="text"
-                        className="w-full rounded border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                        placeholder="Reminder title"
-                        value={remTitle}
-                        onChange={(e) => setRemTitle(e.target.value)}
-                        style={{
-                          backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
-                          color: mode === 'dark' ? '#ffffff' : '#111827',
-                          borderColor: mode === 'dark' ? '#4b5563' : '#e5e7eb'
-                        }}
-                      />
+                      <div>
+                        <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                          Title <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          className="w-full rounded border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                          placeholder="Reminder title"
+                          value={remTitle}
+                          onChange={(e) => setRemTitle(e.target.value)}
+                          style={{
+                            backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+                            color: mode === 'dark' ? '#ffffff' : '#111827',
+                            borderColor: mode === 'dark' ? '#4b5563' : '#e5e7eb'
+                          }}
+                        />
+                      </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="date"
-                          className="rounded border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                          value={remDate}
-                          onChange={(e) => setRemDate(e.target.value)}
-                          style={{
-                            backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
-                            color: mode === 'dark' ? '#ffffff' : '#111827',
-                            borderColor: mode === 'dark' ? '#4b5563' : '#e5e7eb'
-                          }}
-                        />
-                        <input
-                          type="time"
-                          className="rounded border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                          value={remTime}
-                          onChange={(e) => setRemTime(e.target.value)}
-                          style={{
-                            backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
-                            color: mode === 'dark' ? '#ffffff' : '#111827',
-                            borderColor: mode === 'dark' ? '#4b5563' : '#e5e7eb'
-                          }}
-                        />
+                        <div>
+                          <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                            Date <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            required
+                            min={new Date().toISOString().split('T')[0]}
+                            className="rounded w-full border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                            value={remDate}
+                            onChange={(e) => setRemDate(e.target.value)}
+                            style={{
+                              backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+                              color: mode === 'dark' ? '#ffffff' : '#111827',
+                              borderColor: mode === 'dark' ? '#4b5563' : '#e5e7eb'
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                            Time <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="time"
+                            required
+                            min={remDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
+                            className="rounded w-full border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                            value={remTime}
+                            onChange={(e) => setRemTime(e.target.value)}
+                            style={{
+                              backgroundColor: mode === 'dark' ? '#1f2937' : '#ffffff',
+                              color: mode === 'dark' ? '#ffffff' : '#111827',
+                              borderColor: mode === 'dark' ? '#4b5563' : '#e5e7eb'
+                            }}
+                          />
+                        </div>
                       </div>
                       <textarea
                         rows={2}

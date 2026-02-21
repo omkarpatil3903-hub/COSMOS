@@ -417,7 +417,26 @@ export default function ClientDashboard() {
                         }
                         try {
                           setSavingReminder(true);
+
+                          // Fetch server time to validate
+                          let serverTime = new Date();
+                          try {
+                            const res = await fetch(window.location.origin, { method: 'HEAD' });
+                            const dateHeader = res.headers.get('date');
+                            if (dateHeader) {
+                              serverTime = new Date(dateHeader);
+                            }
+                          } catch (e) {
+                            console.warn("Could not fetch server time, falling back to local time");
+                          }
+
                           const dueAt = new Date(`${remDate}T${remTime}`);
+                          if (dueAt < serverTime) {
+                            toast.error("Reminder date and time cannot be in the past.");
+                            setSavingReminder(false);
+                            return;
+                          }
+
                           if (editingReminderId) {
                             await updateDoc(doc(db, "reminders", editingReminderId), {
                               title: remTitle,
@@ -451,26 +470,46 @@ export default function ClientDashboard() {
                       }}
                       className="mb-3 space-y-2 border border-gray-100 [.dark_&]:border-white/10 rounded-md p-2 bg-gray-50 [.dark_&]:bg-white/5"
                     >
-                      <input
-                        type="text"
-                        className="w-full rounded border border-gray-200 [.dark_&]:border-white/20 px-2 py-1 text-sm bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
-                        placeholder="Reminder title"
-                        value={remTitle}
-                        onChange={(e) => setRemTitle(e.target.value)}
-                      />
+                      <div>
+                        <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                          Title <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          className="w-full rounded border border-gray-200 [.dark_&]:border-white/20 px-2 py-1 text-sm bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
+                          placeholder="Reminder title"
+                          value={remTitle}
+                          onChange={(e) => setRemTitle(e.target.value)}
+                        />
+                      </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="date"
-                          className="rounded border border-gray-200 [.dark_&]:border-white/20 px-2 py-1 text-sm bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
-                          value={remDate}
-                          onChange={(e) => setRemDate(e.target.value)}
-                        />
-                        <input
-                          type="time"
-                          className="rounded border border-gray-200 [.dark_&]:border-white/20 px-2 py-1 text-sm bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
-                          value={remTime}
-                          onChange={(e) => setRemTime(e.target.value)}
-                        />
+                        <div>
+                          <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                            Date <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            required
+                            min={new Date().toISOString().split('T')[0]}
+                            className="rounded w-full border border-gray-200 [.dark_&]:border-white/20 px-2 py-1 text-sm bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
+                            value={remDate}
+                            onChange={(e) => setRemDate(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                            Time <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="time"
+                            required
+                            min={remDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
+                            className="rounded w-full border border-gray-200 [.dark_&]:border-white/20 px-2 py-1 text-sm bg-white [.dark_&]:bg-[#1F2234] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400"
+                            value={remTime}
+                            onChange={(e) => setRemTime(e.target.value)}
+                          />
+                        </div>
                       </div>
                       <textarea
                         rows={2}

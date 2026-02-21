@@ -44,6 +44,7 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "../../firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { Toaster } from "react-hot-toast";
+import useGlobalReminders from "../../hooks/useGlobalReminders.jsx";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import {
   FaTachometerAlt,
@@ -322,6 +323,8 @@ function AdminLayout() {
   const [userProfile, setUserProfile] = useState({ name: "", imageUrl: "" });
   const [imageLoadError, setImageLoadError] = useState(false);
   const { barColor } = useThemeStyles();
+
+  useGlobalReminders();
 
   // Fetch user profile from Firestore
   useEffect(() => {
