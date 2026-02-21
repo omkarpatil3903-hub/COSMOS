@@ -15,6 +15,7 @@ import { db } from "../../firebase";
 import { useAuthContext } from "../../context/useAuthContext";
 import { useNavigate } from "react-router-dom";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
+import { useTheme } from "../../context/ThemeContext";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
 import StatCard from "../../components/StatCard";
@@ -36,6 +37,8 @@ import {
 
   FaThumbtack,
   FaPlus,
+  FaChevronUp,
+  FaChevronDown,
 } from "react-icons/fa";
 import { LuNotebookPen } from "react-icons/lu";
 import toast from "react-hot-toast";
@@ -44,6 +47,7 @@ const EmployeeDashboard = () => {
   const { user, userData } = useAuthContext();
   const navigate = useNavigate();
   const { buttonClass, linkColor } = useThemeStyles();
+  const { mode } = useTheme();
 
   // Utility function to format dates in dd/mm/yyyy format
   const formatDateToDDMMYYYY = (date) => {
@@ -95,6 +99,7 @@ const EmployeeDashboard = () => {
   const [remDesc, setRemDesc] = useState("");
   const [savingReminder, setSavingReminder] = useState(false);
   const [editingReminderId, setEditingReminderId] = useState(null);
+  const [showTopNotes, setShowTopNotes] = useState(true);
 
   const isTaskExpired = (task) => {
     const created = task.createdAt;
@@ -1084,19 +1089,14 @@ ${todayTasks.length > 0
                         try {
                           if (editingQuickNoteId) {
                             await updateDoc(doc(db, "notes", editingQuickNoteId), {
-                              title: value,
-                              bodyText: value,
+                              text: value,
                               updatedAt: serverTimestamp(),
                             });
                           } else {
                             await addDoc(collection(db, "notes"), {
-                              title: value,
-                              bodyText: value,
-                              category: "General",
-                              color: "Yellow",
+                              text: value,
                               isPinned: false,
                               userUid: user.uid,
-                              userEmail: user?.email || "",
                               createdAt: serverTimestamp(),
                               updatedAt: serverTimestamp(),
                             });
@@ -1342,6 +1342,48 @@ ${todayTasks.length > 0
             )}
           </div>
         </div>
+      </div>
+
+      {/* --- Floating Top Right Sticky Notes Section --- */}
+      <div className="fixed top-5 right-8 z-50 flex flex-col items-end pointer-events-none">
+        <div
+          className="flex items-center justify-center w-12 h-12 rounded-full bg-white dark:bg-[#1f2937] shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)] border border-gray-100 dark:border-gray-700 cursor-pointer mb-4 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-1 hover:shadow-[0_6px_16px_rgba(0,0,0,0.12)] pointer-events-auto group"
+          onClick={() => setShowTopNotes(!showTopNotes)}
+          title="Toggle Dashboard Notes"
+        >
+          <FaStickyNote className="text-amber-500 text-lg group-hover:scale-110 transition-transform" />
+        </div>
+
+        {showTopNotes && (
+          <div className="w-80 flex flex-col gap-4 transition-all max-h-[80vh] overflow-y-auto pointer-events-auto custom-scrollbar px-2 pb-4 pt-1">
+            {quickNotes.length === 0 ? (
+              <div className="text-sm text-gray-500 dark:text-gray-400 italic bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm text-center">
+                No sticky notes saved yet. Add one from the quick menu above!
+              </div>
+            ) : (
+              quickNotes.map(note => (
+                <div
+                  key={note.id}
+                  className="relative p-5 rounded-[12px] shadow-[0_4px_14px_rgba(0,0,0,0.08)] transform transition-all hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] border border-amber-200 dark:border-amber-900/60 bg-[#fef3c7] dark:bg-[#422006]"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    {note.isPinned ? <FaThumbtack className="text-amber-600 dark:text-amber-500 w-3.5 h-3.5 transform rotate-45" /> : <div></div>}
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium ml-auto tracking-wider uppercase">
+                      {(() => {
+                        const d = note.updatedAt?.toDate ? note.updatedAt.toDate() : (note.updatedAt ? new Date(note.updatedAt) : null);
+                        if (!d || isNaN(d)) return 'Just now';
+                        return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+                      })()}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words flex-1 leading-relaxed font-normal">
+                    {note.text}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {/* Stats Cards - Reordered: Today's Tasks, Pending Tasks, Completed Tasks, Generate Report */}

@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import { useSearchParams, useLocation } from "react-router-dom";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import toast from "react-hot-toast";
 import PageHeader from "../../components/PageHeader";
@@ -86,6 +87,7 @@ function TasksManagement() {
   const { user } = useAuthContext();
   const { iconColor, buttonClass, barColor, gradientClass } = useThemeStyles();
   const [tasks, setTasks] = useState([]);
+  const [statsTasks, setStatsTasks] = useState([]); // New state for stats to ignore pagination/date limit
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
@@ -132,7 +134,31 @@ function TasksManagement() {
     search: "",
     showArchived: false,
     onlyOverdue: false,
+    date: "", // New date filter
   });
+
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Initialize filters from URL params
+  useEffect(() => {
+    const dateParam = searchParams.get("date");
+    if (dateParam) {
+      setFilters(prev => ({ ...prev, date: dateParam }));
+    }
+  }, [searchParams]);
+
+  // Auto-apply filters from navigation state (e.g. from dashboard red flag click)
+  const location = useLocation();
+  useEffect(() => {
+    const state = location.state;
+    if (state?.date || state?.priority) {
+      setFilters((prev) => ({
+        ...prev,
+        date: state.date || prev.date,
+        priority: state.priority || prev.priority,
+      }));
+    }
+  }, [location.state]);
 
   // Helper to update a single filter
   const updateFilter = (key, value) => {
@@ -142,8 +168,21 @@ function TasksManagement() {
       if (key === "project" || key === "assigneeType") {
         next.assignee = "";
       }
+      // If we are changing any filter other than date, clear the date filter
+      if (key !== "date") {
+        next.date = "";
+      }
       return next;
     });
+
+    // Also clear date from URL if we are changing something else
+    if (key !== "date") {
+      setSearchParams((prev) => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete("date");
+        return newParams;
+      });
+    }
   };
 
   // 2. Optimized Data Lookups (Maps) - creates instant access to data
@@ -263,11 +302,13 @@ function TasksManagement() {
         search: "",
         showArchived: false,
         onlyOverdue: false,
+        date: "",
       });
+      setSearchParams({});
       setView("list");
       setTimeout(scrollToTasksList, 0);
     },
-    [scrollToTasksList]
+    [scrollToTasksList, setSearchParams]
   );
 
   const applyOverdueQuickFilter = useCallback(() => {
@@ -281,10 +322,12 @@ function TasksManagement() {
       search: "",
       showArchived: false,
       onlyOverdue: true,
+      date: "",
     }));
+    setSearchParams({});
     setView("list");
     setTimeout(scrollToTasksList, 0);
-  }, [scrollToTasksList]);
+  }, [scrollToTasksList, setSearchParams]);
 
   const clearFilters = () => {
     setFilters({
@@ -296,7 +339,9 @@ function TasksManagement() {
       search: "",
       showArchived: false,
       onlyOverdue: false,
+      date: "",
     });
+    setSearchParams({});
   };
 
   const wipLimits = useMemo(() => ({}), []);
@@ -347,6 +392,9 @@ function TasksManagement() {
       if (id) {
         constraints.unshift(where("assigneeIds", "array-contains", id));
       }
+    }
+    if (filters.date) {
+      constraints.unshift(where("dueDate", "==", filters.date));
     }
 
     const unsubTasks = onSnapshot(
@@ -463,13 +511,65 @@ function TasksManagement() {
       setClients(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
     });
 
+
+    const unsubStatsTasks = onSnapshot(
+      query(collection(db, "tasks"), orderBy("createdAt", "desc")),
+      (snap) => {
+        const list = snap.docs.map((d) => {
+          const data = d.data() || {};
+          return {
+            id: d.id,
+            title: data.title || "",
+            description: data.description || "",
+            assigneeId: data.assigneeId || "",
+            assigneeType: data.assigneeType || "user",
+            assignees: data.assignees || [],
+            assigneeIds: data.assigneeIds || [],
+            projectId: data.projectId || "",
+            assignedDate: data.assignedDate?.toDate
+              ? data.assignedDate.toDate().toISOString().slice(0, 10)
+              : data.assignedDate || "",
+            dueDate: data.dueDate?.toDate
+              ? data.dueDate.toDate().toISOString().slice(0, 10)
+              : data.dueDate || "",
+            priority: data.priority || "Medium",
+            status: (() => {
+              const raw = (data.status === "In Review" ? "In Progress" : data.status) || (effectiveStatuses[0] || "To-Do");
+              if (Array.isArray(statusOptions) && statusOptions.length) return raw;
+              let s = raw;
+              if (data.assigneeStatus && Object.keys(data.assigneeStatus).length > 0) {
+                const values = Object.values(data.assigneeStatus);
+                if (values.length > 0) {
+                  const normalize = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                  const allDone = values.every((v) => normalize(v.status) === "done");
+                  const allTodo = values.every((v) => normalize(v.status) === "todo");
+                  if (allDone) s = "Done";
+                  else if (allTodo) s = "To-Do";
+                  else {
+                    const nonTodo = values.find((v) => normalize(v.status) !== "todo");
+                    s = nonTodo && nonTodo.status ? nonTodo.status : "To-Do";
+                  }
+                }
+              }
+              return s;
+            })(),
+            createdAt: tsToISO(data.createdAt) || new Date().toISOString(),
+            archived: !!data.archived,
+            visibleFrom: data.visibleFrom, // Needed for filtering
+          };
+        });
+        setStatsTasks(list);
+      }
+    );
+
     return () => {
       unsubTasks();
+      unsubStatsTasks(); // Unsubscribe stats
       unsubProjects();
       unsubUsers();
       unsubClients();
     };
-  }, [taskLimit, filters.project, filters.assignee, statusOptions]);
+  }, [taskLimit, filters.project, filters.assignee, statusOptions, filters.date]);
 
   // Ref to track if we've already checked deadlines in this session to prevent spam
   const hasCheckedDeadlines = useRef(false);
@@ -1399,10 +1499,10 @@ function TasksManagement() {
   }, [filteredForCounts]);
 
   const progressPct = useMemo(() => {
-    if (filtered.length === 0) return 0;
-    const done = filtered.filter((t) => t.status === "Done").length;
-    return Math.round((done / filtered.length) * 100);
-  }, [filtered]);
+    if (filteredForCounts.length === 0) return 0;
+    const done = counts.Done; // Reuse the count we already calculated
+    return Math.round((done / filteredForCounts.length) * 100);
+  }, [filteredForCounts, counts]);
 
   // removed unused overdueTasks to satisfy lint
 

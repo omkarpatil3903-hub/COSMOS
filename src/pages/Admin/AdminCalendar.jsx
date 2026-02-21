@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
 import PageHeader from "../../components/PageHeader";
 import Card from "../../components/Card";
@@ -89,6 +90,19 @@ function Calendar() {
     });
     return map;
   }, [clients]);
+
+  // Auto-select date from navigation state (from dashboard calendar dot click)
+  const location = useLocation();
+  useEffect(() => {
+    const dateParam = location.state?.date;
+    if (dateParam) {
+      const parsed = new Date(dateParam + "T00:00:00");
+      if (!isNaN(parsed.getTime())) {
+        setSelectedDate(parsed);
+        setCurrentDate(parsed);
+      }
+    }
+  }, [location.state]);
 
   // Firestore subscriptions
   useEffect(() => {
