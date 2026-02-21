@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import Card from "../../components/Card";
 import Button from "../../components/Button";
 import PageHeader from "../../components/PageHeader";
@@ -33,6 +34,7 @@ export default function EmployeeReports() {
   const { user, userData } = useAuthContext();
   const uid = user?.uid || userData?.uid;
   const { gradientClass, barColor, buttonClass, iconColor, hoverAccentClass, ringClass, hoverBorderClass } = useThemeStyles();
+  const location = useLocation();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -350,6 +352,15 @@ export default function EmployeeReports() {
       });
     }
   }, [showReportModal, userData, projects, todayTasks]);
+
+  // Auto-open modal when navigated from Dashboard KPI card
+  useEffect(() => {
+    if (location.state?.openModal) {
+      setShowReportModal(true);
+      // Clear the state so refreshing doesn't re-open
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // Generate Report handler
   const handleGenerateReport = () => {

@@ -61,16 +61,7 @@ const EmployeeDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [completionTaskId, setCompletionTaskId] = useState(null);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reportData, setReportData] = useState({
-    employeeName: "",
-    reportDate: "",
-    reportTime: "",
-    reportContent: "",
-  });
-  const [isEditingReport, setIsEditingReport] = useState(false);
-  const [generatingReport, setGeneratingReport] = useState(false);
-  const [savingReport, setSavingReport] = useState(false);
+
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [reminderNotifications, setReminderNotifications] = useState([]);
@@ -510,25 +501,7 @@ const EmployeeDashboard = () => {
     }
   };
 
-  // Initialize report data when modal opens
-  useEffect(() => {
-    if (showReportModal) {
-      const now = new Date();
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, "0");
-      const dd = String(now.getDate()).padStart(2, "0");
-      const hh = String(now.getHours()).padStart(2, "0");
-      const min = String(now.getMinutes()).padStart(2, "0");
 
-      setReportData({
-        employeeName: userData?.name || "Employee",
-        reportDate: `${dd}/${mm}/${yyyy}`,
-        reportTime: `${hh}:${min}`,
-        reportContent: "",
-      });
-      setIsEditingReport(false);
-    }
-  }, [showReportModal, userData]);
 
   // Generate real-time notifications based on task data
   useEffect(() => {
@@ -682,10 +655,7 @@ const EmployeeDashboard = () => {
     toast.success("All notifications cleared");
   };
 
-  // Generate Report handler - now opens modal
-  const handleGenerateReport = () => {
-    setShowReportModal(true);
-  };
+
 
   const handleSetReminder = (task, e) => {
     e.stopPropagation();
@@ -693,80 +663,6 @@ const EmployeeDashboard = () => {
     setShowReminderModal(true);
   };
 
-  // Generate report content
-  const generateReportContent = () => {
-    setGeneratingReport(true);
-    try {
-      const content = `# Employee Performance Report
-
-*Employee:* ${reportData.employeeName}
-*Date:* ${reportData.reportDate}
-*Time:* ${reportData.reportTime}
-
-## Task Summary
-- *Total Tasks:* ${stats.totalTasks}
-- *Completed Tasks:* ${stats.completedTasks}
-- *Pending Tasks:* ${stats.pendingTasks}
-- *Today's Tasks:* ${todayTasks.length}
-- *Overdue Tasks:* ${stats.overdueTasks}
-- *High Priority Tasks:* ${highPriorityTasks}
-
-## Performance Metrics
-- *Completion Rate:* ${completionRate}%
-- *Active Projects:* ${projects.length}
-
-## Recent Activity
-${recentCompletedTasks.length > 0
-          ? recentCompletedTasks.map((task) => `- ${task.title}`).join("\n")
-          : "- No recent completed tasks"
-        }
-
-## Today's Focus
-${todayTasks.length > 0
-          ? todayTasks
-            .map((task) => `- ${task.title} (${task.priority} Priority)`)
-            .join("\n")
-          : "- No tasks due today"
-        }
-
----
-*Generated on: ${formatDateToDDMMYYYY(
-          new Date()
-        )} at ${new Date().toLocaleTimeString()}*`;
-
-      setReportData((prev) => ({ ...prev, reportContent: content }));
-      toast.success("Report generated successfully!");
-    } catch (error) {
-      console.error("Error generating report:", error);
-      toast.error("Failed to generate report");
-    } finally {
-      setGeneratingReport(false);
-    }
-  };
-
-  // Save report
-  const saveReport = () => {
-    setSavingReport(true);
-    try {
-      const blob = new Blob([reportData.reportContent], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `employee-report-${reportData.reportDate}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast.success("Report saved and downloaded!");
-      setShowReportModal(false);
-    } catch (error) {
-      console.error("Error saving report:", error);
-      toast.error("Failed to save report");
-    } finally {
-      setSavingReport(false);
-    }
-  };
 
   console.log("Render state:", {
     loading,
@@ -805,6 +701,7 @@ ${todayTasks.length > 0
   }
 
   return (
+
     <div className="space-y-6">
       {/* Custom Header with Notification Bell */}
       <div className="flex items-center justify-between">
@@ -1381,7 +1278,7 @@ ${todayTasks.length > 0
         </div>
         <div
           className="cursor-pointer hover:transform hover:scale-105 transition-transform duration-200"
-          onClick={handleGenerateReport}
+          onClick={() => navigate("/employee/reports", { state: { openModal: true } })}
         >
           <StatCard
             icon={<FaFileAlt className="h-5 w-5" />}
@@ -1666,163 +1563,6 @@ ${todayTasks.length > 0
         title="Add Completion Comment"
         confirmLabel="Complete Task"
       />
-
-      {/* Report Generation Modal */}
-      {showReportModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={() => setShowReportModal(false)}
-        >
-          <div
-            className="bg-white dark:bg-[#1e1e2d] rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-3 mb-6">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <FaFileAlt className="h-5 w-5 text-indigo-600" />
-                Generate Performance Report
-              </h3>
-              <button
-                onClick={() => setShowReportModal(false)}
-                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Form Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Employee Name
-                </label>
-                <input
-                  type="text"
-                  value={reportData.employeeName}
-                  onChange={(e) =>
-                    setReportData((prev) => ({
-                      ...prev,
-                      employeeName: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:bg-gray-700 dark:text-white"
-                  spellCheck="true"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Report Date
-                </label>
-                <input
-                  type="date"
-                  value={reportData.reportDate}
-                  onChange={(e) =>
-                    setReportData((prev) => ({
-                      ...prev,
-                      reportDate: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Report Time
-                </label>
-                <input
-                  type="time"
-                  value={reportData.reportTime}
-                  onChange={(e) =>
-                    setReportData((prev) => ({
-                      ...prev,
-                      reportTime: e.target.value,
-                    }))
-                  }
-                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-3 mb-6">
-              <Button
-                onClick={generateReportContent}
-                disabled={generatingReport}
-                className="flex items-center gap-2"
-              >
-                {generatingReport ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <FaFileAlt className="h-4 w-4" />
-                    Generate Report
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => setIsEditingReport(!isEditingReport)}
-                disabled={!reportData.reportContent}
-              >
-                {isEditingReport ? "Stop Editing" : "Edit"}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={saveReport}
-                disabled={!reportData.reportContent || savingReport}
-              >
-                {savingReport ? "Saving..." : "Save"}
-              </Button>
-            </div>
-
-            {/* Report Preview */}
-            {reportData.reportContent && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Report Preview
-                </label>
-                {isEditingReport ? (
-                  <textarea
-                    value={reportData.reportContent}
-                    onChange={(e) =>
-                      setReportData((prev) => ({
-                        ...prev,
-                        reportContent: e.target.value,
-                      }))
-                    }
-                    className="w-full h-96 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-mono focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:bg-gray-700 dark:text-white"
-                    placeholder="Report content will appear here..."
-                  />
-                ) : (
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 h-96 overflow-y-auto">
-                    <div
-                      className="prose prose-sm max-w-none dark:prose-invert"
-                      style={{ whiteSpace: "pre-wrap" }}
-                    >
-                      {reportData.reportContent}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Reminder functionality is now handled inline */}
     </div>
