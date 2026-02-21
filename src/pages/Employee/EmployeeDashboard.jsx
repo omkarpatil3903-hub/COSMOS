@@ -309,79 +309,16 @@ const EmployeeDashboard = () => {
 
       console.log('Reminders to show:', due.length);
 
-      // Show toast for each newly due reminder
+      // Show toast for each newly due reminder has been moved to useGlobalReminders hook
+      // We only update the notification bell array here
       due.forEach((r) => {
-        const toastId = `reminder-${r.id}`;
         shownToastsRef.current.add(r.id);
         const when = r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt);
         const timeLabel = isNaN(when.getTime())
           ? ""
           : when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-        console.log('✅ Showing reminder toast:', r.title, 'at', timeLabel);
-
-        toast.custom(
-          (t) => (
-            <div
-              className={`
-                pointer-events-auto w-72 max-w-xs transform transition-all duration-300
-                ${t.visible ? "translate-x-0 opacity-100" : "translate-x-3 opacity-0"}
-              `}
-            >
-              <div className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 rounded-xl p-[2px] shadow-lg">
-                <div className="bg-white dark:!bg-[#1e1e2d] rounded-xl px-4 py-3 flex items-center gap-3">
-                  <div className="flex-1 min-w-0 max-h-16 overflow-y-auto">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <div className="text-[11px] font-semibold text-indigo-600 dark:!text-indigo-400 tracking-wide uppercase">
-                        Reminder
-                      </div>
-                      {timeLabel && (
-                        <div className="ml-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
-                          {timeLabel}
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-xs font-medium text-gray-900 dark:!text-white break-words leading-snug">
-                      {r.title || "Untitled reminder"}
-                    </div>
-                    {r.description && (
-                      <div className="text-[11px] text-gray-600 dark:text-gray-400 mt-0.5 break-words leading-snug">
-                        {r.description}
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      try {
-                        await deleteDoc(doc(db, "reminders", r.id));
-                        shownToastsRef.current.delete(r.id);
-                      } catch (e) {
-                        console.error("Failed to delete reminder", e);
-                      }
-                      toast.dismiss(toastId);
-                    }}
-                    className="shrink-0 ml-1 text-gray-400 hover:text-red-500 transition-colors"
-                    aria-label="Dismiss reminder"
-                  >
-                    <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                      <path
-                        fillRule="evenodd"
-                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-          ),
-          {
-            id: toastId,
-            duration: Infinity,
-            position: "top-right",
-          }
-        );
+        console.log('✅ Found reminder for notification bell:', r.title, 'at', timeLabel);
       });
 
       // Update reminder notifications for the notification bell
@@ -905,7 +842,26 @@ ${todayTasks.length > 0
                       }
                       try {
                         setSavingReminder(true);
+
+                        // Fetch server time to validate
+                        let serverTime = new Date();
+                        try {
+                          const res = await fetch(window.location.origin, { method: 'HEAD' });
+                          const dateHeader = res.headers.get('date');
+                          if (dateHeader) {
+                            serverTime = new Date(dateHeader);
+                          }
+                        } catch (e) {
+                          console.warn("Could not fetch server time, falling back to local time");
+                        }
+
                         const dueAt = new Date(`${remDate}T${remTime}`);
+                        if (dueAt < serverTime) {
+                          toast.error("Reminder date and time cannot be in the past.");
+                          setSavingReminder(false);
+                          return;
+                        }
+
                         if (editingReminderId) {
                           await updateDoc(doc(db, "reminders", editingReminderId), {
                             title: remTitle,
@@ -939,26 +895,46 @@ ${todayTasks.length > 0
                     }}
                     className="mb-3 space-y-2 border border-gray-100 rounded-md p-2 bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
                   >
-                    <input
-                      type="text"
-                      className="w-full rounded border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
-                      placeholder="Reminder title"
-                      value={remTitle}
-                      onChange={(e) => setRemTitle(e.target.value)}
-                    />
+                    <div>
+                      <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                        Title <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full rounded border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                        placeholder="Reminder title"
+                        value={remTitle}
+                        onChange={(e) => setRemTitle(e.target.value)}
+                      />
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="date"
-                        className="rounded border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
-                        value={remDate}
-                        onChange={(e) => setRemDate(e.target.value)}
-                      />
-                      <input
-                        type="time"
-                        className="rounded border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
-                        value={remTime}
-                        onChange={(e) => setRemTime(e.target.value)}
-                      />
+                      <div>
+                        <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                          Date <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          required
+                          min={new Date().toISOString().split('T')[0]}
+                          className="w-full rounded border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                          value={remDate}
+                          onChange={(e) => setRemDate(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                          Time <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="time"
+                          required
+                          min={remDate === new Date().toISOString().split('T')[0] ? new Date().toTimeString().slice(0, 5) : undefined}
+                          className="w-full rounded border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                          value={remTime}
+                          onChange={(e) => setRemTime(e.target.value)}
+                        />
+                      </div>
                     </div>
                     <textarea
                       rows={2}

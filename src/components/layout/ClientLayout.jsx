@@ -50,6 +50,7 @@ import { useAuthContext } from "../../context/useAuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import { Toaster } from "react-hot-toast";
 import toast from "react-hot-toast";
+import useGlobalReminders from "../../hooks/useGlobalReminders.jsx";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import {
   FaTachometerAlt,
@@ -182,6 +183,8 @@ export default function ClientLayout() {
   const [userProfile, setUserProfile] = useState({ name: "", imageUrl: "" });
   const [imageLoadError, setImageLoadError] = useState(false);
   const { barColor } = useThemeStyles();
+
+  useGlobalReminders();
 
   // Fetch user profile from Firestore (check both users and clients collections)
   useEffect(() => {

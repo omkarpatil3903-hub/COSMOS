@@ -50,6 +50,7 @@ import { auth, db } from "../../firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { Toaster } from "react-hot-toast";
 import useGlobalLeadReminders from "../../hooks/useGlobalLeadReminders.jsx";
+import useGlobalReminders from "../../hooks/useGlobalReminders.jsx";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import {
   FaTachometerAlt,
@@ -323,6 +324,7 @@ function MainLayout() {
 
   // Global lead follow-up reminders
   useGlobalLeadReminders();
+  useGlobalReminders();
 
   // Fetch user profile from Firestore
   useEffect(() => {
