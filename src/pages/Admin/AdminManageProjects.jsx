@@ -21,7 +21,7 @@ import { db } from "../../firebase";
 import { auth } from "../../firebase";
 import AddProjectModal from "../../components/AddProjectModal";
 import EditProjectModal from "../../components/EditProjectModal";
-import ViewProjectModal from "../../components/ViewProjectModal";
+import EmployeeProjectDetailModal from "../../components/EmployeeProjectDetailModal";
 import DeleteProjectModal from "../../components/DeleteProjectModal";
 import { formatDate } from "../../utils/formatDate";
 import {
@@ -174,6 +174,9 @@ function ManageProjects({ onlyMyManaged = false }) {
           id: d.id,
           projectId: data.projectId || "",
           status: data.status || "To-Do",
+          taskName: data.taskName || data.title || "",
+          priority: data.priority || "",
+          dueDate: data.dueDate || data.endDate || null,
         };
       });
       setTasks(list);
@@ -1203,11 +1206,18 @@ function ManageProjects({ onlyMyManaged = false }) {
             setEditErrors={setEditErrors}
           />
 
-          <ViewProjectModal
-            showViewModal={showViewModal}
-            setShowViewModal={setShowViewModal}
-            selectedProject={selectedProject}
-            setSelectedProject={setSelectedProject}
+          <EmployeeProjectDetailModal
+            show={showViewModal}
+            onClose={() => {
+              setShowViewModal(false);
+              setSelectedProject(null);
+            }}
+            project={selectedProject}
+            projectTasks={selectedProject ? tasks.filter(t => t.projectId === selectedProject.id) : []}
+            allProjectTasks={selectedProject ? tasks.filter(t => t.projectId === selectedProject.id) : []}
+            progress={selectedProject?.progress || 0}
+            employeeName="Admin"
+            tasksLabel="Project Tasks"
           />
 
           <DeleteProjectModal
