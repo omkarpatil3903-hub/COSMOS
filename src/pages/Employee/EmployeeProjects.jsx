@@ -19,6 +19,7 @@ import {
   FaCheckCircle,
   FaTasks,
 } from "react-icons/fa";
+import EmployeeProjectDetailModal from "../../components/EmployeeProjectDetailModal";
 
 const EmployeeProjects = () => {
   const { user } = useAuthContext();
@@ -106,6 +107,8 @@ const EmployeeProjects = () => {
   const [showCompleted, setShowCompleted] = useState(false);
   const [hoveredProject, setHoveredProject] = useState(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [showProjectModal, setShowProjectModal] = useState(false);
 
   // Subscribe to tasks (both primary and multi-assignee) in real-time
   useEffect(() => {
@@ -550,11 +553,15 @@ const EmployeeProjects = () => {
             return (
               <div key={project.id} className="w-full min-w-0">
                 <Card
-                  className="hover:shadow-lg transition-shadow h-full w-full flex-shrink-0 overflow-hidden"
+                  className="hover:shadow-lg transition-shadow h-full w-full flex-shrink-0 overflow-hidden cursor-pointer"
                   style={{
                     minWidth: "280px",
                     width: "100%",
                     minHeight: "420px",
+                  }}
+                  onClick={() => {
+                    setSelectedProject(project);
+                    setShowProjectModal(true);
                   }}
                 >
                   <div className="flex flex-col h-full">
@@ -687,6 +694,22 @@ const EmployeeProjects = () => {
             );
           })}
         </div>
+      )}
+
+      {/* Project Detail Modal */}
+      {showProjectModal && selectedProject && (
+        <EmployeeProjectDetailModal
+          show={showProjectModal}
+          onClose={() => {
+            setShowProjectModal(false);
+            setSelectedProject(null);
+          }}
+          project={selectedProject}
+          projectTasks={getProjectTasks(selectedProject.id)}
+          allProjectTasks={getAllProjectTasks(selectedProject.id)}
+          progress={getProjectProgress(selectedProject.id)}
+          employeeName={user?.displayName || user?.email || ""}
+        />
       )}
 
       {/* Simple Tooltip for Project Name */}

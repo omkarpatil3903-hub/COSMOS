@@ -48,7 +48,8 @@ import {
   createNextRecurringInstance,
 } from "../../utils/recurringTasks";
 import { logTaskActivity } from "../../services/taskService";
-import TaskModal from "../../components/TaskModal";
+import AddSelfTaskModal from "../../components/TaskManagment/AddSelfTaskModal";
+import EditSelfTaskModal from "../../components/TaskManagment/EditSelfTaskModal";
 
 import TaskViewModal from "../../components/TaskManagment/TaskViewModal";
 import AddReminderModal from "../../components/Reminders/AddReminderModal";
@@ -57,7 +58,7 @@ import { useThemeStyles } from "../../hooks/useThemeStyles";
 import { useTheme } from "../../context/ThemeContext";
 
 const EmployeeTasks = () => {
-  const { user } = useAuthContext();
+  const { user, userData } = useAuthContext();
   const { buttonClass, linkColor } = useThemeStyles();
   const { accent, mode } = useTheme();
   const [searchParams] = useSearchParams();
@@ -1424,22 +1425,28 @@ const EmployeeTasks = () => {
               </div>
             )}
 
-          {/* Add Self Task Modal (UI matched to provided screenshot) */}
-          {/* Task Modal (Create/Edit) */}
-          {showTaskModal && (
-            <TaskModal
-              onClose={() => {
-                setShowTaskModal(false);
-                setEditingTask(null);
-              }}
-              onSave={handleSaveTask}
-              taskToEdit={editingTask}
-              projects={projectOptions}
-              assignees={[{ ...user, name: user.name || user.displayName || user.email || "Me" }]} // Limit assignees to self for self-tasks
-              clients={clients}
-              statuses={effectiveStatuses}
-            />
-          )}
+          {/* Add Self Task Modal */}
+          <AddSelfTaskModal
+            isOpen={showTaskModal && !editingTask}
+            onClose={() => {
+              setShowTaskModal(false);
+              setEditingTask(null);
+            }}
+            projects={projects.filter(p => p.assigneeIds?.includes(user.uid))}
+            user={{ ...user, name: userData?.name || user.displayName || user.email }}
+          />
+
+          {/* Edit Self Task Modal */}
+          <EditSelfTaskModal
+            isOpen={showTaskModal && !!editingTask}
+            onClose={() => {
+              setShowTaskModal(false);
+              setEditingTask(null);
+            }}
+            task={editingTask}
+            projects={projects}
+            user={{ ...user, name: userData?.name || user.displayName || user.email }}
+          />
 
           <CompletionCommentModal
             open={showCompletionModal}

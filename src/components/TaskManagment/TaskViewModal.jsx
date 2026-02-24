@@ -1134,7 +1134,15 @@ const TaskViewModal = ({
                         {Array.from(new Set([...statusOptions, "Done"])).map(status => (
                           <button
                             key={status}
-                            onClick={() => { handleQuickUpdate("status", status); setShowStatusDropdown(false); }}
+                            onClick={() => {
+                              const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                              if (norm(status) === "done") {
+                                setShowCompletionModal(true);
+                              } else {
+                                handleQuickUpdate("status", status);
+                              }
+                              setShowStatusDropdown(false);
+                            }}
                             className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 [.dark_&]:hover:bg-white/5 flex items-center justify-between text-gray-700 [.dark_&]:text-gray-200"
                           >
                             {status}
