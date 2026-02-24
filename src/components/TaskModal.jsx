@@ -232,6 +232,7 @@ function TaskModal({
   const [showQuickDatePicker, setShowQuickDatePicker] = useState(false);
   const [showQuickAssigneePicker, setShowQuickAssigneePicker] = useState(false);
   const [showQuickPriorityPicker, setShowQuickPriorityPicker] = useState(false);
+  const [showSubtaskAssigneeError, setShowSubtaskAssigneeError] = useState(false);
 
   const [errors, setErrors] = useState({});
   const [showSeriesPrompt, setShowSeriesPrompt] = useState(false);
@@ -808,38 +809,37 @@ function TaskModal({
                   <label className="block text-xs font-bold text-gray-800 mb-1.5">
                     Assignee <span className="text-red-500">*</span>
                   </label>
-                  {!isManager && (
-                    <div className="flex bg-gray-100 [.dark_&]:bg-white/5 p-1 rounded-lg">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAssigneeType("user");
-                          setAssigneesSelected([]);
-                          setAssigneeId("");
-                        }}
-                        className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "user"
-                          ? "bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white shadow-sm"
-                          : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-200"
-                          }`}
-                      >
-                        Resource
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAssigneeType("client");
-                          setAssigneesSelected([]);
-                          setAssigneeId("");
-                        }}
-                        className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "client"
-                          ? "bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white shadow-sm"
-                          : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-200"
-                          }`}
-                      >
-                        Client
-                      </button>
-                    </div>
-                  )}
+                  {/* Assignee Type Toggle - Now enabled for Managers too */}
+                  <div className="flex bg-gray-100 [.dark_&]:bg-white/5 p-1 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAssigneeType("user");
+                        setAssigneesSelected([]);
+                        setAssigneeId("");
+                      }}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "user"
+                        ? "bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white shadow-sm"
+                        : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-200"
+                        }`}
+                    >
+                      Resource
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAssigneeType("client");
+                        setAssigneesSelected([]);
+                        setAssigneeId("");
+                      }}
+                      className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${assigneeType === "client"
+                        ? "bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white shadow-sm"
+                        : "text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-700 [.dark_&]:hover:text-gray-200"
+                        }`}
+                    >
+                      Client
+                    </button>
+                  </div>
 
                   {/* Assignee Selector */}
                   <div>
@@ -855,8 +855,9 @@ function TaskModal({
                               .filter(u => {
                                 if (projectId) {
                                   const proj = projects.find(p => p.id === projectId);
-                                  // Check if user is in the project's assigneeIds
-                                  return proj?.assigneeIds?.includes(u.id);
+                                  // Manager panel: Only show team members (exclude PM)
+                                  // Admin/SuperAdmin: Show both team members and PM
+                                  return proj?.assigneeIds?.includes(u.id) || (!isManager && proj?.projectManagerId === u.id);
                                 }
                                 return true;
                               })
@@ -878,26 +879,34 @@ function TaskModal({
                         )}
                       </div>
                     ) : (
-                      <select
-                        value={assigneeId}
-                        onChange={(e) => {
-                          const id = e.target.value;
-                          setAssigneeId(id);
-                          setAssigneesSelected(
-                            id ? [{ type: "client", id }] : []
-                          );
-                          if (errors.assigneeId)
-                            setErrors((p) => ({ ...p, assigneeId: "" }));
-                        }}
-                        className="block w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2.5 text-sm text-gray-900 [.dark_&]:text-white shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
-                      >
-                        <option value="">Select Client</option>
-                        {clients.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.clientName}
-                          </option>
-                        ))}
-                      </select>
+                      <div>
+                        {!projectId ? (
+                          <div className="text-sm text-gray-500 italic p-2 border border-dashed border-gray-300 rounded-md text-center">
+                            Select a project to view client
+                          </div>
+                        ) : (
+                          <select
+                            value={assigneeId}
+                            onChange={(e) => {
+                              const id = e.target.value;
+                              setAssigneeId(id);
+                              setAssigneesSelected(
+                                id ? [{ type: "client", id }] : []
+                              );
+                              if (errors.assigneeId)
+                                setErrors((p) => ({ ...p, assigneeId: "" }));
+                            }}
+                            className="block w-full rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-3 py-2.5 text-sm text-gray-900 [.dark_&]:text-white shadow-sm ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+                          >
+                            <option value="">Select Client</option>
+                            {clients.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.clientName || c.name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
                     )}
                     {errors.assigneeId && (
                       <p className="mt-1 text-xs text-red-600">
@@ -1453,9 +1462,19 @@ function TaskModal({
                                     className="w-full rounded border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1 text-[10px] text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600"
                                   >
                                     <option value="">Unassigned</option>
-                                    {assignees.map((a) => (
-                                      <option key={a.id} value={a.id}>{a.name}</option>
-                                    ))}
+                                    {assignees
+                                      .filter(u => {
+                                        if (projectId) {
+                                          const proj = projects.find(p => p.id === projectId);
+                                          // Manager panel: Only show team members (exclude PM)
+                                          // Admin/SuperAdmin: Show both team members and PM
+                                          return proj?.assigneeIds?.includes(u.id) || (!isManager && proj?.projectManagerId === u.id);
+                                        }
+                                        return true;
+                                      })
+                                      .map((a) => (
+                                        <option key={a.id} value={a.id}>{a.name}</option>
+                                      ))}
                                   </select>
                                 </div>
                                 {/* Priority */}
@@ -1564,6 +1583,7 @@ function TaskModal({
                                 if (newSubtask.trim()) {
                                   // Validate assignee is selected
                                   if (!newSubtaskAssigneeId) {
+                                    setShowSubtaskAssigneeError(true);
                                     toast.error("Please assign someone to this subtask");
                                     return;
                                   }
@@ -1589,6 +1609,7 @@ function TaskModal({
                                   setNewSubtaskDueDate(null);
                                   setNewSubtaskAssigneeId(null);
                                   setNewSubtaskPriority("Medium");
+                                  setShowSubtaskAssigneeError(false);
                                 }
                               }
                             }}
@@ -1609,14 +1630,18 @@ function TaskModal({
                                 </span>
                               </div>
                             ) : (
-                              <div className="flex items-center gap-1">
-                                <svg className="w-3 h-3 text-red-500 [.dark_&]:text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                </svg>
-                                <span className="text-[10px] text-red-500 [.dark_&]:text-red-400 font-medium">
-                                  Assignee required
-                                </span>
-                              </div>
+                              showSubtaskAssigneeError ? (
+                                <div className="flex items-center gap-1">
+                                  <svg className="w-3 h-3 text-red-500 [.dark_&]:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                  <span className="text-[10px] text-red-500 [.dark_&]:text-red-400 font-medium">
+                                    Assignee required
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="w-1" /> // Spacer
+                              )
                             )}
                             <span className="text-[10px] text-gray-400 [.dark_&]:text-gray-500">
                               Press <kbd className="px-1 py-0.5 bg-gray-100 [.dark_&]:bg-white/10 rounded text-[9px] font-mono">Enter</kbd> to add
@@ -1686,19 +1711,15 @@ function TaskModal({
                                 }}
                                 className={`relative p-2 rounded-lg transition-all ${newSubtaskAssigneeId
                                   ? 'bg-indigo-100 text-indigo-600 [.dark_&]:bg-indigo-900/30 [.dark_&]:text-indigo-400'
-                                  : 'bg-red-50 text-red-500 hover:bg-red-100 [.dark_&]:bg-red-900/20 [.dark_&]:text-red-400 [.dark_&]:hover:bg-red-900/30'
+                                  : showSubtaskAssigneeError
+                                    ? 'bg-red-50 text-red-500 hover:bg-red-100 [.dark_&]:bg-red-900/20 [.dark_&]:text-red-400 [.dark_&]:hover:bg-red-900/30'
+                                    : 'hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-gray-400 hover:text-gray-600'
                                   }`}
                                 title="Assign to (Required)"
                               >
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
-                                {/* Required indicator */}
-                                {!newSubtaskAssigneeId && (
-                                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
-                                    *
-                                  </span>
-                                )}
                               </button>
                               {showQuickAssigneePicker && (
                                 <>
@@ -1719,8 +1740,9 @@ function TaskModal({
                                       .filter(u => {
                                         if (projectId) {
                                           const proj = projects.find(p => p.id === projectId);
-                                          // Only show users who are in the project's assigneeIds
-                                          return proj?.assigneeIds?.includes(u.id);
+                                          // Manager panel: Only show team members (exclude PM)
+                                          // Admin/SuperAdmin: Show both team members and PM
+                                          return proj?.assigneeIds?.includes(u.id) || (!isManager && proj?.projectManagerId === u.id);
                                         }
                                         return true;
                                       })
@@ -1731,6 +1753,7 @@ function TaskModal({
                                           onClick={() => {
                                             setNewSubtaskAssigneeId(a.id);
                                             setShowQuickAssigneePicker(false);
+                                            setShowSubtaskAssigneeError(false);
                                           }}
                                           className={`w-full text-left px-2 py-1.5 text-xs rounded flex items-center gap-2 hover:bg-gray-100 [.dark_&]:hover:bg-white/10 ${newSubtaskAssigneeId === a.id ? 'bg-indigo-50 text-indigo-600 [.dark_&]:bg-indigo-900/20 [.dark_&]:text-indigo-400' : 'text-gray-600 [.dark_&]:text-gray-300'}`}
                                         >
@@ -1804,6 +1827,7 @@ function TaskModal({
 
                               // Validate assignee is selected
                               if (!newSubtaskAssigneeId) {
+                                setShowSubtaskAssigneeError(true);
                                 toast.error("Please assign someone to this subtask");
                                 return;
                               }
@@ -1829,6 +1853,7 @@ function TaskModal({
                               setNewSubtaskDueDate(null);
                               setNewSubtaskAssigneeId(null);
                               setNewSubtaskPriority("Medium");
+                              setShowSubtaskAssigneeError(false);
                             }}
                             className={`whitespace-nowrap text-xs px-4 py-2 text-white rounded-lg transition-colors shrink-0 ${themeStyles.button}`}
                           >

@@ -301,11 +301,20 @@ pointer - events - auto w - 72 max - w - xs transform transition - all duration 
         const bd = b.dueAt?.toDate ? b.dueAt.toDate() : new Date(b.dueAt);
         return bd.getTime() - ad.getTime();
       });
-
       setQuickReminders([...active, ...past]);
     });
     return () => unsub();
   }, [userData?.uid, user?.uid]);
+
+  const formatDate = (date) => {
+    if (!date) return "—";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "—";
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   const formatDueTime = (ts) => {
     if (!ts) return "";
@@ -316,7 +325,7 @@ pointer - events - auto w - 72 max - w - xs transform transition - all duration 
       d.getMonth() === now.getMonth() &&
       d.getFullYear() === now.getFullYear();
     const timeStr = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    return isToday ? `Today at ${timeStr} ` : `${d.toLocaleDateString()} at ${timeStr} `;
+    return isToday ? `Today at ${timeStr} ` : `${formatDate(d)} at ${timeStr} `;
   };
 
   // Filter tasks and events by selected project

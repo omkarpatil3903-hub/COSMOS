@@ -1432,7 +1432,7 @@ const EmployeeTasks = () => {
               setShowTaskModal(false);
               setEditingTask(null);
             }}
-            projects={projects.filter(p => p.assigneeIds?.includes(user.uid))}
+            projects={projects.filter(p => p.assigneeIds?.includes(user.uid) || p.projectManagerId === user.uid)}
             user={{ ...user, name: userData?.name || user.displayName || user.email }}
           />
 
@@ -1444,7 +1444,7 @@ const EmployeeTasks = () => {
               setEditingTask(null);
             }}
             task={editingTask}
-            projects={projects}
+            projects={projects.filter(p => p.assigneeIds?.includes(user.uid) || p.projectManagerId === user.uid)}
             user={{ ...user, name: userData?.name || user.displayName || user.email }}
           />
 

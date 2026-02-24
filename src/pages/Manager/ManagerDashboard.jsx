@@ -128,6 +128,15 @@ export default function ManagerDashboard() {
         }
     };
 
+    const formatDate = (date) => {
+        if (!date) return "—";
+        const d = new Date(date);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
     useEffect(() => {
         if (!projects.length) {
             setLoading(false);
@@ -1240,8 +1249,8 @@ export default function ManagerDashboard() {
             {/* Two Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Project Progress */}
-                <Card title="Project Progress" className="h-full">
-                    <div className="space-y-0 divide-y divide-gray-100 dark:divide-white/10 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                <Card title="Project Progress" className="h-[360px]">
+                    <div className="space-y-0 divide-y divide-gray-100 dark:divide-white/10 h-[280px] overflow-y-auto pr-2 custom-scrollbar">
                         {projectsWithProgress.length === 0 ? (
                             <p className="text-gray-500 dark:text-gray-400 text-center py-8">No projects assigned yet</p>
                         ) : (
@@ -1252,9 +1261,15 @@ export default function ManagerDashboard() {
                                             <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
                                                 {project.projectName}
                                             </h4>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                                {project.clientName || "(No Client)"}
-                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] font-bold text-gray-400 dark:text-white/40 uppercase tracking-wider">
+                                                    {project.projectId || "—"}
+                                                </span>
+                                                <span className="text-gray-300 dark:text-white/20 text-xs">|</span>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                    {project.clientName || "(No Client)"}
+                                                </p>
+                                            </div>
                                         </div>
                                         <div className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap font-medium">
                                             {project.completedTasks}/{project.taskCount} <span className="mx-1">•</span> {project.progress}%
@@ -1276,8 +1291,8 @@ export default function ManagerDashboard() {
                 </Card>
 
                 {/* Upcoming Deadlines */}
-                <Card title="Upcoming Deadlines (Next 7 Days)" className="h-full">
-                    <div className="space-y-3">
+                <Card title="Upcoming Deadlines (Next 7 Days)" className="h-[360px]">
+                    <div className="space-y-3 h-[280px] overflow-y-auto pr-2 custom-scrollbar">
                         {upcomingDeadlines.length === 0 ? (
                             <div className="text-center py-8">
                                 <FaCheckCircle className="mx-auto h-8 w-8 text-green-500 mb-2" />
@@ -1293,7 +1308,7 @@ export default function ManagerDashboard() {
                                     <div className="flex items-center gap-2 ml-3">
                                         <FaCalendarAlt className="h-3 w-3 text-gray-400" />
                                         <span className="text-sm text-gray-600 [.dark_&]:text-gray-300">
-                                            {task.dueDate?.toLocaleDateString()}
+                                            {formatDate(task.dueDate)}
                                         </span>
                                     </div>
                                 </div>

@@ -201,9 +201,8 @@ export default function ClientProjects() {
                   setSortOrder(sortOrder === "asc" ? "desc" : "asc")
                 }
                 className="p-2 text-gray-500 hover:text-gray-700 transition-colors border border-gray-300 rounded-lg"
-                title={`Sort ${
-                  sortOrder === "asc" ? "Descending" : "Ascending"
-                }`}
+                title={`Sort ${sortOrder === "asc" ? "Descending" : "Ascending"
+                  }`}
               >
                 {sortOrder === "asc" ? (
                   <FaSortAmountUp className="h-4 w-4" />
@@ -222,11 +221,10 @@ export default function ClientProjects() {
           {/* Right Side - Show Completed Projects Button */}
           <button
             onClick={() => setShowCompleted(!showCompleted)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              showCompleted
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${showCompleted
                 ? "bg-green-100 text-green-800 border border-green-300 hover:bg-green-200"
                 : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
-            }`}
+              }`}
             title={
               showCompleted
                 ? "Hide completed projects"
@@ -255,15 +253,15 @@ export default function ClientProjects() {
               {searchTerm
                 ? "No Projects Found"
                 : showCompleted
-                ? "No Completed Projects"
-                : "No Active Projects"}
+                  ? "No Completed Projects"
+                  : "No Active Projects"}
             </h3>
             <p className="text-gray-500 max-w-md mx-auto">
               {searchTerm
                 ? `No projects match your search "${searchTerm}". Try adjusting your search terms.`
                 : showCompleted
-                ? "You don't have any completed projects yet. Keep working on your current projects to see them here once completed."
-                : "You don't have any active projects assigned at the moment. New projects will appear here when assigned to you."}
+                  ? "You don't have any completed projects yet. Keep working on your current projects to see them here once completed."
+                  : "You don't have any active projects assigned at the moment. New projects will appear here when assigned to you."}
             </p>
           </div>
         </Card>
@@ -308,6 +306,9 @@ export default function ClientProjects() {
                             project.name ||
                             "Untitled Project"}
                         </h3>
+                        <p className="text-[10px] font-bold text-gray-400 dark:text-white/40 mt-1 uppercase tracking-wider">
+                          {project.projectId || "—"}
+                        </p>
                       </div>
 
                       {/* OKRs (Objectives and Key Results) - Scrollable */}
@@ -366,15 +367,14 @@ export default function ClientProjects() {
                         <div className="flex items-center justify-between">
                           <span className="text-gray-500 text-xs">Status</span>
                           <span
-                            className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              project.status === "Completed"
+                            className={`px-2 py-1 text-xs font-medium rounded-full ${project.status === "Completed"
                                 ? "bg-green-100 text-green-800"
                                 : project.status === "In Progress"
-                                ? "bg-blue-100 text-blue-800"
-                                : project.status === "On Hold"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-gray-100 text-gray-800"
-                            }`}
+                                  ? "bg-blue-100 text-blue-800"
+                                  : project.status === "On Hold"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-gray-100 text-gray-800"
+                              }`}
                           >
                             {project.status || "Active"}
                           </span>
