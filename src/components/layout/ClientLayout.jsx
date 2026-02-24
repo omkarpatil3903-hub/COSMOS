@@ -52,6 +52,7 @@ import { Toaster } from "react-hot-toast";
 import toast from "react-hot-toast";
 import useGlobalReminders from "../../hooks/useGlobalReminders.jsx";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
+import GlobalStickyNotes from "../Notes/GlobalStickyNotes";
 import {
   FaTachometerAlt,
   FaProjectDiagram,
@@ -438,6 +439,8 @@ export default function ClientLayout() {
           aria-label="Close menu overlay"
         />
       )}
+
+      <GlobalStickyNotes />
 
       <div
         className={`flex min-h-screen flex-1 flex-col transition-all duration-300 ${contentPadding}`}

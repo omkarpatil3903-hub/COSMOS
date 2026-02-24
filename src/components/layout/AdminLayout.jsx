@@ -66,6 +66,7 @@ import {
 } from "react-icons/fa";
 import { useTheme } from "../../context/ThemeContext";
 import PanelSwitcher from "../PanelSwitcher";
+import GlobalStickyNotes from "../Notes/GlobalStickyNotes";
 
 // NEW: A reusable link component to keep our code clean
 const SidebarLink = ({ to, icon, text, isCollapsed, onNavigate }) => {
@@ -571,6 +572,8 @@ function AdminLayout() {
           aria-label="Close menu overlay"
         />
       )}
+
+      <GlobalStickyNotes />
 
       <div
         className={`flex min-h-screen flex-1 flex-col transition-all duration-300 w-full ${contentPadding}`}

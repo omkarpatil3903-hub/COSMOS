@@ -79,6 +79,12 @@ const ViewProjectModal = ({
                 {selectedProject.projectName}
               </h2>
               <p className="text-xs text-gray-500 [.dark_&]:text-gray-400 font-medium">Project Details</p>
+              <span
+                title={selectedProject.projectId || "-"}
+                className="mt-1.5 text-gray-900 [.dark_&]:text-white text-sm font-semibold select-all inline-block break-all"
+              >
+                {selectedProject.projectId || "-"}
+              </span>
             </div>
           </div>
           <button

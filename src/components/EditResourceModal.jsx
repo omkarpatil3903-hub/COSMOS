@@ -8,7 +8,7 @@
  * - Pre-populate form with existing resource data
  * - Profile image upload/remove
  * - Editable: name, mobile, employment, resource type, role, status
- * - Read-only: email (cannot be changed after creation)
+ * - Editable: email (can be changed; Cloud Function updates Firebase Auth)
  * - Optional password update (leave blank to keep existing)
  * - Fetch role options from Firestore settings/hierarchy
  *
@@ -287,17 +287,27 @@ function EditResourceModal({
                     <FaEnvelope className="text-gray-400 [.dark_&]:text-gray-300" />
                     Email <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
-                    <input
-                      type="email"
-                      value={formData.email}
-                      readOnly
-                      className="w-full rounded-lg border border-gray-200 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-gray-800/50 py-2.5 px-4 text-sm text-gray-500 [.dark_&]:text-gray-400 cursor-not-allowed focus:outline-none transition-all duration-200"
-                      placeholder="Work email"
-                    />
-
-                  </div>
-
+                  <input
+                    type="email"
+                    value={formData.email}
+                    placeholder="Work email"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormData({ ...formData, email: v });
+                      setErrors((prev) => ({
+                        ...prev,
+                        email: validateField("email", v),
+                      }));
+                    }}
+                    className={`w-full rounded-lg border ${errors.email
+                        ? "border-red-500 focus:ring-red-100 [.dark_&]:border-red-500 [.dark_&]:focus:ring-red-500/20"
+                        : "border-gray-200 [.dark_&]:border-white/10 focus:border-indigo-500 [.dark_&]:focus:border-indigo-400 focus:ring-indigo-100 [.dark_&]:focus:ring-indigo-500/20"
+                      } bg-white [.dark_&]:bg-[#181B2A] py-2.5 px-4 text-sm text-gray-900 [.dark_&]:text-white placeholder:text-gray-400 [.dark_&]:placeholder:text-gray-500 focus:outline-none focus:ring-4 transition-all duration-200`}
+                    required
+                  />
+                  {errors.email && (
+                    <p className="text-xs text-red-600 font-medium">{errors.email}</p>
+                  )}
                 </div>
 
                 {/* Mobile */}

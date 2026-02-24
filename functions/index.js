@@ -69,6 +69,63 @@ exports.updateUserPassword = onCall(async (request) => {
 });
 
 /**
+ * Update a user's email in Firebase Auth.
+ * Only accessible by 'superadmin' or 'admin'.
+ */
+exports.updateUserEmail = onCall(async (request) => {
+    // 1. Verify Authentication
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be logged in.");
+    }
+
+    const callerUid = request.auth.uid;
+
+    // 2. Verify Role via Firestore
+    try {
+        const userDoc = await admin.firestore().collection('users').doc(callerUid).get();
+        if (!userDoc.exists) {
+            throw new HttpsError("permission-denied", "User profile not found.");
+        }
+
+        const userData = userDoc.data();
+        const role = userData.role;
+
+        if (role !== "superadmin" && role !== "admin") {
+            throw new HttpsError(
+                "permission-denied",
+                "Only admins can update user emails."
+            );
+        }
+    } catch (error) {
+        console.error("Error verifying role:", error);
+        throw new HttpsError("internal", "Failed to verify user permissions.");
+    }
+
+    // 3. Validate Input
+    const { uid, email } = request.data;
+    if (!uid || !email) {
+        throw new HttpsError("invalid-argument", "UID and new email are required.");
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        throw new HttpsError("invalid-argument", "Invalid email address.");
+    }
+
+    // 4. Perform Update in Firebase Auth
+    try {
+        await admin.auth().updateUser(uid, { email });
+        return { success: true, message: "Email updated successfully in Auth." };
+    } catch (error) {
+        console.error("Error updating email in Auth:", error);
+        if (error.code === "auth/email-already-exists") {
+            throw new HttpsError("already-exists", "This email is already in use by another account.");
+        }
+        throw new HttpsError("internal", "Failed to update email: " + error.message);
+    }
+});
+
+/**
  * Delete a user from Firebase Auth.
  * Only accessible by 'superadmin' or 'admin'.
  */

@@ -614,10 +614,10 @@ export default function ClientTasks() {
         {task.priority && (
           <span
             className={`ml-2 px-2 py-1 text-xs font-medium rounded ${task.priority === "High"
-                ? "bg-red-100 text-red-800"
-                : task.priority === "Medium"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-green-100 text-green-800"
+              ? "bg-red-100 text-red-800"
+              : task.priority === "Medium"
+                ? "bg-yellow-100 text-yellow-800"
+                : "bg-green-100 text-green-800"
               }`}
           >
             {task.priority}
@@ -652,10 +652,10 @@ export default function ClientTasks() {
         <div className="flex items-center gap-2">
           <span
             className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium ${task.dueDate &&
-                task.status !== "Done" &&
-                task.dueDate < new Date().toISOString().slice(0, 10)
-                ? "bg-red-100 text-red-700"
-                : "bg-blue-100 text-blue-700"
+              task.status !== "Done" &&
+              task.dueDate < new Date().toISOString().slice(0, 10)
+              ? "bg-red-100 text-red-700"
+              : "bg-blue-100 text-blue-700"
               }`}
           >
             <FaCalendarAlt className="text-current" />
@@ -862,8 +862,8 @@ export default function ClientTasks() {
                 <button
                   onClick={() => setView("list")}
                   className={`p-2 rounded transition-colors ${view === "list"
-                      ? `bg-white ${iconColor} shadow`
-                      : "text-gray-600 hover:text-gray-900"
+                    ? `bg-white ${iconColor} shadow`
+                    : "text-gray-600 hover:text-gray-900"
                     }`}
                   title="List View"
                 >
@@ -872,8 +872,8 @@ export default function ClientTasks() {
                 <button
                   onClick={() => setView("board")}
                   className={`p-2 rounded transition-colors ${view === "board"
-                      ? `bg-white ${iconColor} shadow`
-                      : "text-gray-600 hover:text-gray-900"
+                    ? `bg-white ${iconColor} shadow`
+                    : "text-gray-600 hover:text-gray-900"
                     }`}
                   title="Kanban View"
                 >
@@ -931,10 +931,10 @@ export default function ClientTasks() {
                     {task.priority && (
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded ${task.priority === "High"
-                            ? "bg-red-100 text-red-700"
-                            : task.priority === "Medium"
-                              ? "bg-orange-100 text-orange-700"
-                              : "bg-green-100 text-green-700"
+                          ? "bg-red-100 text-red-700"
+                          : task.priority === "Medium"
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-green-100 text-green-700"
                           }`}
                       >
                         {task.priority}
@@ -1054,10 +1054,10 @@ export default function ClientTasks() {
                     {task.priority && (
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded ${task.priority === "High"
-                            ? "bg-red-100 text-red-700"
-                            : task.priority === "Medium"
-                              ? "bg-orange-100 text-orange-700"
-                              : "bg-green-100 text-green-700"
+                          ? "bg-red-100 text-red-700"
+                          : task.priority === "Medium"
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-green-100 text-green-700"
                           }`}
                       >
                         {task.priority}
@@ -1221,10 +1221,10 @@ export default function ClientTasks() {
                     {task.priority && (
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded ${task.priority === "High"
-                            ? "bg-red-100 text-red-700"
-                            : task.priority === "Medium"
-                              ? "bg-orange-100 text-orange-700"
-                              : "bg-green-100 text-green-700"
+                          ? "bg-red-100 text-red-700"
+                          : task.priority === "Medium"
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-green-100 text-green-700"
                           }`}
                       >
                         {task.priority}
@@ -1414,10 +1414,10 @@ export default function ClientTasks() {
                             {task.priority && (
                               <span
                                 className={`px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${task.priority === "High"
-                                    ? "bg-red-100 text-red-800 border border-red-200"
-                                    : task.priority === "Medium"
-                                      ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                                      : "bg-green-100 text-green-800 border border-green-200"
+                                  ? "bg-red-100 text-red-800 border border-red-200"
+                                  : task.priority === "Medium"
+                                    ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                                    : "bg-green-100 text-green-800 border border-green-200"
                                   }`}
                               >
                                 <FaFlag className="text-xs" />
@@ -1451,11 +1451,11 @@ export default function ClientTasks() {
                             {task.dueDate && (
                               <span
                                 className={`px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${task.dueDate &&
-                                    task.status !== "Done" &&
-                                    task.dueDate <
-                                    new Date().toISOString().slice(0, 10)
-                                    ? "bg-red-100 text-red-800 border border-red-200"
-                                    : "bg-red-100 text-red-800 border border-red-200"
+                                  task.status !== "Done" &&
+                                  task.dueDate <
+                                  new Date().toISOString().slice(0, 10)
+                                  ? "bg-red-100 text-red-800 border border-red-200"
+                                  : "bg-red-100 text-red-800 border border-red-200"
                                   }`}
                               >
                                 <FaCalendarAlt className="text-xs" />
@@ -1649,10 +1649,10 @@ export default function ClientTasks() {
                               {task.priority && (
                                 <span
                                   className={`px-2.5 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${task.priority === "High"
-                                      ? "bg-red-100 text-red-800 border border-red-200"
-                                      : task.priority === "Medium"
-                                        ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
-                                        : "bg-green-100 text-green-800 border border-green-200"
+                                    ? "bg-red-100 text-red-800 border border-red-200"
+                                    : task.priority === "Medium"
+                                      ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                                      : "bg-green-100 text-green-800 border border-green-200"
                                     }`}
                                 >
                                   <FaFlag className="text-xs" />
@@ -1777,10 +1777,10 @@ export default function ClientTasks() {
                     <div className="mt-1 flex items-center gap-2">
                       <span
                         className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${selectedTaskForDetails.status === "Done"
-                            ? "bg-green-100 text-green-800"
-                            : selectedTaskForDetails.status === "In Progress"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-gray-100 text-gray-800"
+                          ? "bg-green-100 text-green-800"
+                          : selectedTaskForDetails.status === "In Progress"
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-gray-100 text-gray-800"
                           }`}
                       >
                         <span>{selectedTaskForDetails.status}</span>
@@ -1788,10 +1788,10 @@ export default function ClientTasks() {
                       {selectedTaskForDetails.priority && (
                         <span
                           className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ${selectedTaskForDetails.priority === "High"
-                              ? "bg-red-100 text-red-800"
-                              : selectedTaskForDetails.priority === "Medium"
-                                ? "bg-orange-100 text-orange-800"
-                                : "bg-green-100 text-green-800"
+                            ? "bg-red-100 text-red-800"
+                            : selectedTaskForDetails.priority === "Medium"
+                              ? "bg-orange-100 text-orange-800"
+                              : "bg-green-100 text-green-800"
                             }`}
                         >
                           <span>{selectedTaskForDetails.priority}</span>

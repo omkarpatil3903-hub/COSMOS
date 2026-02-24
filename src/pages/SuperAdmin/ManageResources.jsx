@@ -585,6 +585,24 @@ function ManageResources() {
         }
       }
 
+      // If email changed, update Firebase Auth via Cloud Function
+      const originalEmail = (initialEditData?.email || "").toLowerCase().trim();
+      if (normalisedEmail && normalisedEmail !== originalEmail) {
+        try {
+          const updateUserEmailFn = httpsCallable(functions, 'updateUserEmail');
+          await updateUserEmailFn({ uid: selectedResource.id, email: normalisedEmail });
+          toast.success("Email updated in Auth system");
+        } catch (authEmailError) {
+          console.error("Failed to update Auth email:", authEmailError);
+          const msg = authEmailError.code === "functions/already-exists"
+            ? "That email is already used by another account."
+            : `Failed to update email in Auth: ${authEmailError.message}`;
+          toast.error(msg);
+          // Revert the email in Firestore updates
+          updates.email = originalEmail;
+        }
+      }
+
       await updateDoc(userRef, updates);
 
       toast.success("Resource updated successfully");

@@ -110,7 +110,32 @@ const AddReminderModal = ({
 
         setIsSubmitting(true);
         try {
+            // Fetch server time to validate
+            let serverTime = new Date();
+            try {
+                const res = await fetch(window.location.origin, { method: 'HEAD' });
+                const dateHeader = res.headers.get('date');
+                if (dateHeader) {
+                    const parsed = new Date(dateHeader);
+                    if (!isNaN(parsed.getTime())) {
+                        serverTime = parsed;
+                    }
+                }
+            } catch (e) {
+                console.warn("Could not fetch server time, falling back to local time");
+            }
+
+            // Zero out seconds & ms to allow scheduling for the current minute without failing due to seconds
+            serverTime.setSeconds(0, 0);
+
             const dueAt = new Date(`${date}T${time}`);
+            dueAt.setSeconds(0, 0);
+
+            if (dueAt < serverTime) {
+                toast.error("Reminder date and time cannot be in the past.");
+                setIsSubmitting(false);
+                return;
+            }
 
             if (reminderToEdit) {
                 // Update existing reminder
