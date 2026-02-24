@@ -1002,6 +1002,27 @@ const TaskViewModal = ({
     return task.status || "To-Do";
   }, [task, currentUser]);
 
+  const getRecurrenceLabel = (t) => {
+    if (!t.isRecurring) return null;
+    const pattern = t.recurringPattern || "daily";
+    const interval = parseInt(t.recurringInterval || 1);
+
+    let base = "";
+    if (interval === 1) {
+      if (pattern === "daily") base = "Daily";
+      else if (pattern === "weekly") base = "Weekly";
+      else if (pattern === "monthly") base = "Monthly";
+      else if (pattern === "yearly") base = "Yearly";
+      else base = pattern.charAt(0).toUpperCase() + pattern.slice(1);
+    } else {
+      const unit = pattern === "daily" ? "Days" :
+        pattern === "weekly" ? "Weeks" :
+          pattern === "monthly" ? "Months" : "Years";
+      base = `Every ${interval} ${unit}`;
+    }
+    return `Recurring: ${base}`;
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200"
@@ -1024,8 +1045,8 @@ const TaskViewModal = ({
               {task.id.slice(0, 6).toUpperCase()}
             </span>
             {task.isRecurring && (
-              <span className="hidden sm:flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full text-xs font-medium">
-                <MdReplayCircleFilled /> Recurring
+              <span className="hidden sm:flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm border border-indigo-100">
+                <MdReplayCircleFilled className="text-sm" /> {getRecurrenceLabel(task)}
               </span>
             )}
           </div>

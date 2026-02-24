@@ -10,6 +10,8 @@ import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { withErrorBoundary } from "./components/RouteWithErrorBoundary";
+import { useAuthContext } from "./context/useAuthContext";
+import Spinner from "./components/Spinner";
 import "./index.css";
 
 // Import all your components
@@ -23,7 +25,21 @@ import ClientLayout from "./components/layout/ClientLayout";
 import EmployeeLayout from "./components/layout/EmployeeLayout";
 
 import Unauthorized from "./pages/Unauthorized";
+import NotFoundPage from "./pages/NotFoundPage";
 import ProtectedRoute from "./components/ProtectedRoute";
+
+/**
+ * Smart wildcard redirect:
+ * - If still loading auth  → show spinner
+ * - If logged out          → redirect to /login
+ * - If logged in           → show the 404 Not Found page
+ */
+function NotFoundRedirect() {
+  const { user, loading } = useAuthContext();
+  if (loading) return <Spinner />;
+  if (!user) return <Navigate to="/login" replace />;
+  return <NotFoundPage />;
+}
 
 import DashboardPage from "./pages/SuperAdmin/DashboardPage.jsx";
 import ReportsPage from "./pages/SuperAdmin/ReportsPage.jsx";
@@ -269,6 +285,9 @@ const router = createBrowserRouter([
       },
     ],
   },
+
+  // Catch-all: redirect unauthenticated users to /login, show 404 for authenticated users
+  { path: "*", element: <NotFoundRedirect /> },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")).render(

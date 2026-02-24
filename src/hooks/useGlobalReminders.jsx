@@ -64,10 +64,10 @@ const useGlobalReminders = () => {
                                         type="button"
                                         onClick={async () => {
                                             try {
-                                                await deleteDoc(doc(db, "reminders", r.id));
-                                                shownToastsRef.current.delete(r.id);
+                                                await updateDoc(doc(db, "reminders", r.id), { isRead: true });
+                                                shownToastsRef.current.add(r.id); // Add it to shown toasts to be safe
                                             } catch (e) {
-                                                console.error("Failed to delete reminder", e);
+                                                console.error("Failed to dismiss reminder", e);
                                             }
                                             toast.dismiss(toastId);
                                         }}

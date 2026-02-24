@@ -1,7 +1,7 @@
-// src/pages/DashboardPage.jsx
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "../../context/useAuthContext"; // To get the user's name
+import NotePreview from '../../components/Notes/NotePreview';
 import {
   FaUsers,
   FaUserTie,
@@ -13,6 +13,7 @@ import {
   FaFlag,
   FaChevronUp,
   FaChevronDown,
+  FaClock,
 } from "react-icons/fa";
 import { LuNotebookPen, LuAlarmClock } from "react-icons/lu";
 import { db } from "../../firebase";
@@ -41,6 +42,7 @@ function DashboardPage() {
   const [showNotesMenu, setShowNotesMenu] = useState(false);
   const [showQuickMenu, setShowQuickMenu] = useState(false);
   const [noteInput, setNoteInput] = useState("");
+  const [noteHeading, setNoteHeading] = useState("");
   const [notes, setNotes] = useState([]);
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [quickReminders, setQuickReminders] = useState([]);
@@ -49,7 +51,6 @@ function DashboardPage() {
   const [remDate, setRemDate] = useState("");
   const [remTime, setRemTime] = useState("");
   const [remDesc, setRemDesc] = useState("");
-  const [showTopNotes, setShowTopNotes] = useState(true);
   const [savingReminder, setSavingReminder] = useState(false);
   const [editingReminderId, setEditingReminderId] = useState(null);
   const quickMenusRef = useRef(null);
@@ -127,7 +128,7 @@ function DashboardPage() {
           });
 
         due.forEach((r) => {
-          const toastId = `reminder-${r.id}`;
+          const toastId = `reminder - ${r.id} `;
           const when = r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt);
           const timeLabel = isNaN(when.getTime())
             ? ""
@@ -137,9 +138,9 @@ function DashboardPage() {
             (t) => (
               <div
                 className={`
-                pointer-events-auto w-72 max-w-xs transform transition-all duration-300
+pointer - events - auto w - 72 max - w - xs transform transition - all duration - 300
                 ${t.visible ? "translate-x-0 opacity-100" : "translate-x-3 opacity-0"}
-              `}
+`}
               >
                 <div className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 rounded-xl p-[2px] shadow-lg">
                   <div className="bg-white dark:!bg-[#1e1e2d] rounded-xl px-4 py-3 flex items-center gap-3">
@@ -167,9 +168,9 @@ function DashboardPage() {
                       type="button"
                       onClick={async () => {
                         try {
-                          await deleteDoc(doc(db, "reminders", r.id));
+                          await updateDoc(doc(db, "reminders", r.id), { isRead: true });
                         } catch (e) {
-                          console.error("Failed to delete reminder", e);
+                          console.error("Failed to dismiss reminder", e);
                         }
                         toast.dismiss(toastId);
                       }}
@@ -244,6 +245,7 @@ function DashboardPage() {
             const data = d.data() || {};
             return {
               id: d.id,
+              heading: data.heading || "",
               text: data.bodyText || data.text || data.title || "",
               isPinned: data.isPinned === true,
               createdAt: data.createdAt || null,
@@ -280,12 +282,27 @@ function DashboardPage() {
     );
     const unsub = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      data.sort((a, b) => {
-        const aD = a.dueAt?.toDate ? a.dueAt.toDate() : new Date(a.dueAt);
-        const bD = b.dueAt?.toDate ? b.dueAt.toDate() : new Date(b.dueAt);
-        return aD - bD;
+      const now = Date.now();
+      const active = [];
+      const past = [];
+      data.forEach((r) => {
+        const d = r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt);
+        if (d.getTime() >= now) active.push(r);
+        else past.push(r);
       });
-      setQuickReminders(data);
+
+      active.sort((a, b) => {
+        const ad = a.dueAt?.toDate ? a.dueAt.toDate() : new Date(a.dueAt);
+        const bd = b.dueAt?.toDate ? b.dueAt.toDate() : new Date(b.dueAt);
+        return ad.getTime() - bd.getTime();
+      });
+      past.sort((a, b) => {
+        const ad = a.dueAt?.toDate ? a.dueAt.toDate() : new Date(a.dueAt);
+        const bd = b.dueAt?.toDate ? b.dueAt.toDate() : new Date(b.dueAt);
+        return bd.getTime() - ad.getTime();
+      });
+
+      setQuickReminders([...active, ...past]);
     });
     return () => unsub();
   }, [userData?.uid, user?.uid]);
@@ -299,7 +316,7 @@ function DashboardPage() {
       d.getMonth() === now.getMonth() &&
       d.getFullYear() === now.getFullYear();
     const timeStr = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    return isToday ? `Today at ${timeStr}` : `${d.toLocaleDateString()} at ${timeStr}`;
+    return isToday ? `Today at ${timeStr} ` : `${d.toLocaleDateString()} at ${timeStr} `;
   };
 
   // Filter tasks and events by selected project
@@ -372,7 +389,7 @@ function DashboardPage() {
     for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       buckets.push({
-        key: `${d.getFullYear()}-${d.getMonth()}`,
+        key: `${d.getFullYear()} -${d.getMonth()} `,
         year: d.getFullYear(),
         month: d.getMonth(),
         name: monthNames[d.getMonth()],
@@ -385,7 +402,7 @@ function DashboardPage() {
     const findBucketIndex = (date) => {
       const y = date.getFullYear();
       const m = date.getMonth();
-      const key = `${y}-${m}`;
+      const key = `${y} -${m} `;
       return buckets.findIndex((b) => b.key === key);
     };
 
@@ -650,7 +667,7 @@ function DashboardPage() {
                     <div
                       className="w-3 rounded-full"
                       style={{
-                        height: `${height}px`,
+                        height: `${height} px`,
                         backgroundColor: color,
                         opacity: 0.6,
                       }}
@@ -658,7 +675,7 @@ function DashboardPage() {
                     <div
                       className="w-4 h-4 rounded-full border-2 border-white shadow-md transform -translate-y-2"
                       style={{ backgroundColor: color }}
-                      title={`${item.name}: $${item[dataKey].toLocaleString()}`}
+                      title={`${item.name}: $${item[dataKey].toLocaleString()} `}
                     ></div>
                   </div>
                   <span className="text-xs text-gray-600 [.dark_&]:text-gray-400 mt-2">
@@ -734,8 +751,8 @@ function DashboardPage() {
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
-                  className={`h-2 rounded-full transition-all duration-500 ${barColor}`}
-                  style={{ width: `${p.progress}%` }}
+                  className={`h - 2 rounded - full transition - all duration - 500 ${barColor} `}
+                  style={{ width: `${p.progress}% ` }}
                 ></div>
               </div>
             </div>
@@ -799,7 +816,7 @@ function DashboardPage() {
     // Get tasks for a specific date
     const getTasksForDate = (day) => {
       if (!day) return [];
-      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const dateStr = `${currentYear} -${String(currentMonth + 1).padStart(2, "0")} -${String(day).padStart(2, "0")} `;
 
       return tasks.filter((task) => {
         if (!task.dueDate) return false;
@@ -814,7 +831,7 @@ function DashboardPage() {
         }
         if (isNaN(d.getTime())) return false;
 
-        const taskDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const taskDateStr = `${d.getFullYear()} -${String(d.getMonth() + 1).padStart(2, "0")} -${String(d.getDate()).padStart(2, "0")} `;
         return taskDateStr === dateStr;
       });
     };
@@ -822,10 +839,11 @@ function DashboardPage() {
     // Get events for a specific date
     const getEventsForDate = (day) => {
       if (!day) return [];
-      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(
+      const dateStr = `${currentYear} -${String(currentMonth + 1).padStart(
         2,
         "0"
-      )}-${String(day).padStart(2, "0")}`;
+      )
+        } -${String(day).padStart(2, "0")} `;
       return data.filter((event) => event.date === dateStr);
     };
 
@@ -907,10 +925,21 @@ function DashboardPage() {
                 <div
                   key={index}
                   className={`
-                    h-8 p-1 border border-subtle relative
-                    ${day ? "hover:bg-surface-subtle" : ""}
-                    ${isToday(day) ? "bg-blue-100 dark:bg-blue-900/30 border-blue-300" : "bg-surface"}
+                    h-8 p-1 relative
+                    ${isToday(day)
+                      ? "bg-blue-100 border-2 border-blue-400 dark:bg-blue-900 dark:border-blue-700"
+                      : "bg-white border border-gray-200 dark:bg-gray-800 dark:border-gray-700"
+                    }
+                    ${day ? "hover:bg-blue-50 dark:hover:bg-gray-700 hover:z-10 transition-colors" : ""}
                   `}
+                  style={{
+                    backgroundColor: mode === 'dark'
+                      ? (isToday(day) ? '#1e3a8a' : '#1f2937')
+                      : (isToday(day) ? '#dbeafe' : '#ffffff'),
+                    borderColor: mode === 'dark'
+                      ? (isToday(day) ? '#3b82f6' : '#374151')
+                      : (isToday(day) ? '#93c5fd' : '#e5e7eb')
+                  }}
                 >
                   {day && (
                     <>
@@ -926,16 +955,16 @@ function DashboardPage() {
                         >
                           <FaFlag className="text-[7px] sm:text-[9px] md:text-[10px] flex-shrink-0" style={{ color: "#ef4444" }} />
                           {/* Professional hover card */}
-                          <div className={`pointer-events-none absolute top-full mt-1 hidden group-hover/flag:block z-50 ${index % 7 >= 5 ? "right-0" : "left-1/2 -translate-x-1/2"}`} style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.2))' }}>
+                          <div className={`pointer - events - none absolute top - full mt - 1 hidden group - hover / flag:block z - 50 ${index % 7 >= 5 ? "right-0" : "left-1/2 -translate-x-1/2"} `} style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.2))' }}>
                             <div style={{
                               backgroundColor: mode === 'dark' ? '#111827' : '#ffffff',
-                              border: `1px solid ${mode === 'dark' ? '#374151' : '#e5e7eb'}`,
+                              border: `1px solid ${mode === 'dark' ? '#374151' : '#e5e7eb'} `,
                               borderRadius: '8px',
                               padding: '8px 10px',
                               whiteSpace: 'nowrap',
                               boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
                             }}>
-                              <div style={{ fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#ef4444', marginBottom: '6px', borderBottom: `1px solid ${mode === 'dark' ? '#374151' : '#e5e7eb'}`, paddingBottom: '4px' }}>
+                              <div style={{ fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#ef4444', marginBottom: '6px', borderBottom: `1px solid ${mode === 'dark' ? '#374151' : '#e5e7eb'} `, paddingBottom: '4px' }}>
                                 High Priority Task
                               </div>
                               <div style={{ fontSize: '10px', color: mode === 'dark' ? '#f3f4f6' : '#111827' }}>
@@ -943,17 +972,22 @@ function DashboardPage() {
                               </div>
                             </div>
                             {/* Arrow */}
-                            <div style={{ position: 'absolute', bottom: '100%', right: '4px', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderBottom: `5px solid ${mode === 'dark' ? '#374151' : '#e5e7eb'}` }} />
+                            <div style={{ position: 'absolute', bottom: '100%', right: '4px', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderBottom: `5px solid ${mode === 'dark' ? '#374151' : '#e5e7eb'} ` }} />
                           </div>
                         </div>
                       )}
 
                       {/* Date number */}
                       <div
-                        className={`text-center ${isToday(day)
-                          ? "font-bold text-blue-600 [.dark_&]:text-blue-400"
-                          : "text-gray-900 [.dark_&]:text-white"
+                        className={`text-center text-sm ${isToday(day)
+                          ? "font-bold text-blue-600 dark:text-blue-300"
+                          : "text-gray-900 dark:text-gray-100"
                           }`}
+                        style={{
+                          color: mode === 'dark'
+                            ? (isToday(day) ? '#93c5fd' : '#f3f4f6')
+                            : (isToday(day) ? '#2563eb' : '#111827')
+                        }}
                       >
                         {day}
                       </div>
@@ -966,7 +1000,7 @@ function DashboardPage() {
                           {hasTasks && dotColor && (
                             <div className="relative group/taskdot flex-shrink-0">
                               <div
-                                className="w-1.5 h-1.5 rounded-full cursor-pointer hover:scale-125 transition-transform"
+                                className="w-1.5 h-1.5 rounded-full cursor-pointer hover:scale-125 transition-transform shadow-sm"
                                 style={{ backgroundColor: dotColor === "bg-red-500" ? "#ef4444" : "#f97316" }}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -999,10 +1033,11 @@ function DashboardPage() {
                           )}
 
                           {/* Events blue dot with hover tooltip */}
+                          {/* Events blue dot with hover tooltip */}
                           {hasEvents && (
                             <div className="relative group/evtdot flex-shrink-0">
                               <div
-                                className="w-1.5 h-1.5 rounded-full bg-blue-500 cursor-pointer hover:scale-125 transition-transform"
+                                className="w-1.5 h-1.5 rounded-full bg-blue-500 cursor-pointer hover:scale-125 transition-transform shadow-sm"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -1116,7 +1151,7 @@ function DashboardPage() {
   }
 
   // Use realistic user name
-  const welcomeTitle = `Welcome${userData?.name ? ", " + userData.name : ""}!`;
+  const welcomeTitle = `Welcome${userData?.name ? ", " + userData.name : ""} !`;
 
   return (
     <div>
@@ -1136,7 +1171,7 @@ function DashboardPage() {
                 className="p-2 rounded-full hover:bg-gray-100 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-gray-200 shadow-sm"
                 title="Quick actions"
               >
-                <LuNotebookPen className={`h-5 w-5 ${iconColor}`} />
+                <LuNotebookPen className={`h - 5 w - 5 ${iconColor} `} />
               </button>
               {showQuickMenu && (
                 <div className="absolute right-0 top-9 z-30 w-44 rounded-lg bg-surface shadow-lg border border-subtle text-sm">
@@ -1179,11 +1214,11 @@ function DashboardPage() {
                           const yyyy = now.getFullYear();
                           const mm = String(now.getMonth() + 1).padStart(2, "0");
                           const dd = String(now.getDate()).padStart(2, "0");
-                          setRemDate(`${yyyy}-${mm}-${dd}`);
+                          setRemDate(`${yyyy} -${mm} -${dd} `);
                           const next = new Date(now.getTime() + 60 * 60 * 1000);
                           const hh = String(next.getHours()).padStart(2, "0");
                           const min = String(next.getMinutes()).padStart(2, "0");
-                          setRemTime(`${hh}:${min}`);
+                          setRemTime(`${hh}:${min} `);
                         }
                         // Start a fresh create when toggling via +
                         setEditingReminderId(null);
@@ -1191,12 +1226,13 @@ function DashboardPage() {
                         setRemDesc("");
                         setShowInlineReminderForm((v) => !v);
                       }}
-                      className={`p-1.5 rounded-md hover:bg-gray-100 ${iconColor}`}
+                      className={`p - 1.5 rounded - md hover: bg - gray - 100 ${iconColor} `}
                       title="Add reminder"
                     >
                       <FaPlus className="h-3.5 w-3.5" />
                     </button>
                   </div>
+                  <hr className="my-2 border-subtle" />
                   {showInlineReminderForm && (
                     <form
                       onSubmit={async (e) => {
@@ -1219,13 +1255,21 @@ function DashboardPage() {
                             const res = await fetch(window.location.origin, { method: 'HEAD' });
                             const dateHeader = res.headers.get('date');
                             if (dateHeader) {
-                              serverTime = new Date(dateHeader);
+                              const parsed = new Date(dateHeader);
+                              if (!isNaN(parsed.getTime())) {
+                                serverTime = parsed;
+                              }
                             }
                           } catch (e) {
                             console.warn("Could not fetch server time, falling back to local time");
                           }
 
-                          const dueAt = new Date(`${remDate}T${remTime}`);
+                          // Zero out seconds & ms to allow scheduling for the current minute without failing due to seconds
+                          serverTime.setSeconds(0, 0);
+
+                          const dueAt = new Date(`${remDate}T${remTime} `);
+                          dueAt.setSeconds(0, 0);
+
                           if (dueAt < serverTime) {
                             toast.error("Reminder date and time cannot be in the past.");
                             setSavingReminder(false);
@@ -1327,7 +1371,7 @@ function DashboardPage() {
                         </button>
                         <button
                           type="submit"
-                          className={`px-2 py-1 text-xs rounded-md text-white disabled:opacity-50 ${buttonClass}`}
+                          className={`px - 2 py - 1 text - xs rounded - md text - white disabled: opacity - 50 ${buttonClass} `}
                           disabled={savingReminder}
                         >
                           {savingReminder ? "Saving..." : editingReminderId ? "Update" : "Save"}
@@ -1339,13 +1383,17 @@ function DashboardPage() {
                     <div className="text-xs text-gray-400 [.dark_&]:text-gray-500">No reminders yet.</div>
                   ) : (
                     <ul className="space-y-2 text-gray-700 [.dark_&]:text-gray-300 max-h-60 overflow-y-auto">
-                      {quickReminders.slice(0, 5).map((r) => (
-                        <li key={r.id} className="group flex items-start justify-between gap-2">
+                      {quickReminders.map((r) => (
+                        <li key={r.id} className={`group flex items - start justify - between gap - 2 ${((r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt)).getTime() < Date.now()) ? "opacity-50 grayscale" : ""} `}>
                           <div className="flex items-start gap-2 flex-1 min-w-0">
-                            <span className="mt-1">•</span>
+                            <div className="mt-0.5">
+                              <FaClock className="h-3 w-3 text-indigo-500" />
+                            </div>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm truncate">{r.title}</div>
-                              <div className="text-[11px] text-gray-500">{formatDueTime(r.dueAt)}</div>
+                              <div className="text-xs font-medium truncate">{r.title}</div>
+                              <div className="text-[10px] text-gray-500 [.dark_&]:text-gray-400">
+                                {(r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt)).toLocaleDateString("en-GB", { day: '2-digit', month: '2-digit', year: 'numeric' })}, {(r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt)).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', hour12: true })}
+                              </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
@@ -1364,36 +1412,32 @@ function DashboardPage() {
                                 const dd = String(d.getDate()).padStart(2, "0");
                                 const hh = String(d.getHours()).padStart(2, "0");
                                 const min = String(d.getMinutes()).padStart(2, "0");
-                                setRemDate(`${yyyy}-${mm}-${dd}`);
-                                setRemTime(`${hh}:${min}`);
+                                setRemDate(`${yyyy} -${mm} -${dd} `);
+                                setRemTime(`${hh}:${min} `);
                               }}
                             >
                               <span className="sr-only">Edit</span>
-                              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793z" />
-                                <path d="M11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                               </svg>
                             </button>
                             <button
                               type="button"
-                              className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-red-600"
+                              className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500"
                               title="Delete reminder"
                               onClick={async () => {
                                 try {
                                   await deleteDoc(doc(db, "reminders", r.id));
+                                  toast.success("Reminder deleted");
                                 } catch (e) {
                                   console.error("Failed to delete reminder", e);
+                                  toast.error("Failed to delete reminder");
                                 }
                               }}
                             >
                               <span className="sr-only">Delete</span>
-                              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                <path
-                                  fillRule="evenodd"
-                                  d="M6 8a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1z"
-                                  clipRule="evenodd"
-                                />
-                                <path d="M4 5h12v2H4z" />
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
                             </button>
                           </div>
@@ -1419,23 +1463,21 @@ function DashboardPage() {
                         type="button"
                         onClick={async () => {
                           const trimmed = noteInput.trim();
+                          const trimmedHeading = noteHeading.trim();
                           const activeUid = userData?.uid || user?.uid;
-                          const activeEmail = userData?.email || user?.email || "";
-                          if (!trimmed) return;
-                          if (!activeUid) {
-                            toast.error("User not ready. Please wait a moment and try again.");
-                            return;
-                          }
+                          if (!trimmed || !activeUid) return;
 
                           try {
                             if (editingNoteId) {
                               await updateDoc(doc(db, "notes", editingNoteId), {
                                 text: trimmed,
+                                heading: trimmedHeading,
                                 updatedAt: serverTimestamp(),
                               });
                             } else {
                               await addDoc(collection(db, "notes"), {
                                 text: trimmed,
+                                heading: trimmedHeading,
                                 isPinned: false,
                                 userUid: activeUid,
                                 createdAt: serverTimestamp(),
@@ -1453,6 +1495,7 @@ function DashboardPage() {
                               const data = d.data() || {};
                               return {
                                 id: d.id,
+                                heading: data.heading || "",
                                 text: data.bodyText || data.text || data.title || "",
                                 isPinned: data.isPinned === true,
                                 createdAt: data.createdAt || null,
@@ -1470,19 +1513,27 @@ function DashboardPage() {
                             setNotes(sorted);
 
                             setNoteInput("");
+                            setNoteHeading("");
                             setEditingNoteId(null);
                           } catch (e) {
                             console.error("Failed to save note", e);
                             toast.error("Failed to save note");
                           }
                         }}
-                        className={`px-2 py-1 rounded-md text-white text-[10px] font-medium disabled:opacity-50 ${buttonClass}`}
+                        className={`px-3 py-1.5 rounded-md text-white text-xs font-semibold shadow-sm transition-all hover:shadow-md disabled:opacity-50 ${buttonClass}`}
                         disabled={!noteInput.trim()}
                       >
                         {editingNoteId ? "Update" : "Save"}
                       </button>
                     </div>
                   </div>
+                  <input
+                    type="text"
+                    value={noteHeading}
+                    onChange={(e) => setNoteHeading(e.target.value)}
+                    className="w-full border border-gray-200 [.dark_&]:border-white/20 rounded-md px-2 py-1 text-sm bg-white [.dark_&]:bg-[#181B2A] text-gray-900 [.dark_&]:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 [.dark_&]:focus:ring-indigo-400 mb-2"
+                    placeholder="Heading (Optional)..."
+                  />
                   <textarea
                     rows={3}
                     value={noteInput}
@@ -1497,9 +1548,9 @@ function DashboardPage() {
                       notes.map((note) => (
                         <div
                           key={note.id}
-                          className="group flex items-start justify-between gap-2 rounded-md border border-gray-100 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-white/5 px-2 py-1.5"
+                          className="group flex flex-col items-start gap-1 rounded-md border border-gray-100 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-white/5 px-2 py-1.5"
                         >
-                          <div className="flex items-start gap-2 flex-1">
+                          <div className="flex items-start gap-2 flex-1 w-full relative">
                             <button
                               type="button"
                               onClick={async () => {
@@ -1526,60 +1577,38 @@ function DashboardPage() {
                                   console.error("Failed to toggle pin", err);
                                 }
                               }}
-                              className={`p-1 rounded hover:bg-gray-200 [.dark_&]:hover:bg-white/10 ${note.isPinned ? "text-amber-600 [.dark_&]:text-amber-400" : "text-gray-400 [.dark_&]:text-gray-500 hover:text-gray-600 [.dark_&]:hover:text-gray-300"}`}
+                              className={`p-1 rounded hover:bg-gray-200 [.dark_&]:hover:bg-white/10 ${note.isPinned ? "text-amber-600 [.dark_&]:text-amber-400" : "text-gray-400 [.dark_&]:text-gray-500 hover:text-gray-600 [.dark_&]:hover:text-gray-300"} mt-0.5`}
                               title={note.isPinned ? "Unpin note" : "Pin note"}
                             >
                               <FaThumbtack className="h-3 w-3" />
                             </button>
-                            <div className="text-xs text-gray-700 [.dark_&]:text-gray-300 leading-snug whitespace-pre-wrap break-all flex-1">
-                              {note.text}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              className="p-1 rounded hover:bg-gray-200 [.dark_&]:hover:bg-white/10 text-gray-500 [.dark_&]:text-gray-400 hover:text-gray-800 [.dark_&]:hover:text-gray-200"
-                              title="Edit note"
-                              onClick={() => {
-                                setEditingNoteId(note.id);
-                                setNoteInput(note.text);
-                              }}
-                            >
-                              <span className="sr-only">Edit</span>
-                              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793z" />
-                                <path d="M11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                              </svg>
-                            </button>
-                            <button
-                              type="button"
-                              className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-red-600"
-                              title="Delete note"
-                              onClick={async () => {
-                                const activeUid = userData?.uid || user?.uid;
-                                if (!activeUid) return;
-                                try {
-                                  await deleteDoc(doc(db, "notes", note.id));
-                                  setNotes((prev) => prev.filter((n) => n.id !== note.id));
-                                  if (editingNoteId === note.id) {
-                                    setEditingNoteId(null);
-                                    setNoteInput("");
+                            <div className="flex flex-col text-xs text-gray-700 [.dark_&]:text-gray-300 leading-snug whitespace-pre-wrap break-all flex-1 min-w-0">
+                              <NotePreview
+                                note={note}
+                                variant="inline"
+                                mode={mode}
+                                onEdit={(note) => {
+                                  setEditingNoteId(note.id);
+                                  setNoteInput(note.text);
+                                  setNoteHeading(note.heading || "");
+                                }}
+                                onDelete={async (note) => {
+                                  const activeUid = userData?.uid || user?.uid;
+                                  if (!activeUid) return;
+                                  try {
+                                    await deleteDoc(doc(db, "notes", note.id));
+                                    setNotes((prev) => prev.filter((n) => n.id !== note.id));
+                                    if (editingNoteId === note.id) {
+                                      setEditingNoteId(null);
+                                      setNoteInput("");
+                                      setNoteHeading("");
+                                    }
+                                  } catch (e) {
+                                    console.error("Failed to delete note", e);
                                   }
-                                } catch (e) {
-                                  console.error("Failed to delete note", e);
-                                }
-                              }}
-                            >
-                              <span className="sr-only">Delete</span>
-                              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                <path
-                                  fillRule="evenodd"
-                                  d="M6 8a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1z"
-                                  clipRule="evenodd"
-                                />
-                                <path d="M4 5h12v2H4z" />
-                              </svg>
-                            </button>
+                                }}
+                              />
+                            </div>
                           </div>
                         </div>
                       ))
@@ -1614,52 +1643,13 @@ function DashboardPage() {
           Monitor project performance, client engagement, and manage resources
           from a single control center.
         </span>
-      </PageHeader>
+      </PageHeader >
 
-      {/* --- Floating Top Right Sticky Notes Section --- */}
-      <div className="fixed top-5 right-8 z-50 flex flex-col items-end pointer-events-none">
-        <div
-          className="flex items-center justify-center w-12 h-12 rounded-full bg-white dark:bg-[#1f2937] shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)] border border-gray-100 dark:border-gray-700 cursor-pointer mb-4 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-1 hover:shadow-[0_6px_16px_rgba(0,0,0,0.12)] pointer-events-auto group"
-          onClick={() => setShowTopNotes(!showTopNotes)}
-          title="Toggle Dashboard Notes"
-        >
-          <FaStickyNote className="text-amber-500 text-lg group-hover:scale-110 transition-transform" />
-        </div>
+      {/* Remaining content */}
 
-        {showTopNotes && (
-          <div className="w-80 flex flex-col gap-4 transition-all max-h-[80vh] overflow-y-auto pointer-events-auto custom-scrollbar px-2 pb-4 pt-1">
-            {notes.length === 0 ? (
-              <div className="text-sm text-gray-500 dark:text-gray-400 italic bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm text-center">
-                No sticky notes saved yet. Add one from the quick menu above!
-              </div>
-            ) : (
-              notes.map(note => (
-                <div
-                  key={note.id}
-                  className="relative p-5 rounded-[12px] shadow-[0_4px_14px_rgba(0,0,0,0.08)] transform transition-all hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] border border-amber-200 dark:border-amber-900/60 bg-[#fef3c7] dark:bg-[#422006]"
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    {note.isPinned ? <FaThumbtack className="text-amber-600 dark:text-amber-500 w-3.5 h-3.5 transform rotate-45" /> : <div></div>}
-                    <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium ml-auto tracking-wider uppercase">
-                      {(() => {
-                        const d = note.updatedAt?.toDate ? note.updatedAt.toDate() : (note.updatedAt ? new Date(note.updatedAt) : null);
-                        if (!d || isNaN(d)) return 'Just now';
-                        return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-                      })()}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words flex-1 leading-relaxed font-normal">
-                    {note.text}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-      </div>
 
       {/* --- Stat Cards Section --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      < div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" >
         <div
           onClick={() => navigate("/admin/manage-projects")}
           className="cursor-pointer transform transition-transform hover:scale-105"
@@ -1708,10 +1698,10 @@ function DashboardPage() {
             color="green"
           />
         </div>
-      </div>
+      </div >
 
       {/* --- Analytical Graphs Section --- */}
-      <div className="mt-10">
+      < div className="mt-10" >
         <h2 className="text-xl font-semibold text-gray-900 [.dark_&]:text-white sm:text-2xl mb-6">
           Project Analytics Dashboard
         </h2>
@@ -1777,7 +1767,7 @@ function DashboardPage() {
                     <div
                       className="h-3 bg-gray-400"
                       style={{ flexGrow: statusSummary.counts.todo }}
-                      title={`To-Do ${statusSummary.counts.todo} (${statusSummary.pct.todo}%)`}
+                      title={`To - Do ${statusSummary.counts.todo} (${statusSummary.pct.todo}%)`}
                     />
                   )}
                 </div>
@@ -1863,8 +1853,8 @@ function DashboardPage() {
                         <div className="w-full bg-gray-200 [.dark_&]:bg-white/10 rounded-full h-2">
                           <div
                             className="h-2 rounded-full transition-all duration-500 bg-red-500"
-                            style={{ width: `${p.progress}%` }}
-                            title={`Completion ${p.progress}%`}
+                            style={{ width: `${p.progress}% ` }}
+                            title={`Completion ${p.progress}% `}
                           ></div>
                         </div>
                       </div>
@@ -1909,8 +1899,8 @@ function DashboardPage() {
             </div>
           </Card>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }
 

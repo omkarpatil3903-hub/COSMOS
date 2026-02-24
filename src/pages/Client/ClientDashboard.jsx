@@ -17,6 +17,7 @@ import {
   FaStickyNote,
   FaThumbtack,
   FaPlus,
+  FaExclamationTriangle,
 } from "react-icons/fa";
 import { LuNotebookPen, LuAlarmClock } from "react-icons/lu";
 import toast from "react-hot-toast";
@@ -44,6 +45,11 @@ export default function ClientDashboard() {
   const [savingReminder, setSavingReminder] = useState(false);
   const [editingReminderId, setEditingReminderId] = useState(null);
   const quickMenusRef = useRef(null);
+  // Notification panel state (like Manager panel)
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [dismissedNotifications, setDismissedNotifications] = useState(new Set());
+  const notificationRef = useRef(null);
 
   const isTaskExpired = (task) => {
     const created = task.createdAt;
@@ -126,6 +132,19 @@ export default function ClientDashboard() {
     };
   }, []);
 
+  // Close notifications dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+    if (showNotifications) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showNotifications]);
+
   useEffect(() => {
     if (!uid) return;
     const qRem = query(
@@ -135,19 +154,32 @@ export default function ClientDashboard() {
     );
     const unsub = onSnapshot(qRem, (snap) => {
       const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      items.sort((a, b) => {
+      const now = Date.now();
+      const active = [];
+      const past = [];
+      items.forEach((r) => {
+        const d = r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt);
+        if (d.getTime() >= now) active.push(r);
+        else past.push(r);
+      });
+      active.sort((a, b) => {
         const ad = a.dueAt?.toDate ? a.dueAt.toDate() : new Date(a.dueAt);
         const bd = b.dueAt?.toDate ? b.dueAt.toDate() : new Date(b.dueAt);
-        return ad - bd;
+        return ad.getTime() - bd.getTime();
       });
-      setQuickReminders(items);
+      past.sort((a, b) => {
+        const ad = a.dueAt?.toDate ? a.dueAt.toDate() : new Date(a.dueAt);
+        const bd = b.dueAt?.toDate ? b.dueAt.toDate() : new Date(b.dueAt);
+        return bd.getTime() - ad.getTime();
+      });
+      setQuickReminders([...active, ...past]);
 
       // Show snackbar for due reminders (match SuperAdmin behavior)
-      const now = new Date();
+      const currentTime = new Date();
       items
         .filter((r) => {
           const dueAt = r.dueAt?.toDate?.() || new Date(r.dueAt);
-          return dueAt <= now && !r.isRead;
+          return dueAt <= currentTime && !r.isRead;
         })
         .forEach((r) => {
           const toastId = `reminder-${r.id}`;
@@ -190,9 +222,9 @@ export default function ClientDashboard() {
                       type="button"
                       onClick={async () => {
                         try {
-                          await deleteDoc(doc(db, "reminders", r.id));
+                          await updateDoc(doc(db, "reminders", r.id), { isRead: true });
                         } catch (e) {
-                          console.error("Failed to delete reminder", e);
+                          console.error("Failed to dismiss reminder", e);
                         }
                         toast.dismiss(toastId);
                       }}
@@ -264,6 +296,62 @@ export default function ClientDashboard() {
     return () => unsub();
   }, [uid]);
 
+
+  // Generate notifications from tasks (like Manager panel)
+  useEffect(() => {
+    if (tasks.length === 0) return;
+    const newNotifications = [];
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    // Overdue tasks
+    tasks.filter((task) => {
+      if (["done", "completed", "complete"].includes((task.status || "").toLowerCase())) return false;
+      const dueDate = task.dueDate?.toDate?.() || new Date(task.dueDate);
+      return dueDate < now;
+    }).forEach((task) => {
+      const dueDate = task.dueDate?.toDate?.() || new Date(task.dueDate);
+      const daysOverdue = Math.ceil((now - dueDate) / (1000 * 60 * 60 * 24));
+      newNotifications.push({
+        id: `overdue-${task.id}`,
+        type: "overdue",
+        title: "Overdue Task",
+        message: `"${task.title}" is ${daysOverdue} day${daysOverdue > 1 ? "s" : ""} overdue`,
+        redirectTo: "/client/tasks",
+      });
+    });
+
+    // Newly assigned tasks
+    tasks.filter((task) => {
+      if (!task.assignedDate && !task.createdAt) return false;
+      const assignedDate = task.assignedDate?.toDate?.() || task.createdAt?.toDate?.() || new Date(task.assignedDate || task.createdAt);
+      return assignedDate >= oneDayAgo && !["done", "completed", "complete"].includes((task.status || "").toLowerCase());
+    }).forEach((task) => {
+      newNotifications.push({
+        id: `new-${task.id}`,
+        type: "task",
+        title: "New Task Assigned",
+        message: `"${task.title}" has been assigned to you`,
+        redirectTo: "/client/tasks",
+      });
+    });
+
+    const filtered = newNotifications.filter((n) => !dismissedNotifications.has(n.id));
+    filtered.sort((a, b) => ({ overdue: 0, task: 1 }[a.type] - { overdue: 0, task: 1 }[b.type]));
+    setNotifications(filtered);
+  }, [tasks, dismissedNotifications]);
+
+  const removeNotification = (id, event) => {
+    event.stopPropagation();
+    setDismissedNotifications((prev) => new Set([...prev, id]));
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const clearAllNotifications = () => {
+    setDismissedNotifications((prev) => new Set([...prev, ...notifications.map((n) => n.id)]));
+    setNotifications([]);
+  };
+
   // Calculate stats
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => t.status === "Done").length;
@@ -333,18 +421,91 @@ export default function ClientDashboard() {
               >
                 <LuNotebookPen className="h-4 w-4" />
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowReminderMenu((v) => !v);
-                  setShowNotesMenu(false);
-                  setShowQuickMenu(false);
-                }}
-                className="p-2 rounded-full hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-gray-600 [.dark_&]:text-gray-300 hover:text-gray-900 [.dark_&]:hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                title="Notifications"
-              >
-                <FaBell className="h-4 w-4" />
-              </button>
+              {/* Bell / Notifications button */}
+              <div className="relative" ref={notificationRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNotifications((v) => !v);
+                    setShowReminderMenu(false);
+                    setShowNotesMenu(false);
+                    setShowQuickMenu(false);
+                  }}
+                  className="relative p-2 rounded-full hover:bg-gray-100 [.dark_&]:hover:bg-white/10 text-gray-600 [.dark_&]:text-gray-300 hover:text-gray-900 [.dark_&]:hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-gray-200 [.dark_&]:border-white/10 shadow-sm"
+                  title="Notifications"
+                >
+                  <FaBell className="h-4 w-4" />
+                  {notifications.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {notifications.length > 9 ? "9+" : notifications.length}
+                    </span>
+                  )}
+                </button>
+
+                {/* Notifications Dropdown */}
+                {showNotifications && (
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-white [.dark_&]:bg-[#1F2234] rounded-lg shadow-lg border border-gray-200 [.dark_&]:border-white/20 z-50">
+                    <div className="p-4 border-b border-gray-200 [.dark_&]:border-white/10">
+                      <h3 className="text-lg font-semibold text-gray-900 [.dark_&]:text-white">Notifications</h3>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                          <FaBell className="h-8 w-8 mx-auto mb-2 text-gray-300 [.dark_&]:text-gray-600" />
+                          <p>No new notifications</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-gray-100 [.dark_&]:divide-white/10">
+                          {notifications.map((notification) => (
+                            <div
+                              key={notification.id}
+                              className="p-4 hover:bg-gray-50 [.dark_&]:hover:bg-white/5 transition-colors cursor-pointer relative group"
+                              onClick={() => {
+                                if (notification.redirectTo) navigate(notification.redirectTo);
+                                setShowNotifications(false);
+                              }}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0">
+                                  {notification.type === "task" && (
+                                    <FaTasks className="h-4 w-4 text-blue-500 mt-1" />
+                                  )}
+                                  {notification.type === "overdue" && (
+                                    <FaExclamationTriangle className="h-4 w-4 text-red-500 mt-1" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0 pr-8">
+                                  <p className="text-sm font-medium text-gray-900 [.dark_&]:text-white">{notification.title}</p>
+                                  <p className="text-sm text-gray-600 [.dark_&]:text-gray-400 mt-1">{notification.message}</p>
+                                </div>
+                                <button
+                                  onClick={(e) => removeNotification(notification.id, e)}
+                                  className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-200 [.dark_&]:hover:bg-white/10 transition-colors opacity-0 group-hover:opacity-100"
+                                  title="Remove notification"
+                                >
+                                  <svg className="w-4 h-4 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {notifications.length > 0 && (
+                      <div className="p-3 border-t border-gray-200 [.dark_&]:border-white/10">
+                        <button
+                          onClick={clearAllNotifications}
+                          className="w-full text-sm text-indigo-600 [.dark_&]:text-indigo-400 hover:text-indigo-800 font-medium hover:bg-indigo-50 [.dark_&]:hover:bg-indigo-900/30 py-2 px-3 rounded-md transition-colors"
+                        >
+                          Clear All Notifications
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               {showQuickMenu && (
                 <div className="absolute right-0 top-9 z-30 w-44 rounded-lg bg-white [.dark_&]:bg-[#1F2234] shadow-lg border border-gray-200 [.dark_&]:border-white/20 text-sm">
                   <button
@@ -403,6 +564,7 @@ export default function ClientDashboard() {
                       <FaPlus className="h-3.5 w-3.5" />
                     </button>
                   </div>
+                  <hr className="my-2 border-gray-100 [.dark_&]:border-white/10" />
                   {showInlineReminderForm && (
                     <form
                       onSubmit={async (e) => {
@@ -424,13 +586,21 @@ export default function ClientDashboard() {
                             const res = await fetch(window.location.origin, { method: 'HEAD' });
                             const dateHeader = res.headers.get('date');
                             if (dateHeader) {
-                              serverTime = new Date(dateHeader);
+                              const parsed = new Date(dateHeader);
+                              if (!isNaN(parsed.getTime())) {
+                                serverTime = parsed;
+                              }
                             }
                           } catch (e) {
                             console.warn("Could not fetch server time, falling back to local time");
                           }
 
+                          // Zero out seconds & ms to allow scheduling for the current minute without failing due to seconds
+                          serverTime.setSeconds(0, 0);
+
                           const dueAt = new Date(`${remDate}T${remTime}`);
+                          dueAt.setSeconds(0, 0);
+
                           if (dueAt < serverTime) {
                             toast.error("Reminder date and time cannot be in the past.");
                             setSavingReminder(false);
@@ -544,13 +714,17 @@ export default function ClientDashboard() {
                     <div className="text-xs text-gray-400 [.dark_&]:text-gray-500">No reminders yet.</div>
                   ) : (
                     <ul className="space-y-2 text-gray-700 [.dark_&]:text-gray-300 max-h-60 overflow-y-auto">
-                      {quickReminders.slice(0, 5).map((r) => (
-                        <li key={r.id} className="group flex items-start justify-between gap-2">
+                      {quickReminders.map((r) => (
+                        <li key={r.id} className={`group flex items-start justify-between gap-2 ${((r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt)).getTime() < Date.now()) ? "opacity-50 grayscale" : ""}`}>
                           <div className="flex items-start gap-2 flex-1 min-w-0">
-                            <span className="mt-1">•</span>
+                            <div className="mt-0.5">
+                              <FaClock className="h-3 w-3 text-indigo-500" />
+                            </div>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm truncate">{r.title}</div>
-                              <div className="text-[11px] text-gray-500 [.dark_&]:text-gray-400">{formatDueTime(r.dueAt)}</div>
+                              <div className="text-xs font-medium truncate">{r.title}</div>
+                              <div className="text-[10px] text-gray-500 [.dark_&]:text-gray-400">
+                                {(r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt)).toLocaleDateString("en-GB", { day: '2-digit', month: '2-digit', year: 'numeric' })}, {(r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt)).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', hour12: true })}
+                              </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
@@ -574,9 +748,8 @@ export default function ClientDashboard() {
                               }}
                             >
                               <span className="sr-only">Edit</span>
-                              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793z" />
-                                <path d="M11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                               </svg>
                             </button>
                             <button
@@ -586,19 +759,16 @@ export default function ClientDashboard() {
                               onClick={async () => {
                                 try {
                                   await deleteDoc(doc(db, "reminders", r.id));
+                                  toast.success("Reminder deleted");
                                 } catch (e) {
                                   console.error("Failed to delete reminder", e);
+                                  toast.error("Failed to delete reminder");
                                 }
                               }}
                             >
                               <span className="sr-only">Delete</span>
-                              <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                <path
-                                  fillRule="evenodd"
-                                  d="M6 8a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1zm4 0a1 1 0 011 1v6a1 1 0 11-2 0V9a1 1 0 011-1z"
-                                  clipRule="evenodd"
-                                />
-                                <path d="M4 5h12v2H4z" />
+                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
                             </button>
                           </div>

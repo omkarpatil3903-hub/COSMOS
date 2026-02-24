@@ -11,6 +11,7 @@ import { auth, db } from "../../firebase";
 import { collection, onSnapshot, query, where, orderBy, addDoc, updateDoc, doc, deleteDoc, getDocs, serverTimestamp } from "firebase/firestore";
 import { useAuthContext } from "../../context/useAuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import NotePreview from "../../components/Notes/NotePreview";
 import { useThemeStyles } from "../../hooks/useThemeStyles";
 import {
     FaProjectDiagram,
@@ -53,6 +54,7 @@ export default function ManagerDashboard() {
     const [showQuickNotesMenu, setShowQuickNotesMenu] = useState(false);
     const [quickNotes, setQuickNotes] = useState([]);
     const [noteInput, setNoteInput] = useState("");
+    const [noteHeading, setNoteHeading] = useState("");
     const [editingNoteId, setEditingNoteId] = useState(null);
     const [quickReminders, setQuickReminders] = useState([]);
     const [showInlineReminderForm, setShowInlineReminderForm] = useState(false);
@@ -62,13 +64,11 @@ export default function ManagerDashboard() {
     const [remDesc, setRemDesc] = useState("");
     const [savingReminder, setSavingReminder] = useState(false);
     const [editingReminderId, setEditingReminderId] = useState(null);
-    const [showTopNotes, setShowTopNotes] = useState(true);
     const quickMenusRef = useRef(null);
 
     // Notifications state
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState([]);
-    const [reminderNotifications, setReminderNotifications] = useState([]);
     const [dismissedNotifications, setDismissedNotifications] = useState(new Set());
     const notificationRef = useRef(null);
     const [showTeamModal, setShowTeamModal] = useState(false);
@@ -305,6 +305,7 @@ export default function ManagerDashboard() {
                 const data = d.data() || {};
                 return {
                     id: d.id,
+                    heading: data.heading || "",
                     text: data.bodyText || data.text || data.title || "",
                     isPinned: data.isPinned === true,
                     createdAt: data.createdAt?.toDate?.() || new Date(),
@@ -333,12 +334,25 @@ export default function ManagerDashboard() {
         );
         const unsub = onSnapshot(q, (snap) => {
             const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-            items.sort((a, b) => {
+            const now = Date.now();
+            const active = [];
+            const past = [];
+            items.forEach((r) => {
+                const d = r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt);
+                if (d.getTime() >= now) active.push(r);
+                else past.push(r);
+            });
+            active.sort((a, b) => {
                 const ad = a.dueAt?.toDate ? a.dueAt.toDate() : new Date(a.dueAt);
                 const bd = b.dueAt?.toDate ? b.dueAt.toDate() : new Date(b.dueAt);
-                return ad - bd;
+                return ad.getTime() - bd.getTime();
             });
-            setQuickReminders(items);
+            past.sort((a, b) => {
+                const ad = a.dueAt?.toDate ? a.dueAt.toDate() : new Date(a.dueAt);
+                const bd = b.dueAt?.toDate ? b.dueAt.toDate() : new Date(b.dueAt);
+                return bd.getTime() - ad.getTime();
+            });
+            setQuickReminders([...active, ...past]);
         });
         return () => unsub();
     }, []);
@@ -398,19 +412,6 @@ export default function ManagerDashboard() {
                 console.log('Found reminder for notification bell:', r.title, 'at', timeLabel); // Debug log
             });
 
-            // Update reminder notifications for the notification bell
-            const notificationsPayload = due.map((r) => ({
-                id: `reminder-${r.id}`,
-                type: "reminder",
-                title: "Reminder",
-                message: r.title,
-                reminderId: r.id,
-                redirectTo: null,
-            }));
-
-            if (notificationsPayload.length > 0) {
-                setReminderNotifications((prev) => [...prev, ...notificationsPayload]);
-            }
         };
 
         // Listen to Firestore for reminder changes
@@ -437,7 +438,7 @@ export default function ManagerDashboard() {
 
     // Generate real-time notifications based on task and project data
     useEffect(() => {
-        if (tasks.length === 0 && projects.length === 0 && reminderNotifications.length === 0) return;
+        if (tasks.length === 0 && projects.length === 0) return;
 
         const newNotifications = [];
         const now = new Date();
@@ -506,8 +507,8 @@ export default function ManagerDashboard() {
             });
         });
 
-        // Merge with reminder notifications
-        const allNotifications = [...newNotifications, ...reminderNotifications];
+        // Generate notifications list without reminders
+        const allNotifications = [...newNotifications];
 
         // Filter out dismissed notifications
         const filteredNotifications = allNotifications.filter(
@@ -521,7 +522,7 @@ export default function ManagerDashboard() {
         });
 
         setNotifications(filteredNotifications);
-    }, [tasks, projects, reminderNotifications, dismissedNotifications]);
+    }, [tasks, projects, dismissedNotifications]);
 
     const handleSaveQuickNote = async () => {
         if (!noteInput.trim()) return;
@@ -531,16 +532,18 @@ export default function ManagerDashboard() {
         try {
             if (editingNoteId) {
                 await updateDoc(doc(db, "notes", editingNoteId), {
+                    heading: noteHeading.trim(),
                     text: noteInput,
                     updatedAt: serverTimestamp(),
                 });
                 setQuickNotes((prev) =>
-                    prev.map((n) => (n.id === editingNoteId ? { ...n, text: noteInput, updatedAt: new Date() } : n))
+                    prev.map((n) => (n.id === editingNoteId ? { ...n, heading: noteHeading.trim(), text: noteInput, updatedAt: new Date() } : n))
                 );
                 toast.success("Note updated");
             } else {
                 const newNote = {
                     userUid: currentUser.uid,
+                    heading: noteHeading.trim(),
                     text: noteInput,
                     isPinned: false,
                     createdAt: serverTimestamp(),
@@ -554,6 +557,7 @@ export default function ManagerDashboard() {
                 toast.success("Note saved");
             }
             setNoteInput("");
+            setNoteHeading("");
             setEditingNoteId(null);
         } catch (error) {
             console.error("Error saving note:", error);
@@ -610,13 +614,21 @@ export default function ManagerDashboard() {
                 const res = await fetch(window.location.origin, { method: 'HEAD' });
                 const dateHeader = res.headers.get('date');
                 if (dateHeader) {
-                    serverTime = new Date(dateHeader);
+                    const parsed = new Date(dateHeader);
+                    if (!isNaN(parsed.getTime())) {
+                        serverTime = parsed;
+                    }
                 }
             } catch (e) {
                 console.warn("Could not fetch server time, falling back to local time");
             }
 
+            // Zero out seconds & ms to allow scheduling for the current minute without failing due to seconds
+            serverTime.setSeconds(0, 0);
+
             const dueAt = new Date(`${remDate}T${remTime}`);
+            dueAt.setSeconds(0, 0);
+
             if (dueAt < serverTime) {
                 toast.error("Reminder date and time cannot be in the past.");
                 setSavingReminder(false);
@@ -658,10 +670,10 @@ export default function ManagerDashboard() {
     const handleDeleteQuickReminder = async (id) => {
         try {
             await deleteDoc(doc(db, "reminders", id));
-            toast.success("Reminder removed");
+            toast.success("Reminder deleted");
         } catch (err) {
             console.error("Failed to delete reminder", err);
-            toast.error("Failed to remove reminder");
+            toast.error("Failed to delete reminder");
         }
     };
 
@@ -800,7 +812,7 @@ export default function ManagerDashboard() {
                             className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-gray-200 dark:border-white/10 shadow-sm"
                             title="Quick actions"
                         >
-                            <LuNotebookPen className="h-5 w-5" />
+                            <LuNotebookPen className={`h-5 w-5 ${iconColor}`} />
                         </button>
                         {showQuickActionsMenu && (
                             <div className="absolute right-0 top-11 z-20 w-48 rounded-lg bg-white dark:bg-[#1F2234] shadow-lg border border-gray-200 dark:border-white/20 py-1 text-sm">
@@ -847,6 +859,7 @@ export default function ManagerDashboard() {
                                         <FaPlus />
                                     </button>
                                 </div>
+                                <hr className="my-2 border-gray-100 dark:border-white/10" />
 
                                 {showInlineReminderForm && (
                                     <form
@@ -927,8 +940,8 @@ export default function ManagerDashboard() {
                                     <div className="text-xs text-gray-400 dark:text-gray-500">No reminders yet.</div>
                                 ) : (
                                     <ul className="space-y-2 text-gray-700 dark:text-gray-300 max-h-60 overflow-y-auto">
-                                        {quickReminders.slice(0, 5).map((r) => (
-                                            <li key={r.id} className="group flex items-start justify-between gap-2">
+                                        {quickReminders.map((r) => (
+                                            <li key={r.id} className={`group flex items-start justify-between gap-2 ${(r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt)).getTime() < Date.now() ? "opacity-50 grayscale" : ""}`}>
                                                 <div className="flex items-start gap-2 flex-1 min-w-0">
                                                     <div className="mt-0.5">
                                                         <FaClock className="h-3 w-3 text-indigo-500" />
@@ -936,7 +949,7 @@ export default function ManagerDashboard() {
                                                     <div className="flex-1 min-w-0">
                                                         <div className="text-xs font-medium truncate">{r.title}</div>
                                                         <div className="text-[10px] text-gray-500 dark:text-gray-400">
-                                                            {r.dueAt?.toDate().toLocaleString()}
+                                                            {(r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt)).toLocaleDateString("en-GB", { day: '2-digit', month: '2-digit', year: 'numeric' })}, {(r.dueAt?.toDate ? r.dueAt.toDate() : new Date(r.dueAt)).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', hour12: true })}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -966,7 +979,7 @@ export default function ManagerDashboard() {
                                                         onClick={() => handleDeleteQuickReminder(r.id)}
                                                     >
                                                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                         </svg>
                                                     </button>
                                                 </div>
@@ -997,6 +1010,13 @@ export default function ManagerDashboard() {
                                         </button>
                                     </div>
                                 </div>
+                                <input
+                                    type="text"
+                                    value={noteHeading}
+                                    onChange={(e) => setNoteHeading(e.target.value)}
+                                    className="w-full border border-gray-200 dark:border-white/20 rounded-md px-2 py-1 text-sm bg-white dark:bg-[#181B2A] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 mb-2"
+                                    placeholder="Heading (Optional)..."
+                                />
                                 <textarea
                                     rows={3}
                                     value={noteInput}
@@ -1011,44 +1031,29 @@ export default function ManagerDashboard() {
                                         quickNotes.map((note) => (
                                             <div
                                                 key={note.id}
-                                                className="group flex items-start justify-between gap-2 rounded-md border border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-2 py-1.5"
+                                                className="group flex flex-col items-start gap-1 rounded-md border border-gray-100 dark:border-white/10 bg-gray-50 dark:bg-white/5 px-2 py-1.5"
                                             >
-                                                <div className="flex items-start gap-2 flex-1">
+                                                <div className="flex items-start gap-2 flex-1 w-full relative">
                                                     <button
                                                         onClick={() => handleTogglePinQuickNote(note)}
-                                                        className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-white/10 ${note.isPinned ? "text-amber-600 dark:text-amber-400" : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"}`}
+                                                        className={`p-1 rounded hover:bg-gray-200 dark:hover:bg-white/10 ${note.isPinned ? "text-amber-600 dark:text-amber-400" : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"} mt-0.5`}
                                                         title={note.isPinned ? "Unpin note" : "Pin note"}
                                                     >
                                                         <FaThumbtack className="h-3 w-3" />
                                                     </button>
-                                                    <div className="text-xs text-gray-700 dark:text-gray-300 leading-snug whitespace-pre-wrap break-all flex-1">
-                                                        {note.text}
+                                                    <div className="flex flex-col text-xs text-gray-700 dark:text-gray-300 leading-snug whitespace-pre-wrap break-all flex-1 min-w-0">
+                                                        <NotePreview
+                                                            note={note}
+                                                            variant="inline"
+                                                            mode={mode}
+                                                            onEdit={(note) => {
+                                                                setEditingNoteId(note.id);
+                                                                setNoteInput(note.text);
+                                                                setNoteHeading(note.heading || "");
+                                                            }}
+                                                            onDelete={(note) => handleDeleteQuickNote(note.id)}
+                                                        />
                                                     </div>
-                                                </div>
-                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button
-                                                        type="button"
-                                                        className="p-1 rounded hover:bg-gray-200 dark:hover:bg-white/10 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-                                                        title="Edit note"
-                                                        onClick={() => {
-                                                            setEditingNoteId(note.id);
-                                                            setNoteInput(note.text);
-                                                        }}
-                                                    >
-                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                                        </svg>
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        className="p-1 rounded hover:bg-red-100 text-gray-400 hover:text-red-500"
-                                                        title="Delete note"
-                                                        onClick={() => handleDeleteQuickNote(note.id)}
-                                                    >
-                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                        </svg>
-                                                    </button>
                                                 </div>
                                             </div>
                                         ))
@@ -1155,48 +1160,6 @@ export default function ManagerDashboard() {
                         )}
                     </div>
                 </div>
-            </div>
-
-            {/* --- Floating Top Right Sticky Notes Section --- */}
-            <div className="fixed top-5 right-8 z-50 flex flex-col items-end pointer-events-none">
-                <div
-                    className="flex items-center justify-center w-12 h-12 rounded-full bg-white dark:bg-[#1f2937] shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)] border border-gray-100 dark:border-gray-700 cursor-pointer mb-4 hover:bg-gray-50 dark:hover:bg-gray-600 transition-all hover:-translate-y-1 hover:shadow-[0_6px_16px_rgba(0,0,0,0.12)] pointer-events-auto group"
-                    onClick={() => setShowTopNotes(!showTopNotes)}
-                    title="Toggle Dashboard Notes"
-                >
-                    <FaStickyNote className="text-amber-500 text-lg group-hover:scale-110 transition-transform" />
-                </div>
-
-                {showTopNotes && (
-                    <div className="w-80 flex flex-col gap-4 transition-all max-h-[80vh] overflow-y-auto pointer-events-auto custom-scrollbar px-2 pb-4 pt-1">
-                        {quickNotes.length === 0 ? (
-                            <div className="text-sm text-gray-500 dark:text-gray-400 italic bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm text-center">
-                                No sticky notes saved yet. Add one from the quick menu above!
-                            </div>
-                        ) : (
-                            quickNotes.map(note => (
-                                <div
-                                    key={note.id}
-                                    className="relative p-5 rounded-[12px] shadow-[0_4px_14px_rgba(0,0,0,0.08)] transform transition-all hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] border border-amber-200 dark:border-amber-900/60 bg-[#fef3c7] dark:bg-[#422006]"
-                                >
-                                    <div className="flex justify-between items-start mb-3">
-                                        {note.isPinned ? <FaThumbtack className="text-amber-600 dark:text-amber-500 w-3.5 h-3.5 transform rotate-45" /> : <div></div>}
-                                        <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium ml-auto tracking-wider uppercase">
-                                            {(() => {
-                                                const d = note.updatedAt?.toDate ? note.updatedAt.toDate() : (note.updatedAt ? new Date(note.updatedAt) : null);
-                                                if (!d || isNaN(d)) return 'Just now';
-                                                return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-                                            })()}
-                                        </span>
-                                    </div>
-                                    <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words flex-1 leading-relaxed font-normal">
-                                        {note.text}
-                                    </p>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                )}
             </div>
 
             {/* Stats Cards */}

@@ -334,6 +334,25 @@ function ManageClients() {
         }
       }
 
+      // If email changed, update Firebase Auth via Cloud Function
+      const originalEmail = (selectedClient.email || "").toLowerCase().trim();
+      const newEmail = (submittedData.email || "").toLowerCase().trim();
+      if (newEmail && newEmail !== originalEmail) {
+        try {
+          const updateUserEmailFn = httpsCallable(functions, 'updateUserEmail');
+          await updateUserEmailFn({ uid: selectedClient.id, email: newEmail });
+          toast.success("Email updated in Auth system");
+        } catch (authEmailError) {
+          console.error("Failed to update Auth email:", authEmailError);
+          const msg = authEmailError.code === "functions/already-exists"
+            ? "That email is already used by another account."
+            : `Failed to update email in Auth: ${authEmailError.message}`;
+          toast.error(msg);
+          // Revert the email in Firestore updates to original
+          updateData.email = originalEmail;
+        }
+      }
+
       await updateDoc(doc(db, CLIENTS_COLLECTION, selectedClient.id), {
         ...updateData,
         updatedAt: serverTimestamp(),

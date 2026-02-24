@@ -50,6 +50,7 @@ import SevenStageProjectKanban from "../../components/SevenStageProjectKanban";
 
 const tableHeaders = [
   { key: "srNo", label: "Sr. No.", sortable: false },
+  { key: "id", label: "Project ID", sortable: false },
   { key: "projectName", label: "Project Name", sortable: true },
   { key: "clientName", label: "Client Name", sortable: true },
   { key: "projectManagerName", label: "Project Manager", sortable: true },
@@ -1068,6 +1069,16 @@ function ManageProjects({ onlyMyManaged = false }) {
                           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 [.dark_&]:bg-white/10">
                             {indexOfFirstRow + index + 1}
                           </div>
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-sm">
+                          <span
+                            title={project.projectId || "-"}
+                            className="text-gray-900 [.dark_&]:text-white text-sm font-semibold select-all inline-block"
+                          >
+                            {(project.projectId || "-").length > 20
+                              ? `${(project.projectId || "-").substring(0, 20)}...`
+                              : project.projectId || "-"}
+                          </span>
                         </td>
                         <td className="px-6 py-4 text-sm font-semibold text-gray-900 [.dark_&]:text-white">
                           <span>{project.projectName}</span>

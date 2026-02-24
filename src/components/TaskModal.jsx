@@ -70,9 +70,8 @@ import { useThemeStyles } from "../hooks/useThemeStyles";
 import { calculateNextDueDate } from "../utils/recurringTasks";
 import { useTheme } from "../context/ThemeContext";
 
-// Inline simple searchable multi-select component
-// Inline simple searchable multi-select component
-function SearchMultiSelect({ items, selected, onChange, placeholder, disabledIds = [] }) {
+// Inline simple searchable single-select component
+function SearchSingleSelect({ items, selectedId, onChange, placeholder, disabledIds = [] }) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(
@@ -81,12 +80,9 @@ function SearchMultiSelect({ items, selected, onChange, placeholder, disabledIds
     [items, query]
   );
 
-  const toggle = (id) => {
-    if (disabledIds.includes(id)) return; // Prevent toggling disabled items
-    const set = new Set(selected);
-    if (set.has(id)) set.delete(id);
-    else set.add(id);
-    onChange(Array.from(set));
+  const handleSelect = (id) => {
+    if (disabledIds.includes(id)) return;
+    onChange(id);
   };
 
   return (
@@ -100,17 +96,19 @@ function SearchMultiSelect({ items, selected, onChange, placeholder, disabledIds
       <div className="mt-2 max-h-40 overflow-y-auto rounded-md border border-subtle [.dark_&]:border-white/10 bg-surface [.dark_&]:bg-[#181B2A]">
         {filtered.map((i) => {
           const isDisabled = disabledIds.includes(i.id);
+          const isSelected = selectedId === i.id;
           return (
             <label
               key={i.id}
               className={`flex items-center gap-2 px-3 py-2 text-sm ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50 [.dark_&]:hover:bg-white/5'} text-gray-700 [.dark_&]:text-white`}
             >
               <input
-                type="checkbox"
-                checked={selected.includes(i.id)}
-                onChange={() => toggle(i.id)}
+                type="radio"
+                name="assignee-selection"
+                checked={isSelected}
+                onChange={() => handleSelect(i.id)}
                 disabled={isDisabled}
-                className="rounded border-subtle"
+                className="rounded-full border-subtle text-indigo-600 focus:ring-indigo-500"
               />
               <span>{i.label}</span>
               {isDisabled && <span className="ml-auto text-[10px] italic">(Locked)</span>}
@@ -778,8 +776,8 @@ function TaskModal({
                           ))}
                       </select>
 
-                      {/* Separate Done control */}
-                      {statuses.includes("Done") && (
+                      {/* Separate Done control - Only show in Edit mode */}
+                      {isEdit && statuses.includes("Done") && (
                         <button
                           type="button"
                           onClick={() => setStatus("Done")}
@@ -852,7 +850,7 @@ function TaskModal({
                             Select a project to view team members
                           </div>
                         ) : (
-                          <SearchMultiSelect
+                          <SearchSingleSelect
                             items={assignees
                               .filter(u => {
                                 if (projectId) {
@@ -866,24 +864,15 @@ function TaskModal({
                                 id: u.id,
                                 label: u.name,
                               }))}
-                            selected={assigneesSelected
-                              .filter((a) => a.type === "user")
-                              .map((a) => a.id)}
-                            onChange={(ids) => {
-                              const others = assigneesSelected.filter(
-                                (a) => a.type !== "user"
-                              );
-                              const nextSame = ids.map((id) => ({
-                                type: "user",
-                                id,
-                              }));
-                              const next = [...nextSame, ...others];
+                            selectedId={assigneesSelected.find(a => a.type === 'user')?.id || ''}
+                            onChange={(id) => {
+                              const next = [{ type: "user", id }];
                               setAssigneesSelected(next);
-                              setAssigneeId(nextSame[0]?.id || "");
+                              setAssigneeId(id);
                               if (errors.assigneeId)
                                 setErrors((p) => ({ ...p, assigneeId: "" }));
                             }}
-                            placeholder="Select team members..."
+                            placeholder="Select team member..."
                             disabledIds={disabledAssigneeIds}
                           />
                         )}
