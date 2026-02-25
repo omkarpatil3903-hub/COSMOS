@@ -32,20 +32,20 @@ const PRESETS = [
     {
         id: 'weekly',
         label: 'Weekly',
-        description: 'Mondays',
+        description: 'Pick days',
         Icon: FaCalendarWeek,
         config: {
             pattern: 'weekly',
             interval: 1,
             skipWeekends: false,
-            customDays: false,
-            selectedWeekDays: [1] // Monday only
+            customDays: true,
+            selectedWeekDays: [1, 2, 3, 4, 5] // Mon–Fri default
         }
     },
     {
         id: 'monthly',
         label: 'Monthly',
-        description: '1st of month',
+        description: 'Pick day',
         Icon: FaCalendar,
         config: {
             pattern: 'monthly',

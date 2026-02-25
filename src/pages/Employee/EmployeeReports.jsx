@@ -5,7 +5,7 @@ import Button from "../../components/Button";
 import PageHeader from "../../components/PageHeader";
 import { useAuthContext } from "../../context/useAuthContext";
 import { db, storage } from "../../firebase";
-import { collection, query, where, onSnapshot, documentId, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, onSnapshot, documentId, addDoc, serverTimestamp, getDocs } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
   FaChartBar,
@@ -52,6 +52,8 @@ export default function EmployeeReports() {
     nextActionPlan: "",
     summary: "",
     reportContent: "",
+    reportId: "",
+    monthlyReportId: "",
     // Weekly Report Fields
     weekNumber: "",
     weekStartDate: "",
@@ -333,6 +335,8 @@ export default function EmployeeReports() {
         nextActionPlan: pendingTasksList,
         summary: "",
         reportContent: "",
+        reportId: "",
+        monthlyReportId: "",
         // Weekly Report Fields
         weekNumber: `Week ${getWeekNumber(now)}`,
         weekStartDate: formatDateToDDMMYYYY(startOfWeek),
@@ -352,6 +356,61 @@ export default function EmployeeReports() {
       });
     }
   }, [showReportModal, userData, projects, todayTasks]);
+
+  // Compute dynamic Report ID for Daily and Monthly reports when project changes
+  useEffect(() => {
+    if (!showReportModal || !reportData.projectName) return;
+    if (reportType !== "Daily" && reportType !== "Monthly") return;
+
+    const selectedProject = projects.find(
+      (p) => p.projectName === reportData.projectName || p.name === reportData.projectName
+    );
+    if (!selectedProject || !uid) return;
+
+    const adminProjectId = selectedProject.projectId?.trim() || "";
+    const firestoreProjectId = selectedProject.id;
+    const empName = (userData?.name || "Employee").replace(/[^a-zA-Z0-9]/g, "");
+
+    if (reportType === "Daily") {
+      // Count existing Daily Reports for this employee + project
+      getDocs(
+        query(
+          collection(db, "documents", firestoreProjectId, "Daily Report"),
+          where("createdBy", "==", uid)
+        )
+      ).then((snap) => {
+        const nextNo = String(snap.size + 1).padStart(2, "0");
+        const computedId = adminProjectId
+          ? `${adminProjectId}_${empName}_DR_${nextNo}`
+          : `${empName}_DR_${nextNo}`;
+        setReportData((prev) => ({ ...prev, reportId: computedId }));
+      }).catch(() => {
+        const fallback = adminProjectId
+          ? `${adminProjectId}_${empName}_DR_01`
+          : `${empName}_DR_01`;
+        setReportData((prev) => ({ ...prev, reportId: fallback }));
+      });
+    } else if (reportType === "Monthly") {
+      // Count existing Monthly Reports for this employee + project
+      getDocs(
+        query(
+          collection(db, "documents", firestoreProjectId, "Monthly Report"),
+          where("createdBy", "==", uid)
+        )
+      ).then((snap) => {
+        const nextNo = String(snap.size + 1).padStart(2, "0");
+        const computedId = adminProjectId
+          ? `${adminProjectId}_${empName}_MR_${nextNo}`
+          : `${empName}_MR_${nextNo}`;
+        setReportData((prev) => ({ ...prev, monthlyReportId: computedId }));
+      }).catch(() => {
+        const fallback = adminProjectId
+          ? `${adminProjectId}_${empName}_MR_01`
+          : `${empName}_MR_01`;
+        setReportData((prev) => ({ ...prev, monthlyReportId: fallback }));
+      });
+    }
+  }, [reportData.projectName, showReportModal, reportType, projects, uid, userData]);
 
   // Auto-open modal when navigated from Dashboard KPI card
   useEffect(() => {
@@ -1677,7 +1736,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                 Report No.
                               </td>
                               <td className="border border-black p-2 w-1/4">
-                                MFI_DR_{new Date().getDate()}
+                                {reportData.reportId || `MFI_DR_${new Date().getDate()}`}
                               </td>
                               <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
                                 Day & Date
@@ -2148,8 +2207,7 @@ Generated on: ${formatDateToDDMMYYYY(
                                 Report No.
                               </td>
                               <td className="border border-black p-2 w-1/4">
-                                <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
-                                MR_{reportData.monthName.replace(/\s/g, "_")}
+                                {reportData.monthlyReportId || `MR_${reportData.monthName.replace(/\s/g, "_")}`}
                               </td>
                               <td className="border border-black p-2 font-bold bg-gray-100 w-1/4">
                                 Date
