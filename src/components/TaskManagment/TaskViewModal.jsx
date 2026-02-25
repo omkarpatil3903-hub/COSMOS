@@ -1037,18 +1037,28 @@ const TaskViewModal = ({
         {/* --- Header --- */}
         <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-b border-gray-100/50 [.dark_&]:border-white/10 bg-white/80 [.dark_&]:bg-[#181B2A]/80 backdrop-blur-md shrink-0 z-10">
           <div className="flex items-center gap-2 text-sm text-gray-500 overflow-hidden">
-            <span className="truncate font-medium text-gray-700 [.dark_&]:text-white max-w-[150px] lg:max-w-[200px]" title={project?.name}>
-              {project?.name || "No Project"}
-            </span>
-            <span className="text-gray-300 [.dark_&]:text-gray-600">/</span>
-            <span className="px-2 py-0.5 rounded border border-gray-200 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-white/5 text-xs font-mono text-gray-600 [.dark_&]:text-gray-400">
-              {task.id.slice(0, 6).toUpperCase()}
-            </span>
-            {task.isRecurring && (
-              <span className="hidden sm:flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full text-xs font-semibold shadow-sm border border-indigo-100">
-                <MdReplayCircleFilled className="text-sm" /> {getRecurrenceLabel(task)}
-              </span>
-            )}
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="truncate font-bold text-gray-900 [.dark_&]:text-white max-w-[150px] lg:max-w-[200px]" title={project?.projectName || project?.name}>
+                  {project?.projectName || project?.name || "No Project"}
+                </span>
+                <span className="text-gray-300 [.dark_&]:text-gray-600">/</span>
+                <span className="px-2 py-0.5 rounded border border-gray-200 [.dark_&]:border-white/10 bg-gray-50 [.dark_&]:bg-white/5 text-[10px] font-bold text-gray-600 [.dark_&]:text-gray-400">
+                  {project?.projectId || "—"}
+                </span>
+                <span className="text-gray-300 [.dark_&]:text-gray-600 mx-1">|</span>
+                <span className="text-[11px] font-semibold text-gray-500 [.dark_&]:text-gray-400">
+                  Manager: <span className="text-gray-900 [.dark_&]:text-gray-200">{project?.projectManagerName || "—"}</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                {task.isRecurring && (
+                  <span className="flex items-center gap-1 text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full text-[9px] font-bold shadow-sm border border-indigo-100">
+                    <MdReplayCircleFilled className="text-[10px]" /> {getRecurrenceLabel(task)}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center gap-1 lg:gap-2 shrink-0">

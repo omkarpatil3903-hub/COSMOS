@@ -406,10 +406,10 @@ function EmployeeLayout() {
       />
       <aside
         className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col bg-surface shadow-card transition-transform duration-300 ease-out lg:inset-y-auto lg:top-0 lg:h-screen lg:translate-x-0 ${isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
-          } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"}`}
+          } ${sidebarWidth} ${isCollapsed ? "p-4" : "p-6"} overflow-hidden`}
         aria-label="Primary"
       >
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-4 shrink-0">
           {!isCollapsed && (
             <div className="flex items-center gap-3">
               <div className="flex flex-col items-center">
@@ -467,7 +467,7 @@ function EmployeeLayout() {
           <PanelSwitcher isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
         </div>
 
-        <nav className="mt-4 flex flex-1 flex-col gap-1">
+        <nav className="mt-4 flex flex-1 flex-col gap-1 overflow-y-auto scrollbar-thin pr-1">
           <DragDropContext onDragEnd={handleDragEnd}>
             <Droppable droppableId="employee-sidebar-nav">
               {(provided) => (
@@ -510,7 +510,7 @@ function EmployeeLayout() {
           </DragDropContext>
         </nav>
 
-        <div className="mt-auto pt-8">
+        <div className="mt-auto pt-8 shrink-0">
           <button
             onClick={handleLogout}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100 cursor-pointer"

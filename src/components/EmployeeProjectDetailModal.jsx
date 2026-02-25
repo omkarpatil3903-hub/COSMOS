@@ -111,9 +111,11 @@ const EmployeeProjectDetailModal = ({
                             <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
                                 {project.projectName}
                             </h2>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                Project Details
-                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+                                    {project.projectId || "—"}
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <button

@@ -286,6 +286,16 @@ function DashboardPage() {
     };
   }, [userData?.uid, user?.uid]);
 
+  const formatDate = (date) => {
+    if (!date) return "—";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "—";
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   const formatDueTime = (ts) => {
     if (!ts) return "";
     const d = ts?.toDate ? ts.toDate() : new Date(ts);
@@ -295,7 +305,7 @@ function DashboardPage() {
       d.getMonth() === now.getMonth() &&
       d.getFullYear() === now.getFullYear();
     const timeStr = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    return isToday ? `Today at ${timeStr}` : `${d.toLocaleDateString()} at ${timeStr}`;
+    return isToday ? `Today at ${timeStr}` : `${formatDate(d)} at ${timeStr}`;
   };
 
   // Filter tasks and events by selected project

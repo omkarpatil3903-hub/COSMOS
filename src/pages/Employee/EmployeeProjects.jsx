@@ -586,6 +586,9 @@ const EmployeeProjects = () => {
                         >
                           {project.projectName}
                         </h3>
+                        <p className="text-[10px] font-bold text-gray-500/80 dark:text-white/50 mt-1 uppercase tracking-wider">
+                          {project.projectId || "—"}
+                        </p>
 
                         {/* Project Manager directly under project name */}
                         {project.projectManagerName && (
