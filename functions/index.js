@@ -273,7 +273,8 @@ exports.checkRecurringTasks = onSchedule("0 2 * * *", async (event) => {
                         task.recurringPattern,
                         task.recurringInterval,
                         task.skipWeekends,
-                        task.selectedWeekDays // Pass custom working days array
+                        task.selectedWeekDays,  // Pass custom working days array
+                        task.selectedDayOfMonth // Pass user-specified day of month
                     );
 
                     // Check if the next instance ALREADY exists
@@ -318,6 +319,8 @@ exports.checkRecurringTasks = onSchedule("0 2 * * *", async (event) => {
                         recurringEndAfter: restOfTask.recurringEndAfter || "",
                         recurringEndType: restOfTask.recurringEndType || "never",
                         skipWeekends: restOfTask.skipWeekends || false,
+                        selectedWeekDays: restOfTask.selectedWeekDays || null,    // Inherit custom working days
+                        selectedDayOfMonth: restOfTask.selectedDayOfMonth ?? null, // Inherit user-specified day of month
                         parentRecurringTaskId: seriesId,
                         recurringOccurrenceCount: (restOfTask.recurringOccurrenceCount || 0) + 1,
                         uniqueRecurringKey: `${seriesId}-${nextDueDate}`,

@@ -109,7 +109,7 @@ const DailyReportView = ({ data, tasksCompletedToday }) => (
 
         <View style={styles.metaTable}>
             <MetaRow
-                label1="Report No." value1={`MFI_DR_${new Date().getDate()}`}
+                label1="Report No." value1={data.reportId || `MFI_DR_${new Date().getDate()}`}
                 label2="Day & Date" value2={data.reportDate}
             />
             <MetaRow label1="Client Name -" value1={data.clientName} />
@@ -312,9 +312,10 @@ const MonthlyReportView = ({ data }) => (
 
         <View style={styles.metaTable}>
             <MetaRow
-                label1="Month" value1={data.monthName}
+                label1="Report No." value1={data.monthlyReportId || `MR_${(data.monthName || "").replace(/\s/g, "_")}`}
                 label2="Date" value2={data.reportDate}
             />
+            <MetaRow label1="Month" value1={data.monthName} />
             <MetaRow label1="Client Name -" value1={data.clientName} />
             <MetaRow label1="Project Name -" value1={data.projectName} />
             <MetaRow label1="Consultant Name:" value1={data.employeeName} />

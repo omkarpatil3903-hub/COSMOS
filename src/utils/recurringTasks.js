@@ -66,7 +66,8 @@ export function calculateNextDueDate(
   pattern,
   interval,
   skipWeekends = false,
-  selectedWeekDays = null
+  selectedWeekDays = null,
+  selectedDayOfMonth = null  // day 1-31; null = same as start date; 31 = last day of month
 ) {
   // NORMALIZE: Convert various date formats to JavaScript Date
   let date;
@@ -91,10 +92,13 @@ export function calculateNextDueDate(
       const currentDay = date.getDate();
       date.setMonth(date.getMonth() + interval);
 
-      // If day changed due to overflow (e.g., Jan 31 → Mar 3)
-      // Set to last day of the intended month
-      if (date.getDate() < currentDay) {
-        date.setDate(0); // Go to last day of previous month (Feb 28/29)
+      if (selectedDayOfMonth != null) {
+        // User-specified day — cap to last day of target month
+        const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+        date.setDate(Math.min(selectedDayOfMonth, lastDay));
+      } else if (date.getDate() < currentDay) {
+        // Original overflow fix: Jan 31 → Mar 3 → set to Feb 28
+        date.setDate(0);
       }
       break;
     }
@@ -194,7 +198,12 @@ export function occursOnDate(task, date) {
     return weeks % interval === 0;
   }
   if (pattern === "monthly") {
-    if (d.getDate() !== b.getDate()) return false; // Must be same day of month
+    // Use user-specified day OR fall back to base date's day
+    const targetDay = (task.selectedDayOfMonth != null) ? task.selectedDayOfMonth : b.getDate();
+    // Handle "last day of month" (stored as 31)
+    const lastDayOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    const resolvedDay = (targetDay === 31) ? lastDayOfMonth : Math.min(targetDay, lastDayOfMonth);
+    if (d.getDate() !== resolvedDay) return false;
     const months =
       (d.getFullYear() - b.getFullYear()) * 12 + (d.getMonth() - b.getMonth());
     return months % interval === 0;
@@ -270,7 +279,8 @@ export function shouldCreateNextInstance(task) {
     task.recurringPattern,
     task.recurringInterval,
     task.skipWeekends,
-    task.selectedWeekDays // Custom working days
+    task.selectedWeekDays,   // Custom working days
+    task.selectedDayOfMonth  // User-specified day of month
   );
 
   // END DATE CHECK: Don't create if NEXT occurrence would be past end date
@@ -349,7 +359,8 @@ export async function shouldCreateNextInstanceAsync(task) {
     task.recurringPattern,
     task.recurringInterval,
     task.skipWeekends,
-    task.selectedWeekDays // Custom working days
+    task.selectedWeekDays,   // Custom working days
+    task.selectedDayOfMonth  // User-specified day of month
   );
 
   console.log('✅ Calculated nextDueDate:', nextDueDate);
@@ -415,7 +426,8 @@ export async function createNextRecurringInstance(task) {
       task.recurringPattern,
       task.recurringInterval,
       task.skipWeekends,
-      task.selectedWeekDays // Custom working days
+      task.selectedWeekDays,   // Custom working days
+      task.selectedDayOfMonth  // User-specified day of month
     );
 
     const seriesId = task.parentRecurringTaskId || task.id;
@@ -479,7 +491,8 @@ export async function createNextRecurringInstance(task) {
         recurringEndDate: restOfTask.recurringEndDate || "",
         recurringEndAfter: restOfTask.recurringEndAfter || "",
         recurringEndType: restOfTask.recurringEndType || "never",
-        selectedWeekDays: restOfTask.selectedWeekDays || null, // INHERIT: Custom working days
+        selectedWeekDays: restOfTask.selectedWeekDays || null,   // Inherit custom working days
+        selectedDayOfMonth: restOfTask.selectedDayOfMonth ?? null, // Inherit user-specified day of month
         skipWeekends: restOfTask.skipWeekends || false,
         parentRecurringTaskId: seriesId, // LINK: Connect to series
         recurringOccurrenceCount: (restOfTask.recurringOccurrenceCount || 0) + 1,

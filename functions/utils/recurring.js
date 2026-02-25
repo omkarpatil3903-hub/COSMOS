@@ -9,7 +9,7 @@ const admin = require("firebase-admin");
  * @param {array} selectedWeekDays - array of day indices [0-6] where task should recur (0=Sun, 6=Sat)
  * @returns {string} Next due date in YYYY-MM-DD
  */
-function calculateNextDueDate(currentDueDate, pattern, interval, skipWeekends = false, selectedWeekDays = null) {
+function calculateNextDueDate(currentDueDate, pattern, interval, skipWeekends = false, selectedWeekDays = null, selectedDayOfMonth = null) {
   const date = new Date(currentDueDate);
   const intVal = parseInt(interval) || 1;
 
@@ -22,6 +22,11 @@ function calculateNextDueDate(currentDueDate, pattern, interval, skipWeekends = 
       break;
     case "monthly":
       date.setMonth(date.getMonth() + intVal);
+      if (selectedDayOfMonth != null) {
+        // User-specified day — cap to last day of target month (31 = last day)
+        const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+        date.setDate(Math.min(selectedDayOfMonth, lastDay));
+      }
       break;
     case "yearly":
       date.setFullYear(date.getFullYear() + intVal);

@@ -214,6 +214,7 @@ function TaskModal({
   const [isCustomDays, setIsCustomDays] = useState(false);
   const [skipWeekends, setSkipWeekends] = useState(false); // Phase 4: Skip weekends
   const [selectedPreset, setSelectedPreset] = useState(null); // Track selected preset
+  const [selectedDayOfMonth, setSelectedDayOfMonth] = useState(null); // null = same as start date, 1-31 = specific day (31 = last)
   const [previewDates, setPreviewDates] = useState([]);
 
   // OKR state
@@ -295,7 +296,10 @@ function TaskModal({
               include = true;
             }
           } else if (recurringPattern === "monthly") {
-            if (d.getDate() === start.getDate()) {
+            const targetDay = selectedDayOfMonth ?? start.getDate();
+            const lastDayOfTarget = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+            const resolvedDay = targetDay === 31 ? lastDayOfTarget : Math.min(targetDay, lastDayOfTarget);
+            if (d.getDate() === resolvedDay) {
               const monthDiff =
                 (d.getFullYear() - start.getFullYear()) * 12 +
                 (d.getMonth() - start.getMonth());
@@ -326,6 +330,7 @@ function TaskModal({
     recurringPattern,
     recurringInterval,
     selectedWeekDays,
+    selectedDayOfMonth,
     isCustomDays,
   ]);
 
@@ -363,6 +368,7 @@ function TaskModal({
       setRecurringEndType(taskToEdit.recurringEndType || "never");
       setRecurringEndDate(taskToEdit.recurringEndDate || "");
       setRecurringEndAfter(String(taskToEdit.recurringEndAfter || ""));
+      setSelectedDayOfMonth(taskToEdit.selectedDayOfMonth ?? null); // Init selectedDayOfMonth in edit mode
       setSkipWeekends(taskToEdit.skipWeekends || false);
 
       // Detect and set the appropriate preset based on existing settings
@@ -492,9 +498,13 @@ function TaskModal({
     const config = preset.config;
     setRecurringPattern(config.pattern);
     setRecurringInterval(config.interval);
-    setSkipWeekends(config.skipWeekends || false); // Add skipWeekends configuration
+    setSkipWeekends(config.skipWeekends || false);
     setIsCustomDays(config.customDays);
     setSelectedWeekDays(config.selectedWeekDays);
+    // Reset day-of-month when switching presets (avoid stale monthly selection)
+    if (config.pattern !== 'monthly') {
+      setSelectedDayOfMonth(null);
+    }
   };
 
   const handleSubmit = (e) => {
@@ -585,7 +595,11 @@ function TaskModal({
           ? Number(recurringEndAfter)
           : undefined,
       skipWeekends: isRecurring ? skipWeekends : undefined,
-      selectedWeekDays: isRecurring ? selectedWeekDays : undefined, // Always save for recurring tasks
+      selectedWeekDays: isRecurring ? selectedWeekDays : undefined,
+      selectedDayOfMonth:
+        isRecurring && recurringPattern === "monthly"
+          ? selectedDayOfMonth   // null = same as start date
+          : undefined,
       okrObjectiveIndex:
         typeof okrObjectiveIndex === "number" ? okrObjectiveIndex : undefined,
       okrKeyResultIndices: okrKeyResultIndices,
@@ -1009,6 +1023,100 @@ function TaskModal({
                           <p className="text-[10px] text-gray-500 [.dark_&]:text-gray-400 mt-1">
                             💡 Tip: Uncheck days that are weekends/holidays for your company
                           </p>
+                        </div>
+                      )}
+
+                      {/* Weekly Day Picker - visible when Weekly preset selected */}
+                      {selectedPreset === 'weekly' && (
+                        <div className="space-y-2 pt-3 border-t border-gray-100 [.dark_&]:border-white/10 animate-in fade-in slide-in-from-top-1">
+                          <div className="flex items-center justify-between">
+                            <label className="block text-xs font-semibold text-gray-700 [.dark_&]:text-gray-300">
+                              <FaRegCalendarAlt className="inline mr-1" /> Repeat On
+                            </label>
+                            <span className="text-[10px] text-gray-500">Select days of week</span>
+                          </div>
+                          <div className="flex gap-1">
+                            {["S", "M", "T", "W", "T", "F", "S"].map((day, idx) => {
+                              const isSelected = selectedWeekDays.includes(idx);
+                              const isLast = isSelected && selectedWeekDays.length === 1;
+                              return (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  disabled={isLast}
+                                  title={["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][idx]}
+                                  onClick={() => {
+                                    setSelectedWeekDays(prev =>
+                                      prev.includes(idx)
+                                        ? prev.filter(d => d !== idx)
+                                        : [...prev, idx]
+                                    );
+                                    setIsCustomDays(true);
+                                  }}
+                                  className={`flex-1 h-9 rounded-lg text-xs font-bold flex items-center justify-center transition-all
+                                    ${isSelected
+                                      ? "bg-indigo-600 text-white shadow-sm"
+                                      : "bg-gray-100 [.dark_&]:bg-white/5 text-gray-400 hover:bg-gray-200 [.dark_&]:hover:bg-white/10"
+                                    }
+                                    ${isLast ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                                >
+                                  {day}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="text-[10px] text-gray-500 [.dark_&]:text-gray-400">At least one day must be selected</p>
+                        </div>
+                      )}
+
+                      {/* Monthly Day Picker - visible when Monthly preset selected */}
+                      {selectedPreset === 'monthly' && (
+                        <div className="space-y-2 pt-3 border-t border-gray-100 [.dark_&]:border-white/10 animate-in fade-in slide-in-from-top-1">
+                          <label className="block text-xs font-semibold text-gray-700 [.dark_&]:text-gray-300">
+                            <FaRegCalendarAlt className="inline mr-1" /> Repeats On
+                          </label>
+                          <div className="space-y-2">
+                            <label className="flex items-center gap-2 cursor-pointer group">
+                              <input
+                                type="radio"
+                                name="dayOfMonth"
+                                checked={selectedDayOfMonth === null}
+                                onChange={() => setSelectedDayOfMonth(null)}
+                                className="accent-indigo-600"
+                              />
+                              <span className="text-xs text-gray-700 [.dark_&]:text-gray-300">
+                                Same day as start date
+                                {dueDate && (
+                                  <span className="ml-1 text-gray-400">
+                                    (the {new Date(dueDate + 'T00:00:00').getDate()}{["st", "nd", "rd"][((new Date(dueDate + "T00:00:00").getDate() + 90) % 100 - 11) % 10 - 1] || "th"} each month)
+                                  </span>
+                                )}
+                              </span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="radio"
+                                name="dayOfMonth"
+                                checked={selectedDayOfMonth !== null}
+                                onChange={() => setSelectedDayOfMonth(1)}
+                                className="accent-indigo-600"
+                              />
+                              <span className="text-xs text-gray-700 [.dark_&]:text-gray-300">Specific day:</span>
+                              <select
+                                value={selectedDayOfMonth ?? ""}
+                                onChange={e => setSelectedDayOfMonth(Number(e.target.value))}
+                                disabled={selectedDayOfMonth === null}
+                                className="ml-1 rounded-lg border-0 bg-white [.dark_&]:bg-[#181B2A] px-2 py-1 text-xs text-gray-900 [.dark_&]:text-white ring-1 ring-inset ring-gray-200 [.dark_&]:ring-white/10 focus:ring-2 focus:ring-indigo-600 disabled:opacity-50"
+                              >
+                                {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                                  <option key={d} value={d}>
+                                    {d}{["st", "nd", "rd"][((d + 90) % 100 - 11) % 10 - 1] || "th"}
+                                  </option>
+                                ))}
+                                <option value={31}>Last day</option>
+                              </select>
+                            </label>
+                          </div>
                         </div>
                       )}
 
